@@ -12,13 +12,202 @@
 
 using namespace juce;
 
+/* our framework */
+
+class AndroidAudioPluginDescriptor
+{
+	char *name;
+	char *display_name;
+	char **categories;
+	int num_categories;
+	char *manufacturer_name;
+	char *version;
+	char *identifier_string;
+	int unique_id;
+	long last_updated_unixtime;
+	
+
+public:
+	char* getName()
+	{
+		return name;
+	}
+	
+	char* getDescriptiveName()
+	{
+		return display_name;
+	}
+	
+	int32_t numCategories()
+	{
+		return num_categories;
+	}
+	
+	char* getCategoryAt (int32_t index)
+	{
+		return categories [index];
+	}
+	
+	char* getManufacturerName()
+	{
+		return manufacturer_name;
+	}
+	
+	char* getVersion()
+	{
+		return version;
+	}
+	
+	char* getIdentifier()
+	{
+		return identifier_string;
+	}
+	
+	long getFileModTime()
+	{
+	}
+	
+	long getLastInfoUpdateTime()
+	{
+		return last_updated_unixtime;
+	}
+	
+	int32_t getUid()
+	{
+		return unique_id;
+	}
+	
+	bool isInstrument()
+	{
+	}
+	
+	int32_t numInputChannels()
+	{
+	}
+	
+	int32_t numOutputChannels()
+	{
+	}
+
+	bool hasSharedContainer()
+	{
+	}
+};
+
+class AndroidAudioPlugin
+{
+	AndroidAudioPluginDescriptor *descriptor;
+
+public:
+	AndroidAudioPlugin (AndroidAudioPluginDescriptor *pluginDescriptor)
+		: descriptor (pluginDescriptor)
+	{
+	}
+
+	AndroidAudioPluginDescriptor* getPluginDescriptor ()
+	{
+		return descriptor;
+	}
+
+	void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
+	{
+		// TODO: implement
+	}
+	
+	void releaseResources()
+	{
+		// TODO: implement
+	}
+	
+	void processBlock (void *audioBuffer, int audioBufferSize, MidiBuffer& midiMessages)
+	{
+		// TODO: implement
+	}
+	
+	double getTailLengthSeconds () const
+	{
+		// TODO: implement
+	}
+	
+	bool acceptsMidi () const
+	{
+		// TODO: implement
+	}
+	
+	bool producesMidi () const
+	{
+		// TODO: implement
+	}
+	
+	AudioProcessorEditor* createEditor ()
+	{
+		// TODO: implement
+	}
+	
+	bool hasEditor () const
+	{
+		// TODO: implement
+	}
+	
+	int getNumPrograms ()
+	{
+		// TODO: implement
+	}
+	
+	int getCurrentProgram ()
+	{
+		// TODO: implement
+	}
+	
+	void setCurrentProgram (int index)
+	{
+		// TODO: implement
+	}
+	
+	const String getProgramName (int index)
+	{
+		// TODO: implement
+	}
+	
+	void changeProgramName (int index, const String& newName)
+	{
+		// TODO: implement
+	}
+	
+	void getStateInformation (juce::MemoryBlock& destData)
+	{
+		// TODO: implement
+	}
+	
+	void setStateInformation (const void* data, int sizeInBytes)
+	{
+		// TODO: implement
+	}
+	
+	 void fillInPluginDescription (PluginDescription &description) const
+	 {
+		// TODO: implement
+	 }
+};
+
+
+/* juce facades */
 
 class AndroidAudioUnitPluginInstance : public juce::AudioPluginInstance
 {
+	AndroidAudioPlugin *native;
+
+		
 public:
+
+	AndroidAudioUnitPluginInstance (AndroidAudioPlugin *nativePlugin)
+		: native (nativePlugin)
+	{
+	}
+
 	const String getName() const
 	{
-		// TODO: implement
+		return native->getPluginDescriptor()->getName();
 	}
 	
 	void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
@@ -169,5 +358,5 @@ protected:
 };
 
 
-AndroidAudioUnitPluginInstance p;
+AndroidAudioUnitPluginInstance p (NULL);
 AndroidAudioUnitPluginFormat f;
