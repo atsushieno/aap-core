@@ -8,6 +8,8 @@
             file="Source/AndroidAudioUnit.cpp"/>
       <FILE id="QlUDzX" name="AndroidAudioUnit.h" compile="0" resource="0"
             file="Source/AndroidAudioUnit.h"/>
+      <FILE id="AcSfsw" name="juce_AndroidAudioUnit.cpp" compile="1" resource="0"
+            file="Source/juce_AndroidAudioUnit.cpp"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
