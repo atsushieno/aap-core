@@ -11,3 +11,13 @@
 #include "AndroidAudioUnit.h"
 #include "android/asset_manager.h"
 
+
+namespace aap
+{
+
+AndroidAudioPlugin* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
+{
+	return new AndroidAudioPlugin(descriptor);
+}
+
+} // namespace

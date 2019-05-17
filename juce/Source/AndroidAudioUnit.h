@@ -16,6 +16,8 @@
 namespace aap
 {
 
+class AndroidAudioPlugin;
+
 
 class AndroidAudioPluginDescriptor
 {
@@ -95,6 +97,18 @@ public:
 	bool hasSharedContainer()
 	{
 	}
+	
+	bool hasEditor()
+	{
+	}
+	
+	bool canProcessMidi()
+	{
+	}
+	
+	bool canProduceMidi()
+	{
+	}
 };
 
 class AndroidAudioPluginManager
@@ -129,18 +143,38 @@ public:
 		search_recursive = recursive;
 		asynchronous_instantiation_allowed = asynchronousInstantiationAllowed;
 	}
+	
+	AndroidAudioPlugin* instantiatePlugin(AndroidAudioPluginDescriptor *descriptor);
+};
+
+class AndroidAudioPluginEditor
+{
+	AndroidAudioPlugin *owner;
+
+public:
+
+	AndroidAudioPluginEditor(AndroidAudioPlugin *owner)
+		: owner(owner)
+	{
+	}
+
+	void startEditorUI()
+	{
+	}
 };
 
 class AndroidAudioPlugin
 {
+	friend class AndroidAudioPluginManager;
+	
 	AndroidAudioPluginDescriptor *descriptor;
-
-public:
 
 	AndroidAudioPlugin(AndroidAudioPluginDescriptor *pluginDescriptor)
 		: descriptor(pluginDescriptor)
 	{
 	}
+
+public:
 
 	AndroidAudioPluginDescriptor* getPluginDescriptor()
 	{
@@ -177,9 +211,9 @@ public:
 		// TODO: implement
 	}
 	
-	AudioProcessorEditor* createEditor()
+	AndroidAudioPluginEditor* createEditor()
 	{
-		// TODO: implement
+		return new AndroidAudioPluginEditor(this);
 	}
 	
 	bool hasEditor() const

@@ -13,13 +13,39 @@
 using namespace aap;
 using namespace juce;
 
+namespace juceaap
+{
 
-/* juce facades */
+class AndroidAudioPluginInstance;
+
+class AndroidAudioProcessorEditor : public juce::AudioProcessorEditor
+{
+	AndroidAudioPluginEditor *native;
+	
+public:
+
+	AndroidAudioProcessorEditor(AudioProcessor *processor, AndroidAudioPluginEditor *native)
+		: AudioProcessorEditor(processor), native(native)
+	{
+	}
+	
+	void startEditorUI()
+	{
+		native->startEditorUI();
+	}
+	
+	// TODO: override if we want to.
+	/*
+	virtual void setScaleFactor(float newScale)
+	{
+	}
+	*/
+};
 
 class AndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AndroidAudioPlugin *native;
-		
+
 public:
 
 	AndroidAudioPluginInstance(AndroidAudioPlugin *nativePlugin)
@@ -54,47 +80,51 @@ public:
 	
 	bool acceptsMidi() const
 	{
-		// TODO: implement
+		return native->getPluginDescriptor()->canProcessMidi();
 	}
 	
 	bool producesMidi() const
 	{
-		// TODO: implement
+		return native->getPluginDescriptor()->canProduceMidi();
 	}
 	
 	AudioProcessorEditor* createEditor()
 	{
-		// TODO: implement
+		if (!native->getPluginDescriptor()->hasEditor())
+			return nullptr;
+		auto ret = new AndroidAudioProcessorEditor(this, native->createEditor());
+		ret->startEditorUI();
+		return ret;
 	}
 	
 	bool hasEditor() const
 	{
-		// TODO: implement
+		return native->hasEditor();
 	}
 	
 	int getNumPrograms()
 	{
-		// TODO: implement
+		return native->getNumPrograms();
 	}
 	
 	int getCurrentProgram()
 	{
-		// TODO: implement
+		return native->getCurrentProgram();
 	}
 	
 	void setCurrentProgram(int index)
 	{
-		// TODO: implement
+		native->setCurrentProgram(index);
 	}
 	
 	const String getProgramName(int index)
 	{
-		// TODO: implement
+		return native->getProgramName(index);
 	}
 	
 	void changeProgramName(int index, const String& newName)
 	{
-		// TODO: implement
+		native->changeProgramName(index, newName.toUTF8());
 	}
 	
 	void getStateInformation(juce::MemoryBlock& destData)
@@ -109,7 +139,7 @@ public:
 	
 	 void fillInPluginDescription(PluginDescription &description) const
 	 {
-		AndroidAudioPluginDescriptor *desc = native->getPluginDescriptor();
+		auto desc = native->getPluginDescriptor();
 		description.name = desc->getName();
 		description.pluginFormatName = "AAP";
 		
@@ -135,6 +165,10 @@ public:
 class AndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
 	AndroidAudioPluginManager android_manager;
+
+	AndroidAudioPluginDescriptor *findDescriptorFrom(const PluginDescription &desc)
+	{
+	}
 
 public:
 	AndroidAudioPluginFormat(AAssetManager *assetManager)
@@ -186,7 +220,7 @@ public:
 		for (int i = 0; i < numPaths; i++)
 			paths[i] = directoriesToSearch[i].getFullPathName().toRawUTF8();
 		android_manager.updatePluginDescriptorList(paths, recursive, allowPluginsWhichRequireAsynchronousInstantiation);
-		AndroidAudioPluginDescriptor *results = android_manager.getPluginDescriptorList();
+		auto results = android_manager.getPluginDescriptorList();
 	}
 	
 	FileSearchPath getDefaultLocationsToSearch()
@@ -205,7 +239,16 @@ protected:
 		void *userData,
 		PluginCreationCallback callback)
 	{
-		// TODO: implement
+		auto descriptor = findDescriptorFrom(description);
+		String error("");
+		if (descriptor == nullptr) {
+			error << "Android Audio Plugin " << description.name << "was not found.";
+			callback(userData, nullptr, error);
+		} else {
+			auto androidInstance = android_manager.instantiatePlugin(descriptor);
+			auto instance = new AndroidAudioPluginInstance(androidInstance);
+			callback(userData, instance, error);
+		}
 	}
 	
 	bool requiresUnblockedMessageThreadDuringCreation(const PluginDescription &description) const noexcept
@@ -217,3 +260,5 @@ protected:
 
 AndroidAudioPluginInstance p(NULL);
 AndroidAudioPluginFormat f(NULL);
+
+} // namespace
