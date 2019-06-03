@@ -13,10 +13,32 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "android/asset_manager.h"
 
+
+extern "C" {
+
+//typedef int32_t (*android_audio_plugin_processor_func_t) (AndroidAudioPluginBuffer *audioBuffer, AndroidAudioPluginBuffer *controlBuffer, 	int64_t timeoutInNanoseconds);
+
+typedef struct {
+	void **buffers;
+	int32_t numBuffers;
+	int32_t numFrames;
+} AndroidAudioPluginBuffer;
+
+
+int32_t android_audio_plugin_buffer_num_buffers (AndroidAudioPluginBuffer *buffer);
+
+void **android_audio_plugin_buffer_get_buffers (AndroidAudioPluginBuffer *buffer);
+
+int32_t android_audio_plugin_buffer_num_frames (AndroidAudioPluginBuffer *buffer);
+
+} // extern "C"
+
+
 namespace aap
 {
 
 class AndroidAudioPlugin;
+
 
 
 class AndroidAudioPluginDescriptor
@@ -146,6 +168,17 @@ public:
 		// TODO: implement
 	}
 
+	bool isPluginAlive (const char *identifier)
+	{
+		// TODO: implement
+		return false;
+	}
+	
+	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+	{
+		// TODO: implement
+		return false;
+	}
 
 	const char** getDefaultPluginSearchPaths()
 	{
@@ -221,7 +254,7 @@ public:
 		// TODO: implement
 	}
 	
-	void processBlock(void **audioBuffer, int audioBufferSize, void **controlBuffers, int controlBufferSize)
+	void process(AndroidAudioPluginBuffer *audioBuffer, AndroidAudioPluginBuffer *controlBuffers, int32_t timeoutInNanoseconds)
 	{
 		// TODO: implement
 	}
@@ -229,16 +262,7 @@ public:
 	double getTailLengthSeconds() const
 	{
 		// TODO: implement
-	}
-	
-	bool acceptsMidi() const
-	{
-		// TODO: implement
-	}
-	
-	bool producesMidi() const
-	{
-		// TODO: implement
+		return 0;
 	}
 	
 	AndroidAudioPluginEditor* createEditor()
@@ -249,16 +273,19 @@ public:
 	bool hasEditor() const
 	{
 		// TODO: implement
+		return false;
 	}
 	
 	int getNumPrograms()
 	{
 		// TODO: implement
+		return 0;
 	}
 	
 	int getCurrentProgram()
 	{
 		// TODO: implement
+		return 0;
 	}
 	
 	void setCurrentProgram(int index)
@@ -269,6 +296,7 @@ public:
 	const char * getProgramName(int index)
 	{
 		// TODO: implement
+		return NULL;
 	}
 	
 	void changeProgramName(int index, const char * newName)

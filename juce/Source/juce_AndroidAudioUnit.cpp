@@ -91,14 +91,27 @@ public:
 		native->dispose();
 	}
 	
-	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
+	AndroidAudioPluginBuffer* toNativeAudioBuffers(AudioBuffer<float>& buffer)
 	{
 		// TODO: implement
+		return NULL;
+	}
+	
+	AndroidAudioPluginBuffer* toNativeMidiBuffers(MidiBuffer& buffer)
+	{
+		// TODO: implement
+		return NULL;
+	}
+	
+	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
+	{
+		native->process(toNativeAudioBuffers(buffer), toNativeMidiBuffers(midiMessages), 0);
 	}
 	
 	double getTailLengthSeconds() const
 	{
 		// TODO: implement
+		return 0;
 	}
 	
 	bool acceptsMidi() const
@@ -175,6 +188,7 @@ class AndroidAudioPluginFormat : public juce::AudioPluginFormat
 	AndroidAudioPluginDescriptor *findDescriptorFrom(const PluginDescription &desc)
 	{
 		// TODO: implement
+		return NULL;
 	}
 
 
@@ -182,7 +196,6 @@ public:
 	AndroidAudioPluginFormat(AAssetManager *assetManager)
 		: android_manager(AndroidAudioPluginManager(assetManager))
 	{
-		// TODO: implement
 	}
 
 	~AndroidAudioPluginFormat()
@@ -227,12 +240,12 @@ public:
 	
 	bool pluginNeedsRescanning(const PluginDescription &description)
 	{
-		// TODO: implement
+		return android_manager.isPluginUpToDate (description.fileOrIdentifier.toRawUTF8(), description.lastInfoUpdateTime.toMilliseconds());
 	}
 	
 	bool doesPluginStillExist(const PluginDescription &description)
 	{
-		// TODO: implement
+		return android_manager.isPluginAlive (description.fileOrIdentifier.toRawUTF8());
 	}
 	
 	bool canScanForPlugins() const
