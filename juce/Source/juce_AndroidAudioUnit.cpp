@@ -68,6 +68,7 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, Andr
 class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AndroidAudioPluginInstance *native;
+	AndroidAudioPluginBuffer audioBuffer, midiBuffer;
 
 public:
 
@@ -91,21 +92,26 @@ public:
 		native->dispose();
 	}
 	
-	AndroidAudioPluginBuffer* toNativeAudioBuffers(AudioBuffer<float>& buffer)
+	void fillNativeAudioBuffers(AndroidAudioPluginBuffer* dst, AudioBuffer<float>& buffer)
 	{
-		// TODO: implement
-		return NULL;
+		assert (dst->numBuffers == buffer.getNumChannels());
+		for (int i = 0; i < dst->numBuffers; i++)
+			dst->buffers[i] = (void*) buffer.getReadPointer(i);
 	}
 	
-	AndroidAudioPluginBuffer* toNativeMidiBuffers(MidiBuffer& buffer)
+	void fillNativeMidiBuffers(AndroidAudioPluginBuffer* dst, MidiBuffer& buffer)
 	{
-		// TODO: implement
-		return NULL;
+		if (dst->numBuffers == 0)
+			return;
+		assert (dst->numBuffers == 1);
+		dst->buffers[0] = (void*) buffer.data.getRawDataPointer();
 	}
 	
 	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages) override
 	{
-		native->process(toNativeAudioBuffers(buffer), toNativeMidiBuffers(midiMessages), 0);
+		fillNativeAudioBuffers(&audioBuffer, buffer);
+		fillNativeMidiBuffers(&midiBuffer, midiMessages);
+		native->process(&audioBuffer, &midiBuffer, 0);
 	}
 	
 	double getTailLengthSeconds() const override
@@ -188,7 +194,10 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 	AndroidAudioPluginDescriptor *findDescriptorFrom(const PluginDescription &desc)
 	{
-		// TODO: implement
+		auto it = cached_descs.begin();
+		while (it.next())
+			if (it.getValue()->uid == desc.uid)
+				return it.getKey();
 		return NULL;
 	}
 
@@ -201,8 +210,10 @@ public:
 
 	~JuceAndroidAudioPluginFormat()
 	{
-		// TODO: implement
-		// release PluginDescription objects in cached_descs.
+		auto it = cached_descs.begin();
+		while (it.next())
+			delete it.getValue();
+		cached_descs.clear();
 	}
 
 	String getName() const
@@ -264,8 +275,10 @@ public:
 			paths[i] = directoriesToSearch[i].getFullPathName().toRawUTF8();
 		android_manager.updatePluginDescriptorList(paths, recursive, allowPluginsWhichRequireAsynchronousInstantiation);
 		auto results = android_manager.getPluginDescriptorList();
-		// FIXME: implement
-		return StringArray();
+		StringArray ret;
+		for (auto desc = results; desc != NULL; desc++)
+			ret.add(desc->getFilePath());
+		return ret;
 	}
 	
 	FileSearchPath getDefaultLocationsToSearch()
