@@ -324,14 +324,27 @@ public:
 		// TODO: implement
 	}
 	
-	void getStateInformation(void const * destData)
+	int32_t getStateSize()
+	{
+		// TODO: implement
+		return 0;
+	}
+	
+	void const* getState()
+	{
+		// TODO: implement
+		return NULL;
+	}
+	
+	void setState(const void* data, int32_t offset, int32_t sizeInBytes)
 	{
 		// TODO: implement
 	}
 	
-	void setStateInformation(const void* data, int sizeInBytes)
+	uint32_t getTailTimeInMilliseconds()
 	{
 		// TODO: implement
+		return 0;
 	}
 };
 

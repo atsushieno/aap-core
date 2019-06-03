@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    AndroidAudioUnit.cpp
+    juce_AndroidAudioUnit.cpp
     Created: 9 May 2019 3:09:22am
     Author:  atsushieno
 
@@ -76,17 +76,17 @@ public:
 	{
 	}
 
-	const String getName() const
+	const String getName() const override
 	{
 		return native->getPluginDescriptor()->getName();
 	}
 	
-	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
+	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override
 	{
 		// TODO: implement
 	}
 	
-	void releaseResources()
+	void releaseResources() override
 	{
 		native->dispose();
 	}
@@ -103,28 +103,27 @@ public:
 		return NULL;
 	}
 	
-	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
+	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages) override
 	{
 		native->process(toNativeAudioBuffers(buffer), toNativeMidiBuffers(midiMessages), 0);
 	}
 	
-	double getTailLengthSeconds() const
+	double getTailLengthSeconds() const override
 	{
-		// TODO: implement
-		return 0;
+		return native->getTailTimeInMilliseconds();
 	}
 	
-	bool acceptsMidi() const
+	bool acceptsMidi() const override
 	{
 		return native->getPluginDescriptor()->hasMidiInputPort();
 	}
 	
-	bool producesMidi() const
+	bool producesMidi() const override
 	{
 		return native->getPluginDescriptor()->hasMidiOutputPort();
 	}
 	
-	AudioProcessorEditor* createEditor()
+	AudioProcessorEditor* createEditor() override
 	{
 		if (!native->getPluginDescriptor()->hasEditor())
 			return nullptr;
@@ -133,47 +132,49 @@ public:
 		return ret;
 	}
 	
-	bool hasEditor() const
+	bool hasEditor() const override
 	{
 		return native->hasEditor();
 	}
 	
-	int getNumPrograms()
+	int getNumPrograms() override
 	{
 		return native->getNumPrograms();
 	}
 	
-	int getCurrentProgram()
+	int getCurrentProgram() override
 	{
 		return native->getCurrentProgram();
 	}
 	
-	void setCurrentProgram(int index)
+	void setCurrentProgram(int index) override
 	{
 		native->setCurrentProgram(index);
 	}
 	
-	const String getProgramName(int index)
+	const String getProgramName(int index) override
 	{
 		return native->getProgramName(index);
 	}
 	
-	void changeProgramName(int index, const String& newName)
+	void changeProgramName(int index, const String& newName) override
 	{
 		native->changeProgramName(index, newName.toUTF8());
 	}
 	
-	void getStateInformation(juce::MemoryBlock& destData)
+	void getStateInformation(juce::MemoryBlock& destData) override
 	{
-		// TODO: implement
+		int32_t size = native->getStateSize();
+		destData.setSize(size);
+		destData.copyFrom(native->getState(), 0, size);
 	}
 	
-	void setStateInformation(const void* data, int sizeInBytes)
+	void setStateInformation(const void* data, int sizeInBytes) override
 	{
-		// TODO: implement
+		native->setState(data, 0, sizeInBytes);
 	}
 	
-	 void fillInPluginDescription(PluginDescription &description) const
+	 void fillInPluginDescription(PluginDescription &description) const override
 	 {
 		auto src = native->getPluginDescriptor();
 		fillPluginDescriptionFromNative(description, *src);
