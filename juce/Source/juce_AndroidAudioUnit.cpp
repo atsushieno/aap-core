@@ -42,6 +42,29 @@ public:
 	*/
 };
 
+static void fillPluginDescriptionFromNative(PluginDescription &description, AndroidAudioPluginDescriptor &src)
+{
+	description.name = src.getName();
+	description.pluginFormatName = "AAP";
+	
+	int32_t numCategories = src.numCategories();
+	description.category.clear();
+	for (int i = 0; i < numCategories; i++)
+		description.category += src.getCategoryAt(i);
+	
+	description.manufacturerName = src.getManufacturerName();
+	description.version = src.getVersion();
+	description.fileOrIdentifier = src.getIdentifier();
+	// TODO: fill it
+	// description.lastFileModTime
+	description.lastInfoUpdateTime = Time(src.getLastInfoUpdateTime());
+	description.uid = src.getUid();
+	description.isInstrument = src.isInstrument();
+	description.numInputChannels = src.numInputChannels();
+	description.numOutputChannels = src.numOutputChannels();
+	description.hasSharedContainer = src.hasSharedContainer();		
+}
+
 class AndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AndroidAudioPlugin *native;
@@ -139,41 +162,33 @@ public:
 	
 	 void fillInPluginDescription(PluginDescription &description) const
 	 {
-		auto desc = native->getPluginDescriptor();
-		description.name = desc->getName();
-		description.pluginFormatName = "AAP";
-		
-		int32_t numCategories = desc->numCategories();
-		description.category.clear();
-		for (int i = 0; i < numCategories; i++)
-			description.category += desc->getCategoryAt(i);
-		
-		description.manufacturerName = desc->getManufacturerName();
-		description.version = desc->getVersion();
-		description.fileOrIdentifier = desc->getIdentifier();
-		// TODO: fill it
-		// description.lastFileModTime
-		description.lastInfoUpdateTime = Time(desc->getLastInfoUpdateTime());
-		description.uid = desc->getUid();
-		description.isInstrument = desc->isInstrument();
-		description.numInputChannels = desc->numInputChannels();
-		description.numOutputChannels = desc->numOutputChannels();
-		description.hasSharedContainer = desc->hasSharedContainer();		
+		auto src = native->getPluginDescriptor();
+		fillPluginDescriptionFromNative(description, *src);
 	 }
 };
 
 class AndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
 	AndroidAudioPluginManager android_manager;
+	HashMap<AndroidAudioPluginDescriptor*,PluginDescription*> cached_descs;
 
 	AndroidAudioPluginDescriptor *findDescriptorFrom(const PluginDescription &desc)
 	{
+		// TODO: implement
 	}
+
 
 public:
 	AndroidAudioPluginFormat(AAssetManager *assetManager)
 		: android_manager(AndroidAudioPluginManager(assetManager))
 	{
+		// TODO: implement
+	}
+
+	~AndroidAudioPluginFormat()
+	{
+		// TODO: implement
+		// release PluginDescription objects in cached_descs.
 	}
 
 	String getName() const
@@ -183,17 +198,31 @@ public:
 	
 	void findAllTypesForFile(OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
 	{
-		// TODO: implement
+		auto id = fileOrIdentifier.toRawUTF8();
+		auto descriptor = android_manager.getPluginDescriptorList();
+		for (auto d = descriptor; d != NULL; d++) {
+			if (strcmp(id, d->getName()) == 0 || strcmp(id, d->getIdentifier()) == 0) {
+				auto dst = cached_descs [d];
+				if (!dst) {
+					dst = new PluginDescription();
+					cached_descs.set(d, dst);
+					fillPluginDescriptionFromNative(*dst, *d);
+				}
+				results.add(dst);
+			}
+		}
 	}
 	
 	bool fileMightContainThisPluginType(const String &fileOrIdentifier)
 	{
-		// TODO: implement
+		auto f = File::createFileWithoutCheckingPath(fileOrIdentifier);
+		return f.hasFileExtension(".aap");
 	}
 	
 	String getNameOfPluginFromIdentifier(const String &fileOrIdentifier)
 	{
-		// TODO: implement
+		auto descriptor = android_manager.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
+		return descriptor != NULL ? String(descriptor->getName()) : String();
 	}
 	
 	bool pluginNeedsRescanning(const PluginDescription &description)
@@ -208,7 +237,7 @@ public:
 	
 	bool canScanForPlugins() const
 	{
-		// TODO: implement
+		return true;
 	}
 	
 	StringArray searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
@@ -225,7 +254,7 @@ public:
 	
 	FileSearchPath getDefaultLocationsToSearch()
 	{
-		char **paths = android_manager.getDefaultPluginSearchPaths();
+		const char **paths = android_manager.getDefaultPluginSearchPaths();
 		StringArray arr(paths);
 		String joined = arr.joinIntoString(";");
 		FileSearchPath ret(joined);
@@ -253,7 +282,7 @@ protected:
 	
 	bool requiresUnblockedMessageThreadDuringCreation(const PluginDescription &description) const noexcept
 	{
-		// TODO: implement
+		return false;
 	}
 };
 

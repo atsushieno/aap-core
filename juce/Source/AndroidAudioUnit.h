@@ -70,6 +70,8 @@ public:
 	
 	long getFileModTime()
 	{
+		// TODO: implement
+		return 0;
 	}
 	
 	long getLastInfoUpdateTime()
@@ -84,30 +86,44 @@ public:
 	
 	bool isInstrument()
 	{
+		// TODO: implement
+		return false;
 	}
 	
 	int32_t numInputChannels()
 	{
+		// TODO: implement
+		return 0;
 	}
 	
 	int32_t numOutputChannels()
 	{
+		// TODO: implement
+		return 0;
 	}
 
 	bool hasSharedContainer()
 	{
+		// TODO: implement
+		return false;
 	}
 	
 	bool hasEditor()
 	{
+		// TODO: implement
+		return false;
 	}
 	
 	bool hasMidiInputPort()
 	{
+		// TODO: implement
+		return false;
 	}
 	
 	bool hasMidiOutputPort()
 	{
+		// TODO: implement
+		return false;
 	}
 };
 
@@ -117,6 +133,7 @@ class AndroidAudioPluginManager
 	const char **search_paths;
 	bool search_recursive;
 	bool asynchronous_instantiation_allowed;
+	const char* default_plugin_search_paths[1];
 		
 public:
 
@@ -126,15 +143,26 @@ public:
 		  search_recursive(false),
 		  asynchronous_instantiation_allowed(false)
 	{
+		// TODO: implement
 	}
 
-	char** getDefaultPluginSearchPaths()
+
+	const char** getDefaultPluginSearchPaths()
 	{
-		// TODO: implement
+		default_plugin_search_paths[0] = "~/.app";
+		return default_plugin_search_paths;
 	}
 
 	AndroidAudioPluginDescriptor* getPluginDescriptorList()
 	{
+		// TODO: implement
+		return NULL;
+	}
+	
+	AndroidAudioPluginDescriptor* getPluginDescriptor(const char *identifier)
+	{
+		// TODO: implement
+		return NULL;
 	}
 	
 	void updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed)
@@ -156,10 +184,12 @@ public:
 	AndroidAudioPluginEditor(AndroidAudioPlugin *owner)
 		: owner(owner)
 	{
+		// TODO: implement
 	}
 
 	void startEditorUI()
 	{
+		// TODO: implement
 	}
 };
 
