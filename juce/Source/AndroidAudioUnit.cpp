@@ -33,9 +33,16 @@ int32_t android_audio_plugin_buffer_num_frames (AndroidAudioPluginBuffer *buffer
 namespace aap
 {
 
-AndroidAudioPlugin* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
+AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
 {
-	return new AndroidAudioPlugin(descriptor);
+
+	// FIXME: implement correctly
+	const char *file = descriptor->getFilePath();
+	auto dl = dlopen(file, RTLD_LAZY);
+	auto getter = (android_audio_plugin_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
+	auto plugin = getter();
+
+	return new AndroidAudioPluginInstance(descriptor, plugin);
 }
 
 } // namespace

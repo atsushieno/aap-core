@@ -16,15 +16,15 @@ using namespace juce;
 namespace juceaap
 {
 
-class AndroidAudioPluginInstance;
+class JuceAndroidAudioPluginInstance;
 
-class AndroidAudioProcessorEditor : public juce::AudioProcessorEditor
+class JuceAndroidAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 	AndroidAudioPluginEditor *native;
 	
 public:
 
-	AndroidAudioProcessorEditor(AudioProcessor *processor, AndroidAudioPluginEditor *native)
+	JuceAndroidAudioProcessorEditor(AudioProcessor *processor, AndroidAudioPluginEditor *native)
 		: AudioProcessorEditor(processor), native(native)
 	{
 	}
@@ -65,13 +65,13 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, Andr
 	description.hasSharedContainer = src.hasSharedContainer();		
 }
 
-class AndroidAudioPluginInstance : public juce::AudioPluginInstance
+class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
-	AndroidAudioPlugin *native;
+	AndroidAudioPluginInstance *native;
 
 public:
 
-	AndroidAudioPluginInstance(AndroidAudioPlugin *nativePlugin)
+	JuceAndroidAudioPluginInstance(AndroidAudioPluginInstance *nativePlugin)
 		: native(nativePlugin)
 	{
 	}
@@ -128,7 +128,7 @@ public:
 	{
 		if (!native->getPluginDescriptor()->hasEditor())
 			return nullptr;
-		auto ret = new AndroidAudioProcessorEditor(this, native->createEditor());
+		auto ret = new JuceAndroidAudioProcessorEditor(this, native->createEditor());
 		ret->startEditorUI();
 		return ret;
 	}
@@ -180,7 +180,7 @@ public:
 	 }
 };
 
-class AndroidAudioPluginFormat : public juce::AudioPluginFormat
+class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
 	AndroidAudioPluginManager android_manager;
 	HashMap<AndroidAudioPluginDescriptor*,PluginDescription*> cached_descs;
@@ -193,12 +193,12 @@ class AndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 
 public:
-	AndroidAudioPluginFormat(AAssetManager *assetManager)
+	JuceAndroidAudioPluginFormat(AAssetManager *assetManager)
 		: android_manager(AndroidAudioPluginManager(assetManager))
 	{
 	}
 
-	~AndroidAudioPluginFormat()
+	~JuceAndroidAudioPluginFormat()
 	{
 		// TODO: implement
 		// release PluginDescription objects in cached_descs.
@@ -263,6 +263,8 @@ public:
 			paths[i] = directoriesToSearch[i].getFullPathName().toRawUTF8();
 		android_manager.updatePluginDescriptorList(paths, recursive, allowPluginsWhichRequireAsynchronousInstantiation);
 		auto results = android_manager.getPluginDescriptorList();
+		// FIXME: implement
+		return StringArray();
 	}
 	
 	FileSearchPath getDefaultLocationsToSearch()
@@ -288,19 +290,20 @@ protected:
 			callback(userData, nullptr, error);
 		} else {
 			auto androidInstance = android_manager.instantiatePlugin(descriptor);
-			auto instance = new AndroidAudioPluginInstance(androidInstance);
+			auto instance = new JuceAndroidAudioPluginInstance(androidInstance);
 			callback(userData, instance, error);
 		}
 	}
 	
 	bool requiresUnblockedMessageThreadDuringCreation(const PluginDescription &description) const noexcept
 	{
+		// FIXME: implement correctly(?)
 		return false;
 	}
 };
 
 
-AndroidAudioPluginInstance p(NULL);
-AndroidAudioPluginFormat f(NULL);
+JuceAndroidAudioPluginInstance p(NULL);
+JuceAndroidAudioPluginFormat f(NULL);
 
 } // namespace

@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <dlfcn.h>
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "android/asset_manager.h"
 
@@ -31,13 +32,25 @@ void **android_audio_plugin_buffer_get_buffers (AndroidAudioPluginBuffer *buffer
 
 int32_t android_audio_plugin_buffer_num_frames (AndroidAudioPluginBuffer *buffer);
 
+
+typedef void (*android_audio_plugin_process_func_t) (AndroidAudioPluginBuffer* audioBuffer, AndroidAudioPluginBuffer* controlBuffer, long timeoutInNanoseconds);
+
+typedef struct {
+	android_audio_plugin_process_func_t process;
+} AndroidAudioPlugin; // plugin implementors site
+
+AndroidAudioPlugin* GetAndroidAudioPluginEntry ();
+
+
+typedef AndroidAudioPlugin* (*android_audio_plugin_instantiate_t) ();
+
 } // extern "C"
 
 
 namespace aap
 {
 
-class AndroidAudioPlugin;
+class AndroidAudioPluginInstance;
 
 
 
@@ -147,6 +160,12 @@ public:
 		// TODO: implement
 		return false;
 	}
+
+	const char* getFilePath()
+	{
+		// TODO: implement
+		return NULL;
+	}
 };
 
 class AndroidAudioPluginManager
@@ -205,16 +224,16 @@ public:
 		asynchronous_instantiation_allowed = asynchronousInstantiationAllowed;
 	}
 	
-	AndroidAudioPlugin* instantiatePlugin(AndroidAudioPluginDescriptor *descriptor);
+	AndroidAudioPluginInstance* instantiatePlugin(AndroidAudioPluginDescriptor *descriptor);
 };
 
 class AndroidAudioPluginEditor
 {
-	AndroidAudioPlugin *owner;
+	AndroidAudioPluginInstance *owner;
 
 public:
 
-	AndroidAudioPluginEditor(AndroidAudioPlugin *owner)
+	AndroidAudioPluginEditor(AndroidAudioPluginInstance *owner)
 		: owner(owner)
 	{
 		// TODO: implement
@@ -226,17 +245,18 @@ public:
 	}
 };
 
-class AndroidAudioPlugin
+class AndroidAudioPluginInstance
 {
 	friend class AndroidAudioPluginManager;
 	
 	AndroidAudioPluginDescriptor *descriptor;
+	AndroidAudioPlugin *plugin;
 
-	AndroidAudioPlugin(AndroidAudioPluginDescriptor *pluginDescriptor)
-		: descriptor(pluginDescriptor)
+	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* instantiatedPlugin)
+		: descriptor(pluginDescriptor), plugin(instantiatedPlugin)
 	{
 	}
-
+	
 public:
 
 	AndroidAudioPluginDescriptor* getPluginDescriptor()
@@ -246,7 +266,6 @@ public:
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 	{
-		// TODO: implement
 	}
 	
 	void dispose()
@@ -257,6 +276,7 @@ public:
 	void process(AndroidAudioPluginBuffer *audioBuffer, AndroidAudioPluginBuffer *controlBuffers, int32_t timeoutInNanoseconds)
 	{
 		// TODO: implement
+		plugin->process(audioBuffer, controlBuffers, timeoutInNanoseconds);
 	}
 	
 	double getTailLengthSeconds() const
