@@ -102,11 +102,11 @@ public:
 	{
 	}
 	
-	bool canProcessMidi()
+	bool hasMidiInputPort()
 	{
 	}
 	
-	bool canProduceMidi()
+	bool hasMidiOutputPort()
 	{
 	}
 };

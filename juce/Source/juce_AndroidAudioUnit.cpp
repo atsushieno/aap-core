@@ -80,12 +80,12 @@ public:
 	
 	bool acceptsMidi() const
 	{
-		return native->getPluginDescriptor()->canProcessMidi();
+		return native->getPluginDescriptor()->hasMidiInputPort();
 	}
 	
 	bool producesMidi() const
 	{
-		return native->getPluginDescriptor()->canProduceMidi();
+		return native->getPluginDescriptor()->hasMidiOutputPort();
 	}
 	
 	AudioProcessorEditor* createEditor()
