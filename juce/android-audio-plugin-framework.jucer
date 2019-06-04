@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="KpzU0f" name="AndroidAudioPluginFramework" projectType="dll"
-              jucerVersion="5.4.3">
+              jucerVersion="5.4.3" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
-      <FILE id="zdPei0" name="AndroidAudioUnit.cpp" compile="1" resource="0"
-            file="Source/AndroidAudioUnit.cpp"/>
+      <FILE id="zdPei0" name="AndroidAudioUnitHost.cpp" compile="1" resource="0"
+            file="Source/AndroidAudioUnitHost.cpp"/>
       <FILE id="QlUDzX" name="AndroidAudioUnit.h" compile="0" resource="0"
             file="Source/AndroidAudioUnit.h"/>
+      <FILE id="QlUDzX" name="AndroidAudioUnitHost.h" compile="0" resource="0"
+            file="Source/AndroidAudioUnitHost.h"/>
       <FILE id="AcSfsw" name="juce_AndroidAudioUnit.cpp" compile="1" resource="0"
             file="Source/juce_AndroidAudioUnit.cpp"/>
     </GROUP>
@@ -53,7 +55,7 @@
         <MODULEPATH id="juce_opengl" path=""/>
       </MODULEPATHS>
     </ANDROIDSTUDIO>
-    <CLION targetFolder="Builds/CLion">
+    <CLION targetFolder="Builds/CLion" clionMakefileEnabled="1">
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
         <MODULEPATH id="juce_audio_devices" path=""/>
