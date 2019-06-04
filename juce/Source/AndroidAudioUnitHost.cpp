@@ -37,10 +37,15 @@ int32_t android_audio_plugin_buffer_num_frames (AndroidAudioPluginBuffer *buffer
 namespace aap
 {
 
+AndroidAudioPluginDescriptor* AndroidAudioPluginManager::loadDescriptorFromBundleDirectory(const char *directory)
+{
+	// FIXME: implement
+}
+
 void AndroidAudioPluginManager::updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed)
 {
 	// FIXME: support recursive
-	vector<const char*> files;	
+	vector<AndroidAudioPluginDescriptor*> descs;	
 	for (int i = 0; searchPaths[i]; i++) {
 		auto dir = opendir(searchPaths[i]);
 		if (dir == NULL)
@@ -51,10 +56,37 @@ void AndroidAudioPluginManager::updatePluginDescriptorList(const char **searchPa
 				break;
 			auto len = strlen(de->d_name);
 			if (strncmp(((char*) de->d_name) + len - 3, ".aap", 3) == 0)
-				files.push_back(strdup(de->d_name));
+				descs.push_back(loadDescriptorFromBundleDirectory(de->d_name));
 		}
 		closedir(dir);
 	}
+}
+
+bool AndroidAudioPluginManager::isPluginAlive (const char *identifier) 
+{
+	auto desc = getPluginDescriptor(identifier);
+	if (!desc)
+		return false;
+	auto dir = opendir(desc->getFilePath());
+	if (dir == NULL)
+		return false;
+	
+	// need more validation?
+	
+	closedir(dir);
+	return true;
+}
+
+bool AndroidAudioPluginManager::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+{
+	auto desc = getPluginDescriptor(identifier);
+	if (!desc)
+		return false;
+	auto dir = opendir(desc->getFilePath());
+	if (dir == NULL)
+		return false;
+
+	// FIXME: implement
 }
 
 AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
@@ -67,6 +99,14 @@ AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(Android
 	auto plugin = getter();
 
 	return new AndroidAudioPluginInstance(descriptor, plugin);
+}
+
+
+void dogfooding_api()
+{
+	AndroidAudioPluginManager manager;
+	auto paths = manager.getDefaultPluginSearchPaths();
+	
 }
 
 } // namespace

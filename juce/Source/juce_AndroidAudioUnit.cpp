@@ -204,8 +204,9 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager)
-		: android_manager(AndroidAudioPluginManager(assetManager))
+		: android_manager(AndroidAudioPluginManager())
 	{
+		android_manager.initialize(assetManager);
 	}
 
 	~JuceAndroidAudioPluginFormat()
@@ -224,8 +225,9 @@ public:
 	void findAllTypesForFile(OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
 	{
 		auto id = fileOrIdentifier.toRawUTF8();
-		auto descriptor = android_manager.getPluginDescriptorList();
-		for (auto d = descriptor; d != NULL; d++) {
+		auto descriptors = android_manager.getPluginDescriptorList();
+		for (int i = 0; descriptors != NULL && descriptors[i] != NULL; i++) {
+			auto d = descriptors[i];
 			if (strcmp(id, d->getName()) == 0 || strcmp(id, d->getIdentifier()) == 0) {
 				auto dst = cached_descs [d];
 				if (!dst) {
@@ -276,8 +278,8 @@ public:
 		android_manager.updatePluginDescriptorList(paths, recursive, allowPluginsWhichRequireAsynchronousInstantiation);
 		auto results = android_manager.getPluginDescriptorList();
 		StringArray ret;
-		for (auto desc = results; desc != NULL; desc++)
-			ret.add(desc->getFilePath());
+		for (int i = 0; results != NULL && results[i] != NULL; i++)
+			ret.add(results[i]->getFilePath());
 		return ret;
 	}
 	

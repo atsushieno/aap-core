@@ -141,38 +141,37 @@ class AndroidAudioPluginManager
 {
 	AAssetManager *asset_manager;
 	const char* default_plugin_search_paths[2];
-		
+	AndroidAudioPluginDescriptor** plugin_descriptors;
+	
+	AndroidAudioPluginDescriptor* loadDescriptorFromBundleDirectory(const char *directory);
+
 public:
 
-	AndroidAudioPluginManager(AAssetManager *assetManager)
-		: asset_manager(assetManager)
+	AndroidAudioPluginManager()
+		: asset_manager(NULL),
+		  plugin_descriptors(NULL)
 	{
-		// TODO: implement
-	}
-
-	bool isPluginAlive (const char *identifier)
-	{
-		// TODO: implement
-		return false;
+		default_plugin_search_paths[0] = "~/.aap";
+		default_plugin_search_paths[1] = NULL;
 	}
 	
-	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+	void initialize(AAssetManager *assetManager)
 	{
-		// TODO: implement
-		return false;
+		asset_manager = assetManager;
 	}
+
+	bool isPluginAlive (const char *identifier);
+	
+	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
 
 	const char** getDefaultPluginSearchPaths()
 	{
-		default_plugin_search_paths[0] = "~/.app";
-		default_plugin_search_paths[1] = NULL;
 		return default_plugin_search_paths;
 	}
 
-	AndroidAudioPluginDescriptor* getPluginDescriptorList()
+	AndroidAudioPluginDescriptor** getPluginDescriptorList()
 	{
-		// TODO: implement
-		return NULL;
+		return plugin_descriptors;
 	}
 	
 	AndroidAudioPluginDescriptor* getPluginDescriptor(const char *identifier)
