@@ -8,7 +8,7 @@
   ==============================================================================
 */
 
-#include "AndroidAudioUnitHost.h"
+#include "../include/AndroidAudioUnitHost.hpp"
 #include "android/asset_manager.h"
 #include <vector>
 #include <dirent.h>
@@ -91,7 +91,6 @@ bool AndroidAudioPluginManager::isPluginUpToDate (const char *identifier, long l
 
 AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
 {
-
 	// FIXME: implement correctly
 	const char *file = descriptor->getFilePath();
 	auto dl = dlopen(file, RTLD_LAZY);

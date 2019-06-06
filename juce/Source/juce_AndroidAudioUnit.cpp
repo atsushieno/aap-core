@@ -8,7 +8,7 @@
   ==============================================================================
 */
 
-#include "AndroidAudioUnitHost.h"
+#include "../../include/AndroidAudioUnitHost.hpp"
 
 using namespace aap;
 using namespace juce;
