@@ -11,23 +11,27 @@
 #include <android/binder_parcel_utils.h>
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
+#include <android/log.h>
 
 AIBinder_Class *binder_class;
 AIBinder *binder;
 
-const char *interface_descriptor = "androidaudiopluginframework";
+const char *interface_descriptor = "org.androidaudiopluginframework.AndroidAudioPluginService";
 
 
 void* aap_oncreate(void* args)
 {
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_oncreate");
 }
 
 void aap_ondestroy(void* userData)
 {
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ondestroy");
 }
 
 binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
 {
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ontransact");
     return STATUS_OK;
 }
 

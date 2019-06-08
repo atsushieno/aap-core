@@ -16,8 +16,14 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service
-            android:name=".AndroidAudioPluginService" />
+        <service android:name=".AndroidAudioPluginService"
+                 android:label="AAPBareBoneSamplePlugin">
+            <intent-filter>
+                <action android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
+            </intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
+                android:resource="@xml/aap_metadata"/>
+        </service>
     </application>
 
 </manifest>

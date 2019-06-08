@@ -36,6 +36,8 @@ This is quite like what LV2 does.
 
 Unlike in-host-process plugin processing, it will become important to switch contexts. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 
+An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
+
 Similarly to LV2, port connection is established as setting raw I/O pointers. Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far, but if it works better then things might change.
 
 
@@ -45,7 +47,50 @@ AAP is packaged as a normal apk. The plugin is implemented in native code, built
 
 The most important and difficult mission for an audio plugin framework is to get more plugins (hopefully more "quality" plugins, but that is next). Therefore AAP is designed to make existing things reusable. There are some packaging sub-formats e.g. AAP-VST3 or AAP-LV2, to ease plugin developers to reuse existing packaging system.
 
-There is some complexity on how those files are packaged. The following sections describe how things are packaged for each packaging pattern.
+There is some complexity on how those files are packaged. At the "AAP package helpers" section we describe how things are packaged for each migration pattern.
+
+### Queryable manifest
+
+AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AndroidAudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AndroidAudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+
+```
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="org.androidaudiopluginframework.samples.aapbarebonesample">
+  ...
+  <service android:name=".AndroidAudioPluginService"
+           android:label="AAPBareBoneSamplePlugin">
+    <intent-filter>
+      <action 
+	    android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
+    </intent-filter>
+    <meta-data 
+	  android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
+	  android:resource="@xml/aap_metadata"
+      />
+  </service>
+</manifest>
+```
+
+The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content should be like this:
+
+```
+<aap-metadata>
+    <plugin manufacturer="AndroidAudioPluginProject"
+            product="BareBoneSamplePlugin">
+        <input-port name="MidiIn" content="midi" />
+        <input-port name="ControlIn" content="control" />
+        <input-port name="AudioIn" content="audio" />
+        <output-port name="AudioOut" content="audio" />
+    </plugin>
+</aap-metadata>
+```
+
+The metadata format is super hacky for now and subject to change. The metadata content will be close to what LV2 metadata (`.ttl` file) provides.
+
+AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services.
+
+
+## AAP package helpers
 
 ### AAP-LV2
 
@@ -68,6 +113,7 @@ At this state we are not sure if keeping `.lv2` directory like this is doable. I
 ### AAP-VST3
 
 TBD - there should be similar restriction to that of AAP-LV2.
+
 
 
 ## android-audio-plugin-framework source tree structure

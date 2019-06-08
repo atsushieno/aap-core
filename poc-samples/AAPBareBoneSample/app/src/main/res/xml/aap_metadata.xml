@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<aap-metadata>
+    <plugin manufacturer="AndroidAudioPluginProject" product="BareBoneSamplePlugin">
+        <input-port name="input" />
+        <output-port name="input" />
+    </plugin>
+</aap-metadata>

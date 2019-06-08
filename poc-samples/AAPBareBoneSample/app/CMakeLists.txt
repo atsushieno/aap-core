@@ -28,4 +28,4 @@ target_compile_options(aapnativebridge
         -Wshadow-field
         )
 
-target_link_libraries(aapnativebridge binder_ndk)
+target_link_libraries(aapnativebridge binder_ndk log)
