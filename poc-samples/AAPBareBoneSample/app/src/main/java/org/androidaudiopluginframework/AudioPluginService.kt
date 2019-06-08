@@ -1,11 +1,11 @@
-package org.androidaudiopluginframework.samples.aapbarebonesample
+package org.androidaudiopluginframework
 
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 
-class AndroidAudioPluginService : Service()
+open class AudioPluginService : Service()
 {
     companion object {
         const val NATIVE_LIBRARY_NAME = "aapnativebridge"

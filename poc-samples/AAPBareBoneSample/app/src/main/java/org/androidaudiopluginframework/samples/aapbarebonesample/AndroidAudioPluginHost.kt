@@ -3,19 +3,19 @@ package org.androidaudiopluginframework.samples.aapbarebonesample
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.util.Log
+import org.androidaudiopluginframework.AudioPluginService
 import org.xmlpull.v1.XmlPullParser
 
 class AndroidAudioPluginHost
 {
-    fun queryAAPs(context: Context)
+    fun queryAudioPlugins(context: Context) : Array<String>
     {
-        val intent = Intent(AndroidAudioPluginService.AAP_ACTION_NAME)
+        val intent = Intent(AudioPluginService.AAP_ACTION_NAME)
         val resolveInfos = context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
         var plugins = mutableListOf<String>()
         for (ri in resolveInfos) {
-            val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AndroidAudioPluginService.AAP_ACTION_NAME)
+            val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AudioPluginService.AAP_ACTION_NAME)
             while (true) {
                 var eventType = xp.next();
                 if (eventType == XmlPullParser.END_DOCUMENT)
@@ -35,7 +35,7 @@ class AndroidAudioPluginHost
             }
             Log.i("AAP-Query","metadata: " + xp)
         }
-        for (plugin in plugins)
-            Log.i("AAP-QueryResults", plugin)
+
+        return plugins.toTypedArray()
     }
 }

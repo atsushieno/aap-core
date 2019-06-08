@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import org.androidaudiopluginframework.AudioPluginService
 import org.xmlpull.v1.XmlPullParser
 import javax.xml.xpath.XPath
 
@@ -17,22 +18,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Query AAPs
-        AndroidAudioPluginHost().queryAAPs(this)
+        val plugins = AndroidAudioPluginHost().queryAudioPlugins(this)
+        for (plugin in plugins)
+            Log.i("AAP-QueryResults", plugin)
 
         // query specific package
-        var intent = Intent(AndroidAudioPluginService.AAP_ACTION_NAME)
+        var intent = Intent(AudioPluginService.AAP_ACTION_NAME)
         intent.component = ComponentName("org.androidaudiopluginframework.samples.aapbarebonesample",
-            "org.androidaudiopluginframework.samples.aapbarebonesample.AndroidAudioPluginService")
-        intent.type = "application/vnd.org.androidaudiopluginframework.control"
-        Log.d("MainActivity", "calling startService")
+            "org.androidaudiopluginframework.samples.aapbarebonesample.AAPBareBoneSampleService")
         startService(intent)
-        var intent2 = Intent(this, AndroidAudioPluginService::class.java)
-        Log.d("MainActivityXXXXXXXXXXXXX", "intent2: " + intent2)
-        //startService(intent2)
-        Log.d("MainActivity", "startService done")
-
         stopService(intent)
-        //stopService(intent2)
-        Log.d("MainActivity", "stopService done")
     }
 }
