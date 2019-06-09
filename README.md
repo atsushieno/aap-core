@@ -107,6 +107,13 @@ while normal `lv2` packages usually look like:
 
 At this state we are not sure if keeping `.lv2` directory like this is doable. It is not doable to support multiple ABIs with this directory layout anyways.
 
+A quick solution idea would be to have `lv2` directory under per-ABI directory:
+
+- `lib/armeabi-v7a/lv2/foo.lv2/manifest.ttl`
+- `lib/armeabi-v7a/lv2/foo.lv2/foo.ttl`
+- `lib/armeabi-v7a/lv2/foo.lv2/foo.so`
+
+Not sure if it works or not.
 
 ### AAP-VST3
 

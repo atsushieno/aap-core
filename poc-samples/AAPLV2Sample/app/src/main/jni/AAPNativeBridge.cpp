@@ -16,7 +16,7 @@
 AIBinder_Class *binder_class;
 AIBinder *binder;
 
-const char *interface_descriptor = "org.androidaudiopluginframework.AndroidAudioPluginService";
+const char *interface_descriptor = "org.androidaudiopluginframework.AudioPluginService";
 
 
 void* aap_oncreate(void* args)

@@ -21,14 +21,14 @@ open class AudioPluginService : Service()
     var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
-        Log.d ("AndroidAudioPluginService", "onBind invoked")
+        Log.d ("AudioPluginService", "onBind invoked")
         if (native_binder == null)
             native_binder = createBinder()
         return native_binder
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d("AndroidAudioPluginService", "onStartCommand invoked")
+        Log.d("AudioPluginService", "onStartCommand invoked")
         return super.onStartCommand(intent, flags, startId)
     }
 }
