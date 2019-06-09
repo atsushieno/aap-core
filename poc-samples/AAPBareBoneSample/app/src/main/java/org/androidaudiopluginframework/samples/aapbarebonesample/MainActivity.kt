@@ -19,14 +19,17 @@ class MainActivity : AppCompatActivity() {
 
         // Query AAPs
         val plugins = AndroidAudioPluginHost().queryAudioPlugins(this)
-        for (plugin in plugins)
-            Log.i("AAP-QueryResults", plugin)
+        for (plugin in plugins) {
+            Log.i("Instantiating ", "${plugin.name} | ${plugin.packageName} | ${plugin.className}")
 
-        // query specific package
-        var intent = Intent(AudioPluginService.AAP_ACTION_NAME)
-        intent.component = ComponentName("org.androidaudiopluginframework.samples.aapbarebonesample",
-            "org.androidaudiopluginframework.samples.aapbarebonesample.AAPBareBoneSampleService")
-        startService(intent)
-        stopService(intent)
+            // query specific package
+            var intent = Intent(AudioPluginService.AAP_ACTION_NAME)
+            intent.component = ComponentName(
+                plugin.packageName,
+                plugin.className
+            )
+            startService(intent)
+            stopService(intent)
+        }
     }
 }

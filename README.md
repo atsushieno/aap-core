@@ -74,15 +74,13 @@ AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs us
 The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content should be like this:
 
 ```
-<aap-metadata>
-    <plugin manufacturer="AndroidAudioPluginProject"
-            product="BareBoneSamplePlugin">
-        <input-port name="MidiIn" content="midi" />
-        <input-port name="ControlIn" content="control" />
-        <input-port name="AudioIn" content="audio" />
-        <output-port name="AudioOut" content="audio" />
-    </plugin>
-</aap-metadata>
+<plugin manufacturer="AndroidAudioPluginProject"
+		product="BareBoneSamplePlugin">
+	<input-port name="MidiIn" content="midi" />
+	<input-port name="ControlIn" content="control" />
+	<input-port name="AudioIn" content="audio" />
+	<output-port name="AudioOut" content="audio" />
+</plugin>
 ```
 
 The metadata format is super hacky for now and subject to change. The metadata content will be close to what LV2 metadata (`.ttl` file) provides.
