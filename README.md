@@ -178,5 +178,5 @@ AAP host will have to support multiple helper bridges e.g. AAP-LV2 and AAP-VST3.
   - AAPBareBoneSample - AAP (plugin) barebone sample
   - AAPLV2Sample - AAP-LV2 sample
   - AAPVST3Sample - AAL-VST3 sample
-- external/cerbero - LV2 Android builder (reusing GStreamer's builder project)
+- external/cerbero - LV2 Android builder (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
 

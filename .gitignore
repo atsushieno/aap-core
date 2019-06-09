@@ -1,3 +1,4 @@
 *.so
 *.lv2
+symlinked-dist
 

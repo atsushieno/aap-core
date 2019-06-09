@@ -4,6 +4,15 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
+# it is not usable until cmake 3.14...
+#target_link_directories(aapnativebridge
+#        PRIVATE
+#        "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+#        )
+link_directories(
+        "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+)
+
 # Specifies a library name, specifies whether the library is STATIC or
 # SHARED, and provides relative paths to the source code. You can
 # define multiple libraries by adding multiple add_library() commands,
@@ -17,7 +26,8 @@ add_library( # Specifies the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-             src/main/jni/AAPNativeBridge.cpp )
+             src/main/jni/AAPNativeBridge.cpp
+             src/main/jni/aaphostnative.cpp)
 
 target_compile_options(aapnativebridge
         PRIVATE
@@ -28,4 +38,13 @@ target_compile_options(aapnativebridge
         -Wshadow-field
         )
 
+target_include_directories(aapnativebridge
+        PRIVATE
+        "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
+        "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
+        )
+
 target_link_libraries(aapnativebridge binder_ndk log)
+
+target_link_libraries(aapnativebridge lilv-0)
+

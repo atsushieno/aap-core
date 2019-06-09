@@ -3,16 +3,31 @@
 ABIS_SIMPLE = x86 x86-64 armv7 arm64
 APPNAMES = AAPHostSample AAPLV2Sample
 
+TOP=`pwd`
+
 all: build
 
+.PHONY:
 prepare:
 	cd external/cerbero && ANDROID_NDK_HOME=~/android-sdk-linux/ndk-bundle/ ./cerbero-uninstalled -c config/cross-android-x86.cbc bootstrap
 
-.PHONY:
-build: copy-lv2-deps
 
 .PHONY:
-copy-lv2-deps: build-lv2-deps
+build: build-lv2-deps copy-lv2-deps add-symlinks
+
+
+.PHONY:
+add-symlinks:
+	rm -r symlinked-dist
+	mkdir -p symlinked-dist/
+	if [ ! -e symlinked/x86 ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_x86/ symlinked-dist/x86 ; fi
+	if [ ! -e symlinked/x86_64 ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_x86_64/ symlinked-dist/x86_64 ; fi
+	if [ ! -e symlinked/armeabi-v7a ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_armv7/ symlinked-dist/armeabi-v7a ; fi
+	if [ ! -e symlinked/arm64-v8a ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_arm64/ symlinked-dist/arm64-v8a ; fi
+
+
+.PHONY:
+copy-lv2-deps:
 	make A_ARCH=x86 A_ARCH2=x86 copy-lv2-deps-single
 	make A_ARCH=x86_64 A_ARCH2=x86_64 copy-lv2-deps-single
 	make A_ARCH=armv7 A_ARCH2=armeabi-v7a copy-lv2-deps-single
@@ -28,6 +43,6 @@ copy-lv2-deps-single:
 .PHONY:
 build-lv2-deps:
 	cd external/cerbero && for abi in $(ABIS_SIMPLE) ; do \
-		ANDROID_NDK_HOME=~/android-sdk-linux/ndk-bundle/ ./cerbero-uninstalled -c config/cross-android-$$abi.cbc build mda-lv2 ; \
+		ANDROID_NDK_HOME=~/android-sdk-linux/ndk-bundle/ ./cerbero-uninstalled -c config/cross-android-$$abi.cbc build mda-lv2 lilv ; \
 	done
 

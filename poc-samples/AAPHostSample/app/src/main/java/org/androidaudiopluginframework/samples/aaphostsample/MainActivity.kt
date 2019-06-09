@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
             bindService(intent, conn, Context.BIND_AUTO_CREATE)
             startService(intent)
             stopService(intent)
+            unbindService(conn)
         }
     }
 }
