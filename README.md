@@ -2,7 +2,7 @@
 
 ## What is AAP?
 
-Android lacks Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is kind of used.
+Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is kind of used.
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
@@ -10,18 +10,18 @@ What AAP aims is to become like an inclusive standard for Android Audio plugin w
 
 On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/).
 
-Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have.
+Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts.
 
 Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to find how to create plugin description. Audio developers should spend their time on implementing or porting high quality audio processors. One single metadata query can achieve metadata generation.
 
 
-## How AAP Works
+## How AAPs work
 
 AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service (but without Java dependency in audio processing).
 
 AAP developers implement AndroidAudioPluginService which provides metadata on the audio plugins that it contains. It provides developer details, port details, and feature requirement details. (The plugins and their ports can be dynamically changed, so the query should come up with certain timestamp that is used as a threshold to determine if a plugin needs updated information since last query.)
 
-It is very similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented to consider performance somewhat more seriously.)
+It is very similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance reason, somewhat more seriously.)
 
 Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
 
@@ -38,7 +38,7 @@ Unlike in-host-process plugin processing, it will become important to switch con
 
 An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
 
-Similarly to LV2, port connection is established as setting raw I/O pointers. Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far, but if it works better then things might change.
+Similarly to LV2, port connection is established as setting raw I/O pointers. Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
 
 
 ## AAP package bundle
@@ -121,6 +121,52 @@ TBD - there should be similar restriction to that of AAP-LV2.
 
 
 
+## Build Dependencies
+
+android-audio-plugin-framework has some dependencies, which are either platform-level-specific, or external.
+
+Platform wise:
+
+- ashmem (Android 4.0.3)
+- Realtime IPC binder (Android 8.0)
+- AudioPluginService depends on NdkBinder (Android 10.0)
+
+External software projects:
+
+- lv2 category
+  - lv2
+    - libsndfile
+      - libogg
+      - libvorbis
+      - flac
+    - cairo
+      - glib
+      - libpng
+      - zlib
+      - pixman
+      - fontconfig
+      - freetype
+  - lilv
+    - serd
+    - sord
+    - sratom
+  - cerbero (as the builder)
+- vst3 category
+  - vst3sdk
+    - TODO: fill the rest
+
+The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
+
+
+## AAP hosting basics
+
+AAP proof-of-concept host is in `poc-samples/AAPHostSample`.
+
+AAP host will have to support multiple helper bridges e.g. AAP-LV2 and AAP-VST3. LV2 host can be implemented using lilv.
+
+
+
+
 ## android-audio-plugin-framework source tree structure
 
 - README.md - this file.
@@ -132,3 +178,5 @@ TBD - there should be similar restriction to that of AAP-LV2.
   - AAPBareBoneSample - AAP (plugin) barebone sample
   - AAPLV2Sample - AAP-LV2 sample
   - AAPVST3Sample - AAL-VST3 sample
+- external/cerbero - LV2 Android builder (reusing GStreamer's builder project)
+
