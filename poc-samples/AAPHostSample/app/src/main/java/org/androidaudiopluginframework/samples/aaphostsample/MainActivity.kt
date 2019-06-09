@@ -1,15 +1,11 @@
-package org.androidaudiopluginframework.samples.aapbarebonesample
+package org.androidaudiopluginframework.samples.aaphostsample
 
 import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import org.androidaudiopluginframework.AudioPluginService
-import org.xmlpull.v1.XmlPullParser
-import javax.xml.xpath.XPath
+import org.androidaudiopluginframework.AudioPluginHost
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,12 +14,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Query AAPs
-        val plugins = AndroidAudioPluginHost().queryAudioPlugins(this)
+        val plugins = AudioPluginHost().queryAudioPlugins(this)
+        Log.i("AAPPluginHostSample","Plugin query results:")
         for (plugin in plugins) {
             Log.i("Instantiating ", "${plugin.name} | ${plugin.packageName} | ${plugin.className}")
 
             // query specific package
-            var intent = Intent(AudioPluginService.AAP_ACTION_NAME)
+            var intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
             intent.component = ComponentName(
                 plugin.packageName,
                 plugin.className

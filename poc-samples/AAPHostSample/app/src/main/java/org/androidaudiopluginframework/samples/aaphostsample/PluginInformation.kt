@@ -1,4 +1,4 @@
-package org.androidaudiopluginframework.samples.aapbarebonesample
+package org.androidaudiopluginframework
 
 class PluginInformation(name: String, packageName: String, className: String)
 {

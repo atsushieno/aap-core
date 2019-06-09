@@ -1,4 +1,4 @@
-package org.androidaudiopluginframework.samples.aapbarebonesample
+package org.androidaudiopluginframework.samples.aaphostsample
 
 import org.junit.Test
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="org.androidaudiopluginframework.samples.aapbarebonesample">
+          package="org.androidaudiopluginframework.samples.aaphostsample">
 
     <application
             android:allowBackup="true"
@@ -16,14 +16,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service android:name=".AAPHostSampleService"
-                 android:label="AAPHostSamplePlugin">
-            <intent-filter>
-                <action android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
-            </intent-filter>
-            <meta-data android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
-                android:resource="@xml/aap_metadata"/>
-        </service>
     </application>
 
 </manifest>
