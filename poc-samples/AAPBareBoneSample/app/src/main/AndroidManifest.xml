@@ -19,9 +19,9 @@
         <service android:name=".AAPBareBoneSampleService"
                  android:label="AAPBareBoneSamplePlugin">
             <intent-filter>
-                <action android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
+                <action android:name="org.androidaudiopluginframework.AudioPluginService" />
             </intent-filter>
-            <meta-data android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
                 android:resource="@xml/aap_metadata"/>
         </service>
     </application>

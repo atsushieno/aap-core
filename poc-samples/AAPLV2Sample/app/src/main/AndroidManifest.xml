@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="org.androidaudiopluginframework.samples.aapbarebonesample">
+          package="org.androidaudiopluginframework.samples.aaplv2sample">
 
     <application
             android:allowBackup="true"
@@ -19,9 +19,9 @@
         <service android:name=".AAPLV2SampleService"
                  android:label="AAPLV2SamplePlugin">
             <intent-filter>
-                <action android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
+                <action android:name="org.androidaudiopluginframework.AudioPluginService" />
             </intent-filter>
-            <meta-data android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
                 android:resource="@xml/aap_metadata"/>
         </service>
     </application>

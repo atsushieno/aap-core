@@ -9,7 +9,7 @@ open class AudioPluginService : Service()
 {
     companion object {
         const val NATIVE_LIBRARY_NAME = "aapnativebridge"
-        const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AndroidAudioPluginService"
+        const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AudioPluginService"
 
         init {
             System.loadLibrary(NATIVE_LIBRARY_NAME)

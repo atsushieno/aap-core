@@ -51,20 +51,20 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable manifest
 
-AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AndroidAudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AndroidAudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="org.androidaudiopluginframework.samples.aapbarebonesample">
   ...
-  <service android:name=".AndroidAudioPluginService"
+  <service android:name=".AudioPluginService"
            android:label="AAPBareBoneSamplePlugin">
     <intent-filter>
       <action 
-	    android:name="org.androidaudiopluginframework.AndroidAudioPluginService" />
+	    android:name="org.androidaudiopluginframework.AudioPluginService" />
     </intent-filter>
     <meta-data 
-	  android:name="org.androidaudiopluginframework.AndroidAudioPluginService"
+	  android:name="org.androidaudiopluginframework.AudioPluginService"
 	  android:resource="@xml/aap_metadata"
       />
   </service>

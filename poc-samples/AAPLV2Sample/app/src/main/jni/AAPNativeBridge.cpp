@@ -35,7 +35,7 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
     return STATUS_OK;
 }
 
-jobject Java_org_androidaudiopluginframework_samples_aapbarebonesample(JNIEnv* env)
+jobject Java_org_androidaudiopluginframework_create_binder(JNIEnv* env)
 {
     if(binder == NULL) {
         if (binder_class == NULL)

@@ -7,7 +7,7 @@ apply plugin: 'kotlin-android-extensions'
 android {
     compileSdkVersion 29
     defaultConfig {
-        applicationId "org.androidaudiopluginframework.samples.aapbarebonesample"
+        applicationId "org.androidaudiopluginframework.samples.aaplv2sample"
         minSdkVersion 29
         targetSdkVersion 29
         versionCode 1
