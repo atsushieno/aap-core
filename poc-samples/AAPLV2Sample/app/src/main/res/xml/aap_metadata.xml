@@ -1,0 +1,4 @@
+<plugin manufacturer="AndroidAudioPluginProject" product="LV2SamplePlugin">
+    <input-port name="input" />
+    <output-port name="input" />
+</plugin>
