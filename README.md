@@ -121,7 +121,7 @@ TBD - there should be similar restriction to that of AAP-LV2.
 - src - AAP hosting reference implementation.
 - juce - JUCE support project and sources.
 - poc-samples - proof-of-concept Android app samples
-  - AAPHost - host sample
+  - AAPHostSample - host sample
   - AAPBareBoneSample - AAP (plugin) barebone sample
   - AAPLV2Sample - AAP-LV2 sample
   - AAPVST3Sample - AAL-VST3 sample

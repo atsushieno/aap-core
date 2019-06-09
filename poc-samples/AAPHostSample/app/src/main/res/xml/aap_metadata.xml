@@ -1,0 +1,4 @@
+<plugin manufacturer="AndroidAudioPluginProject" product="HostSamplePlugin">
+    <input-port name="input" />
+    <output-port name="input" />
+</plugin>
