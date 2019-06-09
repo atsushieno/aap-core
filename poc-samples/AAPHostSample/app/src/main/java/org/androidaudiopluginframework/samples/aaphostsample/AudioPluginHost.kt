@@ -9,7 +9,7 @@ import org.xmlpull.v1.XmlPullParser
 class AudioPluginHost
 {
     companion object {
-        const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AndroidAudioPluginService"
+        const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AudioPluginService"
     }
 
     fun queryAudioPlugins(context: Context) : Array<PluginInformation>

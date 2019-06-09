@@ -22,6 +22,7 @@ const char *interface_descriptor = "org.androidaudiopluginframework.AndroidAudio
 void* aap_oncreate(void* args)
 {
     __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_oncreate");
+    return NULL;
 }
 
 void aap_ondestroy(void* userData)
@@ -35,12 +36,15 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
     return STATUS_OK;
 }
 
-jobject Java_org_androidaudiopluginframework_create_binder(JNIEnv* env)
-{
-    if(binder == NULL) {
+extern "C" {
+
+jobject Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env) {
+    if (binder == NULL) {
         if (binder_class == NULL)
             binder_class = AIBinder_Class_define(interface_descriptor, aap_oncreate, aap_ondestroy, aap_ontransact);
         binder = AIBinder_new(binder_class, NULL);
     }
     return AIBinder_toJavaBinder(env, binder);
+}
+
 }
