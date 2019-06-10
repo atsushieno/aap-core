@@ -38,7 +38,7 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
 
 extern "C" {
 
-jobject Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env) {
+jobject Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env, jclass clazz) {
     if (binder == NULL) {
         if (binder_class == NULL)
             binder_class = AIBinder_Class_define(interface_descriptor, aap_oncreate, aap_ondestroy, aap_ontransact);

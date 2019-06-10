@@ -2,6 +2,7 @@
 #include <math.h>
 #include <vector>
 #include <lilv/lilv.h>
+#include <jni.h>
 
 #define PI 3.14159265
 
@@ -46,7 +47,7 @@ typedef struct {
 } InstanceUse;
 
 
-int runHost (int argc, char **argv)
+int runHost (const char** pluginUris, int numPluginUris)
 {
     auto world = lilv_world_new ();
     lilv_world_load_all (world);
@@ -68,13 +69,13 @@ int runHost (int argc, char **argv)
 
     std::vector<InstanceUse*> instances;
 
-    for (int i = 1; i < argc; i++) {
-        auto pluginUriNode = lilv_new_uri (world, argv [i]);
+    for (int i = 1; i < numPluginUris; i++) {
+        auto pluginUriNode = lilv_new_uri (world, pluginUris [i]);
         const LilvPlugin *plugin = lilv_plugins_get_by_uri (allPlugins, pluginUriNode);
         if (plugin == NULL)
-            printf ("Plugin %s could not be loaded.\n", argv [i]);
+            printf ("Plugin %s could not be loaded.\n", pluginUris [i]);
         else {
-            printf ("Loading Plugin %s ...\n", argv [i]);
+            printf ("Loading Plugin %s ...\n", pluginUris [i]);
 
             LilvInstance *instance = lilv_plugin_instantiate (plugin, global_sample_rate, features);
             if (instance == NULL) {
@@ -176,4 +177,31 @@ int runHost (int argc, char **argv)
     puts ("Everything successfully done.");
 
     return 0;
+}
+
+extern "C" {
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray plugins)
+{
+    jsize size = env->GetArrayLength(plugins);
+    jboolean isCopy = JNI_TRUE;
+    const char *pluginUris[size];
+    for (int i = 0; i < size; i++) {
+        auto strObj = (jstring) env->GetObjectArrayElement(plugins, i);
+        pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
+    }
+    return runHost(pluginUris, size);
+}
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHostOne(JNIEnv *env, jclass cls, jstring plugin)
+{
+    jsize size = 1;
+    jboolean isCopy = JNI_TRUE;
+    const char *pluginUris[size];
+    for (int i = 0; i < size; i++) {
+        auto strObj = plugin;
+        pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
+    }
+    return runHost(pluginUris, size);
+}
+
 }

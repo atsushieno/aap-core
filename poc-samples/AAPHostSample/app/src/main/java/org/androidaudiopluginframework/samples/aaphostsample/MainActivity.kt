@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import org.androidaudiopluginframework.AudioPluginHost
+import org.androidaudiopluginframework.hosting.AAPLV2Host
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,5 +44,9 @@ class MainActivity : AppCompatActivity() {
             stopService(intent)
             unbindService(conn)
         }
+
+        // LV2 hosting
+        AAPLV2Host.runHost(arrayOf())
+        //AAPLV2Host.runHostOne("http://drobilla.net/plugins/mda/Delay")
     }
 }
