@@ -2,14 +2,19 @@
 
 ABIS_SIMPLE = x86 x86-64 armv7 arm64
 APPNAMES = AAPHostSample AAPLV2Sample
+ANDROID_NDK=~/android-sdk-`uname`/ndk-bundle
 
 TOP=`pwd`
 
 all: build
 
 .PHONY:
+clean:
+		make CERBERO_COMMAND=wipe run-cerbero-command
+
+.PHONY:
 prepare:
-	cd external/cerbero && ANDROID_NDK_HOME=~/android-sdk-linux/ndk-bundle/ ./cerbero-uninstalled -c config/cross-android-x86.cbc bootstrap
+	cd external/cerbero && ANDROID_NDK_HOME=$(ANDROID_NDK) ./cerbero-uninstalled -c config/cross-android-x86.cbc bootstrap
 
 
 .PHONY:
@@ -42,7 +47,12 @@ copy-lv2-deps-single:
 
 .PHONY:
 build-lv2-deps:
+	make CERBERO_COMMAND="build mda-lv2 lilv" run-cerbero-command
+
+
+.PHONY:
+run-cerbero-command:
 	cd external/cerbero && for abi in $(ABIS_SIMPLE) ; do \
-		ANDROID_NDK_HOME=~/android-sdk-linux/ndk-bundle/ ./cerbero-uninstalled -c config/cross-android-$$abi.cbc build mda-lv2 lilv ; \
+		ANDROID_NDK_HOME=$(ANDROID_NDK) ./cerbero-uninstalled -c config/cross-android-$$abi.cbc $(CERBERO_COMMAND) ; \
 	done
 
