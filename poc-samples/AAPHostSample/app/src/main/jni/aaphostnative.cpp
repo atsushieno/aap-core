@@ -262,14 +262,14 @@ void ensureDLEach(const char* libname, set_io_context_func &context)
         auto lib = dlopen(libname, RTLD_NOW);
         assert (lib != NULL);
         context = (set_io_context_func) dlsym(lib, "abstract_set_io_context");
-        assert (*context != NULL);
+        assert (context != NULL);
     }
 }
 
 void ensureDLLoaded()
 {
-    ensureDLEach("serd-0", libserd_set_context);
-    ensureDLEach("lilv-0", liblilv_set_context);
+    ensureDLEach("libserd-0.so", libserd_set_context);
+    ensureDLEach("liblilv-0.so", liblilv_set_context);
 }
 
 void set_io_context(AAssetManager *am)

@@ -1,9 +1,11 @@
 package org.androidaudiopluginframework
 
+import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
 
 open class AudioPluginService : Service()
 {
@@ -18,6 +20,7 @@ open class AudioPluginService : Service()
         @JvmStatic
         external fun createBinder() : IBinder
     }
+
     var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -27,8 +30,19 @@ open class AudioPluginService : Service()
         return native_binder
     }
 
+    override fun onCreate() {
+        super.onCreate()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("AudioPluginService", "onStartCommand invoked")
+
+        val notification = NotificationCompat.Builder(this, "audiopluginservice-" + hashCode())
+            .setContentTitle("Foreground Service")
+            .setContentText("started FG service")
+            .build()
+        this.startForeground(1, notification)
+
         return super.onStartCommand(intent, flags, startId)
     }
 }
