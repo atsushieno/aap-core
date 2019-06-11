@@ -1,8 +1,18 @@
+#include <jni.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#include <android/log.h>
+#include <unistd.h>
 
 #include <math.h>
+#include <string.h>
 #include <vector>
+#include <map>
 #include <lilv/lilv.h>
-#include <jni.h>
+#include <../lib/lv2/atom.lv2/atom.h>
+#include <../lib/lv2/log.lv2/log.h>
+#include <../lib/lv2/buf-size.lv2/buf-size.h>
+#include <dlfcn.h>
 
 #define PI 3.14159265
 
@@ -24,20 +34,52 @@ PORTCHECKER_AND (IS_AUDIO_IN, IS_AUDIO_PORT, IS_INPUT_PORT)
 PORTCHECKER_AND (IS_AUDIO_OUT, IS_AUDIO_PORT, IS_OUTPUT_PORT)
 PORTCHECKER_AND (IS_CONTROL_IN, IS_CONTROL_PORT, IS_INPUT_PORT)
 PORTCHECKER_AND (IS_CONTROL_OUT, IS_CONTROL_PORT, IS_OUTPUT_PORT)
-/*
-inline bool IS_AUDIO_PORT (LilvPlugin* plugin, LilvPort* port) { return lilv_port_is_a (plugin, port, audio_port_uri_node); }
-inline bool IS_INPUT_PORT (LilvPlugin* plugin, LilvPort* port) { return lilv_port_is_a (plugin, port, input_port_uri_node); }
-inline bool IS_OUTPUT_PORT (LilvPlugin* plugin, LilvPort* port) { return lilv_port_is_a (plugin, port, output_port_uri_node); }
-inline bool IS_CONTROL_PORT (LilvPlugin* plugin, LilvPort* port) { return lilv_port_is_a (plugin, port, control_port_uri_node); }
-inline bool IS_AUDIO_IN (LilvPlugin* plugin, LilvPort* port) { return IS_AUDIO_PORT (plugin, port) && IS_INPUT_PORT (plugin, port); }
-inline bool IS_AUDIO_OUT (LilvPlugin* plugin, LilvPort* port) { return IS_AUDIO_PORT (plugin, port) && IS_OUTPUT_PORT (plugin, port); }
-inline bool IS_CONTROL_IN (LilvPlugin* plugin, LilvPort* port) { return IS_CONTROL_PORT (plugin, port) && IS_INPUT_PORT (plugin, port); }
-*/
+
+typedef struct {
+    bool operator() (char* p1, char* p2) { return strcmp (p1, p2) == 0; }
+} uricomp;
 
 LV2_URID urid_map_func (LV2_URID_Map_Handle handle, const char *uri)
 {
-    printf ("-- map %s\n", uri);
-    return 0;
+    printf ("-- map %s", uri);
+    auto map = static_cast<std::map<const char*,LV2_URID>*> (handle);
+    auto it = map->find (uri);
+    if (it == map->end())
+        map->emplace (uri, map->size() + 1);
+    auto ret = map->find (uri)->second;
+    printf (" ... as %d\n", ret);
+    return ret;
+}
+
+int avprintf(const char *fmt, va_list ap)
+{
+    return __android_log_print(ANDROID_LOG_INFO, "AAPHostNative", fmt, ap);
+}
+
+int aprintf (const char *fmt,...)
+{
+    va_list ap;
+    va_start (ap, fmt);
+    return avprintf(fmt, ap);
+}
+
+void aputs(const char* s)
+{
+    __android_log_print(ANDROID_LOG_INFO, "AAPHostNative", "%s", s);
+}
+
+int log_vprintf (LV2_Log_Handle handle, LV2_URID type, const char *fmt, va_list ap)
+{
+    int ret = aprintf ("LV2 LOG (%d): ", type);
+    ret += aprintf (fmt, ap);
+    return ret;
+}
+
+int log_printf (LV2_Log_Handle handle, LV2_URID type, const char *fmt,...)
+{
+    va_list ap;
+    va_start (ap, fmt);
+    return log_vprintf (handle, type, fmt, ap);
 }
 
 typedef struct {
@@ -47,8 +89,15 @@ typedef struct {
 } InstanceUse;
 
 
-int runHost (const char** pluginUris, int numPluginUris)
+int runHost (const char *assetsDir, const char** pluginUris, int numPluginUris)
 {
+    chdir(assetsDir);
+    aprintf("CHANGED DIRECTORY TO %s", assetsDir);
+
+    char *lv2Dir = assetsDir ? strcat((char*) assetsDir, "/lv2") : (char*) "/lv2";
+    setenv("LV2_PATH", lv2Dir, false);
+    if (assetsDir)
+        free (lv2Dir);
     auto world = lilv_world_new ();
     lilv_world_load_all (world);
 
@@ -58,12 +107,20 @@ int runHost (const char** pluginUris, int numPluginUris)
     output_port_uri_node = lilv_new_uri (world, LV2_CORE__OutputPort);
 
     auto allPlugins = lilv_world_get_all_plugins (world);
-    LV2_Feature* features [3];
-    auto mapData = LV2_URID_Map { NULL, urid_map_func };
+    LV2_Feature* features [5];
+    auto urid_map = new std::map<char*,LV2_URID,uricomp> ();
+    auto mapData = LV2_URID_Map { urid_map, urid_map_func };
+    auto logData = LV2_Log_Log { NULL, log_printf, log_vprintf };
     LV2_Feature uridFeature = { LV2_URID_MAP_URI, &mapData };
+    LV2_Feature logFeature = { LV2_LOG_URI, &logData };
+    LV2_Feature bufSizeFeature = { LV2_BUF_SIZE_URI, NULL };
+    LV2_Feature atomFeature = { LV2_ATOM_URI, NULL };
     //features [0] = NULL;
     features [0] = &uridFeature;
-    features [1] = NULL;
+    features [1] = &logFeature;
+    features [2] = &bufSizeFeature;
+    features [3] = &atomFeature;
+    features [4] = NULL;
 
     int buffer_size = 10000;
 
@@ -92,11 +149,16 @@ int runHost (const char** pluginUris, int numPluginUris)
         }
     }
 
+    if (instances.size() == 0) {
+        aputs ("No plugin instantiated. Quit...");
+        return -1;
+    }
+
     float audioIn [buffer_size];
     float controlIn [buffer_size];
     float dummyBuffer [buffer_size];
 
-    float *currentAudioIn, *currentAudioOut;
+    float *currentAudioIn = NULL, *currentAudioOut = NULL;
 
     /* connect ports */
     puts ("Establishing port connections...");
@@ -107,31 +169,32 @@ int runHost (const char** pluginUris, int numPluginUris)
         auto iu = instances [i];
         auto plugin = iu->plugin;
         auto instance = iu->instance;
-        printf (" Plugin '%s': connecting ports...\n", lilv_node_as_string (lilv_plugin_get_name (plugin)));
+        aprintf (" Plugin '%s': connecting ports...\n", lilv_node_as_string (lilv_plugin_get_name (plugin)));
         for (uint p = 0; p < lilv_plugin_get_num_ports (plugin); p++) {
             const LilvPort *port = lilv_plugin_get_port_by_index (plugin, p);
             if (IS_AUDIO_IN (plugin, port)) {
-                printf ("   port '%i': AudioIn\n", p);
+                aprintf ("   port '%i': AudioIn\n", p);
                 lilv_instance_connect_port (instance, p, currentAudioIn);
             } else if (IS_AUDIO_OUT (plugin, port)) {
-                printf ("   port '%i': AudioOut\n", p);
+                aprintf ("   port '%i': AudioOut\n", p);
                 currentAudioOut = iu->buffer;
                 lilv_instance_connect_port (instance, p, currentAudioOut);
             } else if (IS_CONTROL_IN (plugin, port)) {
-                printf ("   port '%i': ControlIn\n", p);
+                aprintf ("   port '%i': ControlIn\n", p);
                 lilv_instance_connect_port (instance, p, controlIn);
             } else if (IS_CONTROL_OUT (plugin, port)) {
-                printf ("   port '%i': ControlOut - connecting to dummy\n", p);
+                aprintf ("   port '%i': ControlOut - connecting to dummy\n", p);
                 lilv_instance_connect_port (instance, p, dummyBuffer);
             } else if (IS_CV_PORT (plugin, port)) {
-                printf ("   port '%i': CV - connecting to dummy\n", p);
+                aprintf ("   port '%i': CV - connecting to dummy\n", p);
                 lilv_instance_connect_port (instance, p, dummyBuffer);
             } else {
                 printf ("   port '%i': UNKNOWN: %s\n", p, lilv_node_as_string (lilv_port_get_name(plugin, port)));
                 lilv_instance_connect_port (instance, p, dummyBuffer);
             }
         }
-        currentAudioIn = currentAudioOut;
+        if (currentAudioOut)
+            currentAudioIn = currentAudioOut;
     }
     puts ("Port connections established. Start processing audio...");
 
@@ -157,14 +220,16 @@ int runHost (const char** pluginUris, int numPluginUris)
 
     puts ("Inputs: ");
     for (int i = 0; i < 200; i++)
-        printf ("%f ", audioIn [i]);
+        aprintf ("%f ", audioIn [i]);
     puts ("");
-    puts ("Outputs: ");
-    for (int i = 0; i < 200; i++)
-        printf ("%f ", currentAudioOut [i]);
-    puts ("");
+    if (currentAudioOut) {
+        aputs ("Outputs: ");
+        for (int i = 0; i < 200; i++)
+            printf ("%f ", currentAudioOut [i]);
+        aputs ("");
+    }
 
-    puts ("Audio processing done. Freeing everything...");
+    aputs ("Audio processing done. Freeing everything...");
     for (int i = 0; i < instances.size(); i++) {
         auto iu = instances [i];
         free (iu->buffer);
@@ -174,15 +239,50 @@ int runHost (const char** pluginUris, int numPluginUris)
 
     lilv_world_free (world);
 
-    puts ("Everything successfully done.");
+    aputs ("Everything successfully done.");
 
     return 0;
 }
 
+const char* getAssetsDir(AAssetManager* assetManager)
+{
+    auto dir = AAssetManager_openDir(assetManager, ".");
+    return AAssetDir_getNextFileName(dir);
+}
+
 extern "C" {
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray plugins)
+typedef void (*set_io_context_func) (void*);
+set_io_context_func libserd_set_context = NULL;
+set_io_context_func liblilv_set_context = NULL;
+
+void ensureDLEach(const char* libname, set_io_context_func &context)
 {
+    if (liblilv_set_context == NULL) {
+        auto lib = dlopen(libname, RTLD_NOW);
+        assert (lib != NULL);
+        context = (set_io_context_func) dlsym(lib, "abstract_set_io_context");
+        assert (*context != NULL);
+    }
+}
+
+void ensureDLLoaded()
+{
+    ensureDLEach("serd-0", libserd_set_context);
+    ensureDLEach("lilv-0", liblilv_set_context);
+}
+
+void set_io_context(AAssetManager *am)
+{
+    ensureDLLoaded();
+    libserd_set_context(am);
+    liblilv_set_context(am);
+}
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobject assets, jobjectArray plugins)
+{
+    set_io_context(AAssetManager_fromJava(env, assets));
+
     jsize size = env->GetArrayLength(plugins);
     jboolean isCopy = JNI_TRUE;
     const char *pluginUris[size];
@@ -190,10 +290,18 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
         auto strObj = (jstring) env->GetObjectArrayElement(plugins, i);
         pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
     }
-    return runHost(pluginUris, size);
+    // FIXME: memory leaky
+    int ret = runHost(getAssetsDir(AAssetManager_fromJava(env, assets)), pluginUris, size);
+
+    set_io_context(NULL);
+
+    return ret;
 }
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHostOne(JNIEnv *env, jclass cls, jstring plugin)
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHostOne(JNIEnv *env, jclass cls, jobject assets, jstring plugin)
 {
+    set_io_context(AAssetManager_fromJava(env, assets));
+
     jsize size = 1;
     jboolean isCopy = JNI_TRUE;
     const char *pluginUris[size];
@@ -201,7 +309,12 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHostOne(JNIEnv *
         auto strObj = plugin;
         pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
     }
-    return runHost(pluginUris, size);
+    // FIXME: memory leaky
+    int ret = runHost(getAssetsDir(AAssetManager_fromJava(env, assets)), pluginUris, size);
+
+    set_io_context(NULL);
+
+    return ret;
 }
 
 }

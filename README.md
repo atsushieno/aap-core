@@ -147,15 +147,19 @@ External software projects:
       - fontconfig
       - freetype
   - lilv
-    - serd
+    - serd (private fork)
     - sord
     - sratom
-  - cerbero (as the builder)
+  - cerbero (as the builder, private fork)
 - vst3 category
   - vst3sdk
     - TODO: fill the rest
 
 The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
+
+### LV2 forks
+
+There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
 
 
 ## AAP hosting basics

@@ -43,7 +43,5 @@ target_include_directories(aaphost
         "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
 
-target_link_libraries(aaphost binder_ndk log)
-
-target_link_libraries(aaphost lilv-0)
+target_link_libraries(aaphost android binder_ndk log lilv-0)
 

@@ -1,5 +1,7 @@
 package org.androidaudiopluginframework.hosting
 
+import android.content.res.AssetManager
+
 class AAPLV2Host
 {
     companion object {
@@ -8,8 +10,8 @@ class AAPLV2Host
         }
 
         @JvmStatic
-        external fun runHost(pluginUris: Array<String>) : Int
+        external fun runHost(assets: AssetManager, pluginUris: Array<String>) : Int
         @JvmStatic
-        external fun runHostOne(pluginUri: String) : Int
+        external fun runHostOne(assets: AssetManager, pluginUri: String) : Int
     }
 }

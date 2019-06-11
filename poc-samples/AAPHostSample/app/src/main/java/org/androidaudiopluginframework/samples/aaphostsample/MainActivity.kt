@@ -47,6 +47,6 @@ class MainActivity : AppCompatActivity() {
 
         // LV2 hosting
         //AAPLV2Host.runHost(arrayOf())
-        AAPLV2Host.runHostOne("http://drobilla.net/plugins/mda/Delay")
+        AAPLV2Host.runHostOne(assets, "http://drobilla.net/plugins/mda/Delay")
     }
 }
