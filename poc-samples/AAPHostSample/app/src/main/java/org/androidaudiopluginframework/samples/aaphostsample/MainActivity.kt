@@ -91,6 +91,7 @@ class MainActivity : AppCompatActivity() {
             "/lv2/x86_64/port-props.lv2/",
             "/lv2/x86_64/ui.lv2/"
         )
-        AAPLV2Host.runHost(pluginPaths, assets, arrayOf("http://drobilla.net/plugins/mda/Delay"))
+        //AAPLV2Host.runHost(pluginPaths, assets, arrayOf("http://drobilla.net/plugins/mda/Delay"))
+        AAPLV2Host.runHost(pluginPaths, assets, arrayOf("http://drobilla.net/plugins/mda/DX10"))
     }
 }

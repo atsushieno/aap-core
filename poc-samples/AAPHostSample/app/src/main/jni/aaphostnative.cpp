@@ -184,14 +184,14 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
                 aprintf ("   port '%i': CV - connecting to dummy\n", p);
                 lilv_instance_connect_port (instance, p, dummyBuffer);
             } else {
-                printf ("   port '%i': UNKNOWN: %s\n", p, lilv_node_as_string (lilv_port_get_name(plugin, port)));
+                aprintf ("   port '%i': UNKNOWN: %s\n", p, lilv_node_as_string (lilv_port_get_name(plugin, port)));
                 lilv_instance_connect_port (instance, p, dummyBuffer);
             }
         }
         if (currentAudioOut)
             currentAudioIn = currentAudioOut;
     }
-    puts ("Port connections established. Start processing audio...");
+    aputs ("Port connections established. Start processing audio...");
 
     for (int i = 0; i < buffer_size; i++)
         audioIn [i] = (float) sin (i / 50.0 * PI);
@@ -213,14 +213,14 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
     puts ("Audio processing done.");
 
 
-    puts ("Inputs: ");
-    for (int i = 0; i < 200; i++)
-        aprintf ("%f ", audioIn [i]);
+    aputs ("Inputs: ");
+    for (int i = 0; i < 20; i++)
+        aprintf ("%d: %f ", i, audioIn [i]);
     puts ("");
     if (currentAudioOut) {
         aputs ("Outputs: ");
-        for (int i = 0; i < 200; i++)
-            printf ("%f ", currentAudioOut [i]);
+        for (int i = 0; i < 20; i++)
+            aprintf ("%d: %f ", i, currentAudioOut [i]);
         aputs ("");
     }
 
