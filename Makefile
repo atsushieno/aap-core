@@ -42,7 +42,9 @@ copy-lv2-deps-single:
 	for appname in $(APPNAMES) ; do \
 		mkdir -p poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2) && \
 		cp external/cerbero/build/dist/android_$(A_ARCH)/lib/*.so poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2)/ && \
-		cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2 poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2)/ ; \
+		# cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2 poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2)/ ; \
+		mkdir -p poc-samples/$$appname/app/src/main/assets/lv2/$(A_ARCH) ; \
+		cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2/* poc-samples/$$appname/app/src/main/assets/lv2/$(A_ARCH) ; \
 	done
 
 .PHONY:

@@ -107,13 +107,14 @@ while normal `lv2` packages usually look like:
 
 At this state we are not sure if keeping `.lv2` directory like this is doable. It is not doable to support multiple ABIs with this directory layout anyways.
 
-A quick solution idea would be to have `lv2` directory under per-ABI directory:
+Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle script failed. Asking plugin developers to add `copy(from/into)` operation hack (which might still not work) is awkward, so we would rather provide simpler solution - we put `lv2/{abi}` contents under `assets`.
 
-- `lib/armeabi-v7a/lv2/foo.lv2/manifest.ttl`
-- `lib/armeabi-v7a/lv2/foo.lv2/foo.ttl`
-- `lib/armeabi-v7a/lv2/foo.lv2/foo.so`
+Although, there is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
 
-Not sure if it works or not.
+To workaround this issue, AAP-LV2 plugin takes a list of LV2 asset paths which are to build `LV2_PATH` settings. Note that it is done at plugin side. Host implementation has different story. (TODO)
+
+
+
 
 ### AAP-VST3
 
@@ -160,6 +161,8 @@ The external dependencies are built using cerbero build system. Cerbero is a com
 ### LV2 forks
 
 There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
+
+And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given.
 
 
 ## AAP hosting basics

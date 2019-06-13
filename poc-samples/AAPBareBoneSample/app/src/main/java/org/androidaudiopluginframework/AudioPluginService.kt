@@ -43,6 +43,6 @@ open class AudioPluginService : Service()
             .build()
         this.startForeground(1, notification)
 
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 }

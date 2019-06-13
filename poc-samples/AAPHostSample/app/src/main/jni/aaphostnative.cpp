@@ -89,16 +89,11 @@ typedef struct {
 } InstanceUse;
 
 
-int runHost (const char *assetsDir, const char** pluginUris, int numPluginUris)
+int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
 {
-    chdir(assetsDir);
-    aprintf("CHANGED DIRECTORY TO %s", assetsDir);
-
-    char *lv2Dir = assetsDir ? strcat((char*) assetsDir, "/lv2") : (char*) "/lv2";
-    setenv("LV2_PATH", lv2Dir, false);
-    if (assetsDir)
-        free (lv2Dir);
     auto world = lilv_world_new ();
+    auto lv2_path_node = lilv_new_string(world, lv2Path);
+    lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_path_node);
     lilv_world_load_all (world);
 
     audio_port_uri_node = lilv_new_uri (world, LV2_CORE__AudioPort);
@@ -126,7 +121,7 @@ int runHost (const char *assetsDir, const char** pluginUris, int numPluginUris)
 
     std::vector<InstanceUse*> instances;
 
-    for (int i = 1; i < numPluginUris; i++) {
+    for (int i = 0; i < numPluginUris; i++) {
         auto pluginUriNode = lilv_new_uri (world, pluginUris [i]);
         const LilvPlugin *plugin = lilv_plugins_get_by_uri (allPlugins, pluginUriNode);
         if (plugin == NULL)
@@ -244,12 +239,6 @@ int runHost (const char *assetsDir, const char** pluginUris, int numPluginUris)
     return 0;
 }
 
-const char* getAssetsDir(AAssetManager* assetManager)
-{
-    auto dir = AAssetManager_openDir(assetManager, ".");
-    return AAssetDir_getNextFileName(dir);
-}
-
 extern "C" {
 
 typedef void (*set_io_context_func) (void*);
@@ -279,38 +268,38 @@ void set_io_context(AAssetManager *am)
     liblilv_set_context(am);
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobject assets, jobjectArray plugins)
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray jPluginPaths, jobject assets, jobjectArray jPlugins)
 {
     set_io_context(AAssetManager_fromJava(env, assets));
 
-    jsize size = env->GetArrayLength(plugins);
     jboolean isCopy = JNI_TRUE;
+
+    int lv2PathLen = 0;
+    jsize pathsSize = env->GetArrayLength(jPluginPaths);
+    const char *pluginPaths[pathsSize];
+    for (int i = 0; i < pathsSize; i++) {
+        auto strPathObj = (jstring) env->GetObjectArrayElement(jPluginPaths, i);
+        // FIXME: leaky (wrt isCopy)
+        pluginPaths[i] = env->GetStringUTFChars(strPathObj, &isCopy);
+        lv2PathLen += strlen(pluginPaths[i] + 1);
+    }
+    char lv2Path[lv2PathLen];
+    lv2PathLen = 0;
+    for (int i = 0; i < pathsSize; i++) {
+        strcpy(lv2Path + lv2PathLen, pluginPaths[i]);
+        lv2PathLen += strlen(pluginPaths[i]);
+        lv2Path[lv2PathLen++] = ':';
+    }
+    lv2Path[lv2PathLen] = NULL;
+    __android_log_print( ANDROID_LOG_INFO, "AAAAAAAAAAAAA", "%s", lv2Path);
+
+    jsize size = env->GetArrayLength(jPlugins);
     const char *pluginUris[size];
     for (int i = 0; i < size; i++) {
-        auto strObj = (jstring) env->GetObjectArrayElement(plugins, i);
-        pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
+        auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
+        pluginUris[i] = env->GetStringUTFChars(strUriObj, &isCopy);
     }
-    // FIXME: memory leaky
-    int ret = runHost(getAssetsDir(AAssetManager_fromJava(env, assets)), pluginUris, size);
-
-    set_io_context(NULL);
-
-    return ret;
-}
-
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHostOne(JNIEnv *env, jclass cls, jobject assets, jstring plugin)
-{
-    set_io_context(AAssetManager_fromJava(env, assets));
-
-    jsize size = 1;
-    jboolean isCopy = JNI_TRUE;
-    const char *pluginUris[size];
-    for (int i = 0; i < size; i++) {
-        auto strObj = plugin;
-        pluginUris[i] = env->GetStringUTFChars(strObj, &isCopy);
-    }
-    // FIXME: memory leaky
-    int ret = runHost(getAssetsDir(AAssetManager_fromJava(env, assets)), pluginUris, size);
+    int ret = runHost(lv2Path, pluginUris, size);
 
     set_io_context(NULL);
 
