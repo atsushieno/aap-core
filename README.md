@@ -107,7 +107,14 @@ while normal `lv2` packages usually look like:
 
 At this state we are not sure if keeping `.lv2` directory like this is doable. It is not doable to support multiple ABIs with this directory layout anyways.
 
-Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle script failed. Asking plugin developers to add `copy(from/into)` operation hack (which might still not work) is awkward, so we would rather provide simpler solution - we put `lv2/{abi}` contents under `assets`.
+Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle script failed. Asking plugin developers to add `copy(from/into)` operation hack (which might still not work) is awkward, so we would rather provide simpler solution - we put `lv2/` contents under `assets`, and put ABI-specific `*.so` files directly under `lib/{abi}`. Loading `*.so` from `assets` subdirectories is not possible either.
+
+- `assets/foo.lv2/manifest.ttl`
+- `assets/foo.lv2/foo.ttl`
+- `lib/armeabi-v7a/foo.so`
+- `lib/arm64-v8a/foo.so`
+- `lib/x86/foo.so`
+- `lib/x86_64/foo.so`
 
 Although, there is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
 
