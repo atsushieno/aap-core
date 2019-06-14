@@ -89,13 +89,28 @@ bool AndroidAudioPluginManager::isPluginUpToDate (const char *identifier, long l
 
 AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
 {
-	// FIXME: implement correctly
+	// For local plugins, they can be directly loaded using dlopen/dlsym.
+	// For remote plugins, the connection has to be established through binder.
+	if (descriptor->isOutProcess())
+		instantiateRemotePlugin(descriptor);
+	else
+		instantiateLocalPlugin(descriptor);
+}
+
+AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiateLocalPlugin(AndroidAudioPluginDescriptor *descriptor)
+{
 	const char *file = descriptor->getFilePath();
 	auto dl = dlopen(file, RTLD_LAZY);
 	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();
 
 	return new AndroidAudioPluginInstance(descriptor, plugin);
+}
+
+AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiateRemotePlugin(AndroidAudioPluginDescriptor *descriptor)
+{
+	// FIXME: implement.
+	assert(false);
 }
 
 

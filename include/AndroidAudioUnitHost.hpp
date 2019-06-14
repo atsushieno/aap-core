@@ -34,7 +34,9 @@ class AndroidAudioPluginDescriptor
 	char *identifier_string;
 	int unique_id;
 	long last_updated_unixtime;
-	
+
+	// hosting information
+	bool is_out_process;
 
 public:
 	const char* getName()
@@ -135,6 +137,11 @@ public:
 		// TODO: implement
 		return NULL;
 	}
+	
+	bool isOutProcess()
+	{
+		return is_out_process;
+	}
 };
 
 class AndroidAudioPluginManager
@@ -144,6 +151,8 @@ class AndroidAudioPluginManager
 	AndroidAudioPluginDescriptor** plugin_descriptors;
 	
 	AndroidAudioPluginDescriptor* loadDescriptorFromBundleDirectory(const char *directory);
+	AndroidAudioPluginInstance* instantiateLocalPlugin(AndroidAudioPluginDescriptor *descriptor);
+	AndroidAudioPluginInstance* instantiateRemotePlugin(AndroidAudioPluginDescriptor *descriptor);
 
 public:
 

@@ -20,13 +20,13 @@ typedef struct {
 	int32_t numFrames;
 } AndroidAudioPluginBuffer;
 
-
+/* They can be consolidated as a standalone helper library when people want C API for bindings (such as P/Invokes)
+ */
+#if 0
 int32_t aap_buffer_num_buffers (AndroidAudioPluginBuffer *buffer);
-
 void **aap_buffer_get_buffers (AndroidAudioPluginBuffer *buffer);
-
 int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer);
-
+#endif
 
 typedef void (*aap_process_func_t) (AndroidAudioPluginBuffer* audioBuffer, AndroidAudioPluginBuffer* controlBuffer, long timeoutInNanoseconds);
 
