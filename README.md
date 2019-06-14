@@ -195,18 +195,31 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
   - `AAPPortIterator`
   - `AAPPort`
   - `AAPInstance`
+  - `enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL }`
+  - `enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT }`
 
 - Functions
-  - `AAPHost* aap_host_create(AAPHostSettings*)`
-  - `void aap_host_destroy(AAPHost*)`
-  - `AAPPluginDesctiptorIterator* aap_host_get_plugins(AAPHost*)`
-  - `AAPInstance* aap_host_instantiate(AAPHost*, AAPDesctiptor*)`
-  - `AAPPortIterator* aap_descriptor_get_ports(AAPDesctiptor*)`
-
-  - `bool aap_desctiptor_iterator_next(AAPDesctiptorIterator*)`
-  - `AAPDesctiptor* aap_desctiptor_iterator_current(AAPDesctiptorIterator*)`
-  - `bool aap_port_iterator_next(AAPPortIterator*)`
-  - `AAPPort* aap_port_iterator_current(AAPPortIterator*)`
+  - host
+    - `AAPHost* aap_host_create(AAPHostSettings*)`
+    - `void aap_host_destroy(AAPHost*)`
+    - `AAPPluginDesctiptorIterator* aap_host_get_plugins(AAPHost*)`
+    - `AAPInstance* aap_host_instantiate(AAPHost*, AAPDesctiptor*)`
+  - plugin desctiptor
+    - `AAPPortIterator* aap_descriptor_get_ports(AAPDesctiptor*)`
+  - iterators
+    - `bool aap_desctiptor_iterator_next(AAPDesctiptorIterator*)`
+    - `AAPDesctiptor* aap_desctiptor_iterator_current(AAPDesctiptorIterator*)`
+    - `bool aap_port_iterator_next(AAPPortIterator*)`
+    - `AAPPort* aap_port_iterator_current(AAPPortIterator*)`
+  - plugin port desctiptor
+    - const char* aap_port_get_name(AAPPort*)
+    - AAPBufferType aap_port_get_buffer_type(AAPPort*)
+    - AAPPortDirection aap_port_get_direction(AAPPort*)
+  - plugin instance
+    - `void aap_instance_connect(AAPInstance*, int portIndex, void* buffer)`
+    - `void aap_instance_activate(AAPInstance*)`
+    - `void aap_instance_run(AAPInstance*)`
+    - `void aap_instance_deactivate(AAPInstance*)`
 
 
 
@@ -222,4 +235,14 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
   - AAPLV2Sample - AAP-LV2 sample
   - AAPVST3Sample - AAL-VST3 sample
 - external/cerbero - LV2 Android builder (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
+
+
+- native
+  - libaap
+    - include - AAP C/C++ header files
+    - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
+  - juce - JUCE support project and sources.
+- java
+  - AndroidAudioPluginFramework
+- poc-samples
 

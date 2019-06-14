@@ -13,21 +13,19 @@
 #include <vector>
 #include <dirent.h>
 
-using namespace std::filesystem;
-
 extern "C" {
 
-int32_t android_audio_plugin_buffer_num_buffers (AndroidAudioPluginBuffer *buffer)
+int32_t aap_buffer_num_buffers (AndroidAudioPluginBuffer *buffer)
 {
 	return buffer->numBuffers;
 }
 
-void **android_audio_plugin_buffer_get_buffers (AndroidAudioPluginBuffer *buffer)
+void **aap_buffer_get_buffers (AndroidAudioPluginBuffer *buffer)
 {
 	return buffer->buffers;
 }
 
-int32_t android_audio_plugin_buffer_num_frames (AndroidAudioPluginBuffer *buffer)
+int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer)
 {
 	return buffer->numFrames;
 }
@@ -94,7 +92,7 @@ AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(Android
 	// FIXME: implement correctly
 	const char *file = descriptor->getFilePath();
 	auto dl = dlopen(file, RTLD_LAZY);
-	auto getter = (android_audio_plugin_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
+	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();
 
 	return new AndroidAudioPluginInstance(descriptor, plugin);
