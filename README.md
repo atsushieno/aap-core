@@ -111,10 +111,9 @@ Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle 
 
 - `assets/foo.lv2/manifest.ttl`
 - `assets/foo.lv2/foo.ttl`
-- `lib/armeabi-v7a/foo.so`
-- `lib/arm64-v8a/foo.so`
-- `lib/x86/foo.so`
-- `lib/x86_64/foo.so`
+- `lib/{abi}/foo.so`
+
+The `copy-lv2-deps` target in the top `Makefile` does this task for the `poc-samples`.
 
 Although, there is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
 
@@ -154,9 +153,9 @@ External software projects:
       - pixman
       - fontconfig
       - freetype
-  - lilv
+  - lilv (private fork)
     - serd (private fork)
-    - sord
+    - sord (private fork)
     - sratom
   - cerbero (as the builder, private fork)
 - vst3 category
@@ -176,8 +175,38 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 
 AAP proof-of-concept host is in `poc-samples/AAPHostSample`.
 
-AAP host will have to support multiple helper bridges e.g. AAP-LV2 and AAP-VST3. LV2 host can be implemented using lilv.
+AAP host will have to support multiple helper bridges e.g. AAP-LV2 and AAP-VST3. LV2 host bridge can be implemented using lilv.
 
+Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transformed to AAP hosting application.
+
+
+### AAP hosting API
+
+It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure at runtime. Even simpler, 
+
+- Types
+  - `AAPHostSettings`
+  - `AAPHost`
+  - `AAPPluginHostingBackend`
+    - `AAPPluginHostingBackendLV2`
+    - `AAPPluginHostingBackendVST3`
+  - `AAPDesctiptorIterator`
+  - `AAPDesctiptor`
+  - `AAPPortIterator`
+  - `AAPPort`
+  - `AAPInstance`
+
+- Functions
+  - `AAPHost* aap_host_create(AAPHostSettings*)`
+  - `void aap_host_destroy(AAPHost*)`
+  - `AAPPluginDesctiptorIterator* aap_host_get_plugins(AAPHost*)`
+  - `AAPInstance* aap_host_instantiate(AAPHost*, AAPDesctiptor*)`
+  - `AAPPortIterator* aap_descriptor_get_ports(AAPDesctiptor*)`
+
+  - `bool aap_desctiptor_iterator_next(AAPDesctiptorIterator*)`
+  - `AAPDesctiptor* aap_desctiptor_iterator_current(AAPDesctiptorIterator*)`
+  - `bool aap_port_iterator_next(AAPPortIterator*)`
+  - `AAPPort* aap_port_iterator_current(AAPPortIterator*)`
 
 
 
