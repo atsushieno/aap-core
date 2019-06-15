@@ -218,9 +218,14 @@ class AndroidAudioPluginInstance
 	
 	AndroidAudioPluginDescriptor *descriptor;
 	AndroidAudioPlugin *plugin;
+	AAPHandle *instance;
+	const AndroidAudioPluginExtension * const *extensions;
 
-	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* instantiatedPlugin)
-		: descriptor(pluginDescriptor), plugin(instantiatedPlugin)
+	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+		: descriptor(pluginDescriptor),
+		  plugin(loadedPlugin),
+		  instance(NULL),
+		  extensions(NULL)
 	{
 	}
 	
@@ -233,17 +238,21 @@ public:
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 	{
+		// FIXME: determine how to deal with maximumExpectedSamplesPerBlock (process or ignore)
+		instance = plugin->instantiate(plugin, sampleRate, extensions);
+		plugin->prepare(instance);
 	}
 	
 	void dispose()
 	{
-		// TODO: implement
+		if (instance != NULL)
+			plugin->terminate(instance);
+		instance = NULL;
 	}
 	
 	void process(AndroidAudioPluginBuffer *audioBuffer, AndroidAudioPluginBuffer *controlBuffers, int32_t timeoutInNanoseconds)
 	{
-		// TODO: implement
-		plugin->process(audioBuffer, controlBuffers, timeoutInNanoseconds);
+		plugin->process(instance, audioBuffer, controlBuffers, timeoutInNanoseconds);
 	}
 	
 	double getTailLengthSeconds() const

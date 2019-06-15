@@ -19,14 +19,14 @@ Technically it is not very different from LV2, but you don't have to spend time 
 
 AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service (but without Java dependency in audio processing).
 
-AAP developers implement AndroidAudioPluginService which provides metadata on the audio plugins that it contains. It provides developer details, port details, and feature requirement details. (The plugins and their ports can be dynamically changed, so the query should come up with certain timestamp that is used as a threshold to determine if a plugin needs updated information since last query.)
+AAP developers implement AndroidAudioPluginService which provides metadata on the audio plugins that it contains. It provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
 It is very similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance reason, somewhat more seriously.)
 
 Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
 
-- initialize
-- prepare (connect ports)
+- initialize (pass sampleRate)
+- prepare (pass initial pointers, which can be used to fix LV2 buffers)
 - activate (DAW enabled it, playback is active or preview is active)
 - process audio block (and/or control blocks)
 - deactivate (DAW disabled it, playback is inactive and preview is inactive)
@@ -38,7 +38,9 @@ Unlike in-host-process plugin processing, it will become important to switch con
 
 An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
 
-Similarly to LV2, port connection is established as setting raw I/O pointers. Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
+LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which is not "supposed" to change but it may happen at the host side. We plugin framework provider (or more particularly, LV2 bridge implementor) have no control over host implementations or plugin implementations. It will be passed from host to plugin as an "AAP extension".
+
+In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
 
 
 ## AAP package bundle
@@ -187,9 +189,9 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
 - Types
   - `AAPHostSettings`
   - `AAPHost`
-  - `AAPPluginHostingBackend`
-    - `AAPPluginHostingBackendLV2`
-    - `AAPPluginHostingBackendVST3`
+  - `AAPHostBackend`
+    - `AAPHostBackendLV2`
+    - `AAPHostBackendVST3`
   - `AAPDesctiptorIterator`
   - `AAPDesctiptor`
   - `AAPPortIterator`
