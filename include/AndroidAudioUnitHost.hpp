@@ -11,6 +11,7 @@
 #pragma once
 
 #include <dlfcn.h>
+#include <time.h>
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "android/asset_manager.h"
 #include "AndroidAudioUnit.h"
@@ -23,11 +24,11 @@ class AndroidAudioPluginInstance;
 
 enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL };
 enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT };
-enum PluginInstanceState {
-	PLUGIN_INSTANCE_UNPREPARED,
-	PLUGIN_INSTANCE_INACTIVE,
-	PLUGIN_INSTANCE_ACTIVE,
-	PLUGIN_INSTANCE_TERMINATED,
+enum PluginInstantiationState {
+	PLUGIN_INSTANTIATION_STATE_UNPREPARED,
+	PLUGIN_INSTANTIATION_STATE_INACTIVE,
+	PLUGIN_INSTANTIATION_STATE_ACTIVE,
+	PLUGIN_INSTANTIATION_STATE_TERMINATED,
 };
 
 class AndroidAudioPluginPort
@@ -52,15 +53,22 @@ class AndroidAudioPluginDescriptor
 	const char *version;
 	const char *identifier_string;
 	int unique_id;
-	long last_updated_unixtime;
+	long last_info_updated_unixtime;
 
 	AndroidAudioPluginPort **ports;
-	int num_ports;
+	AndroidAudioPluginExtension **required_extensions;
+	AndroidAudioPluginExtension **optional_extensions;
 
 	// hosting information
 	bool is_out_process;
 
 public:
+	AndroidAudioPluginDescriptor(bool isOutProcess)
+		: last_info_updated_unixtime((long) time(NULL)),
+		  is_out_process(isOutProcess)
+	{
+	}
+	
 	const char* getName()
 	{
 		return name;
@@ -98,13 +106,47 @@ public:
 	
 	int getNumPorts()
 	{
-		return num_ports;
+		int n = 0;
+		auto ptr = ports;
+		for (;ptr; ptr++)
+			n++;
+		return n;
 	}
 	
 	AndroidAudioPluginPort *getPort(int index)
 	{
-		assert(index < num_ports);
+		assert(index < getNumPorts());
 		return ports[index];
+	}
+	
+	int getNumRequiredExtensions()
+	{
+		int n = 0;
+		auto ptr = required_extensions;
+		for (;ptr; ptr++)
+			n++;
+		return n;
+	}
+	
+	AndroidAudioPluginExtension *getRequiredExtension(int index)
+	{
+		assert(index < getNumRequiredExtensions());
+		return required_extensions[index];
+	}
+	
+	int getNumOptionalExtensions()
+	{
+		int n = 0;
+		auto ptr = optional_extensions;
+		for (;ptr; ptr++)
+			n++;
+		return n;
+	}
+	
+	AndroidAudioPluginExtension *getOptionalExtension(int index)
+	{
+		assert(index < getNumOptionalExtensions());
+		return optional_extensions[index];
 	}
 	
 	long getFileModTime()
@@ -115,7 +157,7 @@ public:
 	
 	long getLastInfoUpdateTime()
 	{
-		return last_updated_unixtime;
+		return last_info_updated_unixtime;
 	}
 	
 	int32_t getUid()
@@ -181,7 +223,7 @@ public:
 		: asset_manager(NULL),
 		  plugin_descriptors(NULL)
 	{
-		default_plugin_search_paths[0] = "~/.aap";
+		default_plugin_search_paths[0] = "/";
 		default_plugin_search_paths[1] = NULL;
 	}
 	
@@ -189,11 +231,16 @@ public:
 	{
 		asset_manager = assetManager;
 	}
+	
+	
 
 	bool isPluginAlive (const char *identifier);
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
 
+	// Unlike desktop system, it is not practical to either look into file systems
+	// on Android. And it is simply impossible to "enumerate" asset directories.
+	// Therefore we simply return dummy "/" directory.
 	const char** getDefaultPluginSearchPaths()
 	{
 		return default_plugin_search_paths;
@@ -241,14 +288,14 @@ class AndroidAudioPluginInstance
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
-	PluginInstanceState plugin_state;
+	PluginInstantiationState plugin_state;
 
 	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
 		: descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
 		  instance(NULL),
 		  extensions(NULL),
-		  plugin_state(PLUGIN_INSTANCE_UNPREPARED)
+		  plugin_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
 	{
 	}
 	
@@ -261,10 +308,31 @@ public:
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 	{
-		// FIXME: pass buffer hint for LV2 bridges, taking maximumExpectedSamplesPerBlock into consideration.
+		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
+		
 		instance = plugin->instantiate(plugin, sampleRate, extensions);
 		plugin->prepare(instance);
-		plugin_state = PLUGIN_INSTANCE_INACTIVE;
+		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+	}
+	
+	void activate()
+	{
+		if (plugin_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
+			return;
+		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+		
+		plugin->activate(instance);
+		plugin_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
+	}
+	
+	void deactivate()
+	{
+		if (plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE)
+			return;
+		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
+		
+		plugin->deactivate(instance);
+		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
 	void dispose()
@@ -272,6 +340,7 @@ public:
 		if (instance != NULL)
 			plugin->terminate(instance);
 		instance = NULL;
+		plugin_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}
 	
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
@@ -288,12 +357,6 @@ public:
 	AndroidAudioPluginEditor* createEditor()
 	{
 		return new AndroidAudioPluginEditor(this);
-	}
-	
-	bool hasEditor() const
-	{
-		// TODO: implement
-		return false;
 	}
 	
 	int getNumPrograms()

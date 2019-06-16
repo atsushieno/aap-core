@@ -92,6 +92,8 @@ public:
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override
 	{
 		sample_rate = sampleRate;
+		native->prepareToPlay(sampleRate, maximumExpectedSamplesPerBlock);
+		native->activate();
 	}
 	
 	void releaseResources() override
@@ -148,7 +150,7 @@ public:
 	
 	bool hasEditor() const override
 	{
-		return native->hasEditor();
+		return native->getPluginDescriptor()->hasEditor();
 	}
 	
 	int getNumPrograms() override

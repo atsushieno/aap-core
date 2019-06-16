@@ -14,16 +14,17 @@ using namespace std;
 
 extern "C" {
 
+/* forward declarations */
+typedef void AAPHandle;
+struct AndroidAudioPlugin;
+typedef struct AndroidAudioPlugin AndroidAudioPlugin;
+
+
 typedef struct {
 	void **buffers;
 	int32_t numBuffers;
 	int32_t numFrames;
 } AndroidAudioPluginBuffer;
-
-typedef struct {
-	const char* uri;
-	void *data;
-} AndroidAudioPluginExtension;
 
 /* They can be consolidated as a standalone helper library when people want C API for bindings (such as P/Invokes)
  */
@@ -33,10 +34,14 @@ void **aap_buffer_get_buffers (AndroidAudioPluginBuffer *buffer);
 int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer);
 #endif
 
-typedef void AAPHandle;
-struct AndroidAudioPlugin;
-typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
+typedef struct {
+	const char* uri;
+	void *data;
+} AndroidAudioPluginExtension;
+
+
+/* function types */
 typedef AAPHandle* (*aap_instantiate_func_t) (AndroidAudioPlugin *pluginEntry, int sampleRate, const AndroidAudioPluginExtension * const *extensions);
 
 typedef void (*aap_prepare_func_t) (AAPHandle *pluginHandle);
@@ -44,6 +49,7 @@ typedef void (*aap_prepare_func_t) (AAPHandle *pluginHandle);
 typedef void (*aap_control_func_t) (AAPHandle *pluginHandle);
 
 typedef void (*aap_process_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds);
+
 
 typedef struct AndroidAudioPlugin {
 	aap_instantiate_func_t instantiate;
