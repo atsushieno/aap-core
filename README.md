@@ -38,7 +38,7 @@ Unlike in-host-process plugin processing, it will become important to switch con
 
 An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
 
-LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which is not "supposed" to change but it may happen at the host side. We plugin framework provider (or more particularly, LV2 bridge implementor) have no control over host implementations or plugin implementations. It will be passed from host to plugin as an "AAP extension".
+LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which can changed later at run time but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
 In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
 
@@ -184,7 +184,7 @@ Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transfo
 
 ### AAP hosting API
 
-It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure at runtime. Even simpler, 
+It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure for runtime (AAPPort is part of descriptor).
 
 - Types
   - `AAPHostSettings`
@@ -218,7 +218,7 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
     - AAPBufferType aap_port_get_buffer_type(AAPPort*)
     - AAPPortDirection aap_port_get_direction(AAPPort*)
   - plugin instance
-    - `void aap_instance_connect(AAPInstance*, int portIndex, void* buffer)`
+    - `void aap_instance_connect(AAPInstance*)`
     - `void aap_instance_activate(AAPInstance*)`
     - `void aap_instance_run(AAPInstance*)`
     - `void aap_instance_deactivate(AAPInstance*)`

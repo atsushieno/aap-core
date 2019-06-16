@@ -291,7 +291,6 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
         lv2Path[lv2PathLen++] = ':';
     }
     lv2Path[lv2PathLen] = NULL;
-    __android_log_print( ANDROID_LOG_INFO, "AAAAAAAAAAAAA", "%s", lv2Path);
 
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginUris[size];

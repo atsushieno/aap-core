@@ -21,19 +21,41 @@ namespace aap
 
 class AndroidAudioPluginInstance;
 
+enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL };
+enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT };
+enum PluginInstanceState {
+	PLUGIN_INSTANCE_UNPREPARED,
+	PLUGIN_INSTANCE_INACTIVE,
+	PLUGIN_INSTANCE_ACTIVE,
+	PLUGIN_INSTANCE_TERMINATED,
+};
 
+class AndroidAudioPluginPort
+{
+	const char *name;
+	const AAPBufferType buffer_type;
+	const AAPPortDirection direction;
+	
+public:
+	const char* getName() { return name; }
+	const AAPBufferType getBufferType() { return buffer_type; }
+	const AAPPortDirection getPortDirection() { return direction; }
+};
 
 class AndroidAudioPluginDescriptor
 {
-	char *name;
-	char *display_name;
-	char **categories;
+	const char *name;
+	const char *display_name;
+	const char * const *categories;
 	int num_categories;
-	char *manufacturer_name;
-	char *version;
-	char *identifier_string;
+	const char *manufacturer_name;
+	const char *version;
+	const char *identifier_string;
 	int unique_id;
 	long last_updated_unixtime;
+
+	AndroidAudioPluginPort **ports;
+	int num_ports;
 
 	// hosting information
 	bool is_out_process;
@@ -74,6 +96,17 @@ public:
 		return identifier_string;
 	}
 	
+	int getNumPorts()
+	{
+		return num_ports;
+	}
+	
+	AndroidAudioPluginPort *getPort(int index)
+	{
+		assert(index < num_ports);
+		return ports[index];
+	}
+	
 	long getFileModTime()
 	{
 		// TODO: implement
@@ -96,18 +129,6 @@ public:
 		return false;
 	}
 	
-	int32_t numInputChannels()
-	{
-		// TODO: implement
-		return 0;
-	}
-	
-	int32_t numOutputChannels()
-	{
-		// TODO: implement
-		return 0;
-	}
-
 	bool hasSharedContainer()
 	{
 		// TODO: implement
@@ -220,12 +241,14 @@ class AndroidAudioPluginInstance
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
+	PluginInstanceState plugin_state;
 
 	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
 		: descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
 		  instance(NULL),
-		  extensions(NULL)
+		  extensions(NULL),
+		  plugin_state(PLUGIN_INSTANCE_UNPREPARED)
 	{
 	}
 	
@@ -238,9 +261,10 @@ public:
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
 	{
-		// FIXME: determine how to deal with maximumExpectedSamplesPerBlock (process or ignore)
+		// FIXME: pass buffer hint for LV2 bridges, taking maximumExpectedSamplesPerBlock into consideration.
 		instance = plugin->instantiate(plugin, sampleRate, extensions);
 		plugin->prepare(instance);
+		plugin_state = PLUGIN_INSTANCE_INACTIVE;
 	}
 	
 	void dispose()
@@ -250,9 +274,9 @@ public:
 		instance = NULL;
 	}
 	
-	void process(AndroidAudioPluginBuffer *audioBuffer, AndroidAudioPluginBuffer *controlBuffers, int32_t timeoutInNanoseconds)
+	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
 	{
-		plugin->process(instance, audioBuffer, controlBuffers, timeoutInNanoseconds);
+		plugin->process(instance, buffer, timeoutInNanoseconds);
 	}
 	
 	double getTailLengthSeconds() const

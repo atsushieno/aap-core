@@ -60,20 +60,27 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, Andr
 	description.lastInfoUpdateTime = Time(src.getLastInfoUpdateTime());
 	description.uid = src.getUid();
 	description.isInstrument = src.isInstrument();
-	description.numInputChannels = src.numInputChannels();
-	description.numOutputChannels = src.numOutputChannels();
+	for (int i = 0; i < src.getNumPorts(); i++) {
+		auto port = src.getPort(i);
+		auto dir = port->getPortDirection();
+		if (dir == AAP_PORT_DIRECTION_INPUT)
+			description.numInputChannels++;
+		else if (dir == AAP_PORT_DIRECTION_OUTPUT)
+			description.numOutputChannels++;
+	}
 	description.hasSharedContainer = src.hasSharedContainer();		
 }
 
 class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AndroidAudioPluginInstance *native;
-	AndroidAudioPluginBuffer audioBuffer, midiBuffer;
+	int sample_rate;
 
 public:
 
 	JuceAndroidAudioPluginInstance(AndroidAudioPluginInstance *nativePlugin)
-		: native(nativePlugin)
+		: native(nativePlugin),
+		  sample_rate(-1)
 	{
 	}
 
@@ -84,7 +91,7 @@ public:
 	
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override
 	{
-		// TODO: implement
+		sample_rate = sampleRate;
 	}
 	
 	void releaseResources() override
@@ -99,19 +106,20 @@ public:
 			dst->buffers[i] = (void*) buffer.getReadPointer(i);
 	}
 	
-	void fillNativeMidiBuffers(AndroidAudioPluginBuffer* dst, MidiBuffer& buffer)
+	void fillNativeMidiBuffers(AndroidAudioPluginBuffer* dst, MidiBuffer& buffer, int bufferIndex)
 	{
 		if (dst->numBuffers == 0)
 			return;
-		assert (dst->numBuffers == 1);
-		dst->buffers[0] = (void*) buffer.data.getRawDataPointer();
+		dst->buffers[bufferIndex] = (void*) buffer.data.getRawDataPointer();
 	}
 	
-	void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages) override
+	void processBlock(AudioBuffer<float>& audioBuffer, MidiBuffer& midiMessages) override
 	{
-		fillNativeAudioBuffers(&audioBuffer, buffer);
-		fillNativeMidiBuffers(&midiBuffer, midiMessages);
-		native->process(&audioBuffer, &midiBuffer, 0);
+		AndroidAudioPluginBuffer buffer;
+		void* buffers[audioBuffer.getNumChannels() + 1];
+		fillNativeAudioBuffers(&buffer, audioBuffer);
+		fillNativeMidiBuffers(&buffer, midiMessages, audioBuffer.getNumChannels());
+		native->process(&buffer, 0);
 	}
 	
 	double getTailLengthSeconds() const override

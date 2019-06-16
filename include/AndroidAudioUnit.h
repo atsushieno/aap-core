@@ -39,11 +39,11 @@ typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
 typedef AAPHandle* (*aap_instantiate_func_t) (AndroidAudioPlugin *pluginEntry, int sampleRate, const AndroidAudioPluginExtension * const *extensions);
 
-typedef void (*aap_prepare_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginBuffer* audioBufferHint, AndroidAudioPluginBuffer* controlBufferHint);
+typedef void (*aap_prepare_func_t) (AAPHandle *pluginHandle);
 
 typedef void (*aap_control_func_t) (AAPHandle *pluginHandle);
 
-typedef void (*aap_process_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginBuffer* audioBuffer, AndroidAudioPluginBuffer* controlBuffer, long timeoutInNanoseconds);
+typedef void (*aap_process_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds);
 
 typedef struct AndroidAudioPlugin {
 	aap_instantiate_func_t instantiate;
