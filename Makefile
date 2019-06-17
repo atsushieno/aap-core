@@ -10,7 +10,7 @@ all: build
 
 .PHONY:
 clean:
-		make CERBERO_COMMAND=wipe run-cerbero-command
+	make CERBERO_COMMAND=wipe run-cerbero-command
 
 .PHONY:
 prepare:
