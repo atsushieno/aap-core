@@ -195,7 +195,7 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
   - `AAPDesctiptorIterator`
   - `AAPDesctiptor`
   - `AAPPortIterator`
-  - `AAPPort`
+  - `AAPPortDescriptor`
   - `AAPInstance`
   - `enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL }`
   - `enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT }`

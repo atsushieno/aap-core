@@ -35,15 +35,15 @@ int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer)
 namespace aap
 {
 
-AndroidAudioPluginDescriptor* AndroidAudioPluginManager::loadDescriptorFromBundleDirectory(const char *directory)
+AAPDescriptor* AAPHost::loadDescriptorFromBundleDirectory(const char *directory)
 {
 	// FIXME: implement
 }
 
-void AndroidAudioPluginManager::updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed)
+void AAPHost::updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed)
 {
 	// FIXME: support recursive
-	vector<AndroidAudioPluginDescriptor*> descs;	
+	vector<AAPDescriptor*> descs;	
 	for (int i = 0; searchPaths[i]; i++) {
 		auto dir = opendir(searchPaths[i]);
 		if (dir == NULL)
@@ -60,7 +60,7 @@ void AndroidAudioPluginManager::updatePluginDescriptorList(const char **searchPa
 	}
 }
 
-bool AndroidAudioPluginManager::isPluginAlive (const char *identifier) 
+bool AAPHost::isPluginAlive (const char *identifier) 
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -75,7 +75,7 @@ bool AndroidAudioPluginManager::isPluginAlive (const char *identifier)
 	return true;
 }
 
-bool AndroidAudioPluginManager::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+bool AAPHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -87,7 +87,7 @@ bool AndroidAudioPluginManager::isPluginUpToDate (const char *identifier, long l
 	// FIXME: implement
 }
 
-AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(AndroidAudioPluginDescriptor *descriptor)
+AAPInstance* AAPHost::instantiatePlugin(AAPDescriptor *descriptor)
 {
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
@@ -97,17 +97,17 @@ AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiatePlugin(Android
 		instantiateLocalPlugin(descriptor);
 }
 
-AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiateLocalPlugin(AndroidAudioPluginDescriptor *descriptor)
+AAPInstance* AAPHost::instantiateLocalPlugin(AAPDescriptor *descriptor)
 {
 	const char *file = descriptor->getFilePath();
 	auto dl = dlopen(file, RTLD_LAZY);
 	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();
 
-	return new AndroidAudioPluginInstance(descriptor, plugin);
+	return new AAPInstance(descriptor, plugin);
 }
 
-AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiateRemotePlugin(AndroidAudioPluginDescriptor *descriptor)
+AAPInstance* AAPHost::instantiateRemotePlugin(AAPDescriptor *descriptor)
 {
 	// FIXME: implement.
 	assert(false);
@@ -116,7 +116,7 @@ AndroidAudioPluginInstance* AndroidAudioPluginManager::instantiateRemotePlugin(A
 
 void dogfooding_api()
 {
-	AndroidAudioPluginManager manager;
+	AAPHost manager;
 	auto paths = manager.getDefaultPluginSearchPaths();
 	
 }

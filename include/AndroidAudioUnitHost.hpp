@@ -20,10 +20,18 @@
 namespace aap
 {
 
-class AndroidAudioPluginInstance;
+class AAPInstance;
 
-enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL };
-enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT };
+enum AAPBufferType {
+	AAP_BUFFER_TYPE_AUDIO,
+	AAP_BUFFER_TYPE_CONTROL
+};
+
+enum AAPPortDirection {
+	AAP_PORT_DIRECTION_INPUT,
+	AAP_PORT_DIRECTION_OUTPUT
+};
+
 enum PluginInstantiationState {
 	PLUGIN_INSTANTIATION_STATE_UNPREPARED,
 	PLUGIN_INSTANTIATION_STATE_INACTIVE,
@@ -31,7 +39,7 @@ enum PluginInstantiationState {
 	PLUGIN_INSTANTIATION_STATE_TERMINATED,
 };
 
-class AndroidAudioPluginPort
+class AAPPortDescriptor
 {
 	const char *name;
 	const AAPBufferType buffer_type;
@@ -43,7 +51,7 @@ public:
 	const AAPPortDirection getPortDirection() { return direction; }
 };
 
-class AndroidAudioPluginDescriptor
+class AAPDescriptor
 {
 	const char *name;
 	const char *display_name;
@@ -55,7 +63,7 @@ class AndroidAudioPluginDescriptor
 	int unique_id;
 	long last_info_updated_unixtime;
 
-	AndroidAudioPluginPort **ports;
+	AAPPortDescriptor **ports;
 	AndroidAudioPluginExtension **required_extensions;
 	AndroidAudioPluginExtension **optional_extensions;
 
@@ -63,7 +71,7 @@ class AndroidAudioPluginDescriptor
 	bool is_out_process;
 
 public:
-	AndroidAudioPluginDescriptor(bool isOutProcess)
+	AAPDescriptor(bool isOutProcess)
 		: last_info_updated_unixtime((long) time(NULL)),
 		  is_out_process(isOutProcess)
 	{
@@ -113,7 +121,7 @@ public:
 		return n;
 	}
 	
-	AndroidAudioPluginPort *getPort(int index)
+	AAPPortDescriptor *getPort(int index)
 	{
 		assert(index < getNumPorts());
 		return ports[index];
@@ -207,19 +215,19 @@ public:
 	}
 };
 
-class AndroidAudioPluginManager
+class AAPHost
 {
 	AAssetManager *asset_manager;
 	const char* default_plugin_search_paths[2];
-	AndroidAudioPluginDescriptor** plugin_descriptors;
+	AAPDescriptor** plugin_descriptors;
 	
-	AndroidAudioPluginDescriptor* loadDescriptorFromBundleDirectory(const char *directory);
-	AndroidAudioPluginInstance* instantiateLocalPlugin(AndroidAudioPluginDescriptor *descriptor);
-	AndroidAudioPluginInstance* instantiateRemotePlugin(AndroidAudioPluginDescriptor *descriptor);
+	AAPDescriptor* loadDescriptorFromBundleDirectory(const char *directory);
+	AAPInstance* instantiateLocalPlugin(AAPDescriptor *descriptor);
+	AAPInstance* instantiateRemotePlugin(AAPDescriptor *descriptor);
 
 public:
 
-	AndroidAudioPluginManager()
+	AAPHost()
 		: asset_manager(NULL),
 		  plugin_descriptors(NULL)
 	{
@@ -246,12 +254,12 @@ public:
 		return default_plugin_search_paths;
 	}
 
-	AndroidAudioPluginDescriptor** getPluginDescriptorList()
+	AAPDescriptor** getPluginDescriptorList()
 	{
 		return plugin_descriptors;
 	}
 	
-	AndroidAudioPluginDescriptor* getPluginDescriptor(const char *identifier)
+	AAPDescriptor* getPluginDescriptor(const char *identifier)
 	{
 		// TODO: implement
 		return NULL;
@@ -259,16 +267,16 @@ public:
 	
 	void updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed);
 	
-	AndroidAudioPluginInstance* instantiatePlugin(AndroidAudioPluginDescriptor *descriptor);
+	AAPInstance* instantiatePlugin(AAPDescriptor *descriptor);
 };
 
-class AndroidAudioPluginEditor
+class AAPEditor
 {
-	AndroidAudioPluginInstance *owner;
+	AAPInstance *owner;
 
 public:
 
-	AndroidAudioPluginEditor(AndroidAudioPluginInstance *owner)
+	AAPEditor(AAPInstance *owner)
 		: owner(owner)
 	{
 		// TODO: implement
@@ -280,17 +288,17 @@ public:
 	}
 };
 
-class AndroidAudioPluginInstance
+class AAPInstance
 {
-	friend class AndroidAudioPluginManager;
+	friend class AAPHost;
 	
-	AndroidAudioPluginDescriptor *descriptor;
+	AAPDescriptor *descriptor;
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	AndroidAudioPluginInstance(AndroidAudioPluginDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+	AAPInstance(AAPDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
 		: descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
 		  instance(NULL),
@@ -301,7 +309,7 @@ class AndroidAudioPluginInstance
 	
 public:
 
-	AndroidAudioPluginDescriptor* getPluginDescriptor()
+	AAPDescriptor* getPluginDescriptor()
 	{
 		return descriptor;
 	}
@@ -354,9 +362,9 @@ public:
 		return 0;
 	}
 	
-	AndroidAudioPluginEditor* createEditor()
+	AAPEditor* createEditor()
 	{
-		return new AndroidAudioPluginEditor(this);
+		return new AAPEditor(this);
 	}
 	
 	int getNumPrograms()

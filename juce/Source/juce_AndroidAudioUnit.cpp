@@ -16,15 +16,15 @@ using namespace juce;
 namespace juceaap
 {
 
-class JuceAndroidAudioPluginInstance;
+class JuceAAPInstance;
 
-class JuceAndroidAudioProcessorEditor : public juce::AudioProcessorEditor
+class JuceAAPAudioProcessorEditor : public juce::AudioProcessorEditor
 {
-	AndroidAudioPluginEditor *native;
+	AAPEditor *native;
 	
 public:
 
-	JuceAndroidAudioProcessorEditor(AudioProcessor *processor, AndroidAudioPluginEditor *native)
+	JuceAAPAudioProcessorEditor(AudioProcessor *processor, AAPEditor *native)
 		: AudioProcessorEditor(processor), native(native)
 	{
 	}
@@ -42,7 +42,7 @@ public:
 	*/
 };
 
-static void fillPluginDescriptionFromNative(PluginDescription &description, AndroidAudioPluginDescriptor &src)
+static void fillPluginDescriptionFromNative(PluginDescription &description, AAPDescriptor &src)
 {
 	description.name = src.getName();
 	description.pluginFormatName = "AAP";
@@ -71,14 +71,14 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, Andr
 	description.hasSharedContainer = src.hasSharedContainer();		
 }
 
-class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
+class JuceAAPInstance : public juce::AudioPluginInstance
 {
-	AndroidAudioPluginInstance *native;
+	AAPInstance *native;
 	int sample_rate;
 
 public:
 
-	JuceAndroidAudioPluginInstance(AndroidAudioPluginInstance *nativePlugin)
+	JuceAAPInstance(AAPInstance *nativePlugin)
 		: native(nativePlugin),
 		  sample_rate(-1)
 	{
@@ -143,7 +143,7 @@ public:
 	{
 		if (!native->getPluginDescriptor()->hasEditor())
 			return nullptr;
-		auto ret = new JuceAndroidAudioProcessorEditor(this, native->createEditor());
+		auto ret = new JuceAAPAudioProcessorEditor(this, native->createEditor());
 		ret->startEditorUI();
 		return ret;
 	}
@@ -199,10 +199,10 @@ public:
 
 class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
-	AndroidAudioPluginManager android_manager;
-	HashMap<AndroidAudioPluginDescriptor*,PluginDescription*> cached_descs;
+	AAPHost android_manager;
+	HashMap<AAPDescriptor*,PluginDescription*> cached_descs;
 
-	AndroidAudioPluginDescriptor *findDescriptorFrom(const PluginDescription &desc)
+	AAPDescriptor *findDescriptorFrom(const PluginDescription &desc)
 	{
 		auto it = cached_descs.begin();
 		while (it.next())
@@ -214,7 +214,7 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager)
-		: android_manager(AndroidAudioPluginManager())
+		: android_manager(AAPHost())
 	{
 		android_manager.initialize(assetManager);
 	}
@@ -316,7 +316,7 @@ protected:
 			callback(userData, nullptr, error);
 		} else {
 			auto androidInstance = android_manager.instantiatePlugin(descriptor);
-			auto instance = new JuceAndroidAudioPluginInstance(androidInstance);
+			auto instance = new JuceAAPInstance(androidInstance);
 			callback(userData, instance, error);
 		}
 	}
@@ -329,7 +329,7 @@ protected:
 };
 
 
-JuceAndroidAudioPluginInstance p(NULL);
+JuceAAPInstance p(NULL);
 JuceAndroidAudioPluginFormat f(NULL);
 
 } // namespace
