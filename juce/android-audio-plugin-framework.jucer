@@ -4,14 +4,14 @@
               jucerVersion="5.4.3" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
-      <FILE id="zdPei0" name="AndroidAudioUnitHost.cpp" compile="1" resource="0"
-            file="../src/AndroidAudioUnitHost.cpp"/>
-      <FILE id="QlUDzX" name="AndroidAudioUnit.h" compile="0" resource="0"
-            file="../include/AndroidAudioUnit.h"/>
-      <FILE id="QlUDzX" name="AndroidAudioUnitHost.hpp" compile="0" resource="0"
-            file="../include/AndroidAudioUnitHost.hpp"/>
-      <FILE id="AcSfsw" name="juce_AndroidAudioUnit.cpp" compile="1" resource="0"
-            file="Source/juce_AndroidAudioUnit.cpp"/>
+      <FILE id="zdPei0" name="android-audio-plugin-host.cpp" compile="1"
+            resource="0" file="../src/android-audio-plugin-host.cpp"/>
+      <FILE id="QlUDzX" name="android-audio-plugin.h" compile="0" resource="0"
+            file="../include/android-audio-plugin.h"/>
+      <FILE id="QlUDzX" name="android-audio-plugin-host.hpp" compile="0"
+            resource="0" file="../include/android-audio-plugin-host.hpp"/>
+      <FILE id="AcSfsw" name="juce_android_audio_plugin_format.cpp" compile="1"
+            resource="0" file="Source/juce_android_audio_plugin_format.cpp"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>

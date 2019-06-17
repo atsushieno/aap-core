@@ -8,7 +8,7 @@
   ==============================================================================
 */
 
-#include "../../include/AndroidAudioUnitHost.hpp"
+#include "../../include/android-audio-plugin-host.hpp"
 
 using namespace aap;
 using namespace juce;

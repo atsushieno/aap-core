@@ -14,7 +14,7 @@
 #include <time.h>
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "android/asset_manager.h"
-#include "AndroidAudioUnit.h"
+#include "android-audio-plugin.h"
 
 
 namespace aap

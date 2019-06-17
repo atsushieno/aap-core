@@ -8,7 +8,7 @@
   ==============================================================================
 */
 
-#include "../include/AndroidAudioUnitHost.hpp"
+#include "../include/android-audio-plugin-host.hpp"
 #include "android/asset_manager.h"
 #include <vector>
 #include <dirent.h>
