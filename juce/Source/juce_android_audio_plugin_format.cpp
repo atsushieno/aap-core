@@ -8,6 +8,7 @@
   ==============================================================================
 */
 
+#include "../JuceLibraryCode/JuceHeader.h"
 #include "../../include/android-audio-plugin-host.hpp"
 
 using namespace aap;
@@ -213,10 +214,10 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 
 public:
-	JuceAndroidAudioPluginFormat(AAssetManager *assetManager)
+	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const char* const* pluginAssetDirectories)
 		: android_manager(AAPHost())
 	{
-		android_manager.initialize(assetManager);
+		android_manager.initialize(assetManager, pluginAssetDirectories);
 	}
 
 	~JuceAndroidAudioPluginFormat()
@@ -330,6 +331,6 @@ protected:
 
 
 JuceAAPInstance p(NULL);
-JuceAndroidAudioPluginFormat f(NULL);
+JuceAndroidAudioPluginFormat f(NULL, NULL);
 
 } // namespace

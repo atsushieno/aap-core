@@ -1,18 +1,8 @@
-/*
-  ==============================================================================
-
-    AndroidAudioUnit.h
-    Created: 9 May 2019 3:13:10am
-    Author:  atsushieno
-
-  ==============================================================================
-*/
-
 #pragma once
 
+#include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
-#include "../JuceLibraryCode/JuceHeader.h"
 #include "android/asset_manager.h"
 #include "android-audio-plugin.h"
 
@@ -235,13 +225,8 @@ public:
 		default_plugin_search_paths[1] = NULL;
 	}
 	
-	void initialize(AAssetManager *assetManager)
-	{
-		asset_manager = assetManager;
-	}
+	void initialize(AAssetManager *assetManager, const char* const *pluginIdentifiers);
 	
-	
-
 	bool isPluginAlive (const char *identifier);
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);

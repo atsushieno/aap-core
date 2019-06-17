@@ -214,9 +214,9 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
     - `bool aap_port_iterator_next(AAPPortIterator*)`
     - `AAPPort* aap_port_iterator_current(AAPPortIterator*)`
   - plugin port desctiptor
-    - const char* aap_port_get_name(AAPPort*)
-    - AAPBufferType aap_port_get_buffer_type(AAPPort*)
-    - AAPPortDirection aap_port_get_direction(AAPPort*)
+    - `const char* aap_port_get_name(AAPPort*)`
+    - `AAPBufferType aap_port_get_buffer_type(AAPPort*)`
+    - `AAPPortDirection aap_port_get_direction(AAPPort*)`
   - plugin instance
     - `void aap_instance_connect(AAPInstance*)`
     - `void aap_instance_activate(AAPInstance*)`
