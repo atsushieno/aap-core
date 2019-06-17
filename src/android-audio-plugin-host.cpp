@@ -36,28 +36,28 @@ namespace aap
 
 void AAPHost::initialize(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
 {
+	// local plugins
 	asset_manager = assetManager;
 	vector<AAPDescriptor*> descs;
 	for (int i = 0; pluginAssetDirectories[i]; i++) {
 		auto dir = AAssetManager_openDir(assetManager, pluginAssetDirectories[i]);
 		if (dir == NULL)
 			continue; // for whatever reason, failed to open directory.
-		descs.push_back(loadDescriptorFromBundleDirectory(pluginAssetDirectories[i]));
+		descs.push_back(loadDescriptorFromAssetBundleDirectory(pluginAssetDirectories[i]));
 		AAssetDir_close(dir);
 	}
 	plugin_descriptors = (AAPDescriptor**) malloc(sizeof(AAPDescriptor*) * descs.size());
+	
+	// TODO: implement remote plugin query and store results into `descs`
+	
+
+	// done
 	std::copy(descs.begin(), descs.end(), plugin_descriptors);
 }
 
-AAPDescriptor* AAPHost::loadDescriptorFromBundleDirectory(const char *directory)
+AAPDescriptor* AAPHost::loadDescriptorFromAssetBundleDirectory(const char *directory)
 {
-	// FIXME: implement
-}
-
-void AAPHost::updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed)
-{
-	// can't do anything. Android asset manager does not support directory iterators, 
-	// and loading local file system doesn't make sense.
+	// TODO: implement. load AAP manifest and fill descriptor.
 }
 
 bool AAPHost::isPluginAlive (const char *identifier) 
@@ -66,7 +66,11 @@ bool AAPHost::isPluginAlive (const char *identifier)
 	if (!desc)
 		return false;
 
-	// assets won't be removed
+	if (desc->isOutProcess()) {
+		// TODO: implement healthcheck
+	} else {
+		// assets won't be removed
+	}
 
 	// need more validation?
 	
@@ -82,8 +86,9 @@ bool AAPHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdated;
 }
 
-AAPInstance* AAPHost::instantiatePlugin(AAPDescriptor *descriptor)
+AAPInstance* AAPHost::instantiatePlugin(const char *identifier)
 {
+	AAPDescriptor *descriptor = getPluginDescriptor(identifier);
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
 	if (descriptor->isOutProcess())
@@ -99,12 +104,12 @@ AAPInstance* AAPHost::instantiateLocalPlugin(AAPDescriptor *descriptor)
 	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();
 
-	return new AAPInstance(descriptor, plugin);
+	return new AAPInstance(this, descriptor, plugin);
 }
 
 AAPInstance* AAPHost::instantiateRemotePlugin(AAPDescriptor *descriptor)
 {
-	// FIXME: implement.
+	// TODO: implement. remote instantiation
 	assert(false);
 }
 

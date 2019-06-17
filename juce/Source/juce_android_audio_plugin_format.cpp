@@ -8,15 +8,15 @@ using namespace juce;
 namespace juceaap
 {
 
-class JuceAAPInstance;
+class JuceAndroidAudioPluginInstance;
 
-class JuceAAPAudioProcessorEditor : public juce::AudioProcessorEditor
+class JuceAndroidAudioPluginEditor : public juce::AudioProcessorEditor
 {
 	AAPEditor *native;
 	
 public:
 
-	JuceAAPAudioProcessorEditor(AudioProcessor *processor, AAPEditor *native)
+	JuceAndroidAudioPluginEditor(AudioProcessor *processor, AAPEditor *native)
 		: AudioProcessorEditor(processor), native(native)
 	{
 	}
@@ -61,14 +61,14 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, AAPD
 	description.hasSharedContainer = src.hasSharedContainer();		
 }
 
-class JuceAAPInstance : public juce::AudioPluginInstance
+class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AAPInstance *native;
 	int sample_rate;
 
 public:
 
-	JuceAAPInstance(AAPInstance *nativePlugin)
+	JuceAndroidAudioPluginInstance(AAPInstance *nativePlugin)
 		: native(nativePlugin),
 		  sample_rate(-1)
 	{
@@ -119,21 +119,34 @@ public:
 		return native->getTailTimeInMilliseconds();
 	}
 	
+	bool hasMidiPort(bool isInput) const
+	{
+		auto d = native->getPluginDescriptor();
+		for (int i = 0; i < d->getNumPorts(); i++) {
+			auto p = d->getPort(i);
+			if (p->getPortDirection() == (isInput ? AAP_PORT_DIRECTION_INPUT : AAP_PORT_DIRECTION_OUTPUT) &&
+			    p->getBufferType() == AAP_BUFFER_TYPE_CONTROL &&
+			    p->isControlMidi())
+				return true;
+		}
+		return false;
+	}
+	
 	bool acceptsMidi() const override
 	{
-		return native->getPluginDescriptor()->hasMidiInputPort();
+		return hasMidiPort(true);
 	}
 	
 	bool producesMidi() const override
 	{
-		return native->getPluginDescriptor()->hasMidiOutputPort();
+		return hasMidiPort(false);
 	}
 	
 	AudioProcessorEditor* createEditor() override
 	{
 		if (!native->getPluginDescriptor()->hasEditor())
 			return nullptr;
-		auto ret = new JuceAAPAudioProcessorEditor(this, native->createEditor());
+		auto ret = new JuceAndroidAudioPluginEditor(this, native->createEditor());
 		ret->startEditorUI();
 		return ret;
 	}
@@ -207,6 +220,13 @@ public:
 		: android_manager(AAPHost())
 	{
 		android_manager.initialize(assetManager, pluginAssetDirectories);
+		
+		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++) {
+			auto d = android_manager.getPluginDescriptorAt(i);
+			auto dst = new PluginDescription();
+			fillPluginDescriptionFromNative(*dst, *d);
+			cached_descs.set(d, dst);
+		}
 	}
 
 	~JuceAndroidAudioPluginFormat()
@@ -225,16 +245,14 @@ public:
 	void findAllTypesForFile(OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
 	{
 		auto id = fileOrIdentifier.toRawUTF8();
-		auto descriptors = android_manager.getPluginDescriptorList();
-		for (int i = 0; descriptors != NULL && descriptors[i] != NULL; i++) {
-			auto d = descriptors[i];
+		// FIXME: everything is already cached, so this can be simplified.
+		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++) {
+			auto d = android_manager.getPluginDescriptorAt(i);
 			if (strcmp(id, d->getName()) == 0 || strcmp(id, d->getIdentifier()) == 0) {
 				auto dst = cached_descs [d];
-				if (!dst) {
-					dst = new PluginDescription();
-					cached_descs.set(d, dst);
-					fillPluginDescriptionFromNative(*dst, *d);
-				}
+				if (!dst)
+					// doesn't JUCE handle invalid fileOrIdentifier?
+					return;
 				results.add(dst);
 			}
 		}
@@ -271,15 +289,11 @@ public:
 		bool recursive,
 		bool allowPluginsWhichRequireAsynchronousInstantiation = false)
 	{
-		int numPaths = directoriesToSearch.getNumPaths();
-		const char * paths[numPaths];
-		for (int i = 0; i < numPaths; i++)
-			paths[i] = directoriesToSearch[i].getFullPathName().toRawUTF8();
-		android_manager.updatePluginDescriptorList(paths, recursive, allowPluginsWhichRequireAsynchronousInstantiation);
-		auto results = android_manager.getPluginDescriptorList();
+		// regardless of whatever parameters this function is passed, it is
+		// impossible to change the list of detected plugins.
 		StringArray ret;
-		for (int i = 0; results != NULL && results[i] != NULL; i++)
-			ret.add(results[i]->getFilePath());
+		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++)
+			ret.add(android_manager.getPluginDescriptorAt(i)->getIdentifier());
 		return ret;
 	}
 	
@@ -287,7 +301,7 @@ public:
 	{
 		const char **paths = android_manager.getDefaultPluginSearchPaths();
 		StringArray arr(paths);
-		String joined = arr.joinIntoString(";");
+		String joined = arr.joinIntoString(":");
 		FileSearchPath ret(joined);
 		return ret;
 	}
@@ -305,8 +319,8 @@ protected:
 			error << "Android Audio Plugin " << description.name << "was not found.";
 			callback(userData, nullptr, error);
 		} else {
-			auto androidInstance = android_manager.instantiatePlugin(descriptor);
-			auto instance = new JuceAAPInstance(androidInstance);
+			auto androidInstance = android_manager.instantiatePlugin(descriptor->getIdentifier());
+			auto instance = new JuceAndroidAudioPluginInstance(androidInstance);
 			callback(userData, instance, error);
 		}
 	}
@@ -319,7 +333,7 @@ protected:
 };
 
 
-JuceAAPInstance p(NULL);
+JuceAndroidAudioPluginInstance p(NULL);
 JuceAndroidAudioPluginFormat f(NULL, NULL);
 
 } // namespace

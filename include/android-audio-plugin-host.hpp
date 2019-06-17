@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlib.h>
 #include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
@@ -7,10 +8,19 @@
 #include "android-audio-plugin.h"
 
 
+#define _AAP_NULL_TERMINATED_LIST(name) { \
+		int32_t n = 0; \
+		auto ptr = name; \
+		for (;ptr; ptr++) \
+			n++; \
+		return n; \
+	}
+
 namespace aap
 {
 
 class AAPInstance;
+class AAPEditor;
 
 enum AAPBufferType {
 	AAP_BUFFER_TYPE_AUDIO,
@@ -32,13 +42,15 @@ enum PluginInstantiationState {
 class AAPPortDescriptor
 {
 	const char *name;
-	const AAPBufferType buffer_type;
-	const AAPPortDirection direction;
+	AAPBufferType buffer_type;
+	AAPPortDirection direction;
+	bool is_control_midi;
 	
 public:
 	const char* getName() { return name; }
-	const AAPBufferType getBufferType() { return buffer_type; }
-	const AAPPortDirection getPortDirection() { return direction; }
+	AAPBufferType getBufferType() { return buffer_type; }
+	AAPPortDirection getPortDirection() { return direction; }
+	bool isControlMidi() { return is_control_midi; }
 };
 
 class AAPDescriptor
@@ -65,6 +77,7 @@ protected:
 	bool is_out_process;
 
 public:
+	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
@@ -106,11 +119,7 @@ public:
 	
 	int32_t getNumPorts()
 	{
-		int32_t n = 0;
-		auto ptr = ports;
-		for (;ptr; ptr++)
-			n++;
-		return n;
+		_AAP_NULL_TERMINATED_LIST(ports)
 	}
 	
 	AAPPortDescriptor *getPort(int32_t index)
@@ -121,11 +130,7 @@ public:
 	
 	int32_t getNumRequiredExtensions()
 	{
-		int32_t n = 0;
-		auto ptr = required_extensions;
-		for (;ptr; ptr++)
-			n++;
-		return n;
+		_AAP_NULL_TERMINATED_LIST(required_extensions)
 	}
 	
 	AndroidAudioPluginExtension *getRequiredExtension(int32_t index)
@@ -136,11 +141,7 @@ public:
 	
 	int32_t getNumOptionalExtensions()
 	{
-		int32_t n = 0;
-		auto ptr = optional_extensions;
-		for (;ptr; ptr++)
-			n++;
-		return n;
+		_AAP_NULL_TERMINATED_LIST(optional_extensions)
 	}
 	
 	AndroidAudioPluginExtension *getOptionalExtension(int32_t index)
@@ -167,7 +168,7 @@ public:
 	
 	bool isInstrument()
 	{
-		// TODO: implement
+		// TODO: implement. Probably by metadata
 		return false;
 	}
 	
@@ -179,19 +180,7 @@ public:
 	
 	bool hasEditor()
 	{
-		// TODO: implement
-		return false;
-	}
-	
-	bool hasMidiInputPort()
-	{
-		// TODO: implement
-		return false;
-	}
-	
-	bool hasMidiOutputPort()
-	{
-		// TODO: implement
+		// TODO: implement. By metadata
 		return false;
 	}
 
@@ -205,56 +194,6 @@ public:
 	{
 		return is_out_process;
 	}
-};
-
-class AAPHost
-{
-	AAssetManager *asset_manager;
-	const char* default_plugin_search_paths[2];
-	AAPDescriptor** plugin_descriptors;
-	
-	AAPDescriptor* loadDescriptorFromBundleDirectory(const char *directory);
-	AAPInstance* instantiateLocalPlugin(AAPDescriptor *descriptor);
-	AAPInstance* instantiateRemotePlugin(AAPDescriptor *descriptor);
-
-public:
-
-	AAPHost()
-		: asset_manager(NULL),
-		  plugin_descriptors(NULL)
-	{
-		default_plugin_search_paths[0] = "/";
-		default_plugin_search_paths[1] = NULL;
-	}
-	
-	void initialize(AAssetManager *assetManager, const char* const *pluginIdentifiers);
-	
-	bool isPluginAlive (const char *identifier);
-	
-	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
-
-	// Unlike desktop system, it is not practical to either look into file systems
-	// on Android. And it is simply impossible to "enumerate" asset directories.
-	// Therefore we simply return dummy "/" directory.
-	const char** getDefaultPluginSearchPaths()
-	{
-		return default_plugin_search_paths;
-	}
-
-	AAPDescriptor** getPluginDescriptorList()
-	{
-		return plugin_descriptors;
-	}
-	
-	AAPDescriptor* getPluginDescriptor(const char *identifier)
-	{
-		// TODO: implement
-		return NULL;
-	}
-	
-	void updatePluginDescriptorList(const char **searchPaths, bool recursive, bool asynchronousInstantiationAllowed);
-	
-	AAPInstance* instantiatePlugin(AAPDescriptor *descriptor);
 };
 
 class AAPEditor
@@ -275,18 +214,91 @@ public:
 	}
 };
 
+class AAPHost
+{
+	AAssetManager *asset_manager;
+	const char* default_plugin_search_paths[2];
+	AAPDescriptor** plugin_descriptors;
+	
+	AAPDescriptor* loadDescriptorFromAssetBundleDirectory(const char *directory);
+	AAPInstance* instantiateLocalPlugin(AAPDescriptor *descriptor);
+	AAPInstance* instantiateRemotePlugin(AAPDescriptor *descriptor);
+
+public:
+
+	AAPHost()
+		: asset_manager(NULL),
+		  plugin_descriptors(NULL)
+	{
+		default_plugin_search_paths[0] = "/";
+		default_plugin_search_paths[1] = NULL;
+	}
+
+	~AAPHost()
+	{
+		if (plugin_descriptors != NULL)
+			for (int i = 0; i < getNumPluginDescriptors(); i++)
+				free(plugin_descriptors[i]);
+	}
+	
+	void initialize(AAssetManager *assetManager, const char* const *pluginIdentifiers);
+	
+	bool isPluginAlive (const char *identifier);
+	
+	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
+
+	// Unlike desktop system, it is not practical to either look into file systems
+	// on Android. And it is simply impossible to "enumerate" asset directories.
+	// Therefore we simply return dummy "/" directory.
+	const char** getDefaultPluginSearchPaths()
+	{
+		return default_plugin_search_paths;
+	}
+	
+	int32_t getNumPluginDescriptors()
+	{
+		_AAP_NULL_TERMINATED_LIST(plugin_descriptors)
+	}
+
+	AAPDescriptor* getPluginDescriptorAt(int index)
+	{
+		assert(index < getNumPluginDescriptors());
+		return plugin_descriptors[index];
+	}
+	
+	AAPDescriptor* getPluginDescriptor(const char *identifier)
+	{
+		assert(plugin_descriptors != NULL);
+		for(int i = 0; i < getNumPluginDescriptors(); i++) {
+			auto d = getPluginDescriptorAt(i);
+			if (strcmp(d->getIdentifier(), identifier) == 0)
+				return d;
+		}
+		return NULL;
+	}
+	
+	AAPInstance* instantiatePlugin(const char* identifier);
+	
+	AAPEditor* createEditor(AAPInstance* instance)
+	{
+		return new AAPEditor(instance);
+	}
+};
+
 class AAPInstance
 {
 	friend class AAPHost;
 	
+	AAPHost *host;
 	AAPDescriptor *descriptor;
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	AAPInstance(AAPDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
-		: descriptor(pluginDescriptor),
+	AAPInstance(AAPHost* host, AAPDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+		: host(host),
+		  descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
 		  instance(NULL),
 		  extensions(NULL),
@@ -351,7 +363,7 @@ public:
 	
 	AAPEditor* createEditor()
 	{
-		return new AAPEditor(this);
+		host->createEditor(this);
 	}
 	
 	int getNumPrograms()
