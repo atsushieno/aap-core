@@ -1,12 +1,3 @@
-/*
-  ==============================================================================
-
-    juce_AndroidAudioUnit.cpp
-    Created: 9 May 2019 3:09:22am
-    Author:  atsushieno
-
-  ==============================================================================
-*/
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "../../include/android-audio-plugin-host.hpp"
@@ -48,10 +39,8 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, AAPD
 	description.name = src.getName();
 	description.pluginFormatName = "AAP";
 	
-	int32_t numCategories = src.numCategories();
 	description.category.clear();
-	for (int i = 0; i < numCategories; i++)
-		description.category += src.getCategoryAt(i);
+	description.category += src.getPrimaryCategory();
 	
 	description.manufacturerName = src.getManufacturerName();
 	description.version = src.getVersion();

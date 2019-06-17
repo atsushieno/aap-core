@@ -43,24 +43,31 @@ public:
 
 class AAPDescriptor
 {
+protected:
 	const char *name;
 	const char *display_name;
-	const char * const *categories;
-	int num_categories;
 	const char *manufacturer_name;
 	const char *version;
 	const char *identifier_string;
 	int unique_id;
 	long last_info_updated_unixtime;
 
+	/* NULL-terminated list of categories */
+	const char *primary_category;
+	/* NULL-terminated list of ports */
 	AAPPortDescriptor **ports;
+	/* NULL-terminated list of required extensions */
 	AndroidAudioPluginExtension **required_extensions;
+	/* NULL-terminated list of optional extensions */
 	AndroidAudioPluginExtension **optional_extensions;
 
 	// hosting information
 	bool is_out_process;
 
 public:
+	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
+	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
+	
 	AAPDescriptor(bool isOutProcess)
 		: last_info_updated_unixtime((long) time(NULL)),
 		  is_out_process(isOutProcess)
@@ -75,16 +82,6 @@ public:
 	const char* getDescriptiveName()
 	{
 		return display_name;
-	}
-	
-	int32_t numCategories()
-	{
-		return num_categories;
-	}
-	
-	const char* getCategoryAt(int32_t index)
-	{
-		return categories [index];
 	}
 	
 	const char* getManufacturerName()
@@ -102,46 +99,51 @@ public:
 		return identifier_string;
 	}
 	
-	int getNumPorts()
+	const char* getPrimaryCategory()
 	{
-		int n = 0;
+		return primary_category;
+	}
+	
+	int32_t getNumPorts()
+	{
+		int32_t n = 0;
 		auto ptr = ports;
 		for (;ptr; ptr++)
 			n++;
 		return n;
 	}
 	
-	AAPPortDescriptor *getPort(int index)
+	AAPPortDescriptor *getPort(int32_t index)
 	{
 		assert(index < getNumPorts());
 		return ports[index];
 	}
 	
-	int getNumRequiredExtensions()
+	int32_t getNumRequiredExtensions()
 	{
-		int n = 0;
+		int32_t n = 0;
 		auto ptr = required_extensions;
 		for (;ptr; ptr++)
 			n++;
 		return n;
 	}
 	
-	AndroidAudioPluginExtension *getRequiredExtension(int index)
+	AndroidAudioPluginExtension *getRequiredExtension(int32_t index)
 	{
 		assert(index < getNumRequiredExtensions());
 		return required_extensions[index];
 	}
 	
-	int getNumOptionalExtensions()
+	int32_t getNumOptionalExtensions()
 	{
-		int n = 0;
+		int32_t n = 0;
 		auto ptr = optional_extensions;
 		for (;ptr; ptr++)
 			n++;
 		return n;
 	}
 	
-	AndroidAudioPluginExtension *getOptionalExtension(int index)
+	AndroidAudioPluginExtension *getOptionalExtension(int32_t index)
 	{
 		assert(index < getNumOptionalExtensions());
 		return optional_extensions[index];
