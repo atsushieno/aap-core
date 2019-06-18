@@ -12,11 +12,11 @@ class JuceAndroidAudioPluginInstance;
 
 class JuceAndroidAudioPluginEditor : public juce::AudioProcessorEditor
 {
-	AAPEditor *native;
+	aap::EditorInstance *native;
 	
 public:
 
-	JuceAndroidAudioPluginEditor(AudioProcessor *processor, AAPEditor *native)
+	JuceAndroidAudioPluginEditor(AudioProcessor *processor, aap::EditorInstance *native)
 		: AudioProcessorEditor(processor), native(native)
 	{
 	}
@@ -34,7 +34,7 @@ public:
 	*/
 };
 
-static void fillPluginDescriptionFromNative(PluginDescription &description, AAPDescriptor &src)
+static void fillPluginDescriptionFromNative(PluginDescription &description, aap::PluginInformation &src)
 {
 	description.name = src.getName();
 	description.pluginFormatName = "AAP";
@@ -63,7 +63,7 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, AAPD
 
 class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
-	AAPInstance *native;
+	aap::PluginInstance *native;
 	int sample_rate;
 	
 	void fillNativeAudioBuffers(AndroidAudioPluginBuffer* dst, AudioBuffer<float>& buffer)
@@ -86,7 +86,7 @@ class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 
 public:
 
-	JuceAndroidAudioPluginInstance(AAPInstance *nativePlugin)
+	JuceAndroidAudioPluginInstance(aap::PluginInstance *nativePlugin)
 		: native(nativePlugin),
 		  sample_rate(-1)
 	{
@@ -207,10 +207,10 @@ public:
 
 class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
-	AAPHost android_manager;
-	HashMap<AAPDescriptor*,PluginDescription*> cached_descs;
+	aap::Host android_manager;
+	HashMap<aap::PluginInformation*,PluginDescription*> cached_descs;
 
-	AAPDescriptor *findDescriptorFrom(const PluginDescription &desc)
+	aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc)
 	{
 		auto it = cached_descs.begin();
 		while (it.next())
@@ -222,7 +222,7 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const char* const* pluginAssetDirectories)
-		: android_manager(AAPHost())
+		: android_manager(aap::Host())
 	{
 		android_manager.initialize(assetManager, pluginAssetDirectories);
 		

@@ -15,11 +15,11 @@
 namespace aap
 {
 
-void AAPHost::initialize(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
+void Host::initialize(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
 {
 	// local plugins
 	asset_manager = assetManager;
-	vector<AAPDescriptor*> descs;
+	vector<PluginInformation*> descs;
 	for (int i = 0; pluginAssetDirectories[i]; i++) {
 		auto dir = AAssetManager_openDir(assetManager, pluginAssetDirectories[i]);
 		if (dir == NULL)
@@ -27,7 +27,7 @@ void AAPHost::initialize(AAssetManager *assetManager, const char* const *pluginA
 		descs.push_back(loadDescriptorFromAssetBundleDirectory(pluginAssetDirectories[i]));
 		AAssetDir_close(dir);
 	}
-	plugin_descriptors = (AAPDescriptor**) malloc(sizeof(AAPDescriptor*) * descs.size());
+	plugin_descriptors = (PluginInformation**) malloc(sizeof(PluginInformation*) * descs.size());
 	
 	// TODO: implement remote plugin query and store results into `descs`
 	
@@ -36,12 +36,12 @@ void AAPHost::initialize(AAssetManager *assetManager, const char* const *pluginA
 	std::copy(descs.begin(), descs.end(), plugin_descriptors);
 }
 
-AAPDescriptor* AAPHost::loadDescriptorFromAssetBundleDirectory(const char *directory)
+PluginInformation* Host::loadDescriptorFromAssetBundleDirectory(const char *directory)
 {
 	// TODO: implement. load AAP manifest and fill descriptor.
 }
 
-bool AAPHost::isPluginAlive (const char *identifier) 
+bool Host::isPluginAlive (const char *identifier) 
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -58,7 +58,7 @@ bool AAPHost::isPluginAlive (const char *identifier)
 	return true;
 }
 
-bool AAPHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+bool Host::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -67,9 +67,9 @@ bool AAPHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdated;
 }
 
-AAPInstance* AAPHost::instantiatePlugin(const char *identifier)
+PluginInstance* Host::instantiatePlugin(const char *identifier)
 {
-	AAPDescriptor *descriptor = getPluginDescriptor(identifier);
+	PluginInformation *descriptor = getPluginDescriptor(identifier);
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
 	if (descriptor->isOutProcess())
@@ -78,17 +78,17 @@ AAPInstance* AAPHost::instantiatePlugin(const char *identifier)
 		instantiateLocalPlugin(descriptor);
 }
 
-AAPInstance* AAPHost::instantiateLocalPlugin(AAPDescriptor *descriptor)
+PluginInstance* Host::instantiateLocalPlugin(PluginInformation *descriptor)
 {
 	const char *file = descriptor->getLocalPluginSharedLibrary();
 	auto dl = dlopen(file, RTLD_LAZY);
 	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();
 
-	return new AAPInstance(this, descriptor, plugin);
+	return new PluginInstance(this, descriptor, plugin);
 }
 
-AAPInstance* AAPHost::instantiateRemotePlugin(AAPDescriptor *descriptor)
+PluginInstance* Host::instantiateRemotePlugin(PluginInformation *descriptor)
 {
 	// TODO: implement. remote instantiation
 	assert(false);
@@ -97,7 +97,7 @@ AAPInstance* AAPHost::instantiateRemotePlugin(AAPDescriptor *descriptor)
 
 void dogfooding_api()
 {
-	AAPHost manager;
+	Host manager;
 	auto paths = manager.getDefaultPluginSearchPaths();
 	
 }

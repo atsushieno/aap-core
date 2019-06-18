@@ -22,7 +22,7 @@
 namespace aap
 {
 
-class AAPInstance;
+class PluginInstance;
 class AAPEditor;
 
 enum AAPBufferType {
@@ -30,7 +30,7 @@ enum AAPBufferType {
 	AAP_BUFFER_TYPE_CONTROL
 };
 
-enum AAPPortDirection {
+enum PortDirection {
 	AAP_PORT_DIRECTION_INPUT,
 	AAP_PORT_DIRECTION_OUTPUT
 };
@@ -42,21 +42,21 @@ enum PluginInstantiationState {
 	PLUGIN_INSTANTIATION_STATE_TERMINATED,
 };
 
-class AAPPortDescriptor
+class PortInformation
 {
 	const char *name;
-	AAPBufferType buffer_type;
-	AAPPortDirection direction;
+	BufferType buffer_type;
+	PortDirection direction;
 	bool is_control_midi;
 	
 public:
 	const char* getName() { return name; }
-	AAPBufferType getBufferType() { return buffer_type; }
-	AAPPortDirection getPortDirection() { return direction; }
+	BufferType getBufferType() { return buffer_type; }
+	PortDirection getPortDirection() { return direction; }
 	bool isControlMidi() { return is_control_midi; }
 };
 
-class AAPDescriptor
+class PluginInformation
 {
 protected:
 	const char *name;
@@ -71,7 +71,7 @@ protected:
 	/* NULL-terminated list of categories */
 	const char *primary_category;
 	/* NULL-terminated list of ports */
-	AAPPortDescriptor **ports;
+	PortInformation **ports;
 	/* NULL-terminated list of required extensions */
 	AndroidAudioPluginExtension **required_extensions;
 	/* NULL-terminated list of optional extensions */
@@ -85,7 +85,7 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	AAPDescriptor(bool isOutProcess)
+	PluginInformation(bool isOutProcess)
 		: last_info_updated_unixtime((long) time(NULL)),
 		  is_out_process(isOutProcess)
 	{
@@ -126,7 +126,7 @@ public:
 		_AAP_NULL_TERMINATED_LIST(ports)
 	}
 	
-	AAPPortDescriptor *getPort(int32_t index)
+	PortInformation *getPort(int32_t index)
 	{
 		assert(index < getNumPorts());
 		return ports[index];
@@ -172,8 +172,8 @@ public:
 	
 	bool isInstrument()
 	{
-		// TODO: implement. Probably by metadata
-		return false;
+		// The purpose of this function seems to be based on hacky premise. So do we.
+		return strstr(getPrimaryCategory(), "Instrument") != NULL;
 	}
 	
 	bool hasSharedContainer()
@@ -185,7 +185,7 @@ public:
 	
 	bool hasEditor()
 	{
-		// TODO: implement. By metadata
+		// TODO: implement
 		return false;
 	}
 
@@ -203,13 +203,13 @@ public:
 	}
 };
 
-class AAPEditor
+class EditorInstance
 {
-	AAPInstance *owner;
+	PluginInstance *owner;
 
 public:
 
-	AAPEditor(AAPInstance *owner)
+	EditorInstance(PluginInstance *owner)
 		: owner(owner)
 	{
 		// TODO: implement
@@ -221,19 +221,19 @@ public:
 	}
 };
 
-class AAPHost
+class Host
 {
 	AAssetManager *asset_manager;
 	const char* default_plugin_search_paths[2];
-	AAPDescriptor** plugin_descriptors;
+	PluginInformation** plugin_descriptors;
 	
-	AAPDescriptor* loadDescriptorFromAssetBundleDirectory(const char *directory);
-	AAPInstance* instantiateLocalPlugin(AAPDescriptor *descriptor);
-	AAPInstance* instantiateRemotePlugin(AAPDescriptor *descriptor);
+	PluginInformation* loadDescriptorFromAssetBundleDirectory(const char *directory);
+	PluginInstance* instantiateLocalPlugin(PluginInformation *descriptor);
+	PluginInstance* instantiateRemotePlugin(PluginInformation *descriptor);
 
 public:
 
-	AAPHost()
+	Host()
 		: asset_manager(NULL),
 		  plugin_descriptors(NULL)
 	{
@@ -241,7 +241,7 @@ public:
 		default_plugin_search_paths[1] = NULL;
 	}
 
-	~AAPHost()
+	~Host()
 	{
 		if (plugin_descriptors != NULL)
 			for (int i = 0; i < getNumPluginDescriptors(); i++)
@@ -267,13 +267,13 @@ public:
 		_AAP_NULL_TERMINATED_LIST(plugin_descriptors)
 	}
 
-	AAPDescriptor* getPluginDescriptorAt(int index)
+	PluginInformation* getPluginDescriptorAt(int index)
 	{
 		assert(index < getNumPluginDescriptors());
 		return plugin_descriptors[index];
 	}
 	
-	AAPDescriptor* getPluginDescriptor(const char *identifier)
+	PluginInformation* getPluginDescriptor(const char *identifier)
 	{
 		assert(plugin_descriptors != NULL);
 		for(int i = 0; i < getNumPluginDescriptors(); i++) {
@@ -284,26 +284,26 @@ public:
 		return NULL;
 	}
 	
-	AAPInstance* instantiatePlugin(const char* identifier);
+	PluginInstance* instantiatePlugin(const char* identifier);
 	
-	AAPEditor* createEditor(AAPInstance* instance)
+	EditorInstance* createEditor(PluginInstance* instance)
 	{
-		return new AAPEditor(instance);
+		return new EditorInstance(instance);
 	}
 };
 
-class AAPInstance
+class PluginInstance
 {
-	friend class AAPHost;
+	friend class Host;
 	
-	AAPHost *host;
-	AAPDescriptor *descriptor;
+	Host *host;
+	PluginInformation *descriptor;
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	AAPInstance(AAPHost* host, AAPDescriptor* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+	PluginInstance(Host* host, PluginInformation* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
 		: host(host),
 		  descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
@@ -315,7 +315,7 @@ class AAPInstance
 	
 public:
 
-	AAPDescriptor* getPluginDescriptor()
+	PluginInformation* getPluginDescriptor()
 	{
 		return descriptor;
 	}
@@ -370,9 +370,9 @@ public:
 		return 0;
 	}
 	
-	AAPEditor* createEditor()
+	EditorInstance* createEditor()
 	{
-		host->createEditor(this);
+		return host->createEditor(this);
 	}
 	
 	int getNumPrograms()

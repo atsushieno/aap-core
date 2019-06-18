@@ -186,19 +186,17 @@ Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transfo
 
 It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure for runtime (AAPPort is part of descriptor).
 
-- Types
-  - `AAPHostSettings`
-  - `AAPHost`
-  - `AAPHostBackend`
-    - `AAPHostBackendLV2`
-    - `AAPHostBackendVST3`
-  - `AAPDesctiptorIterator`
-  - `AAPDesctiptor`
-  - `AAPPortIterator`
-  - `AAPPortDescriptor`
-  - `AAPInstance`
-  - `enum AAPBufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL }`
-  - `enum AAPPortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT }`
+- Types - C API
+  - `aap::HostSettings`
+  - `aap::Host`
+  - `aap::HostBackend`
+    - `aap::HostBackendLV2`
+    - `aap::HostBackendVST3`
+  - `aap::PluginInformation`
+  - `aap::PortInformation`
+  - `aap::PluginInstance`
+  - `enum aap::BufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL }`
+  - `enum aap::PortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT }`
 
 - Functions
   - host
