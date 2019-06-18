@@ -184,7 +184,9 @@ Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transfo
 
 ### AAP hosting API
 
-It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure for runtime (AAPPort is part of descriptor).
+It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure for runtime.
+
+Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. However plugin developers should not be required to do so by themselves. It should be as easy as implementing plugin framework API and package in AAP format.
 
 - Types - C API
   - `aap::PluginHostSettings`
@@ -195,8 +197,8 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
   - `aap::PluginInformation`
   - `aap::PortInformation`
   - `aap::PluginInstance`
-  - `enum aap::BufferType { AAP_BUFFER_TYPE_AUDIO, AAP_BUFFER_TYPE_CONTROL }`
-  - `enum aap::PortDirection { AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT }`
+  - `enum aap::BufferType`
+  - `enum aap::PortDirection`
 
 - Functions
   - host
@@ -206,11 +208,6 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
     - `AAPInstance* aap_host_instantiate(AAPHost*, AAPDesctiptor*)`
   - plugin desctiptor
     - `AAPPortIterator* aap_descriptor_get_ports(AAPDesctiptor*)`
-  - iterators
-    - `bool aap_desctiptor_iterator_next(AAPDesctiptorIterator*)`
-    - `AAPDesctiptor* aap_desctiptor_iterator_current(AAPDesctiptorIterator*)`
-    - `bool aap_port_iterator_next(AAPPortIterator*)`
-    - `AAPPort* aap_port_iterator_current(AAPPortIterator*)`
   - plugin port desctiptor
     - `const char* aap_port_get_name(AAPPort*)`
     - `AAPBufferType aap_port_get_buffer_type(AAPPort*)`

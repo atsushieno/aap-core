@@ -12,14 +12,6 @@
 #include "android-audio-plugin.h"
 
 
-#define _AAP_NULL_TERMINATED_LIST(name) { \
-		int32_t n = 0; \
-		auto ptr = name; \
-		for (;ptr; ptr++) \
-			n++; \
-		return n; \
-	}
-
 namespace aap
 {
 
@@ -51,10 +43,10 @@ class PortInformation
 	bool is_control_midi;
 	
 public:
-	const char* getName() { return name; }
-	BufferType getBufferType() { return buffer_type; }
-	PortDirection getPortDirection() { return direction; }
-	bool isControlMidi() { return is_control_midi; }
+	const char* getName() const { return name; }
+	BufferType getBufferType() const { return buffer_type; }
+	PortDirection getPortDirection() const { return direction; }
+	bool isControlMidi() const { return is_control_midi; }
 };
 
 class PluginInformation
@@ -72,11 +64,11 @@ protected:
 	/* NULL-terminated list of categories */
 	const char *primary_category;
 	/* NULL-terminated list of ports */
-	PortInformation **ports;
+	std::vector<const PortInformation*> ports;
 	/* NULL-terminated list of required extensions */
-	AndroidAudioPluginExtension **required_extensions;
+	std::vector<const AndroidAudioPluginExtension *> required_extensions;
 	/* NULL-terminated list of optional extensions */
-	AndroidAudioPluginExtension **optional_extensions;
+	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 	// hosting information
 	bool is_out_process;
@@ -124,34 +116,31 @@ public:
 	
 	int32_t getNumPorts() const
 	{
-		_AAP_NULL_TERMINATED_LIST(ports)
+		return ports.size();
 	}
 	
-	PortInformation *getPort(int32_t index) const
+	const PortInformation *getPort(int32_t index) const
 	{
-		assert(index < getNumPorts());
 		return ports[index];
 	}
 	
 	int32_t getNumRequiredExtensions() const
 	{
-		_AAP_NULL_TERMINATED_LIST(required_extensions)
+		return required_extensions.size();
 	}
 	
-	AndroidAudioPluginExtension *getRequiredExtension(int32_t index) const
+	const AndroidAudioPluginExtension *getRequiredExtension(int32_t index) const
 	{
-		assert(index < getNumRequiredExtensions());
 		return required_extensions[index];
 	}
 	
 	int32_t getNumOptionalExtensions() const
 	{
-		_AAP_NULL_TERMINATED_LIST(optional_extensions)
+		return optional_extensions.size();
 	}
 	
-	AndroidAudioPluginExtension *getOptionalExtension(int32_t index) const
+	const AndroidAudioPluginExtension *getOptionalExtension(int32_t index) const
 	{
-		assert(index < getNumOptionalExtensions());
 		return optional_extensions[index];
 	}
 	
@@ -200,11 +189,11 @@ public:
 
 class EditorInstance
 {
-	PluginInstance *owner;
+	const PluginInstance *owner;
 
 public:
 
-	EditorInstance(PluginInstance *owner)
+	EditorInstance(const PluginInstance *owner)
 		: owner(owner)
 	{
 		// TODO: FUTURE (v0.4)

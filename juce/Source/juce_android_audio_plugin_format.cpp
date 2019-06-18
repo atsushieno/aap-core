@@ -81,7 +81,12 @@ class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 	int getNumBuffers(AndroidAudioPluginBuffer *buffer)
 	{
 		auto b = buffer->buffers;
-		_AAP_NULL_TERMINATED_LIST(b)
+		int n = 0;
+		while (b) {
+			n++;
+			b++;
+		}
+		return n;
 	}
 
 public:
