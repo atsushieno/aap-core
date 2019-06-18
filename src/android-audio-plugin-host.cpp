@@ -12,25 +12,6 @@
 #include "android/asset_manager.h"
 #include <vector>
 
-extern "C" {
-
-int32_t aap_buffer_num_buffers (AndroidAudioPluginBuffer *buffer)
-{
-	return buffer->numBuffers;
-}
-
-void **aap_buffer_get_buffers (AndroidAudioPluginBuffer *buffer)
-{
-	return buffer->buffers;
-}
-
-int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer)
-{
-	return buffer->numFrames;
-}
-
-} // extern "C"
-
 namespace aap
 {
 
@@ -99,7 +80,7 @@ AAPInstance* AAPHost::instantiatePlugin(const char *identifier)
 
 AAPInstance* AAPHost::instantiateLocalPlugin(AAPDescriptor *descriptor)
 {
-	const char *file = descriptor->getFilePath();
+	const char *file = descriptor->getLocalPluginSharedLibrary();
 	auto dl = dlopen(file, RTLD_LAZY);
 	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
 	auto plugin = getter();

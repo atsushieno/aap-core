@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _ANDROID_AUDIO_PLUGIN_HOST_HPP_
+#define _ANDROID_AUDIO_PLUGIN_HOST_HPP_
+
 #include <stdlib.h>
 #include <assert.h>
 #include <dlfcn.h>
@@ -61,6 +64,7 @@ protected:
 	const char *manufacturer_name;
 	const char *version;
 	const char *identifier_string;
+	const char *shared_library_filename;
 	int unique_id;
 	long last_info_updated_unixtime;
 
@@ -174,7 +178,8 @@ public:
 	
 	bool hasSharedContainer()
 	{
-		// TODO: implement
+		// TODO (FUTURE): It may be something AAP should support because
+		// context switching over outprocess plugins can be quite annoying...
 		return false;
 	}
 	
@@ -184,10 +189,12 @@ public:
 		return false;
 	}
 
-	const char* getFilePath()
+	const char* getLocalPluginSharedLibrary()
 	{
-		// TODO: implement
-		return NULL;
+		// By metadata or inferred.
+		// Since Android expects libraries stored in `lib` directory,
+		// it will just return the name of the shared library.
+		return shared_library_filename;
 	}
 	
 	bool isOutProcess()
@@ -352,6 +359,8 @@ public:
 	
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
 	{
+		// It is not a TODO here, but if pointers have changed, we have to reconnect
+		// LV2 ports.
 		plugin->process(instance, buffer, timeoutInNanoseconds);
 	}
 	
@@ -368,47 +377,48 @@ public:
 	
 	int getNumPrograms()
 	{
-		// TODO: implement
+		// TODO: FUTURE. LADSPA does not support it either.
 		return 0;
 	}
 	
 	int getCurrentProgram()
 	{
-		// TODO: implement
+		// TODO: FUTURE. LADSPA does not support it either.
 		return 0;
 	}
 	
 	void setCurrentProgram(int index)
 	{
-		// TODO: implement
+		// TODO: implement. LADSPA does not support it, but resets all parameters.
 	}
 	
 	const char * getProgramName(int index)
 	{
-		// TODO: implement
+		// TODO: FUTURE. LADSPA does not support it either.
 		return NULL;
 	}
 	
 	void changeProgramName(int index, const char * newName)
 	{
-		// TODO: implement
+		// implement in case we really care. It seems ignorable.
 	}
 	
 	int32_t getStateSize()
 	{
-		// TODO: implement
-		return 0;
+		return plugin->get_state(instance)->data_size;
 	}
 	
 	void const* getState()
 	{
-		// TODO: implement
-		return NULL;
+		return plugin->get_state(instance)->raw_data;
 	}
 	
 	void setState(const void* data, int32_t offset, int32_t sizeInBytes)
 	{
-		// TODO: implement
+		AndroidAudioPluginState state;
+		state.data_size = sizeInBytes;
+		state.raw_data = data;
+		plugin->set_state(instance, &state);
 	}
 	
 	uint32_t getTailTimeInMilliseconds()
@@ -419,3 +429,6 @@ public:
 };
 
 } // namespace
+
+#endif // _ANDROID_AUDIO_PLUGIN_HOST_HPP_
+

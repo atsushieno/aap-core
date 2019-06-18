@@ -65,6 +65,24 @@ class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	AAPInstance *native;
 	int sample_rate;
+	
+	void fillNativeAudioBuffers(AndroidAudioPluginBuffer* dst, AudioBuffer<float>& buffer)
+	{
+		int n = buffer.getNumChannels();
+		for (int i = 0; i < n; i++)
+			dst->buffers[i] = (void*) buffer.getReadPointer(i);
+	}
+	
+	void fillNativeMidiBuffers(AndroidAudioPluginBuffer* dst, MidiBuffer& buffer, int bufferIndex)
+	{
+		dst->buffers[bufferIndex] = (void*) buffer.data.getRawDataPointer();
+	}
+	
+	int getNumBuffers(AndroidAudioPluginBuffer *buffer)
+	{
+		auto b = buffer->buffers;
+		_AAP_NULL_TERMINATED_LIST(b)
+	}
 
 public:
 
@@ -91,20 +109,6 @@ public:
 		native->dispose();
 	}
 	
-	void fillNativeAudioBuffers(AndroidAudioPluginBuffer* dst, AudioBuffer<float>& buffer)
-	{
-		assert (dst->numBuffers == buffer.getNumChannels());
-		for (int i = 0; i < dst->numBuffers; i++)
-			dst->buffers[i] = (void*) buffer.getReadPointer(i);
-	}
-	
-	void fillNativeMidiBuffers(AndroidAudioPluginBuffer* dst, MidiBuffer& buffer, int bufferIndex)
-	{
-		if (dst->numBuffers == 0)
-			return;
-		dst->buffers[bufferIndex] = (void*) buffer.data.getRawDataPointer();
-	}
-	
 	void processBlock(AudioBuffer<float>& audioBuffer, MidiBuffer& midiMessages) override
 	{
 		AndroidAudioPluginBuffer buffer;
@@ -116,7 +120,8 @@ public:
 	
 	double getTailLengthSeconds() const override
 	{
-		return native->getTailTimeInMilliseconds();
+		// we may have something in the future, but nothing so far.
+		return 0.0;
 	}
 	
 	bool hasMidiPort(bool isInput) const
