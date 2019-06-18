@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
+#include <vector>
 #include "android/asset_manager.h"
 #include "android-audio-plugin.h"
 
@@ -25,7 +26,7 @@ namespace aap
 class PluginInstance;
 class AAPEditor;
 
-enum AAPBufferType {
+enum BufferType {
 	AAP_BUFFER_TYPE_AUDIO,
 	AAP_BUFFER_TYPE_CONTROL
 };
@@ -91,64 +92,64 @@ public:
 	{
 	}
 	
-	const char* getName()
+	const char* getName() const
 	{
 		return name;
 	}
 	
-	const char* getDescriptiveName()
+	const char* getDescriptiveName() const
 	{
 		return display_name;
 	}
 	
-	const char* getManufacturerName()
+	const char* getManufacturerName() const
 	{
 		return manufacturer_name;
 	}
 	
-	const char* getVersion()
+	const char* getVersion() const
 	{
 		return version;
 	}
 	
-	const char* getIdentifier()
+	const char* getIdentifier() const
 	{
 		return identifier_string;
 	}
 	
-	const char* getPrimaryCategory()
+	const char* getPrimaryCategory() const
 	{
 		return primary_category;
 	}
 	
-	int32_t getNumPorts()
+	int32_t getNumPorts() const
 	{
 		_AAP_NULL_TERMINATED_LIST(ports)
 	}
 	
-	PortInformation *getPort(int32_t index)
+	PortInformation *getPort(int32_t index) const
 	{
 		assert(index < getNumPorts());
 		return ports[index];
 	}
 	
-	int32_t getNumRequiredExtensions()
+	int32_t getNumRequiredExtensions() const
 	{
 		_AAP_NULL_TERMINATED_LIST(required_extensions)
 	}
 	
-	AndroidAudioPluginExtension *getRequiredExtension(int32_t index)
+	AndroidAudioPluginExtension *getRequiredExtension(int32_t index) const
 	{
 		assert(index < getNumRequiredExtensions());
 		return required_extensions[index];
 	}
 	
-	int32_t getNumOptionalExtensions()
+	int32_t getNumOptionalExtensions() const
 	{
 		_AAP_NULL_TERMINATED_LIST(optional_extensions)
 	}
 	
-	AndroidAudioPluginExtension *getOptionalExtension(int32_t index)
+	AndroidAudioPluginExtension *getOptionalExtension(int32_t index) const
 	{
 		assert(index < getNumOptionalExtensions());
 		return optional_extensions[index];
@@ -160,36 +161,36 @@ public:
 		return 0;
 	}
 	
-	long getLastInfoUpdateTime()
+	long getLastInfoUpdateTime() const
 	{
 		return last_info_updated_unixtime;
 	}
 	
-	int32_t getUid()
+	int32_t getUid() const
 	{
 		return unique_id;
 	}
 	
-	bool isInstrument()
+	bool isInstrument() const
 	{
 		// The purpose of this function seems to be based on hacky premise. So do we.
 		return strstr(getPrimaryCategory(), "Instrument") != NULL;
 	}
 	
-	bool hasSharedContainer()
+	bool hasSharedContainer() const
 	{
 		// TODO (FUTURE): It may be something AAP should support because
 		// context switching over outprocess plugins can be quite annoying...
 		return false;
 	}
 	
-	bool hasEditor()
+	bool hasEditor() const
 	{
 		// TODO: implement
 		return false;
 	}
 
-	const char* getLocalPluginSharedLibrary()
+	const char* getLocalPluginSharedLibrary() const
 	{
 		// By metadata or inferred.
 		// Since Android expects libraries stored in `lib` directory,
@@ -197,7 +198,7 @@ public:
 		return shared_library_filename;
 	}
 	
-	bool isOutProcess()
+	bool isOutProcess() const
 	{
 		return is_out_process;
 	}
@@ -221,31 +222,48 @@ public:
 	}
 };
 
-class Host
+class PluginHostBackend
 {
+};
+
+class PluginHostBackendLV2 : public PluginHostBackend
+{
+};
+
+class PluginHostBackendVST3 : public PluginHostBackend
+{
+};
+
+class PluginHost
+{
+	PluginHostBackendLV2 backend_lv2;
+	PluginHostBackendLV2 backend_vst3;
+
 	AAssetManager *asset_manager;
 	const char* default_plugin_search_paths[2];
-	PluginInformation** plugin_descriptors;
+	std::vector<const PluginHostBackend*> backends;
+	
+	std::vector<const PluginInformation*> plugin_descriptors;
 	
 	PluginInformation* loadDescriptorFromAssetBundleDirectory(const char *directory);
-	PluginInstance* instantiateLocalPlugin(PluginInformation *descriptor);
-	PluginInstance* instantiateRemotePlugin(PluginInformation *descriptor);
+	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor);
+	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor);
 
 public:
 
-	Host()
-		: asset_manager(NULL),
-		  plugin_descriptors(NULL)
+	PluginHost()
+		: asset_manager(NULL)
 	{
 		default_plugin_search_paths[0] = "/";
 		default_plugin_search_paths[1] = NULL;
+		backends.push_back(&backend_lv2);
+		backends.push_back(&backend_vst3);
 	}
 
-	~Host()
+	~PluginHost()
 	{
-		if (plugin_descriptors != NULL)
 			for (int i = 0; i < getNumPluginDescriptors(); i++)
-				free(plugin_descriptors[i]);
+				free((void*) getPluginDescriptorAt(i));
 	}
 	
 	void initialize(AAssetManager *assetManager, const char* const *pluginIdentifiers);
@@ -262,20 +280,34 @@ public:
 		return default_plugin_search_paths;
 	}
 	
-	int32_t getNumPluginDescriptors()
+	void addHostBackend(const PluginHostBackend *backend)
 	{
-		_AAP_NULL_TERMINATED_LIST(plugin_descriptors)
+		assert(backend != NULL);
+		backends.push_back(backend);
+	}
+	
+	int32_t getNumHostBackends()
+	{
+		return backends.size();
 	}
 
-	PluginInformation* getPluginDescriptorAt(int index)
+	const PluginHostBackend* getHostBackend(int index)
 	{
-		assert(index < getNumPluginDescriptors());
+		return backends[index];
+	}
+	
+	int32_t getNumPluginDescriptors()
+	{
+		return plugin_descriptors.size();
+	}
+
+	const PluginInformation* getPluginDescriptorAt(int index)
+	{
 		return plugin_descriptors[index];
 	}
 	
-	PluginInformation* getPluginDescriptor(const char *identifier)
+	const PluginInformation* getPluginDescriptor(const char *identifier)
 	{
-		assert(plugin_descriptors != NULL);
 		for(int i = 0; i < getNumPluginDescriptors(); i++) {
 			auto d = getPluginDescriptorAt(i);
 			if (strcmp(d->getIdentifier(), identifier) == 0)
@@ -294,16 +326,16 @@ public:
 
 class PluginInstance
 {
-	friend class Host;
+	friend class PluginHost;
 	
-	Host *host;
-	PluginInformation *descriptor;
+	PluginHost *host;
+	const PluginInformation *descriptor;
 	AndroidAudioPlugin *plugin;
 	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	PluginInstance(Host* host, PluginInformation* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+	PluginInstance(PluginHost* host, const PluginInformation* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
 		: host(host),
 		  descriptor(pluginDescriptor),
 		  plugin(loadedPlugin),
@@ -315,7 +347,7 @@ class PluginInstance
 	
 public:
 
-	PluginInformation* getPluginDescriptor()
+	const PluginInformation* getPluginDescriptor()
 	{
 		return descriptor;
 	}

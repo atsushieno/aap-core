@@ -34,7 +34,7 @@ public:
 	*/
 };
 
-static void fillPluginDescriptionFromNative(PluginDescription &description, aap::PluginInformation &src)
+static void fillPluginDescriptionFromNative(PluginDescription &description, const aap::PluginInformation &src)
 {
 	description.name = src.getName();
 	description.pluginFormatName = "AAP";
@@ -207,10 +207,10 @@ public:
 
 class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 {
-	aap::Host android_manager;
-	HashMap<aap::PluginInformation*,PluginDescription*> cached_descs;
+	aap::PluginHost android_host;
+	HashMap<const aap::PluginInformation*,PluginDescription*> cached_descs;
 
-	aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc)
+	const aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc)
 	{
 		auto it = cached_descs.begin();
 		while (it.next())
@@ -222,12 +222,12 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const char* const* pluginAssetDirectories)
-		: android_manager(aap::Host())
+		: android_host(aap::PluginHost())
 	{
-		android_manager.initialize(assetManager, pluginAssetDirectories);
+		android_host.initialize(assetManager, pluginAssetDirectories);
 		
-		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++) {
-			auto d = android_manager.getPluginDescriptorAt(i);
+		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
+			auto d = android_host.getPluginDescriptorAt(i);
 			auto dst = new PluginDescription();
 			fillPluginDescriptionFromNative(*dst, *d);
 			cached_descs.set(d, dst);
@@ -251,8 +251,8 @@ public:
 	{
 		auto id = fileOrIdentifier.toRawUTF8();
 		// FIXME: everything is already cached, so this can be simplified.
-		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++) {
-			auto d = android_manager.getPluginDescriptorAt(i);
+		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
+			auto d = android_host.getPluginDescriptorAt(i);
 			if (strcmp(id, d->getName()) == 0 || strcmp(id, d->getIdentifier()) == 0) {
 				auto dst = cached_descs [d];
 				if (!dst)
@@ -271,18 +271,18 @@ public:
 	
 	String getNameOfPluginFromIdentifier(const String &fileOrIdentifier)
 	{
-		auto descriptor = android_manager.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
+		auto descriptor = android_host.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
 		return descriptor != NULL ? String(descriptor->getName()) : String();
 	}
 	
 	bool pluginNeedsRescanning(const PluginDescription &description)
 	{
-		return android_manager.isPluginUpToDate (description.fileOrIdentifier.toRawUTF8(), description.lastInfoUpdateTime.toMilliseconds());
+		return android_host.isPluginUpToDate (description.fileOrIdentifier.toRawUTF8(), description.lastInfoUpdateTime.toMilliseconds());
 	}
 	
 	bool doesPluginStillExist(const PluginDescription &description)
 	{
-		return android_manager.isPluginAlive (description.fileOrIdentifier.toRawUTF8());
+		return android_host.isPluginAlive (description.fileOrIdentifier.toRawUTF8());
 	}
 	
 	bool canScanForPlugins() const
@@ -297,14 +297,14 @@ public:
 		// regardless of whatever parameters this function is passed, it is
 		// impossible to change the list of detected plugins.
 		StringArray ret;
-		for (int i = 0; i < android_manager.getNumPluginDescriptors(); i++)
-			ret.add(android_manager.getPluginDescriptorAt(i)->getIdentifier());
+		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++)
+			ret.add(android_host.getPluginDescriptorAt(i)->getIdentifier());
 		return ret;
 	}
 	
 	FileSearchPath getDefaultLocationsToSearch()
 	{
-		const char **paths = android_manager.getDefaultPluginSearchPaths();
+		const char **paths = android_host.getDefaultPluginSearchPaths();
 		StringArray arr(paths);
 		String joined = arr.joinIntoString(":");
 		FileSearchPath ret(joined);
@@ -324,7 +324,7 @@ protected:
 			error << "Android Audio Plugin " << description.name << "was not found.";
 			callback(userData, nullptr, error);
 		} else {
-			auto androidInstance = android_manager.instantiatePlugin(descriptor->getIdentifier());
+			auto androidInstance = android_host.instantiatePlugin(descriptor->getIdentifier());
 			auto instance = new JuceAndroidAudioPluginInstance(androidInstance);
 			callback(userData, instance, error);
 		}
