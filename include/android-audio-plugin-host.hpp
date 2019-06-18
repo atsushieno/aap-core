@@ -155,12 +155,6 @@ public:
 		return optional_extensions[index];
 	}
 	
-	long getFileModTime()
-	{
-		// TODO: implement
-		return 0;
-	}
-	
 	long getLastInfoUpdateTime() const
 	{
 		return last_info_updated_unixtime;
@@ -179,14 +173,14 @@ public:
 	
 	bool hasSharedContainer() const
 	{
-		// TODO (FUTURE): It may be something AAP should support because
+		// TODO: FUTURE (v0.6) It may be something AAP should support because
 		// context switching over outprocess plugins can be quite annoying...
 		return false;
 	}
 	
 	bool hasEditor() const
 	{
-		// TODO: implement
+		// TODO: FUTURE (v0.4)
 		return false;
 	}
 
@@ -213,12 +207,12 @@ public:
 	EditorInstance(PluginInstance *owner)
 		: owner(owner)
 	{
-		// TODO: implement
+		// TODO: FUTURE (v0.4)
 	}
 
 	void startEditorUI()
 	{
-		// TODO: implement
+		// TODO: FUTURE (v0.4)
 	}
 };
 
@@ -396,12 +390,6 @@ public:
 		plugin->process(instance, buffer, timeoutInNanoseconds);
 	}
 	
-	double getTailLengthSeconds() const
-	{
-		// TODO: implement
-		return 0;
-	}
-	
 	EditorInstance* createEditor()
 	{
 		return host->createEditor(this);
@@ -409,30 +397,30 @@ public:
 	
 	int getNumPrograms()
 	{
-		// TODO: FUTURE. LADSPA does not support it either.
+		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 		return 0;
 	}
 	
 	int getCurrentProgram()
 	{
-		// TODO: FUTURE. LADSPA does not support it either.
+		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 		return 0;
 	}
 	
 	void setCurrentProgram(int index)
 	{
-		// TODO: implement. LADSPA does not support it, but resets all parameters.
+		// TODO: FUTURE (v0.6). LADSPA does not support it, but resets all parameters.
 	}
 	
 	const char * getProgramName(int index)
 	{
-		// TODO: FUTURE. LADSPA does not support it either.
+		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 		return NULL;
 	}
 	
 	void changeProgramName(int index, const char * newName)
 	{
-		// implement in case we really care. It seems ignorable.
+		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 	}
 	
 	int32_t getStateSize()
@@ -455,7 +443,7 @@ public:
 	
 	uint32_t getTailTimeInMilliseconds()
 	{
-		// TODO: implement
+		// TODO: FUTURE (v0.6) - most likely just a matter of plugin property
 		return 0;
 	}
 };

@@ -222,6 +222,10 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
     - `void aap_instance_deactivate(AAPInstance*)`
 
 
+## JUCE integration
+
+juce_android_audio_plugin_format.cpp implements juce:AudioPluginFormat and related stuff.
+
 
 ## android-audio-plugin-framework source tree structure
 

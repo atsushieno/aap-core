@@ -26,7 +26,7 @@ public:
 		native->startEditorUI();
 	}
 	
-	// TODO: override if we want to.
+	// TODO: FUTURE (v0.6). most likely ignorable as the UI is for Android anyways.
 	/*
 	virtual void setScaleFactor(float newScale)
 	{
@@ -45,8 +45,8 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, cons
 	description.manufacturerName = src.getManufacturerName();
 	description.version = src.getVersion();
 	description.fileOrIdentifier = src.getIdentifier();
-	// TODO: fill it
-	// description.lastFileModTime
+	// So far this is as hacky as AudioUnit implementation.
+	description.lastFileModTime = Time();
 	description.lastInfoUpdateTime = Time(src.getLastInfoUpdateTime());
 	description.uid = src.getUid();
 	description.isInstrument = src.isInstrument();
@@ -120,8 +120,7 @@ public:
 	
 	double getTailLengthSeconds() const override
 	{
-		// we may have something in the future, but nothing so far.
-		return 0.0;
+		return native->getTailTimeInMilliseconds() / 1000.0;
 	}
 	
 	bool hasMidiPort(bool isInput) const
