@@ -48,7 +48,7 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, cons
 	// So far this is as hacky as AudioUnit implementation.
 	description.lastFileModTime = Time();
 	description.lastInfoUpdateTime = Time(src.getLastInfoUpdateTime());
-	description.uid = src.getUid();
+	description.uid = String(src.getPluginID()).hashCode();
 	description.isInstrument = src.isInstrument();
 	for (int i = 0; i < src.getNumPorts(); i++) {
 		auto port = src.getPort(i);

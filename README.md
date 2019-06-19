@@ -96,7 +96,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 - `<plugin>` element
   - `manufacturer`: name of the plugin manufacturer or developer or whatever.
   - `name`: name of the plugin.
-  - `uuid`: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
+  - `plugin-id`: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
   - `version`: version ID of the plugin.
   - `category`: category of the plugin.
 - `<port>` element
@@ -106,7 +106,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 
 `name` should be unique enough so that this standalone string can identify itself. An `xs:NMTOKENS` in XML Schema datatypes is expected (not `xs:NMTOKEN` because we accept `#x20`).
 
-`uuid` is used by AAP hosts to regard to identify the plugin and expect compatibility e.g. state data and versions, across various environments. This value is used for calculating JUCE `uid` value.
+`plugin-id` is used by AAP hosts to regard to identify the plugin and expect compatibility e.g. state data and versions, across various environments. This value is used for calculating JUCE `uid` value. Ideally an UUID string, but it's up to the plugin backend. For example, LV2 does identifies each plugin via URI. Therefore we use `lv2:{URI}` when importing from their metadata.
 
 `version` can be displayed by hosts. Desirably it contains build versions or "debug" when developing and/or debugging the plugin, otherwise hosts cannot generate an useful identifier to distinfuish from the hosts.
 
@@ -167,7 +167,7 @@ Saving to midigate.xml
 Loaded bundle. Dumping all plugins from there.
 done.
 $ cat midigate.xml 
-<plugin backend="LV2" name="Example MIDI Gate">
+<plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
   <ports>
     <port direction="input" content="midi" name="Control" />
     <port direction="input" content="audio" name="In" />
@@ -177,6 +177,8 @@ $ cat midigate.xml
 ```
 
 Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (regardless of whether it is `lv2:ControlPort` or not), as those LV2 MIDI ports are only `atom:atomPort` and `atom:supports` has `midi:MidiEvent`. The official `midigate` sample shows this.
+
+The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentPlugin`. Anything else falls back to `Effect`.
 
 
 ### AAP-VST3

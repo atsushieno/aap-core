@@ -57,7 +57,7 @@ protected:
 	const char *version;
 	const char *identifier_string;
 	const char *shared_library_filename;
-	int unique_id;
+	const char *plugin_id;
 	long last_info_updated_unixtime;
 
 	/* NULL-terminated list of categories */
@@ -104,7 +104,7 @@ public:
 	}
 	
 	/* locally identifiable string.
-	 * It is combination of manufacturer+name+version+uuid, to support plugin debugging. */
+	 * It is combination of manufacturer+name+uuid+version, to support plugin debugging. */
 	const char* getIdentifier() const
 	{
 		return identifier_string;
@@ -151,9 +151,9 @@ public:
 	}
 	
 	/* unique identifier across various environment */
-	int32_t getUid() const
+	const char* getPluginID() const
 	{
-		return unique_id;
+		return plugin_id;
 	}
 	
 	bool isInstrument() const
