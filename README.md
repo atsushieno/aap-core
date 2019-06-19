@@ -168,13 +168,15 @@ Loaded bundle. Dumping all plugins from there.
 Writing metadata file res/xml/metadata0.xml
 done.
 $ cat res/xml/metadata0.xml 
-<plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
-  <ports>
-    <port direction="input" content="midi" name="Control" />
-    <port direction="input" content="audio" name="In" />
-    <port direction="output" content="audio" name="Out" />
-  </ports>
-</plugin>
+<plugins>
+  <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
+    <ports>
+      <port direction="input" content="midi" name="Control" />
+      <port direction="input" content="audio" name="In" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+</plugins>
 $ cat manifest-fragment.xml 
 <service android:name=".AudioPluginService" android:label="Example MIDI Gate">
   <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>

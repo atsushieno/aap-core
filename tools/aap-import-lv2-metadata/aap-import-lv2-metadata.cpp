@@ -43,8 +43,13 @@ PORTCHECKER_AND (IS_AUDIO_OUT, IS_AUDIO_PORT, IS_OUTPUT_PORT)
 PORTCHECKER_AND (IS_CONTROL_OUT, IS_CONTROL_PORT, IS_OUTPUT_PORT)*/
 
 bool is_plugin_instrument(const LilvPlugin* plugin);
+char* escape_xml(const char* s);
+
 
 LilvWorld *world;
+
+char* stringpool[4096];
+int stringpool_entry = 0;
 
 int main(int argc, char **argv)
 {
@@ -92,10 +97,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Directory %s cannot be opened.\n", lv2dirName);
 		return 3;
 	}
-	char* filenames[4096];
 	
 	dirent *ent;
-	int n_files;
 	while ((ent = readdir(lv2dir)) != NULL) {
 		if (!strcmp(ent->d_name, "."))
 			continue;
@@ -105,7 +108,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "DIRECTORY: %s\n", ent->d_name);
 		int ttllen = snprintf(NULL, 0, "%s/%s/manifest.ttl", lv2realpath, ent->d_name) + 1;
 		char* ttlfile = (char*) malloc(ttllen);
-		filenames[n_files++] = ttlfile;
+		stringpool[stringpool_entry++] = ttlfile;
 		sprintf(ttlfile, "%s/%s/manifest.ttl", lv2realpath, ent->d_name);
 		struct stat st;
 		if(stat(ttlfile, &st)) {
@@ -140,34 +143,34 @@ int main(int argc, char **argv)
 		const LilvNode *author = lilv_plugin_get_author_name(plugin);
 		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
 
-		fprintf(androidManifestFP, "        <service android:name=\".AudioPluginService\" android:label=\"%s\">\n", name);
-		fprintf(androidManifestFP, "            <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
-		fprintf(androidManifestFP, "            <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
-		fprintf(androidManifestFP, "        </service>\n");
-
 		char *xmlFilename = (char*) malloc(snprintf(NULL, 0, "%s/%s", xmldir, name) + 1);
 		sprintf(xmlFilename, "%s/metadata%d.xml", xmldir, numbered_files++);
 		fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
 		FILE *xmlFP = fopen(xmlFilename, "w+");
 		
-		fprintf(xmlFP, "<plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n  <ports>\n",
+		fprintf(androidManifestFP, "        <service android:name=\".AudioPluginService\" android:label=\"%s\">\n", escape_xml(name));
+		fprintf(androidManifestFP, "            <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
+		fprintf(androidManifestFP, "            <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
+		fprintf(androidManifestFP, "        </service>\n");
+
+		fprintf(xmlFP, "<plugins>\n  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n    <ports>\n",
 			name,
 			/* FIXME: this categorization is super hacky */
 			is_plugin_instrument(plugin) ? "Instrument" : "Effect",
-			author != NULL ? lilv_node_as_string(author) : "",
-			manufacturer != NULL ? lilv_node_as_string(manufacturer) : "",
-			lilv_node_as_uri(lilv_plugin_get_uri(plugin))
+			author != NULL ? escape_xml(lilv_node_as_string(author)) : "",
+			manufacturer != NULL ? escape_xml(lilv_node_as_string(manufacturer)) : "",
+			escape_xml(lilv_node_as_uri(lilv_plugin_get_uri(plugin)))
 			);
 		
 		for (int p = 0; p < lilv_plugin_get_num_ports(plugin); p++) {
 			auto port = lilv_plugin_get_port_by_index(plugin, p);
 			
-			fprintf(xmlFP, "    <port direction=\"%s\" content=\"%s\" name=\"%s\" />\n",
+			fprintf(xmlFP, "      <port direction=\"%s\" content=\"%s\" name=\"%s\" />\n",
 				IS_INPUT_PORT(plugin, port) ? "input" : IS_OUTPUT_PORT(plugin, port) ? "output" : "",
 				lilv_port_supports_event(plugin, port, midi_event_uri_node) ? "midi" : IS_AUDIO_PORT(plugin, port) ? "audio" : "other",
-				lilv_node_as_string(lilv_port_get_name(plugin, port)));
+				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
 		}
-		fprintf(xmlFP, "  </ports>\n</plugin>\n");
+		fprintf(xmlFP, "    </ports>\n  </plugin>\n</plugins>");
 		
 		fclose(xmlFP);
 		free(xmlFilename);
@@ -177,8 +180,8 @@ int main(int argc, char **argv)
 	
 	lilv_world_free(world);
 	
-	for(int i = 0; i < n_files; i++)
-		free(filenames[i]);
+	for(int i = 0; i < stringpool_entry; i++)
+		free(stringpool[i]);
 	free(lv2realpath);
 	
 	fprintf (stderr, "done.\n");
@@ -195,4 +198,21 @@ bool is_plugin_instrument(const LilvPlugin* plugin)
 			return true;
 	}
 	return false;
+}
+
+char* escape_xml(const char* s)
+{
+	auto ret = strdup(s);
+	for (int i = 0; ret[i]; i++)
+		switch (ret[i]) {
+		case '<':
+		case '>':
+		case '&':
+		case '"':
+		case '\'':
+			ret[i] = '_';
+			break;
+		}
+	stringpool[stringpool_entry++] = ret;
+	return ret;
 }

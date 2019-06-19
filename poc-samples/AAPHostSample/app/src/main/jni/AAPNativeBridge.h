@@ -1,0 +1,16 @@
+//
+// Created by atsushi on 19/06/07.
+//
+
+#ifndef AAPBAREBONESAMPLE_AAPNATIVEBRIDGE_H
+#define AAPBAREBONESAMPLE_AAPNATIVEBRIDGE_H
+
+
+
+class AAPNativeBridge {
+
+};
+
+
+
+#endif //AAPBAREBONESAMPLE_AAPNATIVEBRIDGE_H
