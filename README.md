@@ -161,12 +161,13 @@ We decided to NOT support shorthand metadata notation like
 Instead we provide a metadata generator tool `app-import-lv2-metadata`:
 
 ```
-$ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 midigate.xml
+$ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 
 Loading from /sources/LV2/dist/lib/lv2/eg-midigate.lv2/manifest.ttl
-Saving to midigate.xml
+manifest fragment: manifest-fragment.xml
 Loaded bundle. Dumping all plugins from there.
+Writing metadata file res/xml/metadata0.xml
 done.
-$ cat midigate.xml 
+$ cat res/xml/metadata0.xml 
 <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
   <ports>
     <port direction="input" content="midi" name="Control" />
@@ -174,6 +175,11 @@ $ cat midigate.xml
     <port direction="output" content="audio" name="Out" />
   </ports>
 </plugin>
+$ cat manifest-fragment.xml 
+<service android:name=".AudioPluginService" android:label="Example MIDI Gate">
+  <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+  <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata0" />
+</service>
 ```
 
 Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (regardless of whether it is `lv2:ControlPort` or not), as those LV2 MIDI ports are only `atom:atomPort` and `atom:supports` has `midi:MidiEvent`. The official `midigate` sample shows this.
@@ -181,6 +187,8 @@ Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (
 The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentPlugin`. Anything else falls back to `Effect`.
 
 We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
+
+`aap-import-lv2-metadata` has limitation; if the `name` of the plugin cannot be converted to a valid Android resource after lowercasing it, then the metadata XML files are named just as `metadata_0.xml`, `metadata_1.xml`, ...
 
 
 ### AAP-VST3

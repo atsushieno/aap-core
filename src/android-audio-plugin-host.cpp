@@ -15,8 +15,13 @@
 namespace aap
 {
 
-void PluginHost::initialize(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
+PluginHost::PluginHost(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
 {
+	asset_manager = assetManager;
+	
+	backends.push_back(&backend_lv2);
+	backends.push_back(&backend_vst3);
+
 	// fill PluginInformation for local plugins
 	asset_manager = assetManager;
 	for (int i = 0; pluginAssetDirectories[i]; i++) {
@@ -28,6 +33,7 @@ void PluginHost::initialize(AAssetManager *assetManager, const char* const *plug
 	}
 	
 	// TODO: implement remote plugin query and store results into `descs`
+	
 
 }
 
@@ -93,7 +99,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 
 void dogfooding_api()
 {
-	PluginHost manager;
+	PluginHost manager(NULL, NULL);
 	auto paths = manager.instantiatePlugin(NULL);
 	
 }

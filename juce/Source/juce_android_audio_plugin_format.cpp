@@ -226,10 +226,8 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const char* const* pluginAssetDirectories)
-		: android_host(aap::PluginHost())
+		: android_host(aap::PluginHost(assetManager, pluginAssetDirectories))
 	{
-		android_host.initialize(assetManager, pluginAssetDirectories);
-		
 		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
 			auto d = android_host.getPluginDescriptorAt(i);
 			auto dst = new PluginDescription();

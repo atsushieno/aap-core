@@ -44,16 +44,25 @@ LilvWorld *world;
 
 int main(int argc, char **argv)
 {
-	if (argc <= 2) {
-		fprintf (stderr, "Usage: %s [input-ttlfile] [output-xmlfile]\n", argv[0]);
+	if (argc < 2) {
+		fprintf (stderr, "Usage: %s [input-lv2dir] ([output-xmldir] [manifest-fragment.xml])\n", argv[0]);
 		return 1;
 	}
 	
 	char* ttlfile = strcat(realpath(argv[1], NULL), "/manifest.ttl");
 	fprintf(stderr, "Loading from %s\n", ttlfile);
-	char* xmlfile = argv[2];
-	fprintf(stderr, "Saving to %s\n", xmlfile);
-	auto xmlFP = fopen(xmlfile, "w");
+	char* xmldir = argc < 3 ? (char*) "res/xml" : argv[2];
+	char* manifestfragfile = argc < 4 ? (char*) "manifest-fragment.xml" : argv[3];
+	//char* xmlfile = argv[2];
+	//fprintf(stderr, "Saving to %s\n", xmlfile);
+	//auto xmlFP = fopen(xmlfile, "w");
+	fprintf(stderr, "manifest fragment: %s\n", manifestfragfile);
+	
+	// FIXME: should we support Windows... ? They have WSL now.
+	char *cmd = (char*) calloc(snprintf(NULL, 0, "mkdir -p %s", xmldir), 0);
+	sprintf(cmd, "mkdir -p %s", xmldir);
+	system(cmd);
+	free(cmd);
 	
 	world = lilv_world_new();
 
@@ -75,13 +84,30 @@ int main(int argc, char **argv)
 	
 	auto plugins = lilv_world_get_all_plugins(world);
 	
+	int numbered_files = 0;
+
+	FILE *androidManifestFP = fopen(manifestfragfile, "w");
+	
 	for (auto i = lilv_plugins_begin(plugins); !lilv_plugins_is_end(plugins, i); i = lilv_plugins_next(plugins, i)) {
+		
 		const auto plugin = lilv_plugins_get(plugins, i);
+		auto name = lilv_node_as_string(lilv_plugin_get_name(plugin));
 		auto author = lilv_plugin_get_author_name(plugin);
 		auto manufacturer = lilv_plugin_get_project(plugin);
+
+		fprintf(androidManifestFP, "<service android:name=\".AudioPluginService\" android:label=\"%s\">\n", name);
+		fprintf(androidManifestFP, "  <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
+		fprintf(androidManifestFP, "  <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
+		fprintf(androidManifestFP, "</service>\n");
+
+		char *xmlFilename = (char*) calloc(snprintf(NULL, 0, "%s/%s", xmldir, name), 0);
+		sprintf(xmlFilename, "%s/metadata%d.xml", xmldir, numbered_files++);
+		fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
+		FILE *xmlFP = fopen(xmlFilename, "w");
+		free(xmlFilename);
 		
 		fprintf(xmlFP, "<plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n  <ports>\n",
-			lilv_node_as_string(lilv_plugin_get_name(plugin)),
+			name,
 			/* FIXME: this categorization is super hacky */
 			is_plugin_instrument(plugin) ? "Instrument" : "Effect",
 			author != NULL ? lilv_node_as_string(author) : "",
@@ -98,11 +124,14 @@ int main(int argc, char **argv)
 				lilv_node_as_string(lilv_port_get_name(plugin, port)));
 		}
 		fprintf(xmlFP, "  </ports>\n</plugin>\n");
+		
+		fclose(xmlFP);
 	}
+	
+	fclose(androidManifestFP);
 	
 	lilv_world_free(world);
 	
-
 	fprintf (stderr, "done.\n");
 	free(ttlfile);
 	return 0;

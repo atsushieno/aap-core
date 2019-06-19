@@ -4,6 +4,7 @@
 #define _ANDROID_AUDIO_PLUGIN_HOST_HPP_
 
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
@@ -48,11 +49,13 @@ public:
 	PortDirection getPortDirection() const { return direction; }
 };
 
+#define safe_strdup(s) ((const char*) s ? strdup(s) : NULL)
+
+#define SAFE_FREE(s) if (s) { free((void*) s); s = NULL; }
+
 class PluginInformation
 {
-protected:
 	const char *name;
-	const char *display_name;
 	const char *manufacturer_name;
 	const char *version;
 	const char *identifier_string;
@@ -77,20 +80,35 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess)
-		: last_info_updated_unixtime((long) time(NULL)),
-		  is_out_process(isOutProcess)
+	PluginInformation(bool isOutProcess, char* pluginName, char* manufacturerName, char* versionString, char* pluginID, char* sharedLibraryFilename)
+		: is_out_process(isOutProcess),
+		  name(safe_strdup(pluginName)),
+		  manufacturer_name(safe_strdup(manufacturerName)),
+		  version(safe_strdup(versionString)),
+		  plugin_id(safe_strdup(pluginID)),
+		  shared_library_filename(safe_strdup(sharedLibraryFilename)),
+		  last_info_updated_unixtime((long) time(NULL))
 	{
+		char *cp;
+		int len = sprintf(NULL, "%s+%s+%s", name, plugin_id, version);
+		cp = (char*) malloc(len);
+		sprintf(cp, "%s+%s+%s", name, plugin_id, version);
+		identifier_string = (const char*) cp;
+	}
+	
+	~PluginInformation()
+	{
+		SAFE_FREE(name)
+		SAFE_FREE(manufacturer_name)
+		SAFE_FREE(version)
+		SAFE_FREE(plugin_id)
+		SAFE_FREE(shared_library_filename)
+		SAFE_FREE(identifier_string)
 	}
 	
 	const char* getName() const
 	{
 		return name;
-	}
-	
-	const char* getDescriptiveName() const
-	{
-		return display_name;
 	}
 	
 	const char* getManufacturerName() const
@@ -104,7 +122,7 @@ public:
 	}
 	
 	/* locally identifiable string.
-	 * It is combination of manufacturer+name+uuid+version, to support plugin debugging. */
+	 * It is combination of name+unique_id+version, to support plugin debugging. */
 	const char* getIdentifier() const
 	{
 		return identifier_string;
@@ -235,12 +253,7 @@ class PluginHost
 
 public:
 
-	PluginHost()
-		: asset_manager(NULL)
-	{
-		backends.push_back(&backend_lv2);
-		backends.push_back(&backend_vst3);
-	}
+	PluginHost(AAssetManager *assetManager, const char* const *pluginIdentifiers);
 
 	~PluginHost()
 	{
