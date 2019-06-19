@@ -253,15 +253,13 @@ class PluginHost
 
 public:
 
-	PluginHost(AAssetManager *assetManager, const char* const *pluginIdentifiers);
+	PluginHost(AAssetManager* assetManager, const PluginInformation* const* pluginDescriptors);
 
 	~PluginHost()
 	{
 			for (int i = 0; i < getNumPluginDescriptors(); i++)
 				free((void*) getPluginDescriptorAt(i));
 	}
-	
-	void initialize(AAssetManager *assetManager, const char* const *pluginIdentifiers);
 	
 	bool isPluginAlive (const char *identifier);
 	

@@ -15,26 +15,19 @@
 namespace aap
 {
 
-PluginHost::PluginHost(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
+PluginHost::PluginHost(AAssetManager *assetManager, const PluginInformation* const* pluginDescriptors)
 {
 	asset_manager = assetManager;
 	
 	backends.push_back(&backend_lv2);
 	backends.push_back(&backend_vst3);
 
-	// fill PluginInformation for local plugins
 	asset_manager = assetManager;
-	for (int i = 0; pluginAssetDirectories[i]; i++) {
-		auto dir = AAssetManager_openDir(assetManager, pluginAssetDirectories[i]);
-		if (dir == NULL)
-			continue; // for whatever reason, failed to open directory.
-		plugin_descriptors.push_back(loadDescriptorFromAssetBundleDirectory(pluginAssetDirectories[i]));
-		AAssetDir_close(dir);
-	}
-	
-	// TODO: implement remote plugin query and store results into `descs`
-	
-
+	int n = 0;
+	for (auto p = pluginDescriptors; p; p++)
+		n++;
+	for (int i = 0; i < n; i++)
+		plugin_descriptors.push_back(pluginDescriptors[i]);
 }
 
 PluginInformation* PluginHost::loadDescriptorFromAssetBundleDirectory(const char *directory)
