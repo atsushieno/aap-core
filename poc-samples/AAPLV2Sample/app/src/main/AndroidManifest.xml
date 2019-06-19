@@ -17,6 +17,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+	<!-- FIXME: remove this once it's done -->
         <service android:name=".AAPLV2SampleService"
                  android:label="AAPLV2SamplePlugin">
             <intent-filter>
@@ -25,6 +26,186 @@
             <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
                 android:resource="@xml/aap_metadata"/>
         </service>
+
+	        <!-- generated manifest fragment by "aap-import-lv2-metadata" tool -->
+        <service android:name=".AudioPluginService" android:label="MDA Ambience">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata0" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Bandisto">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata1" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA BeatBox">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata2" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Combo">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata3" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA DX10">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata4" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA De-ess">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata5" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Degrade">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata6" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Delay">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata7" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Detune">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata8" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Dither">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata9" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA DubDelay">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata10" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Dynamics">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata11" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA ePiano">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata12" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Image">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata13" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA JX10">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata14" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Leslie">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata15" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Limiter">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata16" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Loudness">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata17" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA MultiBand">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata18" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Overdrive">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata19" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Piano">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata20" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA RePsycho!">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata21" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA RezFilter">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata22" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA RingMod">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata23" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA RoundPan">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata24" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Shepard">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata25" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Splitter">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata26" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Stereo">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata27" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA SubSynth">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata28" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA TalkBox">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata29" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA TestTone">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata30" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA ThruZero">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata31" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Tracker">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata32" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Transient">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata33" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA VocInput">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata34" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="MDA Vocoder">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata35" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Simple Amplifier">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata36" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example Fifths">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata37" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example Metronome">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata38" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example MIDI Gate">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata39" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example Parameters">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata40" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Exampler">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata41" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example Scope (Mono)">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata42" />
+        </service>
+        <service android:name=".AudioPluginService" android:label="Example Scope (Stereo)">
+            <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata43" />
+        </service>
+
     </application>
 
 </manifest>
+

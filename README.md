@@ -182,7 +182,7 @@ $ cat manifest-fragment.xml
 </service>
 ```
 
-Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (regardless of whether it is `lv2:ControlPort` or not), as those LV2 MIDI ports are only `atom:atomPort` and `atom:supports` has `midi:MidiEvent`. The official `midigate` sample shows this.
+For `content`, if a port is `atom:atomPort` and `atom:supports` has `midi:MidiEvent`, then it is `midi`. Any LV2 port that is `lv2:AudioPort` are regarded as `audio`. Anything else is `other` in AAP.
 
 The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentPlugin`. Anything else falls back to `Effect`.
 
