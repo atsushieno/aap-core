@@ -156,9 +156,9 @@ We decided to NOT support shorthand metadata notation like
 <plugin backend='LV2' assets='lv2/eg-amp.lv2' product='eg-amp.lv2' />
 ```
 
-... because it will make metadata non-queryable to Android app developers.
+... because it will make metadata non-queryable to normal Android app developers.
 
-What we provide instead is a metadata generator tool `app-import-lv2-metadata`:
+Instead we provide a metadata generator tool `app-import-lv2-metadata`:
 
 ```
 $ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 midigate.xml
@@ -179,6 +179,8 @@ $ cat midigate.xml
 Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (regardless of whether it is `lv2:ControlPort` or not), as those LV2 MIDI ports are only `atom:atomPort` and `atom:supports` has `midi:MidiEvent`. The official `midigate` sample shows this.
 
 The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentPlugin`. Anything else falls back to `Effect`.
+
+We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
 
 
 ### AAP-VST3

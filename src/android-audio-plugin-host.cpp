@@ -94,7 +94,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 void dogfooding_api()
 {
 	PluginHost manager;
-	auto paths = manager.getDefaultPluginSearchPaths();
+	auto paths = manager.instantiatePlugin(NULL);
 	
 }
 

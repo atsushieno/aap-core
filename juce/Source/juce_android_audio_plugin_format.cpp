@@ -222,6 +222,7 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 		return NULL;
 	}
 
+	const char* default_plugin_search_paths[1];
 
 public:
 	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const char* const* pluginAssetDirectories)
@@ -305,12 +306,12 @@ public:
 		return ret;
 	}
 	
+	// Unlike desktop system, it is not practical to either look into file systems
+	// on Android. And it is simply impossible to "enumerate" asset directories.
+	// Therefore we simply return empty list.	
 	FileSearchPath getDefaultLocationsToSearch()
 	{
-		const char **paths = android_host.getDefaultPluginSearchPaths();
-		StringArray arr(paths);
-		String joined = arr.joinIntoString(":");
-		FileSearchPath ret(joined);
+		FileSearchPath ret("");
 		return ret;
 	}
 

@@ -225,7 +225,6 @@ class PluginHost
 	PluginHostBackendLV2 backend_vst3;
 
 	AAssetManager *asset_manager;
-	const char* default_plugin_search_paths[2];
 	std::vector<const PluginHostBackend*> backends;
 	
 	std::vector<const PluginInformation*> plugin_descriptors;
@@ -239,8 +238,6 @@ public:
 	PluginHost()
 		: asset_manager(NULL)
 	{
-		default_plugin_search_paths[0] = "/";
-		default_plugin_search_paths[1] = NULL;
 		backends.push_back(&backend_lv2);
 		backends.push_back(&backend_vst3);
 	}
@@ -256,14 +253,6 @@ public:
 	bool isPluginAlive (const char *identifier);
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
-
-	// Unlike desktop system, it is not practical to either look into file systems
-	// on Android. And it is simply impossible to "enumerate" asset directories.
-	// Therefore we simply return dummy "/" directory.
-	const char** getDefaultPluginSearchPaths()
-	{
-		return default_plugin_search_paths;
-	}
 	
 	void addHostBackend(const PluginHostBackend *backend)
 	{
