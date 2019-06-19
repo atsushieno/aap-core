@@ -17,7 +17,7 @@ namespace aap
 
 void PluginHost::initialize(AAssetManager *assetManager, const char* const *pluginAssetDirectories)
 {
-	// local plugins
+	// fill PluginInformation for local plugins
 	asset_manager = assetManager;
 	for (int i = 0; pluginAssetDirectories[i]; i++) {
 		auto dir = AAssetManager_openDir(assetManager, pluginAssetDirectories[i]);
@@ -34,6 +34,7 @@ void PluginHost::initialize(AAssetManager *assetManager, const char* const *plug
 PluginInformation* PluginHost::loadDescriptorFromAssetBundleDirectory(const char *directory)
 {
 	// TODO: implement. load AAP manifest and fill descriptor.
+	
 }
 
 bool PluginHost::isPluginAlive (const char *identifier) 

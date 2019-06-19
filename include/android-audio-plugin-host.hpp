@@ -18,9 +18,10 @@ namespace aap
 class PluginInstance;
 class AAPEditor;
 
-enum BufferType {
-	AAP_BUFFER_TYPE_AUDIO,
-	AAP_BUFFER_TYPE_CONTROL
+enum ContentType {
+	AAP_CONTENT_TYPE_UNDEFINED,
+	AAP_CONTENT_TYPE_AUDIO,
+	AAP_CONTENT_TYPE_MIDI,
 };
 
 enum PortDirection {
@@ -38,15 +39,13 @@ enum PluginInstantiationState {
 class PortInformation
 {
 	const char *name;
-	BufferType buffer_type;
+	ContentType content_type;
 	PortDirection direction;
-	bool is_control_midi;
 	
 public:
 	const char* getName() const { return name; }
-	BufferType getBufferType() const { return buffer_type; }
+	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
-	bool isControlMidi() const { return is_control_midi; }
 };
 
 class PluginInformation
@@ -104,6 +103,8 @@ public:
 		return version;
 	}
 	
+	/* locally identifiable string.
+	 * It is combination of manufacturer+name+version+uuid, to support plugin debugging. */
 	const char* getIdentifier() const
 	{
 		return identifier_string;
@@ -149,6 +150,7 @@ public:
 		return last_info_updated_unixtime;
 	}
 	
+	/* unique identifier across various environment */
 	int32_t getUid() const
 	{
 		return unique_id;

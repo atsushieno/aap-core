@@ -73,26 +73,51 @@ AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs us
 </manifest>
 ```
 
-The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content should be like this:
+The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
 <plugin manufacturer="AndroidAudioPluginProject"
-		product="BareBoneSamplePlugin">
-	<input-port name="MidiIn" content="midi" />
-	<input-port name="ControlIn" content="control" />
-	<input-port name="AudioIn" content="audio" />
-	<output-port name="AudioOut" content="audio" />
+		name="BareBoneSamplePlugin">
+  <ports>
+	<port direction="input" content="midi" name="MidiIn" />
+	<port direction="input" content="other" name="ControlIn" />
+	<port direction="input" content="audio" name="AudioIn" />
+	<port direction="output" content="audio" name="AudioOut" />
+  </ports>
 </plugin>
 ```
 
-The metadata format is super hacky for now and subject to change. The metadata content will be close to what LV2 metadata (`.ttl` file) provides.
+Note that this pair of a `<service>` element and a metadata XML file is required **for each plugin**. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be in separate definitions.
+
+The metadata format is super hacky for now and subject to change. The metadata content will be close to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
 
 AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services.
+
+- `<plugin>` element
+  - `manufacturer`: name of the plugin manufacturer or developer or whatever.
+  - `name`: name of the plugin.
+  - `uuid`: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
+  - `version`: version ID of the plugin.
+  - `category`: category of the plugin.
+- `<port>` element
+  - `name`: a name string. An `xs:NMTOKENS` in XML Schema datatypes is expected.
+  - `direction`: either `input` or `output`.
+  - `content`: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
+
+`name` should be unique enough so that this standalone string can identify itself. An `xs:NMTOKENS` in XML Schema datatypes is expected (not `xs:NMTOKEN` because we accept `#x20`).
+
+`uuid` is used by AAP hosts to regard to identify the plugin and expect compatibility e.g. state data and versions, across various environments. This value is used for calculating JUCE `uid` value.
+
+`version` can be displayed by hosts. Desirably it contains build versions or "debug" when developing and/or debugging the plugin, otherwise hosts cannot generate an useful identifier to distinfuish from the hosts.
+
+For `category`, we have undefined format. VST has some strings like `Effect`, `Synth`, `Synth|Instrument`, or `Fx|Delay` when it is detailed. When it contains `Instrument` then it is regarded by the JUCE bridge so far.
 
 
 ## AAP package helpers
 
 ### AAP-LV2
+
+#### directory structure
 
 LV2 packaging is not straightforward. Android native libraries are usually packaged like
 
@@ -117,11 +142,41 @@ Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle 
 
 The `copy-lv2-deps` target in the top `Makefile` does this task for the `poc-samples`.
 
+#### LV2_PATH limitation
+
 Although, there is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
 
-To workaround this issue, AAP-LV2 plugin takes a list of LV2 asset paths which are to build `LV2_PATH` settings. Note that it is done at plugin side. Host implementation has different story. (TODO)
+To workaround this issue, AAP-LV2 plugin takes a list of LV2 asset paths which are to build `LV2_PATH` settings. It is for both hosts (to load local plugins) and plugins (to provide themselves via server).
 
+#### metadata
 
+We decided to NOT support shorthand metadata notation like
+
+```
+<plugin backend='LV2' assets='lv2/eg-amp.lv2' product='eg-amp.lv2' />
+```
+
+... because it will make metadata non-queryable to Android app developers.
+
+What we provide instead is a metadata generator tool `app-import-lv2-metadata`:
+
+```
+$ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 midigate.xml
+Loading from /sources/LV2/dist/lib/lv2/eg-midigate.lv2/manifest.ttl
+Saving to midigate.xml
+Loaded bundle. Dumping all plugins from there.
+done.
+$ cat midigate.xml 
+<plugin backend="LV2" name="Example MIDI Gate">
+  <ports>
+    <port direction="input" content="midi" name="Control" />
+    <port direction="input" content="audio" name="In" />
+    <port direction="output" content="audio" name="Out" />
+  </ports>
+</plugin>
+```
+
+Any LV2 port that is not `lv2:AudioPort` are regarded as "control" port in AAP (regardless of whether it is `lv2:ControlPort` or not), as those LV2 MIDI ports are only `atom:atomPort` and `atom:supports` has `midi:MidiEvent`. The official `midigate` sample shows this.
 
 
 ### AAP-VST3
@@ -170,7 +225,9 @@ The external dependencies are built using cerbero build system. Cerbero is a com
 
 There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
 
-And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given.
+And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given. Therefore there are some plugin loader changes in our lilv fork.
+
+
 
 
 ## AAP hosting basics
@@ -246,4 +303,5 @@ juce_android_audio_plugin_format.cpp implements juce:AudioPluginFormat and relat
 - java
   - AndroidAudioPluginFramework
 - poc-samples
-
+- tools
+  - aap-import-lv2-metadata

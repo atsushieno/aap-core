@@ -134,8 +134,7 @@ public:
 		for (int i = 0; i < d->getNumPorts(); i++) {
 			auto p = d->getPort(i);
 			if (p->getPortDirection() == (isInput ? AAP_PORT_DIRECTION_INPUT : AAP_PORT_DIRECTION_OUTPUT) &&
-			    p->getBufferType() == AAP_BUFFER_TYPE_CONTROL &&
-			    p->isControlMidi())
+			    p->getContentType() == AAP_CONTENT_TYPE_MIDI)
 				return true;
 		}
 		return false;
