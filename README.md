@@ -188,8 +188,6 @@ The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentP
 
 We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
 
-`aap-import-lv2-metadata` has limitation; if the `name` of the plugin cannot be converted to a valid Android resource after lowercasing it, then the metadata XML files are named just as `metadata_0.xml`, `metadata_1.xml`, ...
-
 
 ### AAP-VST3
 

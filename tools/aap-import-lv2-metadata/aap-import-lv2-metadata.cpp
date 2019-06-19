@@ -1,7 +1,11 @@
 
 #include <stdio.h>
+#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <serd/serd.h>
 #include <sord/sord.h>
 #include <lilv/lilv.h>
@@ -44,23 +48,21 @@ LilvWorld *world;
 
 int main(int argc, char **argv)
 {
-	if (argc < 2) {
+	if (argc < 1) {
 		fprintf (stderr, "Usage: %s [input-lv2dir] ([output-xmldir] [manifest-fragment.xml])\n", argv[0]);
 		return 1;
 	}
 	
-	char* ttlfile = strcat(realpath(argv[1], NULL), "/manifest.ttl");
-	fprintf(stderr, "Loading from %s\n", ttlfile);
+	const char* lv2dirName = argc < 2 ?  "lv2" : argv[1];
+
 	char* xmldir = argc < 3 ? (char*) "res/xml" : argv[2];
 	char* manifestfragfile = argc < 4 ? (char*) "manifest-fragment.xml" : argv[3];
-	//char* xmlfile = argv[2];
-	//fprintf(stderr, "Saving to %s\n", xmlfile);
-	//auto xmlFP = fopen(xmlfile, "w");
 	fprintf(stderr, "manifest fragment: %s\n", manifestfragfile);
 	
 	// FIXME: should we support Windows... ? They have WSL now.
-	char *cmd = (char*) calloc(snprintf(NULL, 0, "mkdir -p %s", xmldir), 0);
+	char *cmd = (char*) malloc(snprintf(NULL, 0, "mkdir -p %s", xmldir) + 1);
 	sprintf(cmd, "mkdir -p %s", xmldir);
+	fprintf(stderr, "run command %s\n", cmd);
 	system(cmd);
 	free(cmd);
 	
@@ -76,35 +78,77 @@ int main(int argc, char **argv)
     input_port_uri_node = lilv_new_uri (world, LV2_CORE__InputPort);
     output_port_uri_node = lilv_new_uri (world, LV2_CORE__OutputPort);
 
-	auto filePathNode = lilv_new_file_uri(world, NULL, ttlfile);
+	FILE *androidManifestFP = fopen(manifestfragfile, "w+");
+	if (!androidManifestFP) {
+		fprintf(stderr, "Failed to create %s\n", manifestfragfile);
+		return 2;
+	}
+
+	char* lv2realpath = realpath(lv2dirName, NULL);
+	fprintf(stderr, "LV2 directory: %s\n", lv2realpath);
+#if 1
+	DIR *lv2dir = opendir(lv2dirName);
+	if (!lv2dir) {
+		fprintf(stderr, "Directory %s cannot be opened.\n", lv2dirName);
+		return 3;
+	}
+	char* filenames[4096];
 	
-	lilv_world_load_bundle(world, filePathNode);
+	dirent *ent;
+	int n_files;
+	while ((ent = readdir(lv2dir)) != NULL) {
+		if (!strcmp(ent->d_name, "."))
+			continue;
+		if (!strcmp(ent->d_name, ".."))
+			continue;
+		
+		fprintf(stderr, "DIRECTORY: %s\n", ent->d_name);
+		int ttllen = snprintf(NULL, 0, "%s/%s/manifest.ttl", lv2realpath, ent->d_name) + 1;
+		char* ttlfile = (char*) malloc(ttllen);
+		filenames[n_files++] = ttlfile;
+		sprintf(ttlfile, "%s/%s/manifest.ttl", lv2realpath, ent->d_name);
+		struct stat st;
+		if(stat(ttlfile, &st)) {
+			fprintf(stderr, "%s is not found.\n", ttlfile);
+			continue;
+		}
+		fprintf(stderr, "Loading from %s %d\n", ttlfile, strlen(ttlfile));
+		auto filePathNode = lilv_new_file_uri(world, NULL, ttlfile);
+		
+		lilv_world_load_bundle(world, filePathNode);
+		
+		fprintf (stderr, "Loaded bundle. Dumping all plugins from there.\n");
+	}
+	closedir(lv2dir);
+#else	
+	setenv("LV2_PATH", lv2realpath, 1);
+	lilv_world_load_all(world);
+#endif
+
+	fprintf(stderr, "all plugins loaded\n");
 	
-	fprintf (stderr, "Loaded bundle. Dumping all plugins from there.\n");
-	
-	auto plugins = lilv_world_get_all_plugins(world);
+	const LilvPlugins *plugins = lilv_world_get_all_plugins(world);
 	
 	int numbered_files = 0;
-
-	FILE *androidManifestFP = fopen(manifestfragfile, "w");
 	
+	fprintf(androidManifestFP, "        <!-- generated manifest fragment by \"aap-import-lv2-metadata\" tool -->\n");
+
 	for (auto i = lilv_plugins_begin(plugins); !lilv_plugins_is_end(plugins, i); i = lilv_plugins_next(plugins, i)) {
 		
-		const auto plugin = lilv_plugins_get(plugins, i);
-		auto name = lilv_node_as_string(lilv_plugin_get_name(plugin));
-		auto author = lilv_plugin_get_author_name(plugin);
-		auto manufacturer = lilv_plugin_get_project(plugin);
+		const LilvPlugin *plugin = lilv_plugins_get(plugins, i);
+		const char *name = lilv_node_as_string(lilv_plugin_get_name(plugin));
+		const LilvNode *author = lilv_plugin_get_author_name(plugin);
+		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
 
-		fprintf(androidManifestFP, "<service android:name=\".AudioPluginService\" android:label=\"%s\">\n", name);
-		fprintf(androidManifestFP, "  <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
-		fprintf(androidManifestFP, "  <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
-		fprintf(androidManifestFP, "</service>\n");
+		fprintf(androidManifestFP, "        <service android:name=\".AudioPluginService\" android:label=\"%s\">\n", name);
+		fprintf(androidManifestFP, "            <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
+		fprintf(androidManifestFP, "            <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
+		fprintf(androidManifestFP, "        </service>\n");
 
-		char *xmlFilename = (char*) calloc(snprintf(NULL, 0, "%s/%s", xmldir, name), 0);
+		char *xmlFilename = (char*) malloc(snprintf(NULL, 0, "%s/%s", xmldir, name) + 1);
 		sprintf(xmlFilename, "%s/metadata%d.xml", xmldir, numbered_files++);
 		fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
-		FILE *xmlFP = fopen(xmlFilename, "w");
-		free(xmlFilename);
+		FILE *xmlFP = fopen(xmlFilename, "w+");
 		
 		fprintf(xmlFP, "<plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n  <ports>\n",
 			name,
@@ -126,14 +170,18 @@ int main(int argc, char **argv)
 		fprintf(xmlFP, "  </ports>\n</plugin>\n");
 		
 		fclose(xmlFP);
+		free(xmlFilename);
 	}
 	
 	fclose(androidManifestFP);
 	
 	lilv_world_free(world);
 	
+	for(int i = 0; i < n_files; i++)
+		free(filenames[i]);
+	free(lv2realpath);
+	
 	fprintf (stderr, "done.\n");
-	free(ttlfile);
 	return 0;
 }
 

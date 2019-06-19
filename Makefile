@@ -1,5 +1,7 @@
 # This Makefile is to build and copy native LV2 dependencies
 
+PWD=`pwd`
+
 ABIS_SIMPLE = x86 x86-64 armv7 arm64
 APPNAMES = AAPHostSample AAPLV2Sample
 ANDROID_NDK=~/android-sdk-`uname`/ndk-bundle
@@ -18,7 +20,7 @@ prepare:
 
 
 .PHONY:
-build: build-lv2-deps copy-lv2-deps add-symlinks
+build: build-lv2-deps copy-lv2-deps add-symlinks import-metadata
 
 
 .PHONY:
@@ -42,7 +44,6 @@ copy-lv2-deps-single:
 	for appname in $(APPNAMES) ; do \
 		mkdir -p poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2) && \
 		cp external/cerbero/build/dist/android_$(A_ARCH)/lib/*.so poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2)/ && \
-		mkdir -p poc-samples/$$appname/app/src/main/assets/lv2/$(A_ARCH) ; \
 		cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2/* poc-samples/$$appname/app/src/main/assets/lv2/ ; \
 		rm poc-samples/$$appname/app/src/main/assets/lv2/*/*.so ; \
 		cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2/*/*.so poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2) ; \
@@ -57,5 +58,20 @@ build-lv2-deps:
 run-cerbero-command:
 	cd external/cerbero && for abi in $(ABIS_SIMPLE) ; do \
 		ANDROID_NDK_HOME=$(ANDROID_NDK) ./cerbero-uninstalled -c config/cross-android-$$abi.cbc $(CERBERO_COMMAND) ; \
+	done
+
+
+.PHONY:
+import-metadata: build-metadata-importer run-metadata-importer
+
+.PHONY:
+build-metadata-importer:
+	cd tools/aap-import-lv2-metadata && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make && cd ../../..
+
+.PHONY:
+run-metadata-importer:
+	for appname in $(APPNAMES) ; do \
+		# tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata poc-samples/$$appname/app/src/main/assets/lv2 poc-samples/$$appname/app/src/main/res/xml poc-samples/$$appname/app/src/main/manifest-fragment.xml ; \
+		tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata $(PWD)/poc-samples/$$appname/app/src/main/assets/lv2 $(PWD)/poc-samples/$$appname/app/src/main/res/xml $(PWD)/poc-samples/$$appname/app/src/main/manifest-fragment.xml; \
 	done
 
