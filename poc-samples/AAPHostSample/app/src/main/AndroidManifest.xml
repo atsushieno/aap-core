@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="org.androidaudiopluginframework.samples.aaplv2sample">
+          package="org.androidaudiopluginframework.samples.aaphostsample">
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
@@ -17,17 +16,14 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-	<!-- FIXME: remove this once it's done -->
-        <service android:name=".AAPLV2SampleService"
-                 android:label="AAPLV2SamplePlugin">
+        <service android:name="org.androidaudiopluginframework.AudioPluginService"
+                 android:label="AAPHostSamplePlugin">
             <intent-filter>
                 <action android:name="org.androidaudiopluginframework.AudioPluginService" />
             </intent-filter>
             <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
                 android:resource="@xml/aap_metadata"/>
         </service>
-
-	@@AAP_SERVICES@@
     </application>
 
 </manifest>

@@ -136,6 +136,12 @@ int main(int argc, char **argv)
 	
 	fprintf(androidManifestFP, "        <!-- generated manifest fragment by \"aap-import-lv2-metadata\" tool -->\n");
 
+	char *xmlFilename = (char*) malloc(snprintf(NULL, 0, "%s/aap_metadata.xml", xmldir));
+	sprintf(xmlFilename, "%s/aap_metadata.xml", xmldir);
+	fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
+	FILE *xmlFP = fopen(xmlFilename, "w+");
+	fprintf(xmlFP, "<plugins>\n");
+
 	for (auto i = lilv_plugins_begin(plugins); !lilv_plugins_is_end(plugins, i); i = lilv_plugins_next(plugins, i)) {
 		
 		const LilvPlugin *plugin = lilv_plugins_get(plugins, i);
@@ -143,17 +149,12 @@ int main(int argc, char **argv)
 		const LilvNode *author = lilv_plugin_get_author_name(plugin);
 		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
 
-		char *xmlFilename = (char*) malloc(snprintf(NULL, 0, "%s/%s", xmldir, name) + 1);
-		sprintf(xmlFilename, "%s/metadata%d.xml", xmldir, numbered_files++);
-		fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
-		FILE *xmlFP = fopen(xmlFilename, "w+");
-		
 		fprintf(androidManifestFP, "        <service android:name=\".AudioPluginService\" android:label=\"%s\">\n", escape_xml(name));
 		fprintf(androidManifestFP, "            <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
 		fprintf(androidManifestFP, "            <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
 		fprintf(androidManifestFP, "        </service>\n");
 
-		fprintf(xmlFP, "<plugins>\n  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n    <ports>\n",
+		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n    <ports>\n",
 			name,
 			/* FIXME: this categorization is super hacky */
 			is_plugin_instrument(plugin) ? "Instrument" : "Effect",
@@ -170,11 +171,12 @@ int main(int argc, char **argv)
 				lilv_port_supports_event(plugin, port, midi_event_uri_node) ? "midi" : IS_AUDIO_PORT(plugin, port) ? "audio" : "other",
 				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
 		}
-		fprintf(xmlFP, "    </ports>\n  </plugin>\n</plugins>");
-		
-		fclose(xmlFP);
-		free(xmlFilename);
+		fprintf(xmlFP, "    </ports>\n  </plugin>\n");	
 	}
+	
+	fprintf(xmlFP, "</plugins>\n");
+	fclose(xmlFP);
+	free(xmlFilename);
 	
 	fclose(androidManifestFP);
 	

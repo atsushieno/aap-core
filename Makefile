@@ -72,6 +72,5 @@ build-metadata-importer:
 run-metadata-importer:
 	for appname in $(APPNAMES) ; do \
 		$(PWD)/tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata $(PWD)/poc-samples/$$appname/app/src/main/assets/lv2 $(PWD)/poc-samples/$$appname/app/src/main/res/xml $(PWD)/poc-samples/$$appname/app/src/main/manifest-fragment.xml; \
-		cd $(PWD)/poc-samples/$$appname/app/src/main && python -c 'print open("AndroidManifest.xml.in", "r").read().replace("@@AAP_SERVICES@@", open("manifest-fragment.xml", "r").read())' > AndroidManifest.xml && cd $(PWD); \
 	done
 

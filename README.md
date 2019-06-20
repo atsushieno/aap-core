@@ -8,7 +8,7 @@ There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fi
 
 What AAP aims is to become like an inclusive standard for Android Audio plugin world. The license is permissive (MIT). It is designed to be pluggable to other specific audio plugin specifications like VST3, LV2, CLAP, and so on (not necessarily meant that *we* write code for them).
 
-On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/).
+On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/). Namely, AAP is first designed so that JUCE audio processor can be implemented.
 
 Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts.
 
@@ -34,11 +34,11 @@ Here is a brief workflow items for a plugin from the beginning, through processi
 
 This is quite like what LV2 does.
 
-Unlike in-host-process plugin processing, it will become important to switch contexts. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
+Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 
 An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
 
-LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which can changed later at run time but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
+LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
 In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
 
@@ -89,7 +89,7 @@ The `<service>` element comes up with a `<meta-data>` element. It is to specify 
 
 Note that this pair of a `<service>` element and a metadata XML file is required **for each plugin**. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be in separate definitions.
 
-The metadata format is super hacky for now and subject to change. The metadata content will be close to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
+The metadata format is somewhat hacky for now and subject to change. The metadata content will be close to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
 
 AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services.
 
@@ -113,11 +113,9 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 For `category`, we have undefined format. VST has some strings like `Effect`, `Synth`, `Synth|Instrument`, or `Fx|Delay` when it is detailed. When it contains `Instrument` then it is regarded by the JUCE bridge so far.
 
 
-## AAP package helpers
+## AAP-LV2 backend
 
-### AAP-LV2
-
-#### directory structure
+### directory structure
 
 LV2 packaging is not straightforward. Android native libraries are usually packaged like
 
@@ -142,13 +140,13 @@ Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle 
 
 The `copy-lv2-deps` target in the top `Makefile` does this task for the `poc-samples`.
 
-#### LV2_PATH limitation
+### LV2_PATH limitation
 
 Although, there is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
 
 To workaround this issue, AAP-LV2 plugin takes a list of LV2 asset paths which are to build `LV2_PATH` settings. It is for both hosts (to load local plugins) and plugins (to provide themselves via server).
 
-#### metadata
+### metadata
 
 We decided to NOT support shorthand metadata notation like
 
@@ -191,7 +189,8 @@ The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentP
 We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
 
 
-### AAP-VST3
+
+## AAP-VST3 backend
 
 TBD - there should be similar restriction to that of AAP-LV2.
 
@@ -231,6 +230,8 @@ External software projects:
   - vst3sdk
     - TODO: fill the rest
 
+### cerbero fork
+
 The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
 
 ### LV2 forks
@@ -246,7 +247,7 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 
 AAP proof-of-concept host is in `poc-samples/AAPHostSample`.
 
-AAP host will have to support multiple helper bridges e.g. AAP-LV2 and AAP-VST3. LV2 host bridge can be implemented using lilv.
+AAP host will have to support multiple backends e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is implemented using lilv.
 
 Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transformed to AAP hosting application.
 

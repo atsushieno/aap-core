@@ -1,4 +1,607 @@
-<plugin manufacturer="AndroidAudioPluginProject" product="HostSamplePlugin">
-    <input-port name="input" />
-    <output-port name="input" />
-</plugin>
+<plugins>
+  <plugin backend="LV2" name="MDA Ambience" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Ambience">
+    <ports>
+      <port direction="input" content="other" name="Size" />
+      <port direction="input" content="other" name="HF Damp" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Bandisto" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Bandisto">
+    <ports>
+      <port direction="input" content="other" name="Listen" />
+      <port direction="input" content="other" name="L __ M" />
+      <port direction="input" content="other" name="M __ H" />
+      <port direction="input" content="other" name="L Dist" />
+      <port direction="input" content="other" name="M Dist" />
+      <port direction="input" content="other" name="H Dist" />
+      <port direction="input" content="other" name="L Out" />
+      <port direction="input" content="other" name="M Out" />
+      <port direction="input" content="other" name="H Out" />
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA BeatBox" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/BeatBox">
+    <ports>
+      <port direction="input" content="other" name="Hat Thr" />
+      <port direction="input" content="other" name="Hat Rate" />
+      <port direction="input" content="other" name="Hat Mix" />
+      <port direction="input" content="other" name="Kik Thr" />
+      <port direction="input" content="other" name="Kik Trig" />
+      <port direction="input" content="other" name="Kik Mix" />
+      <port direction="input" content="other" name="Snr Thr" />
+      <port direction="input" content="other" name="Snr Trig" />
+      <port direction="input" content="other" name="Snr Mix" />
+      <port direction="input" content="other" name="Dynamics" />
+      <port direction="input" content="other" name="Record" />
+      <port direction="input" content="other" name="Thru Mix" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Combo" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Combo">
+    <ports>
+      <port direction="input" content="other" name="Model" />
+      <port direction="input" content="other" name="Drive" />
+      <port direction="input" content="other" name="Bias" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Stereo" />
+      <port direction="input" content="other" name="HPF Freq" />
+      <port direction="input" content="other" name="HPF Reso" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA DX10" category="Instrument" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/DX10">
+    <ports>
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Decay" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="Coarse" />
+      <port direction="input" content="other" name="Fine" />
+      <port direction="input" content="other" name="Mod Init" />
+      <port direction="input" content="other" name="Mod Dec" />
+      <port direction="input" content="other" name="Mod Sus" />
+      <port direction="input" content="other" name="Mod Rel" />
+      <port direction="input" content="other" name="Mod Vel" />
+      <port direction="input" content="other" name="Vibrato" />
+      <port direction="input" content="other" name="Octave" />
+      <port direction="input" content="other" name="FineTune" />
+      <port direction="input" content="other" name="Waveform" />
+      <port direction="input" content="other" name="Mod Thru" />
+      <port direction="input" content="other" name="LFO Rate" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+      <port direction="input" content="midi" name="Event In" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA De-ess" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/DeEss">
+    <ports>
+      <port direction="input" content="other" name="Thresh" />
+      <port direction="input" content="other" name="Freq" />
+      <port direction="input" content="other" name="HF Drive" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Degrade" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Degrade">
+    <ports>
+      <port direction="input" content="other" name="Headroom" />
+      <port direction="input" content="other" name="Quant" />
+      <port direction="input" content="other" name="Rate" />
+      <port direction="input" content="other" name="Post Filter" />
+      <port direction="input" content="other" name="Non-Lin" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Delay" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Delay">
+    <ports>
+      <port direction="input" content="other" name="L Delay" />
+      <port direction="input" content="other" name="R Delay" />
+      <port direction="input" content="other" name="Feedback" />
+      <port direction="input" content="other" name="Fb Tone" />
+      <port direction="input" content="other" name="FX Mix" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Detune" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Detune">
+    <ports>
+      <port direction="input" content="other" name="Detune" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Latency" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Dither" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Dither">
+    <ports>
+      <port direction="input" content="other" name="Word Len" />
+      <port direction="input" content="other" name="Dither" />
+      <port direction="input" content="other" name="Dith Amp" />
+      <port direction="input" content="other" name="DC Trim" />
+      <port direction="input" content="other" name="Zoom" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA DubDelay" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/DubDelay">
+    <ports>
+      <port direction="input" content="other" name="Delay" />
+      <port direction="input" content="other" name="Feedback" />
+      <port direction="input" content="other" name="Fb Tone" />
+      <port direction="input" content="other" name="LFO Depth" />
+      <port direction="input" content="other" name="LFO Rate" />
+      <port direction="input" content="other" name="FX Mix" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Dynamics" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Dynamics">
+    <ports>
+      <port direction="input" content="other" name="Thresh" />
+      <port direction="input" content="other" name="Ratio" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="Limiter" />
+      <port direction="input" content="other" name="Gate Thr" />
+      <port direction="input" content="other" name="Gate Att" />
+      <port direction="input" content="other" name="Gate Rel" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA ePiano" category="Instrument" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/EPiano">
+    <ports>
+      <port direction="input" content="other" name="Envelope Decay" />
+      <port direction="input" content="other" name="Envelope Release" />
+      <port direction="input" content="other" name="Hardness" />
+      <port direction="input" content="other" name="Treble Boost" />
+      <port direction="input" content="other" name="Modulation" />
+      <port direction="input" content="other" name="LFO Rate" />
+      <port direction="input" content="other" name="Velocity Sense" />
+      <port direction="input" content="other" name="Stereo Width" />
+      <port direction="input" content="other" name="Polyphonic" />
+      <port direction="input" content="other" name="Fine Tuning" />
+      <port direction="input" content="other" name="Random Tuning" />
+      <port direction="input" content="other" name="Overdrive" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+      <port direction="input" content="midi" name="Event In" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Image" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Image">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="S Width" />
+      <port direction="input" content="other" name="S Pan" />
+      <port direction="input" content="other" name="M Level" />
+      <port direction="input" content="other" name="M Pan" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA JX10" category="Instrument" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/JX10">
+    <ports>
+      <port direction="input" content="other" name="OSC Mix" />
+      <port direction="input" content="other" name="OSC Tune" />
+      <port direction="input" content="other" name="OSC Fine" />
+      <port direction="input" content="other" name="Glide" />
+      <port direction="input" content="other" name="Gld Rate" />
+      <port direction="input" content="other" name="Gld Bend" />
+      <port direction="input" content="other" name="VCF Freq" />
+      <port direction="input" content="other" name="VCF Reso" />
+      <port direction="input" content="other" name="VCF Env" />
+      <port direction="input" content="other" name="VCF LFO" />
+      <port direction="input" content="other" name="VCF Vel" />
+      <port direction="input" content="other" name="VCF Att" />
+      <port direction="input" content="other" name="VCF Dec" />
+      <port direction="input" content="other" name="VCF Sus" />
+      <port direction="input" content="other" name="VCF Rel" />
+      <port direction="input" content="other" name="ENV Att" />
+      <port direction="input" content="other" name="ENV Dec" />
+      <port direction="input" content="other" name="ENV Sus" />
+      <port direction="input" content="other" name="ENV Rel" />
+      <port direction="input" content="other" name="LFO Rate" />
+      <port direction="input" content="other" name="Vibrato" />
+      <port direction="input" content="other" name="Noise" />
+      <port direction="input" content="other" name="Octave" />
+      <port direction="input" content="other" name="Tuning" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+      <port direction="input" content="midi" name="Event In" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Leslie" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Leslie">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="Lo Width" />
+      <port direction="input" content="other" name="Lo Throb" />
+      <port direction="input" content="other" name="Hi Width" />
+      <port direction="input" content="other" name="Hi Depth" />
+      <port direction="input" content="other" name="Hi Throb" />
+      <port direction="input" content="other" name="X-Over" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Speed" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Limiter" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Limiter">
+    <ports>
+      <port direction="input" content="other" name="Thresh" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Knee" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Loudness" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Loudness">
+    <ports>
+      <port direction="input" content="other" name="Loudness" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Link" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA MultiBand" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/MultiBand">
+    <ports>
+      <port direction="input" content="other" name="Listen" />
+      <port direction="input" content="other" name="L __ M" />
+      <port direction="input" content="other" name="M __ H" />
+      <port direction="input" content="other" name="L Comp" />
+      <port direction="input" content="other" name="M Comp" />
+      <port direction="input" content="other" name="H Comp" />
+      <port direction="input" content="other" name="L Out" />
+      <port direction="input" content="other" name="M Out" />
+      <port direction="input" content="other" name="H Out" />
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="Stereo" />
+      <port direction="input" content="other" name="Process" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Overdrive" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Overdrive">
+    <ports>
+      <port direction="input" content="other" name="Drive" />
+      <port direction="input" content="other" name="Muffle" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Piano" category="Instrument" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Piano">
+    <ports>
+      <port direction="input" content="other" name="Envelope Decay" />
+      <port direction="input" content="other" name="Envelope Release" />
+      <port direction="input" content="other" name="Hardness Offset" />
+      <port direction="input" content="other" name="Velocity to Hardness" />
+      <port direction="input" content="other" name="Muffling Filter" />
+      <port direction="input" content="other" name="Velocity to Muffling" />
+      <port direction="input" content="other" name="Velocity Sensitivity" />
+      <port direction="input" content="other" name="Stereo Width" />
+      <port direction="input" content="other" name="Polyphony" />
+      <port direction="input" content="other" name="Fine Tuning" />
+      <port direction="input" content="other" name="Random Detuning" />
+      <port direction="input" content="other" name="Stretch Tuning" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+      <port direction="input" content="midi" name="Event In" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA RePsycho!" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/RePsycho">
+    <ports>
+      <port direction="input" content="other" name="Tune" />
+      <port direction="input" content="other" name="Fine" />
+      <port direction="input" content="other" name="Decay" />
+      <port direction="input" content="other" name="Thresh" />
+      <port direction="input" content="other" name="Hold" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Quality" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA RezFilter" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/RezFilter">
+    <ports>
+      <port direction="input" content="other" name="Freq" />
+      <port direction="input" content="other" name="Res" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Env-_VCF" />
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="LFO-_VCF" />
+      <port direction="input" content="other" name="LFO Rate" />
+      <port direction="input" content="other" name="Trigger" />
+      <port direction="input" content="other" name="Max Freq" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA RingMod" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/RingMod">
+    <ports>
+      <port direction="input" content="other" name="Freq" />
+      <port direction="input" content="other" name="Fine" />
+      <port direction="input" content="other" name="Feedback" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA RoundPan" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/RoundPan">
+    <ports>
+      <port direction="input" content="other" name="Pan" />
+      <port direction="input" content="other" name="Auto" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Shepard" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Shepard">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="Rate" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Splitter" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Splitter">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="Freq" />
+      <port direction="input" content="other" name="Freq SW" />
+      <port direction="input" content="other" name="Level" />
+      <port direction="input" content="other" name="Level SW" />
+      <port direction="input" content="other" name="Envelope" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Stereo" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Stereo">
+    <ports>
+      <port direction="input" content="other" name="Width" />
+      <port direction="input" content="other" name="Delay" />
+      <port direction="input" content="other" name="Balance" />
+      <port direction="input" content="other" name="Mod" />
+      <port direction="input" content="other" name="Rate" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA SubSynth" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/SubSynth">
+    <ports>
+      <port direction="input" content="other" name="Type" />
+      <port direction="input" content="other" name="Level" />
+      <port direction="input" content="other" name="Tune" />
+      <port direction="input" content="other" name="Dry Mix" />
+      <port direction="input" content="other" name="Thresh" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA TalkBox" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/TalkBox">
+    <ports>
+      <port direction="input" content="other" name="Wet" />
+      <port direction="input" content="other" name="Dry" />
+      <port direction="input" content="other" name="Carrier" />
+      <port direction="input" content="other" name="Quality" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA TestTone" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/TestTone">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="Level" />
+      <port direction="input" content="other" name="Channel" />
+      <port direction="input" content="other" name="F1" />
+      <port direction="input" content="other" name="F2" />
+      <port direction="input" content="other" name="Sweep" />
+      <port direction="input" content="other" name="Thru" />
+      <port direction="input" content="other" name="Zero dB" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA ThruZero" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/ThruZero">
+    <ports>
+      <port direction="input" content="other" name="Rate" />
+      <port direction="input" content="other" name="Depth" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Feedback" />
+      <port direction="input" content="other" name="Depth Mod" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Tracker" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Tracker">
+    <ports>
+      <port direction="input" content="other" name="Mode" />
+      <port direction="input" content="other" name="Dynamics" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Glide" />
+      <port direction="input" content="other" name="Transpose" />
+      <port direction="input" content="other" name="Maximum" />
+      <port direction="input" content="other" name="Trigger" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Transient" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Transient">
+    <ports>
+      <port direction="input" content="other" name="Attack" />
+      <port direction="input" content="other" name="Release" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Filter" />
+      <port direction="input" content="other" name="Att Hold" />
+      <port direction="input" content="other" name="Rel Hold" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA VocInput" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/VocInput">
+    <ports>
+      <port direction="input" content="other" name="Tracking" />
+      <port direction="input" content="other" name="Pitch" />
+      <port direction="input" content="other" name="Breath" />
+      <port direction="input" content="other" name="S Thresh" />
+      <port direction="input" content="other" name="Max Freq" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="MDA Vocoder" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Vocoder">
+    <ports>
+      <port direction="input" content="other" name="Mod In" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="other" name="Hi Thru" />
+      <port direction="input" content="other" name="Hi Band" />
+      <port direction="input" content="other" name="Envelope" />
+      <port direction="input" content="other" name="Filter Q" />
+      <port direction="input" content="other" name="Mid Freq" />
+      <port direction="input" content="other" name="Quality" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Simple Amplifier" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-amp">
+    <ports>
+      <port direction="input" content="other" name="Gain" />
+      <port direction="input" content="audio" name="In" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example Fifths" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-fifths">
+    <ports>
+      <port direction="input" content="midi" name="In" />
+      <port direction="output" content="midi" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example Metronome" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-metro">
+    <ports>
+      <port direction="input" content="other" name="Control" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
+    <ports>
+      <port direction="input" content="midi" name="Control" />
+      <port direction="input" content="audio" name="In" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example Parameters" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-params">
+    <ports>
+      <port direction="input" content="other" name="In" />
+      <port direction="output" content="other" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Exampler" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-sampler">
+    <ports>
+      <port direction="input" content="midi" name="Control" />
+      <port direction="output" content="other" name="Notify" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example Scope (Mono)" category="Effect" author="Robin Gareus" manufacturer="http://lv2plug.in/plugins/eg-scope" unique-id="lv2:http://lv2plug.in/plugins/eg-scope#Mono">
+    <ports>
+      <port direction="input" content="other" name="Control" />
+      <port direction="output" content="other" name="Notify" />
+      <port direction="input" content="audio" name="In" />
+      <port direction="output" content="audio" name="Out" />
+    </ports>
+  </plugin>
+  <plugin backend="LV2" name="Example Scope (Stereo)" category="Effect" author="Robin Gareus" manufacturer="http://lv2plug.in/plugins/eg-scope" unique-id="lv2:http://lv2plug.in/plugins/eg-scope#Stereo">
+    <ports>
+      <port direction="input" content="other" name="Control" />
+      <port direction="output" content="other" name="Notify" />
+      <port direction="input" content="audio" name="InL" />
+      <port direction="output" content="audio" name="OutL" />
+      <port direction="input" content="audio" name="InR" />
+      <port direction="output" content="audio" name="OutR" />
+    </ports>
+  </plugin>
+</plugins>
