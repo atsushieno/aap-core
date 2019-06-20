@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.CompoundButton
 import android.widget.ListAdapter
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -27,9 +29,22 @@ import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 
 class MainActivity : AppCompatActivity() {
 
-    class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
+    inner class PluginViewAdapter(ctx:Context, layout: Int, isOutProcess: Boolean, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
+        var intent: Intent? = null
+        val isOutProcess: Boolean = isOutProcess
+
+        var conn = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                Log.i("HostMainActivity", "onServiceConnected invoked")
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Log.i("HostMainActivity", "onServiceDisconnected invoked")
+            }
+        }
+
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val item = getItem(position)
             var view = convertView
@@ -41,6 +56,76 @@ class MainActivity : AppCompatActivity() {
                 return view
             view.audio_plugin_service_name.text = item.first.name
             view.audio_plugin_name.text = item.second.name
+            view.audio_plugin_list_identifier.text = item.second.uniqueId
+
+            val service = item.first
+            val plugin = item.second
+
+            if (isOutProcess) {
+                view.plugin_toggle_switch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
+                    if (intent != null) {
+                        Log.i("Stopping ", "${service.name} | ${service.packageName} | ${service.className}")
+                        context.stopService(intent)
+                        context.unbindService(conn)
+                        intent = null
+                    } else {
+                        Log.i("Instantiating ", "${service.name} | ${service.packageName} | ${service.className}")
+
+                        intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
+                        intent!!.component = ComponentName(
+                            service.packageName,
+                            service.className
+                        )
+
+                        context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+                            context.startForegroundService(intent)
+                        else
+                            context.startService(intent)
+                    }
+                }
+            } else {
+                view.plugin_toggle_switch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
+                    var pluginPaths = arrayOf(
+                        "/lv2/presets.lv2/",
+                        "/lv2/eg-fifths.lv2/",
+                        "/lv2/dynmanifest.lv2/",
+                        "/lv2/port-groups.lv2/",
+                        "/lv2/urid.lv2/",
+                        "/lv2/morph.lv2/",
+                        "/lv2/eg-scope.lv2/",
+                        "/lv2/eg-amp.lv2/",
+                        "/lv2/eg-metro.lv2/",
+                        "/lv2/eg-sampler.lv2/",
+                        "/lv2/buf-size.lv2/",
+                        "/lv2/atom.lv2/",
+                        "/lv2/worker.lv2/",
+                        "/lv2/resize-port.lv2/",
+                        "/lv2/midi.lv2/",
+                        "/lv2/time.lv2/",
+                        "/lv2/units.lv2/",
+                        "/lv2/mda.lv2/",
+                        "/lv2/core.lv2/",
+                        "/lv2/log.lv2/",
+                        "/lv2/schemas.lv2/",
+                        "/lv2/eg-midigate.lv2/",
+                        "/lv2/eg-params.lv2/",
+                        "/lv2/state.lv2/",
+                        "/lv2/instance-access.lv2/",
+                        "/lv2/patch.lv2/",
+                        "/lv2/data-access.lv2/",
+                        "/lv2/options.lv2/",
+                        "/lv2/parameters.lv2/",
+                        "/lv2/event.lv2/",
+                        "/lv2/uri-map.lv2/",
+                        "/lv2/port-props.lv2/",
+                        "/lv2/ui.lv2/"
+                    )
+                    val uri = item.second.uniqueId?.substring("lv2:".length)
+                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!))
+                }
+            }
+
             return view
         }
     }
@@ -51,76 +136,13 @@ class MainActivity : AppCompatActivity() {
 
         // Query AAPs
         val pluginServices = AudioPluginHost().queryAudioPluginServices(this)
-        val plugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
+        val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
-        val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
-        this.audioPluginServiceListView.adapter = adapter
+        val servicedAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, true, servicedPlugins)
+        this.audioPluginServiceListView.adapter = servicedAdapter
 
-        Log.i("AAPPluginHostSample","Plugin query results:")
-        for (plugin in pluginServices) {
-            Log.i("Instantiating ", "${plugin.name} | ${plugin.packageName} | ${plugin.className}")
-
-            // query specific package
-            var intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
-            intent.component = ComponentName(
-                plugin.packageName,
-                plugin.className
-            )
-
-            var conn = object: ServiceConnection {
-                override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                    Log.i("HostMainActivity", "onServiceConnected invoked")
-                }
-                override fun onServiceDisconnected(name: ComponentName?) {
-                    Log.i("HostMainActivity", "onServiceDisconnected invoked")
-                }
-            }
-
-            //bindService(intent, conn, Context.BIND_AUTO_CREATE)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
-                startForegroundService(intent)
-            else
-                startService(intent)
-        }
-
-        // LV2 hosting
-        //AAPLV2Host.runHost(arrayOf())
-        var pluginPaths = arrayOf(
-            "/lv2/presets.lv2/",
-            "/lv2/eg-fifths.lv2/",
-            "/lv2/dynmanifest.lv2/",
-            "/lv2/port-groups.lv2/",
-            "/lv2/urid.lv2/",
-            "/lv2/morph.lv2/",
-            "/lv2/eg-scope.lv2/",
-            "/lv2/eg-amp.lv2/",
-            "/lv2/eg-metro.lv2/",
-            "/lv2/eg-sampler.lv2/",
-            "/lv2/buf-size.lv2/",
-            "/lv2/atom.lv2/",
-            "/lv2/worker.lv2/",
-            "/lv2/resize-port.lv2/",
-            "/lv2/midi.lv2/",
-            "/lv2/time.lv2/",
-            "/lv2/units.lv2/",
-            "/lv2/mda.lv2/",
-            "/lv2/core.lv2/",
-            "/lv2/log.lv2/",
-            "/lv2/schemas.lv2/",
-            "/lv2/eg-midigate.lv2/",
-            "/lv2/eg-params.lv2/",
-            "/lv2/state.lv2/",
-            "/lv2/instance-access.lv2/",
-            "/lv2/patch.lv2/",
-            "/lv2/data-access.lv2/",
-            "/lv2/options.lv2/",
-            "/lv2/parameters.lv2/",
-            "/lv2/event.lv2/",
-            "/lv2/uri-map.lv2/",
-            "/lv2/port-props.lv2/",
-            "/lv2/ui.lv2/"
-        )
-        AAPLV2Host.runHost(pluginPaths, assets, arrayOf("http://drobilla.net/plugins/mda/Delay"))
-        //AAPLV2Host.runHost(pluginPaths, assets, arrayOf("http://drobilla.net/plugins/mda/DX10"))
+        val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName && p.second.backend == "LV2" }.toTypedArray()
+        val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
+        this.localAudioPluginListView.adapter = localAdapter
     }
 }
