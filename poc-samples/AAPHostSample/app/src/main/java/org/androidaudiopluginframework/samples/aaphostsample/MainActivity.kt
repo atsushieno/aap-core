@@ -9,22 +9,55 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.ListAdapter
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 import org.androidaudiopluginframework.AudioPluginHost
 import org.androidaudiopluginframework.AudioPluginService
 import org.androidaudiopluginframework.hosting.AAPLV2Host
-import java.util.*
-import kotlin.concurrent.timer
+import org.androidaudiopluginframework.AudioPluginServiceInformation
+import org.androidaudiopluginframework.PluginInformation
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.audio_plugin_service_list_item.*
+import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 
 class MainActivity : AppCompatActivity() {
+
+    class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
+        : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
+    {
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val item = getItem(position)
+            var view = convertView
+            if (view == null)
+                view = LayoutInflater.from(context).inflate(R.layout.audio_plugin_service_list_item, parent, false)
+            if (view == null)
+                throw UnsupportedOperationException()
+            if (item == null)
+                return view
+            view.audio_plugin_service_name.text = item.first.name
+            view.audio_plugin_name.text = item.second.name
+            return view
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         // Query AAPs
-        val plugins = AudioPluginHost().queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHost().queryAudioPluginServices(this)
+        val plugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
+
+        val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
+        this.audioPluginServiceListView.adapter = adapter
+
         Log.i("AAPPluginHostSample","Plugin query results:")
-        for (plugin in plugins) {
+        for (plugin in pluginServices) {
             Log.i("Instantiating ", "${plugin.name} | ${plugin.packageName} | ${plugin.className}")
 
             // query specific package
@@ -48,9 +81,6 @@ class MainActivity : AppCompatActivity() {
                 startForegroundService(intent)
             else
                 startService(intent)
-
-            //stopService(intent)
-            //unbindService(conn)
         }
 
         // LV2 hosting

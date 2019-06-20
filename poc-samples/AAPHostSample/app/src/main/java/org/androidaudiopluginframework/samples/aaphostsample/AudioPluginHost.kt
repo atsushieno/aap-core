@@ -27,28 +27,24 @@ class AudioPluginHost
 
             var currentPlugin : PluginInformation? = null
             while (true) {
-                var eventType = xp.next();
+                var eventType = xp.next()
                 if (eventType == XmlPullParser.END_DOCUMENT)
                     break
                 if (eventType == XmlPullParser.IGNORABLE_WHITESPACE)
                     continue
                 if (eventType == XmlPullParser.START_TAG) {
-                    Log.i("AAPXML", "element: " + xp.name)
                     if(xp.name == "plugin") {
                         val name = xp.getAttributeValue(null, "name")
                         val backend = xp.getAttributeValue(null, "backend")
                         val category = xp.getAttributeValue(null, "category")
                         val author = xp.getAttributeValue(null, "author")
                         val manufacturer = xp.getAttributeValue(null, "manufacturer")
-                        Log.i("AAPXML", "plugin name: " + name)
                         // isOutProcess is always true here - as it is returning "service" information here.
                         // Local plugin lookup may return the same plugins with in-process mode.
                         currentPlugin = PluginInformation(name, backend, category, author, manufacturer, true)
                         aapServiceInfo.plugins.add(currentPlugin)
                     } else if (xp.name == "port") {
                         if (currentPlugin != null) {
-                            for (a in 0 .. xp.attributeCount - 1)
-                                Log.i("AAPXML", "  port attribute: " + xp.getAttributeName(a))
                             val name = xp.getAttributeValue(null, "name")
                             val direction = xp.getAttributeValue(null, "direction")
                             val content = xp.getAttributeValue(null, "content")
@@ -60,14 +56,10 @@ class AudioPluginHost
                     }
                 }
                 if (eventType == XmlPullParser.END_TAG) {
-                    Log.i("AAPXML", "EndElement: " + xp.name)
                     if (xp.name == "plugin")
                         currentPlugin = null
                 }
-                else
-                    Log.i("AAPXML", "node: " + eventType)
             }
-            Log.i("AAP-Query","metadata: " + xp)
         }
 
         return plugins.toTypedArray()

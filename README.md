@@ -76,20 +76,24 @@ AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs us
 The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
-<plugin manufacturer="AndroidAudioPluginProject"
-		name="BareBoneSamplePlugin">
-  <ports>
-	<port direction="input" content="midi" name="MidiIn" />
-	<port direction="input" content="other" name="ControlIn" />
-	<port direction="input" content="audio" name="AudioIn" />
-	<port direction="output" content="audio" name="AudioOut" />
-  </ports>
-</plugin>
+<plugins>
+  <plugin manufacturer="AndroidAudioPluginProject"
+          name="BareBoneSamplePlugin">
+    <ports>
+	  <port direction="input" content="midi" name="MidiIn" />
+	  <port direction="input" content="other" name="ControlIn" />
+	  <port direction="input" content="audio" name="AudioIn" />
+	  <port direction="output" content="audio" name="AudioOut" />
+    </ports>
+  </plugin>
+  
+  (more <plugin>s...)
+</plugins>
 ```
 
-Note that this pair of a `<service>` element and a metadata XML file is required **for each plugin**. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be in separate definitions.
+Only one `<service>` a metadata XML file is required. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be listed on the AAP metadata.
 
-The metadata format is somewhat hacky for now and subject to change. The metadata content will be close to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
+The metadata format is somewhat hacky for now and subject to change. The metadata content will be similar to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
 
 AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services.
 
