@@ -6,6 +6,9 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import android.R
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
 
 
@@ -39,7 +42,20 @@ open class AudioPluginService : Service()
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("AudioPluginService", "onStartCommand invoked")
 
-        val notification = NotificationCompat.Builder(this, "audiopluginservice-" + hashCode())
+        val channelID = "audiopluginservice-" + hashCode()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                channelID,
+                "Foreground Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+
+            val manager = getSystemService(NotificationManager::class.java)
+            manager!!.createNotificationChannel(serviceChannel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelID)
             .setContentTitle("Foreground Service")
             .setContentText("started FG service")
             .build()

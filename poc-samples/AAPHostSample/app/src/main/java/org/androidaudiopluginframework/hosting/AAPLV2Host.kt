@@ -6,7 +6,7 @@ class AAPLV2Host
 {
     companion object {
         init {
-            System.loadLibrary("aaphost")
+            System.loadLibrary("androidaudioplugin")
         }
 
         @JvmStatic

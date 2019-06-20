@@ -20,7 +20,7 @@ link_directories(
 # automatically packages shared libraries with your APK.
 
 add_library( # Specifies the name of the library.
-             aaphost
+             androidaudioplugin
 
              # Sets the library as a shared library.
              SHARED
@@ -29,7 +29,7 @@ add_library( # Specifies the name of the library.
              src/main/jni/AAPNativeBridge.cpp
              src/main/jni/aaphostnative.cpp)
 
-target_compile_options(aaphost
+target_compile_options(androidaudioplugin
         PRIVATE
         -std=c++17
         -Wall
@@ -38,11 +38,11 @@ target_compile_options(aaphost
         -Wshadow-field
         )
 
-target_include_directories(aaphost
+target_include_directories(androidaudioplugin
         PRIVATE
         "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
         "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
 
-target_link_libraries(aaphost android binder_ndk log lilv-0)
+target_link_libraries(androidaudioplugin android binder_ndk log lilv-0)
 

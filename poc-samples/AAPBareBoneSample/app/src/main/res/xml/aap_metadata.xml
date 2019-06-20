@@ -1,4 +1,7 @@
-<plugin manufacturer="AndroidAudioPluginProject" product="BareBoneSamplePlugin">
-    <input-port name="input" />
-    <output-port name="input" />
-</plugin>
+<plugins>
+    <plugin name="BareBoneSamplePlugin" manufacturer="AndroidAudioPluginProject" category="Effect"
+            unique-id="6282f0ba-9679-4054-a167-b08b1ca52f5c">
+        <port direction="input" content="audio" name="In" />
+        <port direction="output" content="audio" name="Out" />
+    </plugin>
+</plugins>

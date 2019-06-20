@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import org.androidaudiopluginframework.AudioPluginHost
+import org.androidaudiopluginframework.AudioPluginService
 import org.androidaudiopluginframework.hosting.AAPLV2Host
 import java.util.*
 import kotlin.concurrent.timer
@@ -21,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Query AAPs
-        val plugins = AudioPluginHost().queryAudioPlugins(this)
+        val plugins = AudioPluginHost().queryAudioPluginServices(this)
         Log.i("AAPPluginHostSample","Plugin query results:")
         for (plugin in plugins) {
             Log.i("Instantiating ", "${plugin.name} | ${plugin.packageName} | ${plugin.className}")
@@ -42,16 +43,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            //bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+                startForegroundService(intent)
+            else
+                startService(intent)
 
-
-            bindService(intent, conn, Context.BIND_AUTO_CREATE)
-            startForegroundService(intent)
-
-            //timer(period = 2000, action = {
-                stopService(intent)
-                unbindService(conn)
-            //})
-
+            //stopService(intent)
+            //unbindService(conn)
         }
 
         // LV2 hosting
