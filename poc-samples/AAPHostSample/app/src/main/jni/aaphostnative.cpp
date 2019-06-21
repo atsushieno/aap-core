@@ -3,16 +3,16 @@
 #include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <unistd.h>
-
-#include <math.h>
-#include <string.h>
+#include <dlfcn.h>
+#include <cmath>
+#include <cstring>
 #include <vector>
 #include <map>
+
 #include <lilv/lilv.h>
 #include <../lib/lv2/atom.lv2/atom.h>
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
-#include <dlfcn.h>
 
 #define PI 3.14159265
 
@@ -89,7 +89,7 @@ typedef struct {
 } InstanceUse;
 
 
-int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
+int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, void* wav, int wavLength, void* outWav)
 {
     auto world = lilv_world_new ();
     auto lv2_path_node = lilv_new_string(world, lv2Path);
@@ -193,8 +193,11 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
     }
     aputs ("Port connections established. Start processing audio...");
 
+    /*
     for (int i = 0; i < buffer_size; i++)
         audioIn [i] = (float) sin (i / 50.0 * PI);
+    */
+    memcpy(audioIn, wav, buffer_size > wavLength ? wavLength : buffer_size);
     for (int i = 0; i < buffer_size; i++)
         controlIn [i] = 0.5;
 
@@ -223,6 +226,8 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris)
             aprintf ("%d: %f ", i, currentAudioOut [i]);
         aputs ("");
     }
+
+    memcpy(outWav, currentAudioOut, buffer_size > wavLength ? wavLength : buffer_size);
 
     aputs ("Audio processing done. Freeing everything...");
     for (int i = 0; i < instances.size(); i++) {
@@ -268,7 +273,7 @@ void set_io_context(AAssetManager *am)
     liblilv_set_context(am);
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray jPluginPaths, jobject assets, jobjectArray jPlugins)
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray jPluginPaths, jobject assets, jobjectArray jPlugins, jbyteArray wav, jbyteArray outWav)
 {
     set_io_context(AAssetManager_fromJava(env, assets));
 
@@ -298,10 +303,20 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
         pluginUris[i] = env->GetStringUTFChars(strUriObj, &isCopy);
     }
-    int ret = runHost(lv2Path, pluginUris, size);
+
+    int wavLength = env->GetArrayLength(wav);
+    jbyte* wavBytes = (jbyte*) malloc(wavLength * sizeof(jbyte));
+    env->GetByteArrayRegion(wav, 0, wavLength, wavBytes);
+    jbyte* outWavBytes = (jbyte*) malloc(wavLength * sizeof(jbyte));
+
+    int ret = runHost(lv2Path, pluginUris, size, wavBytes, wavLength, outWavBytes);
+
+    env->SetByteArrayRegion(outWav, 0, wavLength, outWavBytes);
 
     set_io_context(NULL);
 
+    free(wavBytes);
+    free(outWavBytes);
     return ret;
 }
 

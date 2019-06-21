@@ -198,6 +198,14 @@ We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend
 
 TBD - there should be similar restriction to that of AAP-LV2.
 
+### blockers
+
+Currently vst3sdk does not build on Android due to:
+
+- GCC dependency on `ext/atomicity.h` and `__gnu_cxx::__atomic_add()`.
+  - It is probably replaceable with `std::atomic_fetch_add(reinterpret_cast<std::atomic<int32_t>*> (&var), d)`
+- lack of libc++fs (experimental/filesystem) https://github.com/android-ndk/ndk/issues/609
+- It is not limited to Android, but `FUID::generate()` is not implemented on Linux (where they could just use `uuid/uuid.h` or `uuid.h` API...)
 
 
 ## Build Dependencies
@@ -296,6 +304,22 @@ Unlike LV2, hosting API is actually used by plugins too, because it has to serve
 ## JUCE integration
 
 juce_android_audio_plugin_format.cpp implements juce:AudioPluginFormat and related stuff.
+
+
+## Samples
+
+### AAPHostSample
+
+It shows existing AAPs (services) as well as in-app plugins that can be loaded in-process.
+
+
+Behaviors: TODO (For serviecs it connects and disconnects. For local plugins LV2 host runs which takes the input wav sample and generate output wav.
+
+The wave sample is created by atsushieno using Waveform10 and Collective.
+
+(FIXME: the app completely ignores WAV headers so far.)
+
+The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
 
 
 ## android-audio-plugin-framework source tree structure

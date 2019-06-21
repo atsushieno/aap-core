@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
             val plugin = item.second
 
             if (isOutProcess) {
-                view.plugin_toggle_switch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
+                view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     if (intent != null) {
                         Log.i("Stopping ", "${service.name} | ${service.packageName} | ${service.className}")
                         context.stopService(intent)
@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                view.plugin_toggle_switch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
+                view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     var pluginPaths = arrayOf(
                         "/lv2/presets.lv2/",
                         "/lv2/eg-fifths.lv2/",
@@ -122,7 +122,9 @@ class MainActivity : AppCompatActivity() {
                         "/lv2/ui.lv2/"
                     )
                     val uri = item.second.uniqueId?.substring("lv2:".length)
-                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!))
+                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!), wav, outWav)
+                    wavePostPlugin.setRawData(outWav, {})
+                    wavePostPlugin.progress = 100f
                 }
             }
 
@@ -130,9 +132,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    lateinit var wav: ByteArray
+    lateinit var outWav: ByteArray
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val wavAsset = assets.open("sample.wav")
+        wav = wavAsset.readBytes()
+        wavAsset.close()
+        outWav = ByteArray(wav.size)
 
         // Query AAPs
         val pluginServices = AudioPluginHost().queryAudioPluginServices(this)
@@ -144,5 +154,8 @@ class MainActivity : AppCompatActivity() {
         val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName && p.second.backend == "LV2" }.toTypedArray()
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
+
+        wavePrePlugin.setRawData(wav, {})
+        wavePrePlugin.progress = 100f
     }
 }

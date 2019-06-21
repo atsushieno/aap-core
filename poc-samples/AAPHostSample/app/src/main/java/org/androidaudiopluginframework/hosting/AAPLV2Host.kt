@@ -10,6 +10,6 @@ class AAPLV2Host
         }
 
         @JvmStatic
-        external fun runHost(pluginPaths: Array<String>, assets: AssetManager, pluginUris: Array<String>) : Int
+        external fun runHost(pluginPaths: Array<String>, assets: AssetManager, pluginUris: Array<String>, wav: ByteArray, outWav: ByteArray) : Int
     }
 }
