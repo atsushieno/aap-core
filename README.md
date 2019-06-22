@@ -2,7 +2,7 @@
 
 ## What is AAP?
 
-Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is kind of used.
+Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used.
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
@@ -12,16 +12,17 @@ On the other hand it is designed so that cross-audio-plugin frameworks can suppo
 
 Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts.
 
-Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to find how to create plugin description. Audio developers should spend their time on implementing or porting high quality audio processors. One single metadata query can achieve metadata generation.
+Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to start actual plugin development. Audio developers should spend their time on implementing or porting high quality audio processors.
+
 
 
 ## How AAPs work
 
-AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service (but without Java dependency in audio processing).
+AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Likce the latest Android native MIDI, AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
 
-AAP developers implement AndroidAudioPluginService which provides metadata on the audio plugins that it contains. It provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
+AAP developers implement `org.androidaudiopluginframework.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
-It is very similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance reason, somewhat more seriously.)
+AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance reason, somewhat more seriously.)
 
 Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
 
@@ -58,20 +59,26 @@ AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs us
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="org.androidaudiopluginframework.samples.aapbarebonesample">
-  ...
-  <service android:name=".AudioPluginService"
-           android:label="AAPBareBoneSamplePlugin">
-    <intent-filter>
-      <action 
-	    android:name="org.androidaudiopluginframework.AudioPluginService" />
-    </intent-filter>
-    <meta-data 
-	  android:name="org.androidaudiopluginframework.AudioPluginService"
-	  android:resource="@xml/aap_metadata"
-      />
-  </service>
+
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <application>
+    ...
+    <service android:name=".AudioPluginService"
+             android:label="AAPBareBoneSamplePlugin">
+      <intent-filter>
+        <action 
+	      android:name="org.androidaudiopluginframework.AudioPluginService" />
+      </intent-filter>
+      <meta-data 
+	    android:name="org.androidaudiopluginframework.AudioPluginService"
+	    android:resource="@xml/aap_metadata"
+        />
+    </service>
+  </application>
 </manifest>
 ```
+
+It should be noted that `AudioPluginService` works as a foreground service, which is required for this kind of audio apps for Android 8.0 or later. Therefore an additional `<uses-permission>` is required for `FOREGROUND_SERVICE`.
 
 The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
@@ -91,7 +98,9 @@ The `<service>` element comes up with a `<meta-data>` element. It is to specify 
 </plugins>
 ```
 
-Only one `<service>` a metadata XML file is required. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be listed on the AAP metadata.
+Only one `<service>` and a metadata XML file is required. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins), and they have to be listed on the AAP metadata.
+
+It is a design decision that there is only one service element: then it is possible to host multiple plugins for multiple runners in a single process, which may reduce extra use of resources. JUCE `PluginDescription` also has `hasSharedContainer` field (VST shell supports it).
 
 The metadata format is somewhat hacky for now and subject to change. The metadata content will be similar to what LV2 metadata provides (theirs are in `.ttl` format, ours will remain XML for everyone's consumption and clarity).
 
@@ -207,51 +216,7 @@ Currently vst3sdk does not build on Android due to:
 - lack of libc++fs (experimental/filesystem) https://github.com/android-ndk/ndk/issues/609
 - It is not limited to Android, but `FUID::generate()` is not implemented on Linux (where they could just use `uuid/uuid.h` or `uuid.h` API...)
 
-
-## Build Dependencies
-
-android-audio-plugin-framework has some dependencies, which are either platform-level-specific, or external.
-
-Platform wise:
-
-- ashmem (Android 4.0.3)
-- Realtime IPC binder (Android 8.0)
-- AudioPluginService depends on NdkBinder (Android 10.0)
-
-External software projects:
-
-- lv2 category
-  - lv2
-    - libsndfile
-      - libogg
-      - libvorbis
-      - flac
-    - cairo
-      - glib
-      - libpng
-      - zlib
-      - pixman
-      - fontconfig
-      - freetype
-  - lilv (private fork)
-    - serd (private fork)
-    - sord (private fork)
-    - sratom
-  - cerbero (as the builder, private fork)
-- vst3 category
-  - vst3sdk
-    - TODO: fill the rest
-
-### cerbero fork
-
-The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
-
-### LV2 forks
-
-There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
-
-And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given. Therefore there are some plugin loader changes in our lilv fork.
-
+On a related note, JUCE lacks VST3 support on Linux so far. [They have been working on it](https://forum.juce.com/t/vst3-support-on-linux/31872).
 
 
 
@@ -320,6 +285,53 @@ The wave sample is created by atsushieno using Waveform10 and Collective.
 (FIXME: the app completely ignores WAV headers so far.)
 
 The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
+
+
+
+## Build Dependencies
+
+android-audio-plugin-framework has some dependencies, which are either platform-level-specific, or external.
+
+Platform wise:
+
+- ashmem (Android 4.0.3)
+- Realtime IPC binder (Android 8.0)
+- AudioPluginService depends on NdkBinder (Android 10.0)
+
+External software projects:
+
+- lv2 category
+  - lv2
+    - libsndfile
+      - libogg
+      - libvorbis
+      - flac
+    - cairo
+      - glib
+      - libpng
+      - zlib
+      - pixman
+      - fontconfig
+      - freetype
+  - lilv (private fork)
+    - serd (private fork)
+    - sord (private fork)
+    - sratom
+  - cerbero (as the builder, private fork)
+- vst3 category
+  - vst3sdk
+    - TODO: fill the rest
+
+### cerbero fork
+
+The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
+
+### LV2 forks
+
+There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
+
+And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given. Therefore there are some plugin loader changes in our lilv fork.
+
 
 
 ## android-audio-plugin-framework source tree structure
