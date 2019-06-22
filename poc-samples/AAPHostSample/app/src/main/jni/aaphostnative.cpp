@@ -117,7 +117,8 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     features [3] = &atomFeature;
     features [4] = NULL;
 
-    int buffer_size = 10000;
+    int buffer_size = wavLength;
+    int float_count = buffer_size / sizeof(float);
 
     std::vector<InstanceUse*> instances;
 
@@ -138,7 +139,7 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
                 InstanceUse *iu = new InstanceUse ();
                 iu->plugin = plugin;
                 iu->instance = instance;
-                iu->buffer = (float*) malloc (sizeof (float) * buffer_size);
+                iu->buffer = (float*) calloc (buffer_size, 1);
                 instances.push_back (iu);
             }
         }
@@ -149,9 +150,9 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         return -1;
     }
 
-    float audioIn [buffer_size];
-    float controlIn [buffer_size];
-    float dummyBuffer [buffer_size];
+    float *audioIn = (float*) calloc(buffer_size, 1);
+    float *controlIn = (float*) calloc(buffer_size, 1);
+    float *dummyBuffer = (float*) calloc(buffer_size, 1);
 
     float *currentAudioIn = NULL, *currentAudioOut = NULL;
 
@@ -165,7 +166,8 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         auto plugin = iu->plugin;
         auto instance = iu->instance;
         aprintf (" Plugin '%s': connecting ports...\n", lilv_node_as_string (lilv_plugin_get_name (plugin)));
-        for (uint p = 0; p < lilv_plugin_get_num_ports (plugin); p++) {
+        int numPorts = lilv_plugin_get_num_ports (plugin);
+        for (uint p = 0; p < numPorts; p++) {
             const LilvPort *port = lilv_plugin_get_port_by_index (plugin, p);
             if (IS_AUDIO_IN (plugin, port)) {
                 aprintf ("   port '%i': AudioIn\n", p);
@@ -197,8 +199,8 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     for (int i = 0; i < buffer_size; i++)
         audioIn [i] = (float) sin (i / 50.0 * PI);
     */
-    memcpy(audioIn, wav, buffer_size > wavLength ? wavLength : buffer_size);
-    for (int i = 0; i < buffer_size; i++)
+    memcpy(audioIn, wav, buffer_size);
+    for (int i = 0; i < float_count; i++)
         controlIn [i] = 0.5;
 
     for (int i = 0; i < instances.size(); i++) {
@@ -207,7 +209,7 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     }
     for (int i = 0; i < instances.size(); i++) {
         auto instance = instances [i];
-        lilv_instance_run (instance->instance, buffer_size);
+        lilv_instance_run (instance->instance, float_count);
     }
     for (int i = 0; i < instances.size(); i++) {
         auto instance = instances [i];
@@ -227,7 +229,7 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         aputs ("");
     }
 
-    memcpy(outWav, currentAudioOut, buffer_size > wavLength ? wavLength : buffer_size);
+    memcpy(outWav, currentAudioOut, buffer_size);
 
     aputs ("Audio processing done. Freeing everything...");
     for (int i = 0; i < instances.size(); i++) {
@@ -240,6 +242,10 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     lilv_world_free (world);
 
     aputs ("Everything successfully done.");
+
+    free(audioIn);
+    free(controlIn);
+    free(dummyBuffer);
 
     return 0;
 }
@@ -305,13 +311,13 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
     }
 
     int wavLength = env->GetArrayLength(wav);
-    jbyte* wavBytes = (jbyte*) malloc(wavLength * sizeof(jbyte));
-    env->GetByteArrayRegion(wav, 0, wavLength, wavBytes);
-    jbyte* outWavBytes = (jbyte*) malloc(wavLength * sizeof(jbyte));
+    void* wavBytes = calloc(wavLength, 1);
+    env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
+    void* outWavBytes = calloc(wavLength, 1);
 
     int ret = runHost(lv2Path, pluginUris, size, wavBytes, wavLength, outWavBytes);
 
-    env->SetByteArrayRegion(outWav, 0, wavLength, outWavBytes);
+    env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
 
     set_io_context(NULL);
 
