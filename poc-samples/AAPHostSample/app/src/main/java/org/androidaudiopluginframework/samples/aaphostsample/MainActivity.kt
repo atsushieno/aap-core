@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val wavAsset = assets.open("sample.wav")
-        in_raw = wavAsset.readBytes().drop(84).toByteArray() // skip WAV header (84 bytes for this file)
+        in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
         wavAsset.close()
         out_raw = ByteArray(in_raw.size)
 
@@ -164,7 +164,6 @@ class MainActivity : AppCompatActivity() {
     {
         val w = if(postApplied) out_raw else in_raw
         val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
-        Log.i("AAAAAAAAA", "Buffer size: " + bufferSize)
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -180,19 +179,19 @@ class MainActivity : AppCompatActivity() {
             .build()
         track.play()
         var i = 0
-        Log.i("AAAAAAAAA", "wav file bytes: " + w.size)
-        val fb = FloatBuffer.allocate(w.size / 4)
-        fb.put(ByteBuffer.wrap(w).asFloatBuffer())
-        val fa = fb.array()
+        /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
+        var fa = FloatArray(w.size / 4)
+        for (i in 0 .. fa.size - 1) {
+            val bits = (w[i * 4 + 3].toUByte().toInt() shl 24) + (w[i * 4 + 2].toUByte().toInt() shl 16) + (w[i * 4 + 1].toUByte().toInt() shl 8) + w[i * 4].toUByte().toInt()
+            fa[i] = Float.fromBits(bits.toInt())
+        }
         while (i < w.size) {
             val ret = track.write(fa, i, bufferSize / 4, AudioTrack.WRITE_BLOCKING)
-            Log.i("AAAAAAAAA", "wrote size: " + ret)
             if (ret <= 0)
                 break
             i += ret
         }
         track.flush()
-        Log.i("AAAAAAAAA", "output done")
         track.stop()
         track.release()
     }
