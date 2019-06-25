@@ -4,8 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.os.AsyncTask
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
@@ -15,17 +16,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
-import android.widget.ListAdapter
-import android.widget.TextView
-import androidx.recyclerview.widget.RecyclerView
 import org.androidaudiopluginframework.AudioPluginHost
-import org.androidaudiopluginframework.AudioPluginService
 import org.androidaudiopluginframework.hosting.AAPLV2Host
 import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.audio_plugin_service_list_item.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
+import java.nio.ByteBuffer
+import java.nio.FloatBuffer
 
 class MainActivity : AppCompatActivity() {
 
@@ -122,8 +120,8 @@ class MainActivity : AppCompatActivity() {
                         "/lv2/ui.lv2/"
                     )
                     val uri = item.second.uniqueId?.substring("lv2:".length)
-                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!), wav, outWav)
-                    wavePostPlugin.setRawData(outWav, {})
+                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!), in_raw, out_raw)
+                    wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
                 }
             }
@@ -132,17 +130,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    lateinit var wav: ByteArray
-    lateinit var outWav: ByteArray
+    lateinit var in_raw: ByteArray
+    lateinit var out_raw: ByteArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         val wavAsset = assets.open("sample.wav")
-        wav = wavAsset.readBytes()
+        in_raw = wavAsset.readBytes().drop(84).toByteArray() // skip WAV header (84 bytes for this file)
         wavAsset.close()
-        outWav = ByteArray(wav.size)
+        out_raw = ByteArray(in_raw.size)
 
         // Query AAPs
         val pluginServices = AudioPluginHost().queryAudioPluginServices(this)
@@ -155,7 +153,47 @@ class MainActivity : AppCompatActivity() {
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
 
-        wavePrePlugin.setRawData(wav, {})
+        wavePrePlugin.setRawData(in_raw, {})
         wavePrePlugin.progress = 100f
+
+        playPrePluginLabel.setOnClickListener { Thread{playSound(44100, false) }.run() }
+        playPostPluginLabel.setOnClickListener { Thread{playSound(44100, true) }.run() }
+    }
+
+    fun playSound(sampleRate: Int, postApplied: Boolean)
+    {
+        val w = if(postApplied) out_raw else in_raw
+        val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
+        Log.i("AAAAAAAAA", "Buffer size: " + bufferSize)
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build())
+            .setAudioFormat(AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                .build())
+            .setBufferSizeInBytes(bufferSize)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build()
+        track.play()
+        var i = 0
+        Log.i("AAAAAAAAA", "wav file bytes: " + w.size)
+        val fb = FloatBuffer.allocate(w.size / 4)
+        fb.put(ByteBuffer.wrap(w).asFloatBuffer())
+        val fa = fb.array()
+        while (i < w.size) {
+            val ret = track.write(fa, i, bufferSize / 4, AudioTrack.WRITE_BLOCKING)
+            Log.i("AAAAAAAAA", "wrote size: " + ret)
+            if (ret <= 0)
+                break
+            i += ret
+        }
+        track.flush()
+        Log.i("AAAAAAAAA", "output done")
+        track.stop()
+        track.release()
     }
 }

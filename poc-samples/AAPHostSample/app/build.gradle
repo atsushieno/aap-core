@@ -37,6 +37,9 @@ android {
     androidExtensions {
         experimental = true
     }
+    aaptOptions {
+        noCompress "sample.wav"
+    }
 }
 
 dependencies {

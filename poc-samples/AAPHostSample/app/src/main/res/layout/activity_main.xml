@@ -98,19 +98,19 @@
                                                 app:layout_constraintTop_toTopOf="parent"
     />
     <TextView
-            android:text="Pre-plugin"
+            android:text="[pre-plugin]"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/textView" app:layout_constraintStart_toStartOf="parent"
+            android:id="@+id/playPrePluginLabel" app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
             app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
             app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"/>
     <TextView
-            android:text="Post-plugin"
+            android:text="[post-plugin]"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/textView4" app:layout_constraintStart_toStartOf="parent"
+            android:id="@+id/playPostPluginLabel" app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
             app:layout_constraintTop_toTopOf="@+id/twoWaveformsSplitter"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent"/>
 </androidx.constraintlayout.widget.ConstraintLayout>
