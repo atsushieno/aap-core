@@ -258,7 +258,7 @@ set_io_context_func liblilv_set_context = NULL;
 
 void ensureDLEach(const char* libname, set_io_context_func &context)
 {
-    if (liblilv_set_context == NULL) {
+    if (context == NULL) {
         auto lib = dlopen(libname, RTLD_NOW);
         assert (lib != NULL);
         context = (set_io_context_func) dlsym(lib, "abstract_set_io_context");
@@ -279,22 +279,24 @@ void set_io_context(AAssetManager *am)
     liblilv_set_context(am);
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env, jclass cls, jobjectArray jPluginPaths, jobject assets, jobjectArray jPlugins, jbyteArray wav, jbyteArray outWav)
+char *lv2Path;
+
+void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginPaths, jobject assets)
 {
     set_io_context(AAssetManager_fromJava(env, assets));
 
     jboolean isCopy = JNI_TRUE;
-
     int lv2PathLen = 0;
     jsize pathsSize = env->GetArrayLength(jPluginPaths);
     const char *pluginPaths[pathsSize];
     for (int i = 0; i < pathsSize; i++) {
         auto strPathObj = (jstring) env->GetObjectArrayElement(jPluginPaths, i);
-        // FIXME: leaky (wrt isCopy)
         pluginPaths[i] = env->GetStringUTFChars(strPathObj, &isCopy);
+        if (!isCopy)
+            pluginPaths[i] = strdup(pluginPaths[i]);
         lv2PathLen += strlen(pluginPaths[i] + 1);
     }
-    char lv2Path[lv2PathLen];
+    lv2Path = (char*) calloc(lv2PathLen, 1);
     lv2PathLen = 0;
     for (int i = 0; i < pathsSize; i++) {
         strcpy(lv2Path + lv2PathLen, pluginPaths[i]);
@@ -302,12 +304,29 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
         lv2Path[lv2PathLen++] = ':';
     }
     lv2Path[lv2PathLen] = NULL;
+    for(int i = 0; i < pathsSize; i++)
+        free((char*) pluginPaths[i]);
+}
+
+void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_cleanup(JNIEnv *env, jclass cls)
+{
+    if (lv2Path)
+        free(lv2Path);
+    lv2Path = NULL;
+    set_io_context(NULL);
+}
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHost(JNIEnv *env, jclass cls, jobjectArray jPlugins, jbyteArray wav, jbyteArray outWav)
+{
+    jboolean isCopy = JNI_TRUE;
 
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginUris[size];
     for (int i = 0; i < size; i++) {
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
         pluginUris[i] = env->GetStringUTFChars(strUriObj, &isCopy);
+        if (!isCopy)
+            pluginUris[i] = strdup(pluginUris[i]);
     }
 
     int wavLength = env->GetArrayLength(wav);
@@ -321,6 +340,8 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2Host_runHost(JNIEnv *env
 
     set_io_context(NULL);
 
+    for(int i = 0; i < size; i++)
+        free((char*) pluginUris[i]);
     free(wavBytes);
     free(outWavBytes);
     return ret;

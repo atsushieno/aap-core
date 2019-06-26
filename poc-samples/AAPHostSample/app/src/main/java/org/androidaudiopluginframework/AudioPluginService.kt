@@ -41,8 +41,8 @@ open class AudioPluginService : Service()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 channelID,
-                "Foreground Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                "AAP Foreground Service Channel",
+                NotificationManager.IMPORTANCE_LOW
             )
 
             val manager = getSystemService(NotificationManager::class.java)
@@ -55,6 +55,6 @@ open class AudioPluginService : Service()
             .build()
         this.startForeground(startId, notification)
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 }

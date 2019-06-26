@@ -17,14 +17,12 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import org.androidaudiopluginframework.AudioPluginHost
-import org.androidaudiopluginframework.hosting.AAPLV2Host
+import org.androidaudiopluginframework.hosting.AAPLV2LocalHost
 import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import org.androidaudiopluginframework.samples.LV2PluginsInThisApp
-import java.nio.ByteBuffer
-import java.nio.FloatBuffer
 
 class MainActivity : AppCompatActivity() {
 
@@ -86,7 +84,9 @@ class MainActivity : AppCompatActivity() {
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     val uri = item.second.uniqueId?.substring("lv2:".length)
-                    AAPLV2Host.runHost(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets, arrayOf(uri!!), in_raw, out_raw)
+                    AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets)
+                    AAPLV2LocalHost.runHost(arrayOf(uri!!), in_raw, out_raw)
+                    AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
                 }
