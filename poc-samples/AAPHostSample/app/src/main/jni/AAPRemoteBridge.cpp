@@ -2,7 +2,7 @@
 // Created by atsushi on 19/06/07.
 //
 
-#include "AAPNativeBridge.h"
+#include "AAPRemoteBridge.h"
 #include <jni.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>

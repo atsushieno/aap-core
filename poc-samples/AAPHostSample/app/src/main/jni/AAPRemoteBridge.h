@@ -7,7 +7,7 @@
 
 
 
-class AAPNativeBridge {
+class AAPRemoteBridge {
 
 };
 
