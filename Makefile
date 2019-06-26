@@ -71,6 +71,6 @@ build-metadata-importer:
 .PHONY:
 run-metadata-importer:
 	for appname in $(APPNAMES) ; do \
-		$(PWD)/tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata $(PWD)/poc-samples/$$appname/app/src/main/assets/lv2 $(PWD)/poc-samples/$$appname/app/src/main/res/xml $(PWD)/poc-samples/$$appname/app/src/main/manifest-fragment.xml; \
+		$(PWD)/tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata $(PWD)/poc-samples/$$appname/app/src/main/assets/lv2 $(PWD)/poc-samples/$$appname/app/src/main/res/xml $(PWD)/poc-samples/$$appname/app/src/main/java org.androidaudiopluginframework.samples; \
 	done
 

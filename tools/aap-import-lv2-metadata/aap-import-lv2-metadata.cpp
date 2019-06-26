@@ -1,3 +1,14 @@
+/*
+ * 
+ * aap-import-lv2-metadata: generates helper files for LV2AudioPluginService
+ * 
+ * It generates:
+ * 
+ * - src/res/xml/aap_metadata.xml (default) : AAP metadata XML file.
+ * - src/java/LV2Plugins.java : contains local LV2 path to plugin mappings,
+ *   which is used to initialize LV2 paths.
+ * 
+ */
 
 #include <stdio.h>
 #include <dirent.h>
@@ -51,22 +62,32 @@ LilvWorld *world;
 char* stringpool[4096];
 int stringpool_entry = 0;
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
 	if (argc < 1) {
-		fprintf (stderr, "Usage: %s [input-lv2dir] ([output-xmldir] [manifest-fragment.xml])\n", argv[0]);
+		fprintf (stderr, "Usage: %s [input-lv2dir] ([output-javadir] [output-javapackage])\n", argv[0]);
 		return 1;
 	}
 	
 	const char* lv2dirName = argc < 2 ?  "lv2" : argv[1];
-
-	char* xmldir = argc < 3 ? (char*) "res/xml" : argv[2];
-	char* manifestfragfile = argc < 4 ? (char*) "manifest-fragment.xml" : argv[3];
-	fprintf(stderr, "manifest fragment: %s\n", manifestfragfile);
+	const char* xmldir = argc < 3 ? "res/xml" : argv[2];
+	const char* javadir = argc < 4 ? "java" : argv[3];
+	const char* javapackage = argc < 5 ? "" : argv[4];
+	
+	char* javasubdir = strdup(javapackage);
+	for (auto s = javasubdir ? strchr(javasubdir, '.') : NULL; s; s = strchr(s, '.'))
+		*s = '/';
+	
+	char javaConcatDir[strlen(javadir) + strlen(javasubdir) + 2];
+	strcpy(javaConcatDir, javadir);
+	javaConcatDir[strlen(javadir)] = '/';
+	strcpy(javaConcatDir + strlen(javadir) + 1, javasubdir);
+	javaConcatDir[strlen(javadir) + strlen(javasubdir) + 1] = NULL;
+	free(javasubdir);
 	
 	// FIXME: should we support Windows... ? They have WSL now.
-	char *cmd = (char*) malloc(snprintf(NULL, 0, "mkdir -p %s", xmldir) + 1);
-	sprintf(cmd, "mkdir -p %s", xmldir);
+	char *cmd = (char*) malloc(snprintf(NULL, 0, "mkdir -p %s %s", xmldir, javaConcatDir) + 1);
+	sprintf(cmd, "mkdir -p %s %s", xmldir, javaConcatDir);
 	fprintf(stderr, "run command %s\n", cmd);
 	system(cmd);
 	free(cmd);
@@ -82,12 +103,6 @@ int main(int argc, char **argv)
     /*control_port_uri_node = lilv_new_uri (world, LV2_CORE__ControlPort);*/
     input_port_uri_node = lilv_new_uri (world, LV2_CORE__InputPort);
     output_port_uri_node = lilv_new_uri (world, LV2_CORE__OutputPort);
-
-	FILE *androidManifestFP = fopen(manifestfragfile, "w+");
-	if (!androidManifestFP) {
-		fprintf(stderr, "Failed to create %s\n", manifestfragfile);
-		return 2;
-	}
 
 	char* lv2realpath = realpath(lv2dirName, NULL);
 	fprintf(stderr, "LV2 directory: %s\n", lv2realpath);
@@ -105,7 +120,6 @@ int main(int argc, char **argv)
 		if (!strcmp(ent->d_name, ".."))
 			continue;
 		
-		fprintf(stderr, "DIRECTORY: %s\n", ent->d_name);
 		int ttllen = snprintf(NULL, 0, "%s/%s/manifest.ttl", lv2realpath, ent->d_name) + 1;
 		char* ttlfile = (char*) malloc(ttllen);
 		stringpool[stringpool_entry++] = ttlfile;
@@ -115,7 +129,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s is not found.\n", ttlfile);
 			continue;
 		}
-		fprintf(stderr, "Loading from %s %d\n", ttlfile, strlen(ttlfile));
+		fprintf(stderr, "Loading from %s\n", ttlfile);
 		auto filePathNode = lilv_new_file_uri(world, NULL, ttlfile);
 		
 		lilv_world_load_bundle(world, filePathNode);
@@ -134,13 +148,15 @@ int main(int argc, char **argv)
 	
 	int numbered_files = 0;
 	
-	fprintf(androidManifestFP, "        <!-- generated manifest fragment by \"aap-import-lv2-metadata\" tool -->\n");
-
 	char *xmlFilename = (char*) malloc(snprintf(NULL, 0, "%s/aap_metadata.xml", xmldir));
 	sprintf(xmlFilename, "%s/aap_metadata.xml", xmldir);
 	fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
 	FILE *xmlFP = fopen(xmlFilename, "w+");
 	fprintf(xmlFP, "<plugins>\n");
+
+	int numPlugins = lilv_plugins_size(plugins);
+	char **pluginLv2Dirs = (char **) calloc(sizeof(char*) * numPlugins, 1);
+	int numPluginDirEntries = 0;
 
 	for (auto i = lilv_plugins_begin(plugins); !lilv_plugins_is_end(plugins, i); i = lilv_plugins_next(plugins, i)) {
 		
@@ -148,11 +164,6 @@ int main(int argc, char **argv)
 		const char *name = lilv_node_as_string(lilv_plugin_get_name(plugin));
 		const LilvNode *author = lilv_plugin_get_author_name(plugin);
 		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
-
-		fprintf(androidManifestFP, "        <service android:name=\".AudioPluginService\" android:label=\"%s\">\n", escape_xml(name));
-		fprintf(androidManifestFP, "            <intent-filter><action android:name=\"org.androidaudiopluginframework.AudioPluginService\" /></intent-filter>\n");
-		fprintf(androidManifestFP, "            <meta-data android:name=\"org.androidaudiopluginframework.AudioPluginService\" android:resource=\"@xml/metadata%d\" />\n", numbered_files);
-		fprintf(androidManifestFP, "        </service>\n");
 
 		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n    <ports>\n",
 			name,
@@ -172,13 +183,58 @@ int main(int argc, char **argv)
 				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
 		}
 		fprintf(xmlFP, "    </ports>\n  </plugin>\n");	
+
+		char *bundle_path = strdup(lilv_file_uri_parse(lilv_node_as_uri(lilv_plugin_get_bundle_uri(plugin)), NULL));
+		if (!bundle_path) {
+			fprintf(stderr, "Failed to retrieve the plugin bundle path: %s\n", bundle_path);
+			continue;
+		}
+		char *plugin_lv2dir = bundle_path;
+		*strrchr(bundle_path, '/') = 0; // "/foo/bar/lv2/some.lv2"{/manifest.tll -> stripped}
+		plugin_lv2dir = strrchr(plugin_lv2dir, '/'); // "/some.lv2"
+		if (!plugin_lv2dir) {
+			fprintf(stderr, "The bundle path did not meet the plugin path premise (/some/path/to/lv2/some.lv2/manifest.ttl): %s\n", plugin_lv2dir);
+			free(bundle_path);
+			continue;
+		}
+		plugin_lv2dir++;
+		plugin_lv2dir = strdup(plugin_lv2dir);
+		free(bundle_path);
+
+		for(int i = 0; i < numPlugins; i++) {
+			if(!pluginLv2Dirs[i]) {
+				pluginLv2Dirs[i] = plugin_lv2dir;
+				numPluginDirEntries++;
+				break;
+			}
+			else if(!strcmp(pluginLv2Dirs[i], plugin_lv2dir))
+				break;
+		}
 	}
 	
 	fprintf(xmlFP, "</plugins>\n");
 	fclose(xmlFP);
 	free(xmlFilename);
-	
-	fclose(androidManifestFP);
+
+	char *javaFilename = (char*) malloc(snprintf(NULL, 0, "%s/LV2PluginsInThisApp.java", javaConcatDir) + 1);
+	sprintf(javaFilename, "%s/LV2PluginsInThisApp.java", javaConcatDir);
+	fprintf(stderr, "Writing Java file %s\n", javaFilename);
+
+	FILE *javaFP = fopen(javaFilename, "w+");
+	if (javapackage)
+		fprintf(javaFP, "package %s;\n", javapackage);
+	fprintf(javaFP, "public class LV2PluginsInThisApp {\n");
+	fprintf(javaFP, "\tpublic static final String[] lv2Paths = new String[] {\n");
+	for(int i = 0; i < numPluginDirEntries; i++) {
+		char* p = pluginLv2Dirs[i];
+		fprintf(javaFP, "\t\t%s \"/lv2/%s/\"\n", i == 0 ? "" : ",", p);
+		free(p);
+	}
+
+	fprintf(javaFP, " };\n");
+	fprintf(javaFP, "}\n");
+	fclose(javaFP);
+	free(javaFilename);
 	
 	lilv_world_free(world);
 	

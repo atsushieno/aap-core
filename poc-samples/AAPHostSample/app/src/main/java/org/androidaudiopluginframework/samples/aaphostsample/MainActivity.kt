@@ -22,6 +22,7 @@ import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
+import org.androidaudiopluginframework.samples.LV2PluginsInThisApp
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
@@ -84,43 +85,8 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    var pluginPaths = arrayOf(
-                        "/lv2/presets.lv2/",
-                        "/lv2/eg-fifths.lv2/",
-                        "/lv2/dynmanifest.lv2/",
-                        "/lv2/port-groups.lv2/",
-                        "/lv2/urid.lv2/",
-                        "/lv2/morph.lv2/",
-                        "/lv2/eg-scope.lv2/",
-                        "/lv2/eg-amp.lv2/",
-                        "/lv2/eg-metro.lv2/",
-                        "/lv2/eg-sampler.lv2/",
-                        "/lv2/buf-size.lv2/",
-                        "/lv2/atom.lv2/",
-                        "/lv2/worker.lv2/",
-                        "/lv2/resize-port.lv2/",
-                        "/lv2/midi.lv2/",
-                        "/lv2/time.lv2/",
-                        "/lv2/units.lv2/",
-                        "/lv2/mda.lv2/",
-                        "/lv2/core.lv2/",
-                        "/lv2/log.lv2/",
-                        "/lv2/schemas.lv2/",
-                        "/lv2/eg-midigate.lv2/",
-                        "/lv2/eg-params.lv2/",
-                        "/lv2/state.lv2/",
-                        "/lv2/instance-access.lv2/",
-                        "/lv2/patch.lv2/",
-                        "/lv2/data-access.lv2/",
-                        "/lv2/options.lv2/",
-                        "/lv2/parameters.lv2/",
-                        "/lv2/event.lv2/",
-                        "/lv2/uri-map.lv2/",
-                        "/lv2/port-props.lv2/",
-                        "/lv2/ui.lv2/"
-                    )
                     val uri = item.second.uniqueId?.substring("lv2:".length)
-                    AAPLV2Host.runHost(pluginPaths, this@MainActivity.assets, arrayOf(uri!!), in_raw, out_raw)
+                    AAPLV2Host.runHost(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets, arrayOf(uri!!), in_raw, out_raw)
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
                 }
@@ -153,11 +119,11 @@ class MainActivity : AppCompatActivity() {
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
 
-        wavePrePlugin.setRawData(in_raw, {})
-        wavePrePlugin.progress = 100f
-
         playPrePluginLabel.setOnClickListener { Thread{playSound(44100, false) }.run() }
         playPostPluginLabel.setOnClickListener { Thread{playSound(44100, true) }.run() }
+
+        wavePrePlugin.setRawData(in_raw, {})
+        wavePrePlugin.progress = 100f
     }
 
     fun playSound(sampleRate: Int, postApplied: Boolean)

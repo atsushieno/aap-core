@@ -15,8 +15,8 @@ class PluginInformation(name: String?, backend: String?, category: String?, auth
     var category : String? = category
     var author : String? = author
     var manufacturer : String? = manufacturer
-    var uniqueId: String? = uniqueId
-    var isOutProcess = isOutProcess
+    var uniqueId : String? = uniqueId
+    var isOutProcess : Boolean = isOutProcess
     var ports = mutableListOf<PortInformation>()
 }
 

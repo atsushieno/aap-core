@@ -26,6 +26,7 @@ add_library( # Specifies the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
+             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-host.cpp"
              src/main/jni/AAPNativeBridge.cpp
              src/main/jni/aaphostnative.cpp)
 
