@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity() {
             .setBufferSizeInBytes(bufferSize)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+        track.setVolume(5.0f)
         track.play()
         var i = 0
         /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
