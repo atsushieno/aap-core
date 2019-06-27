@@ -71,6 +71,7 @@ typedef void (*aap_set_state_func_t) (
 	AndroidAudioPluginState *input);
 
 typedef struct AndroidAudioPlugin {
+	void *plugin_specific;
 	aap_prepare_func_t prepare;
 	aap_control_func_t activate;
 	aap_process_func_t process;

@@ -79,6 +79,7 @@ AndroidAudioPlugin* sample_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions)
 {
 	return new AndroidAudioPlugin {
+		new SamplePluginSpecific { pluginUniqueId },
 		sample_plugin_prepare,
 		sample_plugin_activate,
 		sample_plugin_process,
@@ -93,6 +94,8 @@ AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
 	return new AndroidAudioPluginFactory { sample_plugin_new, sample_plugin_delete };
 }
 ```
+
+`GetAndroidAudioPluginFactory` function is the entrypoint, but it will become customizible per plugin, to make it possible to put multiple service bridges (namely LV2 bridge and service bridge) in one shared library.
 
 
 ### out-process model

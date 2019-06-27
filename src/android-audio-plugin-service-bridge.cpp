@@ -45,6 +45,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions)
 {
 	return new AndroidAudioPlugin {
+		NULL,
 		aap_bridge_plugin_prepare,
 		aap_bridge_plugin_activate,
 		aap_bridge_plugin_process,
@@ -54,7 +55,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 		};
 }
 
-AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
+AndroidAudioPluginFactory* GetAndroidAudioPluginFactoryServiceBridge ()
 {
 	return new AndroidAudioPluginFactory { aap_bridge_plugin_new, aap_bridge_plugin_delete };
 }

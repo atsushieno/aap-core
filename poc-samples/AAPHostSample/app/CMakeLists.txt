@@ -20,16 +20,17 @@ link_directories(
 # automatically packages shared libraries with your APK.
 
 add_library( # Specifies the name of the library.
-             androidaudioplugin
+            androidaudioplugin
 
-             # Sets the library as a shared library.
-             SHARED
+            # Sets the library as a shared library.
+            SHARED
 
-             # Provides a relative path to your source file(s).
-             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-host.cpp"
-             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-service-bridge.cpp"
-             src/main/jni/AAPRemoteBridge.cpp
-             src/main/jni/AAPLV2LocalBridge.cpp)
+            # Provides a relative path to your source file(s).
+            "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-host.cpp"
+            "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-lv2-bridge.cpp"
+            "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-service-bridge.cpp"
+            src/main/jni/AAPRemoteBridge.cpp
+            src/main/jni/AAPLV2LocalBridge.cpp)
 
 target_compile_options(androidaudioplugin
         PRIVATE

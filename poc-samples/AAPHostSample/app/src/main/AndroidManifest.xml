@@ -13,10 +13,10 @@
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
-
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!--
         <service android:name="org.androidaudiopluginframework.AudioPluginService"
                  android:label="AAPHostSamplePlugin">
             <intent-filter>
@@ -24,6 +24,15 @@
             </intent-filter>
             <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
                 android:resource="@xml/aap_metadata"/>
+        </service>
+        -->
+        <service android:name="org.androidaudiopluginframework.LV2AudioPluginService"
+                 android:label="AAPHostSamplePluginLV2">
+            <intent-filter>
+                <action android:name="org.androidaudiopluginframework.AudioPluginService" />
+            </intent-filter>
+            <meta-data android:name="org.androidaudiopluginframework.AudioPluginService"
+                       android:resource="@xml/aap_metadata"/>
         </service>
     </application>
 

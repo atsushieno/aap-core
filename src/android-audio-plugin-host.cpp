@@ -127,6 +127,7 @@ AndroidAudioPlugin* sample_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions)
 {
 	return new AndroidAudioPlugin {
+		NULL,
 		sample_plugin_prepare,
 		sample_plugin_activate,
 		sample_plugin_process,
