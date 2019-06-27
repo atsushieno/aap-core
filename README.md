@@ -8,7 +8,7 @@ There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fi
 
 What AAP aims is to become like an inclusive standard for Android Audio plugin world. The license is permissive (MIT). It is designed to be pluggable to other specific audio plugin specifications like VST3, LV2, CLAP, and so on (not necessarily meant that *we* write code for them).
 
-On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/). Namely, AAP is first designed so that JUCE audio processor can be implemented.
+On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/). Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported.
 
 Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts.
 
@@ -18,27 +18,31 @@ Technically it is not very different from LV2, but you don't have to spend time 
 
 ## How AAPs work
 
-AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Likce the latest Android native MIDI, AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
+AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like the latest Android native MIDI, AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
 
 AAP developers implement `org.androidaudiopluginframework.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
-AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance reason, somewhat more seriously.)
+AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance and ease of reusing existing code, somewhat more seriously.)
 
 Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
 
 - get plugin factory
-- get plugin (pass plugin ID and sampleRate)
+- instantiate plugin (pass plugin ID and sampleRate)
 - prepare (pass initial pointers, which can be used to fix LV2 buffers)
 - activate (DAW enabled it, playback is active or preview is active)
 - process audio block (and/or control blocks)
 - deactivate (DAW disabled it, playback is inactive and preview is inactive)
 - terminate
 
+### out-process model
+
 This is mixture of what LV2 does and what VST3 plugin factory does.
 
 Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 
-An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets.
+An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets. They are not great for high audio processing requirement either way.
+
+### fixed pointers
 
 LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
@@ -53,9 +57,9 @@ The most important and difficult mission for an audio plugin framework is to get
 
 There is some complexity on how those files are packaged. At the "AAP package helpers" section we describe how things are packaged for each migration pattern.
 
-### Queryable manifest
+### Queryable service manifest for plugin lookup
 
-AAP plugins are not managed at system wide. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"

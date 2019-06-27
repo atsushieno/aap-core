@@ -40,17 +40,27 @@ typedef struct {
 
 
 /* function types */
-typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (AndroidAudioPluginFactory *pluginFactory, const char* pluginUniqueId, int sampleRate, const AndroidAudioPluginExtension * const *extensions);
+typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
+	AndroidAudioPluginFactory *pluginFactory,
+	const char* pluginUniqueId,
+	int sampleRate,
+	const AndroidAudioPluginExtension * const *extensions);
 
 typedef void (*aap_prepare_func_t) (AndroidAudioPlugin *plugin);
 
 typedef void (*aap_control_func_t) (AndroidAudioPlugin *plugin);
 
-typedef void (*aap_process_func_t) (AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds);
+typedef void (*aap_process_func_t) (
+	AndroidAudioPlugin *plugin,
+	AndroidAudioPluginBuffer* audioBuffer,
+	long timeoutInNanoseconds);
 
-typedef const AndroidAudioPluginState* (*aap_get_state_func_t) (AndroidAudioPlugin *plugin);
+typedef const AndroidAudioPluginState* (*aap_get_state_func_t) (
+	AndroidAudioPlugin *plugin);
 
-typedef void (*aap_set_state_func_t) (AndroidAudioPlugin *plugin, AndroidAudioPluginState *input);
+typedef void (*aap_set_state_func_t) (
+	AndroidAudioPlugin *plugin, 
+	AndroidAudioPluginState *input);
 
 typedef struct AndroidAudioPlugin {
 	aap_prepare_func_t prepare;

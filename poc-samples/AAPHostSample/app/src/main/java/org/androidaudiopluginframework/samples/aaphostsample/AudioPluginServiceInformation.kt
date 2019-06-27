@@ -26,7 +26,7 @@ class PortInformation(name: String, direction: Int, content: Int)
         const val PORT_DIRECTION_INPUT = 0
         const val PORT_DIRECTION_OUTPUT = 1
 
-        const val PORT_CONTENT_TYPE_UNDEFINED = 0
+        const val PORT_CONTENT_TYPE_GENERAL = 0
         const val PORT_CONTENT_TYPE_AUDIO = 1
         const val PORT_CONTENT_TYPE_MIDI = 2
     }
