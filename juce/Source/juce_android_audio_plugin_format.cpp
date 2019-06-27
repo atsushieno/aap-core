@@ -65,6 +65,8 @@ class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance
 {
 	aap::PluginInstance *native;
 	int sample_rate;
+	AndroidAudioPluginBuffer buffer;
+	float *dummy_raw_buffer;
 	
 	void fillNativeAudioBuffers(AndroidAudioPluginBuffer* dst, AudioBuffer<float>& buffer)
 	{
@@ -105,19 +107,37 @@ public:
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override
 	{
 		sample_rate = sampleRate;
-		native->prepareToPlay(sampleRate, maximumExpectedSamplesPerBlock);
+
+		// minimum setup, as the pointers are not passed by JUCE framework side.
+		int n = native->getPluginDescriptor()->getNumPorts();
+		buffer.buffers = new void*[n];
+		// FIXME: get audio channel count and replace "2"
+		dummy_raw_buffer = (float*) calloc (maximumExpectedSamplesPerBlock * sizeof(float) * 2, 1);
+		for (int i = 0; i < n; i++)
+			buffer.buffers[i] = dummy_raw_buffer;
+
+		native->prepare(sampleRate, maximumExpectedSamplesPerBlock, &buffer);
+
 		native->activate();
 	}
 	
 	void releaseResources() override
 	{
 		native->dispose();
+		
+		if (buffer.buffers) {
+			delete buffer.buffers;
+			buffer.buffers = NULL;
+		}
+		
+		if (dummy_raw_buffer) {
+			free(dummy_raw_buffer);
+			dummy_raw_buffer = NULL;
+		}
 	}
 	
 	void processBlock(AudioBuffer<float>& audioBuffer, MidiBuffer& midiMessages) override
 	{
-		AndroidAudioPluginBuffer buffer;
-		void* buffers[audioBuffer.getNumChannels() + 1];
 		fillNativeAudioBuffers(&buffer, audioBuffer);
 		fillNativeMidiBuffers(&buffer, midiMessages, audioBuffer.getNumChannels());
 		native->process(&buffer, 0);

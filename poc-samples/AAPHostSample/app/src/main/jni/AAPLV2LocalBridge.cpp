@@ -288,7 +288,7 @@ int runHostAAP(int sampleRate, const char** pluginIDs, int numPluginIDs, void* w
     for (int i = 0; i < instances.size(); i++) {
         auto iu = instances[i];
         auto plugin = iu->plugin;
-        plugin->prepareToPlay(sampleRate, false);
+        plugin->prepare(sampleRate, false, iu->plugin_buffer);
     }
 
     // prepare inputs

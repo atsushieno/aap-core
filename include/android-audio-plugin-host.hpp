@@ -335,12 +335,12 @@ public:
 		return descriptor;
 	}
 
-	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock)
+	void prepare(double sampleRate, int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 		
 		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID(), sampleRate, extensions);
-		plugin->prepare(plugin);
+		plugin->prepare(plugin, preparedBuffer);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
@@ -367,7 +367,7 @@ public:
 	void dispose()
 	{
 		if (plugin != NULL)
-			plugin->terminate(plugin);
+			plugin_factory->release(plugin_factory, plugin);
 		plugin = NULL;
 		plugin_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}

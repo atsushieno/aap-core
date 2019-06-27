@@ -6,25 +6,27 @@ Android lacks commonly used Audio Plugin Framework. On Windows and other desktop
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for Android Audio plugin world. The license is permissive (MIT). It is designed to be pluggable to other specific audio plugin specifications like VST3, LV2, CLAP, and so on (not necessarily meant that *we* write code for them).
+What AAP aims is to become like an inclusive standard for Audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable to other specific audio plugin specifications like VST3, LV2, CLAP, and so on (not necessarily meant that *we* write code for them).
 
 On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/). Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported.
 
-Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts.
+Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins.
 
-Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to start actual plugin development. Audio developers should spend their time on implementing or porting high quality audio processors.
+Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to start actual plugin development (you still have to write manifests in XML). Audio developers should spend their time on implementing or porting high quality audio processors.
 
 
 
 ## How AAPs work
 
-AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like the latest Android native MIDI, AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
+AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
 
 AAP developers implement `org.androidaudiopluginframework.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
 AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance and ease of reusing existing code, somewhat more seriously.)
 
-Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
+### plugin API
+
+From each audio plugin's point of view, it is locally instantiated by each service application. Here is a brief workflow items for a plugin from the beginning, through processing audio and MIDI inputs (or any kind of controls), to the end:
 
 - get plugin factory
 - instantiate plugin (pass plugin ID and sampleRate)
@@ -34,19 +36,84 @@ Here is a brief workflow items for a plugin from the beginning, through processi
 - deactivate (DAW disabled it, playback is inactive and preview is inactive)
 - terminate
 
-### out-process model
-
 This is mixture of what LV2 does and what VST3 plugin factory does.
+
+Here is an example:
+
+```
+void sample_plugin_delete(
+	AndroidAudioPluginFactory *pluginFactory,
+	AndroidAudioPlugin *instance)
+{
+	delete instance;
+}
+
+void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
+{
+	/* do something */
+}
+void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
+void sample_plugin_process(AndroidAudioPlugin *plugin,
+	AndroidAudioPluginBuffer* buffer,
+	long timeoutInNanoseconds)
+{
+	/* do something */
+}
+void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
+
+AndroidAudioPluginState state;
+const AndroidAudioPluginState* sample_plugin_get_state(AndroidAudioPlugin *plugin)
+{
+	return &state; /* fill it */
+}
+
+void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
+{
+	/* apply argument input */
+}
+
+AndroidAudioPlugin* sample_plugin_new(
+	AndroidAudioPluginFactory *pluginFactory,
+	const char* pluginUniqueId,
+	int sampleRate,
+	const AndroidAudioPluginExtension * const *extensions)
+{
+	return new AndroidAudioPlugin {
+		sample_plugin_prepare,
+		sample_plugin_activate,
+		sample_plugin_process,
+		sample_plugin_deactivate,
+		sample_plugin_get_state,
+		sample_plugin_set_state
+		};
+}
+
+AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
+{
+	return new AndroidAudioPluginFactory { sample_plugin_new, sample_plugin_delete };
+}
+```
+
+
+### out-process model
 
 Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 
 An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets. They are not great for high audio processing requirement either way.
+
+A Remote plugin client is actually implemented just as a plugin, when it is used by host i.e. the it does not matter how the plugin is implemented.
+
 
 ### fixed pointers
 
 LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
 In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
+
+Therefore, at "prepare" step we pass a prepared "buffer" which is supposed to be constructed based on each plugin's ports, so that the plugins do not have to set them up at "process" time.
+
+We are still unsure if this really helps performance (especially how to deal with circular buffers nicely). Things might change.
+
 
 
 ## AAP package bundle

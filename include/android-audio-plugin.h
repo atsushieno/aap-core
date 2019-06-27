@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 extern "C" {
 
 /* forward declarations */
@@ -46,7 +48,13 @@ typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
 	int sampleRate,
 	const AndroidAudioPluginExtension * const *extensions);
 
-typedef void (*aap_prepare_func_t) (AndroidAudioPlugin *plugin);
+typedef void (*aap_release_func_t) (
+	AndroidAudioPluginFactory *pluginFactory,
+	AndroidAudioPlugin *instance);
+
+typedef void (*aap_prepare_func_t) (
+	AndroidAudioPlugin *plugin,
+	AndroidAudioPluginBuffer* audioBuffer);
 
 typedef void (*aap_control_func_t) (AndroidAudioPlugin *plugin);
 
@@ -67,7 +75,6 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t activate;
 	aap_process_func_t process;
 	aap_control_func_t deactivate;
-	aap_control_func_t terminate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
 } AndroidAudioPlugin;
@@ -75,6 +82,7 @@ typedef struct AndroidAudioPlugin {
 
 typedef struct AndroidAudioPluginFactory {
 	aap_instantiate_func_t instantiate;
+	aap_release_func_t release;
 } AndroidAudioPluginFactory;
 
 AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
