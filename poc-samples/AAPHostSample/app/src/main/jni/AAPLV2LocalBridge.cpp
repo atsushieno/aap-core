@@ -13,6 +13,7 @@
 #include <../lib/lv2/atom.lv2/atom.h>
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
+#include "../../../../../../include/android-audio-plugin-host.hpp"
 
 #define PI 3.14159265
 
@@ -89,7 +90,7 @@ typedef struct {
 } InstanceUse;
 
 
-int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, void* wav, int wavLength, void* outWav)
+int runHostLilv(const char* lv2Path, const char** pluginUris, int numPluginUris, void* wav, int wavLength, void* outWav)
 {
     auto world = lilv_world_new ();
     auto lv2_path_node = lilv_new_string(world, lv2Path);
@@ -128,14 +129,11 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         if (plugin == NULL)
             printf ("Plugin %s could not be loaded.\n", pluginUris [i]);
         else {
-            printf ("Loading Plugin %s ...\n", pluginUris [i]);
-
             LilvInstance *instance = lilv_plugin_instantiate (plugin, global_sample_rate, features);
             if (instance == NULL) {
-                printf (" skipped\n");
+                printf ("plugin %s failed to instantiate. Skipping.\n", pluginUris[i]);
             }
             else {
-                printf (" loaded\n");
                 InstanceUse *iu = new InstanceUse ();
                 iu->plugin = plugin;
                 iu->instance = instance;
@@ -157,7 +155,6 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     float *currentAudioIn = NULL, *currentAudioOut = NULL;
 
     /* connect ports */
-    puts ("Establishing port connections...");
 
     currentAudioIn = audioIn;
 
@@ -170,14 +167,11 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         for (uint p = 0; p < numPorts; p++) {
             const LilvPort *port = lilv_plugin_get_port_by_index (plugin, p);
             if (IS_AUDIO_IN (plugin, port)) {
-                aprintf ("   port '%i': AudioIn\n", p);
                 lilv_instance_connect_port (instance, p, currentAudioIn);
             } else if (IS_AUDIO_OUT (plugin, port)) {
-                aprintf ("   port '%i': AudioOut\n", p);
                 currentAudioOut = iu->buffer;
                 lilv_instance_connect_port (instance, p, currentAudioOut);
             } else if (IS_CONTROL_IN (plugin, port)) {
-                aprintf ("   port '%i': ControlIn\n", p);
                 lilv_instance_connect_port (instance, p, controlIn);
             } else if (IS_CONTROL_OUT (plugin, port)) {
                 aprintf ("   port '%i': ControlOut - connecting to dummy\n", p);
@@ -195,10 +189,6 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
     }
     aputs ("Port connections established. Start processing audio...");
 
-    /*
-    for (int i = 0; i < buffer_size; i++)
-        audioIn [i] = (float) sin (i / 50.0 * PI);
-    */
     memcpy(audioIn, wav, buffer_size);
     for (int i = 0; i < float_count; i++)
         controlIn [i] = 0.5;
@@ -215,23 +205,9 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
         auto instance = instances [i];
         lilv_instance_deactivate (instance->instance);
     }
-    puts ("Audio processing done.");
-
-
-    aputs ("Inputs: ");
-    for (int i = 0; i < 20; i++)
-        aprintf ("%d: %f ", i, audioIn [i]);
-    puts ("");
-    if (currentAudioOut) {
-        aputs ("Outputs: ");
-        for (int i = 0; i < 20; i++)
-            aprintf ("%d: %f ", i, currentAudioOut [i]);
-        aputs ("");
-    }
 
     memcpy(outWav, currentAudioOut, buffer_size);
 
-    aputs ("Audio processing done. Freeing everything...");
     for (int i = 0; i < instances.size(); i++) {
         auto iu = instances [i];
         free (iu->buffer);
@@ -241,14 +217,120 @@ int runHost (const char* lv2Path, const char** pluginUris, int numPluginUris, vo
 
     lilv_world_free (world);
 
-    aputs ("Everything successfully done.");
-
     free(audioIn);
     free(controlIn);
     free(dummyBuffer);
 
     return 0;
 }
+
+// In this implementation we have fixed buffers and everything is simplified
+typedef struct {
+    aap::PluginInstance *plugin;
+    AndroidAudioPluginBuffer *plugin_buffer;
+} AAPInstanceUse;
+
+int runHostAAP(int sampleRate, const char** pluginIDs, int numPluginIDs, void* wav, int wavLength, void* outWav)
+{
+    aap::PluginInformation** pluginInfos; // FIXME: convert from pluginIDs
+    auto host = new aap::PluginHost(pluginInfos);
+
+    int buffer_size = wavLength;
+    int float_count = buffer_size / sizeof(float);
+
+    std::vector<AAPInstanceUse*> instances;
+
+    /* instantiate plugins and connect ports */
+
+    float *audioIn = (float*) calloc(buffer_size, 1);
+    float *midiIn = (float*) calloc(buffer_size, 1);
+    float *dummyBuffer = (float*) calloc(buffer_size, 1);
+
+    float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
+
+    for (int i = 0; pluginIDs + i; i++) {
+        auto instance = host->instantiatePlugin(pluginIDs[i]);
+        if (instance == NULL) {
+            printf("plugin %s failed to instantiate. Skipping.\n", pluginIDs[i]);
+            continue;
+        }
+        AAPInstanceUse *iu = new AAPInstanceUse();
+        auto desc = instance->getPluginDescriptor();
+        iu->plugin = instance;
+        iu->plugin_buffer = new AndroidAudioPluginBuffer();
+        iu->plugin_buffer->num_frames = buffer_size / sizeof(float);
+        int nPorts = desc->getNumPorts();
+        iu->plugin_buffer->buffers = (void**) calloc(nPorts + 1, sizeof(void*));
+        for (int p = 0; p < nPorts; p++) {
+            auto port = desc->getPort(p);
+            if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT && port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
+                iu->plugin_buffer->buffers[p] = currentAudioIn;
+            else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT && port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
+                iu->plugin_buffer->buffers[p] = currentAudioOut = (float *) calloc(buffer_size, 1);
+            else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT && port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
+                iu->plugin_buffer->buffers[p] = currentMidiIn;
+            else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT && port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
+                iu->plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size, 1);
+        }
+        instances.push_back(iu);
+        if (currentAudioOut)
+            currentAudioIn = currentAudioOut;
+        if (currentMidiOut)
+            currentMidiIn = currentMidiOut;
+    }
+
+    if (instances.size() == 0) {
+        aputs ("No plugin instantiated. Quit...");
+        return -1;
+    }
+
+    // prepare connections
+    for (int i = 0; i < instances.size(); i++) {
+        auto iu = instances[i];
+        auto plugin = iu->plugin;
+        plugin->prepareToPlay(sampleRate, false);
+    }
+
+    // prepare inputs
+    memcpy(audioIn, wav, buffer_size);
+    for (int i = 0; i < float_count; i++)
+        midiIn [i] = 0.5;
+
+    // activate, run, deactivate
+    for (int i = 0; i < instances.size(); i++) {
+        auto instance = instances [i];
+        instance->plugin->activate();
+    }
+    for (int i = 0; i < instances.size(); i++) {
+        auto instance = instances [i];
+        instance->plugin->process(instance->plugin_buffer, 0);
+    }
+    for (int i = 0; i < instances.size(); i++) {
+        auto instance = instances [i];
+        instance->plugin->deactivate();
+    }
+
+    memcpy(outWav, currentAudioOut, buffer_size);
+
+    for (int i = 0; i < instances.size(); i++) {
+        auto iu = instances [i];
+        for (int p = 0; iu->plugin_buffer->buffers[p]; p++)
+            free(iu->plugin_buffer->buffers[p]);
+        free(iu->plugin_buffer->buffers);
+        delete iu->plugin_buffer;
+        delete iu->plugin;
+        delete iu;
+    }
+
+    delete host;
+
+    free(audioIn);
+    free(midiIn);
+    free(dummyBuffer);
+
+    return 0;
+}
+
 
 extern "C" {
 
@@ -316,7 +398,7 @@ void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_cleanup(JNIEnv
     set_io_context(NULL);
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHost(JNIEnv *env, jclass cls, jobjectArray jPlugins, jbyteArray wav, jbyteArray outWav)
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostLilv(JNIEnv *env, jclass cls, jobjectArray jPlugins, jbyteArray wav, jbyteArray outWav)
 {
     jboolean isCopy = JNI_TRUE;
 
@@ -334,7 +416,7 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHost(JNIEnv
     env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
     void* outWavBytes = calloc(wavLength, 1);
 
-    int ret = runHost(lv2Path, pluginUris, size, wavBytes, wavLength, outWavBytes);
+    int ret = runHostLilv(lv2Path, pluginUris, size, wavBytes, wavLength, outWavBytes);
 
     env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
 
@@ -342,6 +424,37 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHost(JNIEnv
 
     for(int i = 0; i < size; i++)
         free((char*) pluginUris[i]);
+    free(wavBytes);
+    free(outWavBytes);
+    return ret;
+}
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
+{
+    jboolean isCopy = JNI_TRUE;
+
+    jsize size = env->GetArrayLength(jPlugins);
+    const char *pluginIDs[size];
+    for (int i = 0; i < size; i++) {
+        auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
+        pluginIDs[i] = env->GetStringUTFChars(strUriObj, &isCopy);
+        if (!isCopy)
+            pluginIDs[i] = strdup(pluginIDs[i]);
+    }
+
+    int wavLength = env->GetArrayLength(wav);
+    void* wavBytes = calloc(wavLength, 1);
+    env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
+    void* outWavBytes = calloc(wavLength, 1);
+
+    int ret = runHostAAP(sampleRate, pluginIDs, size, wavBytes, wavLength, outWavBytes);
+
+    env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
+
+    set_io_context(NULL);
+
+    for(int i = 0; i < size; i++)
+        free((char*) pluginIDs[i]);
     free(wavBytes);
     free(outWavBytes);
     return ret;

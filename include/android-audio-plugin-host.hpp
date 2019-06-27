@@ -9,7 +9,6 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <vector>
-#include "android/asset_manager.h"
 #include "android-audio-plugin.h"
 
 
@@ -242,7 +241,6 @@ class PluginHost
 	PluginHostBackendLV2 backend_lv2;
 	PluginHostBackendLV2 backend_vst3;
 
-	AAssetManager *asset_manager;
 	std::vector<const PluginHostBackend*> backends;
 	
 	std::vector<const PluginInformation*> plugin_descriptors;
@@ -253,7 +251,7 @@ class PluginHost
 
 public:
 
-	PluginHost(AAssetManager* assetManager, const PluginInformation* const* pluginDescriptors);
+	PluginHost(const PluginInformation* const* pluginDescriptors);
 
 	~PluginHost()
 	{
@@ -315,16 +313,16 @@ class PluginInstance
 	
 	PluginHost *host;
 	const PluginInformation *descriptor;
+	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
-	AAPHandle *instance;
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	PluginInstance(PluginHost* host, const PluginInformation* pluginDescriptor, AndroidAudioPlugin* loadedPlugin)
+	PluginInstance(PluginHost* host, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory)
 		: host(host),
 		  descriptor(pluginDescriptor),
-		  plugin(loadedPlugin),
-		  instance(NULL),
+		  plugin_factory(loadedPluginFactory),
+		  plugin(NULL),
 		  extensions(NULL),
 		  plugin_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
 	{
@@ -341,8 +339,8 @@ public:
 	{
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 		
-		instance = plugin->instantiate(plugin, sampleRate, extensions);
-		plugin->prepare(instance);
+		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID(), sampleRate, extensions);
+		plugin->prepare(plugin);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
@@ -352,7 +350,7 @@ public:
 			return;
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 		
-		plugin->activate(instance);
+		plugin->activate(plugin);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
 	}
 	
@@ -362,15 +360,15 @@ public:
 			return;
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
 		
-		plugin->deactivate(instance);
+		plugin->deactivate(plugin);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
 	void dispose()
 	{
-		if (instance != NULL)
-			plugin->terminate(instance);
-		instance = NULL;
+		if (plugin != NULL)
+			plugin->terminate(plugin);
+		plugin = NULL;
 		plugin_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}
 	
@@ -378,7 +376,7 @@ public:
 	{
 		// It is not a TODO here, but if pointers have changed, we have to reconnect
 		// LV2 ports.
-		plugin->process(instance, buffer, timeoutInNanoseconds);
+		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
 	
 	EditorInstance* createEditor()
@@ -416,12 +414,12 @@ public:
 	
 	int32_t getStateSize()
 	{
-		return plugin->get_state(instance)->data_size;
+		return plugin->get_state(plugin)->data_size;
 	}
 	
 	void const* getState()
 	{
-		return plugin->get_state(instance)->raw_data;
+		return plugin->get_state(plugin)->raw_data;
 	}
 	
 	void setState(const void* data, int32_t offset, int32_t sizeInBytes)
@@ -429,7 +427,7 @@ public:
 		AndroidAudioPluginState state;
 		state.data_size = sizeInBytes;
 		state.raw_data = data;
-		plugin->set_state(instance, &state);
+		plugin->set_state(plugin, &state);
 	}
 	
 	uint32_t getTailTimeInMilliseconds()

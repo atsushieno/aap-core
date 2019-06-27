@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     val uri = item.second.uniqueId?.substring("lv2:".length)
                     AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets)
-                    AAPLV2LocalHost.runHost(arrayOf(uri!!), in_raw, out_raw)
+                    AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), in_raw, out_raw)
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f

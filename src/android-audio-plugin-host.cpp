@@ -9,20 +9,16 @@
 */
 
 #include "../include/android-audio-plugin-host.hpp"
-#include "android/asset_manager.h"
 #include <vector>
 
 namespace aap
 {
 
-PluginHost::PluginHost(AAssetManager *assetManager, const PluginInformation* const* pluginDescriptors)
+PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
 {
-	asset_manager = assetManager;
-	
 	backends.push_back(&backend_lv2);
 	backends.push_back(&backend_vst3);
 
-	asset_manager = assetManager;
 	int n = 0;
 	for (auto p = pluginDescriptors; p; p++)
 		n++;
@@ -77,10 +73,10 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 {
 	const char *file = descriptor->getLocalPluginSharedLibrary();
 	auto dl = dlopen(file, RTLD_LAZY);
-	auto getter = (aap_instantiate_t) dlsym(dl, "GetAndroidAudioPluginEntry");
-	auto plugin = getter();
+	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactory");
+	auto pluginFactory = factoryGetter();
 
-	return new PluginInstance(this, descriptor, plugin);
+	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor)
@@ -92,7 +88,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 
 void dogfooding_api()
 {
-	PluginHost manager(NULL, NULL);
+	PluginHost manager(NULL);
 	auto paths = manager.instantiatePlugin(NULL);
 	
 }

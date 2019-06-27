@@ -225,8 +225,8 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat
 	const char* default_plugin_search_paths[1];
 
 public:
-	JuceAndroidAudioPluginFormat(AAssetManager *assetManager, const aap::PluginInformation* const* pluginDescriptors)
-		: android_host(aap::PluginHost(assetManager, pluginDescriptors))
+	JuceAndroidAudioPluginFormat(const aap::PluginInformation* const* pluginDescriptors)
+		: android_host(aap::PluginHost(pluginDescriptors))
 	{
 		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
 			auto d = android_host.getPluginDescriptorAt(i);
@@ -341,6 +341,6 @@ protected:
 
 
 JuceAndroidAudioPluginInstance p(NULL);
-JuceAndroidAudioPluginFormat f(NULL, NULL);
+JuceAndroidAudioPluginFormat f(NULL);
 
 } // namespace

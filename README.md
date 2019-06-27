@@ -26,14 +26,15 @@ AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guid
 
 Here is a brief workflow items for a plugin from the beginning, through processing audio and control (MIDI) inputs, to the end:
 
-- initialize (pass sampleRate)
+- get plugin factory
+- get plugin (pass plugin ID and sampleRate)
 - prepare (pass initial pointers, which can be used to fix LV2 buffers)
 - activate (DAW enabled it, playback is active or preview is active)
 - process audio block (and/or control blocks)
 - deactivate (DAW disabled it, playback is inactive and preview is inactive)
 - terminate
 
-This is quite like what LV2 does.
+This is mixture of what LV2 does and what VST3 plugin factory does.
 
 Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 

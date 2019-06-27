@@ -1,11 +1,10 @@
 #pragma once
 
-using namespace std;
-
 extern "C" {
 
 /* forward declarations */
-typedef void AAPHandle;
+struct AndroidAudioPluginFactory;
+typedef struct AndroidAudioPluginFactory AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
 typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
@@ -41,20 +40,19 @@ typedef struct {
 
 
 /* function types */
-typedef AAPHandle* (*aap_instantiate_func_t) (AndroidAudioPlugin *pluginEntry, int sampleRate, const AndroidAudioPluginExtension * const *extensions);
+typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (AndroidAudioPluginFactory *pluginFactory, const char* pluginUniqueId, int sampleRate, const AndroidAudioPluginExtension * const *extensions);
 
-typedef void (*aap_prepare_func_t) (AAPHandle *pluginHandle);
+typedef void (*aap_prepare_func_t) (AndroidAudioPlugin *plugin);
 
-typedef void (*aap_control_func_t) (AAPHandle *pluginHandle);
+typedef void (*aap_control_func_t) (AndroidAudioPlugin *plugin);
 
-typedef void (*aap_process_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds);
+typedef void (*aap_process_func_t) (AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds);
 
-typedef const AndroidAudioPluginState* (*aap_get_state_func_t) (AAPHandle *pluginHandle);
+typedef const AndroidAudioPluginState* (*aap_get_state_func_t) (AndroidAudioPlugin *plugin);
 
-typedef void (*aap_set_state_func_t) (AAPHandle *pluginHandle, AndroidAudioPluginState *input);
+typedef void (*aap_set_state_func_t) (AndroidAudioPlugin *plugin, AndroidAudioPluginState *input);
 
 typedef struct AndroidAudioPlugin {
-	aap_instantiate_func_t instantiate;
 	aap_prepare_func_t prepare;
 	aap_control_func_t activate;
 	aap_process_func_t process;
@@ -62,11 +60,15 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t terminate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
-} AndroidAudioPlugin; // plugin implementors site
+} AndroidAudioPlugin;
 
-AndroidAudioPlugin* GetAndroidAudioPluginEntry ();
 
-typedef AndroidAudioPlugin* (*aap_instantiate_t) ();
+typedef struct AndroidAudioPluginFactory {
+	aap_instantiate_func_t instantiate;
+} AndroidAudioPluginFactory;
+
+AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
+
+typedef AndroidAudioPluginFactory* (*aap_factory_t) ();
 
 } // extern "C"
-
