@@ -165,7 +165,7 @@ int main(int argc, const char **argv)
 		const LilvNode *author = lilv_plugin_get_author_name(plugin);
 		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
 
-		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\">\n    <ports>\n",
+		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\" entrypoint=\"GetAndroidAudioPluginFactoryLV2Bridge\">\n    <ports>\n",
 			name,
 			/* FIXME: this categorization is super hacky */
 			is_plugin_instrument(plugin) ? "Instrument" : "Effect",

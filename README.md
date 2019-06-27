@@ -187,6 +187,8 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
   - `plugin-id`: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
   - `version`: version ID of the plugin.
   - `category`: category of the plugin.
+  - `library`: native library file name that contains the plugin entrypoint
+  - `entrypoint`: name of the entrypoint function name in the library. If it is not specified, then `GetAndroidAudioPluginFactory` is used.
 - `<port>` element
   - `name`: a name string. An `xs:NMTOKENS` in XML Schema datatypes is expected.
   - `direction`: either `input` or `output`.

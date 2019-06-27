@@ -26,12 +26,6 @@ PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
 		plugin_descriptors.push_back(pluginDescriptors[i]);
 }
 
-PluginInformation* PluginHost::loadDescriptorFromAssetBundleDirectory(const char *directory)
-{
-	// TODO: implement. load AAP manifest and fill descriptor.
-	
-}
-
 bool PluginHost::isPluginAlive (const char *identifier) 
 {
 	auto desc = getPluginDescriptor(identifier);
@@ -72,8 +66,9 @@ PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
 {
 	const char *file = descriptor->getLocalPluginSharedLibrary();
+	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file, RTLD_LAZY);
-	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactory");
+	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint ? entrypoint : "GetAndroidAudioPluginFactory");
 	auto pluginFactory = factoryGetter();
 
 	return new PluginInstance(this, descriptor, pluginFactory);

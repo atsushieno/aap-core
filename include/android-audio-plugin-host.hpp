@@ -59,6 +59,7 @@ class PluginInformation
 	const char *version;
 	const char *identifier_string;
 	const char *shared_library_filename;
+	const char *library_entrypoint;
 	const char *plugin_id;
 	long last_info_updated_unixtime;
 
@@ -79,13 +80,14 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, char* pluginName, char* manufacturerName, char* versionString, char* pluginID, char* sharedLibraryFilename)
+	PluginInformation(bool isOutProcess, char* pluginName, char* manufacturerName, char* versionString, char* pluginID, char* sharedLibraryFilename, char *libraryEntrypoint)
 		: is_out_process(isOutProcess),
 		  name(safe_strdup(pluginName)),
 		  manufacturer_name(safe_strdup(manufacturerName)),
 		  version(safe_strdup(versionString)),
 		  plugin_id(safe_strdup(pluginID)),
 		  shared_library_filename(safe_strdup(sharedLibraryFilename)),
+		  library_entrypoint(safe_strdup(libraryEntrypoint)),
 		  last_info_updated_unixtime((long) time(NULL))
 	{
 		char *cp;
@@ -102,6 +104,7 @@ public:
 		SAFE_FREE(version)
 		SAFE_FREE(plugin_id)
 		SAFE_FREE(shared_library_filename)
+		SAFE_FREE(library_entrypoint)
 		SAFE_FREE(identifier_string)
 	}
 	
@@ -199,6 +202,12 @@ public:
 		// it will just return the name of the shared library.
 		return shared_library_filename;
 	}
+
+	const char* getLocalPluginLibraryEntryPoint() const
+	{
+		// can be null. "GetAndroidAudioPluginFactory" is used by default.
+		return library_entrypoint;
+	}
 	
 	bool isOutProcess() const
 	{
@@ -245,7 +254,6 @@ class PluginHost
 	
 	std::vector<const PluginInformation*> plugin_descriptors;
 	
-	PluginInformation* loadDescriptorFromAssetBundleDirectory(const char *directory);
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor);
 	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor);
 
