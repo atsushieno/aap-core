@@ -230,9 +230,8 @@ typedef struct {
     AndroidAudioPluginBuffer *plugin_buffer;
 } AAPInstanceUse;
 
-int runHostAAP(int sampleRate, const char** pluginIDs, int numPluginIDs, void* wav, int wavLength, void* outWav)
+int runHostAAP(int sampleRate, aap::PluginInformation** pluginInfos, const char** pluginIDs, int numPluginIDs, void* wav, int wavLength, void* outWav)
 {
-    aap::PluginInformation** pluginInfos; // FIXME: convert from pluginIDs
     auto host = new aap::PluginHost(pluginInfos);
 
     int buffer_size = wavLength;
@@ -429,9 +428,63 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostLilv(JN
     return ret;
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
+// TODO: any code that calls this method needs to implement proper memory management.
+const char* strdup_fromJava(JNIEnv *env, jstring s)
+{
+    jboolean isCopy;
+    if (!s)
+        return NULL;
+    const char *ret = env->GetStringUTFChars(s, &isCopy);
+    return isCopy ? ret : strdup(ret);
+}
+
+const char *java_plugin_information_class_name = "org/androidaudiopluginframework/PluginInformation";
+
+static jclass java_plugin_information_class;
+static jmethodID
+        j_method_is_out_process,
+        j_method_get_name,
+        j_method_get_manufacturer,
+        j_method_get_version,
+        j_method_get_plugin_id,
+        j_method_get_shared_library_filename,
+        j_method_get_library_entrypoint;
+
+aap::PluginInformation*
+pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation)
+{
+    if (!java_plugin_information_class) {
+        java_plugin_information_class = env->FindClass(java_plugin_information_class_name);
+        j_method_is_out_process = env->GetMethodID(java_plugin_information_class, "isOutProcess", "()Z");
+        j_method_get_name = env->GetMethodID(java_plugin_information_class, "getName", "()Ljava/lang/String;");
+        j_method_get_manufacturer = env->GetMethodID(java_plugin_information_class, "getManufacturer", "()Ljava/lang/String;");
+        j_method_get_version = env->GetMethodID(java_plugin_information_class, "getVersion", "()Ljava/lang/String;");
+        j_method_get_plugin_id = env->GetMethodID(java_plugin_information_class, "getPluginId", "()Ljava/lang/String;");
+        j_method_get_shared_library_filename = env->GetMethodID(java_plugin_information_class, "getSharedLibraryName", "()Ljava/lang/String;");
+        j_method_get_library_entrypoint = env->GetMethodID(java_plugin_information_class, "getLibraryEntryPoint", "()Ljava/lang/String;");
+    }
+    jboolean isCopy;
+    return new aap::PluginInformation(
+            env->CallBooleanMethod(pluginInformation, j_method_is_out_process),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_name)),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_manufacturer)),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_version)),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_plugin_id)),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_shared_library_filename)),
+            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation, j_method_get_library_entrypoint))
+            );
+}
+
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPluginInfos, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
     jboolean isCopy = JNI_TRUE;
+
+    jsize infoSize = env->GetArrayLength(jPluginInfos);
+    aap::PluginInformation *pluginInfos[infoSize];
+    for (int i = 0; i < infoSize; i++) {
+        auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
+        pluginInfos[i] = pluginInformation_fromJava(env, jPluginInfo);
+    }
 
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginIDs[size];
@@ -447,7 +500,7 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNI
     env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
     void* outWavBytes = calloc(wavLength, 1);
 
-    int ret = runHostAAP(sampleRate, pluginIDs, size, wavBytes, wavLength, outWavBytes);
+    int ret = runHostAAP(sampleRate, pluginInfos, pluginIDs, size, wavBytes, wavLength, outWavBytes);
 
     env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
 

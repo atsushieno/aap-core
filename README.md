@@ -421,7 +421,7 @@ And note that access to assets is not as simple as that to filesystem. It is imp
   - AAPHostSample - host sample
   - AAPBareBoneSample - AAP (plugin) barebone sample
   - AAPLV2Sample - AAP-LV2 sample
-  - AAPVST3Sample - AAL-VST3 sample
+  - AAPVST3Sample - AAL-VST3 sample (pending; we need NDK r21 or later)
 - external/cerbero - LV2 Android builder (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
 
 

@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
                 return view
             view.audio_plugin_service_name.text = item.first.name
             view.audio_plugin_name.text = item.second.name
-            view.audio_plugin_list_identifier.text = item.second.uniqueId
+            view.audio_plugin_list_identifier.text = item.second.pluginId
 
             val service = item.first
             val plugin = item.second
@@ -83,9 +83,12 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    val uri = item.second.uniqueId?.substring("lv2:".length)
+                    val uri = item.second.pluginId?.substring("lv2:".length)
+                    var uris = arrayOf(uri!!)
                     AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets)
-                    AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), in_raw, out_raw)
+                    //AAPLV2LocalHost.runHostLilv(uris, in_raw, out_raw)
+                    var pluginInfos = host.queryAudioPluginServices(context).flatMap { i -> i.plugins }.filter { p -> p.pluginId == item.second.pluginId }.toTypedArray()
+                    AAPLV2LocalHost.runHostAAP(pluginInfos, uris, fixed_sample_rate, in_raw, out_raw)
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
@@ -96,6 +99,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    lateinit var host: AudioPluginHost
+    val fixed_sample_rate = 44100
     lateinit var in_raw: ByteArray
     lateinit var out_raw: ByteArray
 
@@ -109,7 +114,8 @@ class MainActivity : AppCompatActivity() {
         out_raw = ByteArray(in_raw.size)
 
         // Query AAPs
-        val pluginServices = AudioPluginHost().queryAudioPluginServices(this)
+        host = AudioPluginHost()
+        val pluginServices = host.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val servicedAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, true, servicedPlugins)
@@ -119,8 +125,8 @@ class MainActivity : AppCompatActivity() {
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
 
-        playPrePluginLabel.setOnClickListener { Thread{playSound(44100, false) }.run() }
-        playPostPluginLabel.setOnClickListener { Thread{playSound(44100, true) }.run() }
+        playPrePluginLabel.setOnClickListener { Thread{playSound(fixed_sample_rate, false) }.run() }
+        playPostPluginLabel.setOnClickListener { Thread{playSound(fixed_sample_rate, true) }.run() }
 
         wavePrePlugin.setRawData(in_raw, {})
         wavePrePlugin.progress = 100f

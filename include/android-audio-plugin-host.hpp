@@ -80,18 +80,18 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, char* pluginName, char* manufacturerName, char* versionString, char* pluginID, char* sharedLibraryFilename, char *libraryEntrypoint)
-		: is_out_process(isOutProcess),
-		  name(safe_strdup(pluginName)),
+	PluginInformation(bool isOutProcess, const char* pluginName, const char* manufacturerName, const char* versionString, const char* pluginID, const char* sharedLibraryFilename, const char *libraryEntrypoint)
+		: name(safe_strdup(pluginName)),
 		  manufacturer_name(safe_strdup(manufacturerName)),
 		  version(safe_strdup(versionString)),
-		  plugin_id(safe_strdup(pluginID)),
 		  shared_library_filename(safe_strdup(sharedLibraryFilename)),
 		  library_entrypoint(safe_strdup(libraryEntrypoint)),
-		  last_info_updated_unixtime((long) time(NULL))
+		  plugin_id(safe_strdup(pluginID)),
+		  last_info_updated_unixtime((long) time(NULL)),
+		  is_out_process(isOutProcess)
 	{
 		char *cp;
-		int len = sprintf(NULL, "%s+%s+%s", name, plugin_id, version);
+		int len = snprintf(NULL, 0, "%s+%s+%s", name, plugin_id, version);
 		cp = (char*) malloc(len);
 		sprintf(cp, "%s+%s+%s", name, plugin_id, version);
 		identifier_string = (const char*) cp;

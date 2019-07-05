@@ -1,6 +1,7 @@
 package org.androidaudiopluginframework.hosting
 
 import android.content.res.AssetManager
+import org.androidaudiopluginframework.PluginInformation
 
 class AAPLV2LocalHost
 {
@@ -19,6 +20,6 @@ class AAPLV2LocalHost
         external fun runHostLilv(pluginUris: Array<String>, wav: ByteArray, outWav: ByteArray) : Int
 
         @JvmStatic
-        external fun runHostAAP(pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
+        external fun runHostAAP(pluginInfos: Array<PluginInformation>, pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
     }
 }

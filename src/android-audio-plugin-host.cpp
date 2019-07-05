@@ -20,7 +20,7 @@ PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
 	backends.push_back(&backend_vst3);
 
 	int n = 0;
-	for (auto p = pluginDescriptors; p; p++)
+	while (auto p = pluginDescriptors[n])
 		n++;
 	for (int i = 0; i < n; i++)
 		plugin_descriptors.push_back(pluginDescriptors[i]);
