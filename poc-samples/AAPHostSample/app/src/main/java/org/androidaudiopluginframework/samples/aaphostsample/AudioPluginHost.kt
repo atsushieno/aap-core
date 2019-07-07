@@ -43,9 +43,8 @@ class AudioPluginHost
                         val uniqueId = xp.getAttributeValue(null, "unique-id")
                         val sharedLibraryName = xp.getAttributeValue(null, "library")
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
-                        // isOutProcess is always true here - as it is returning "service" information here.
-                        // Local plugin lookup may return the same plugins with in-process mode.
-                        currentPlugin = PluginInformation(name, backend, version, category, author, manufacturer,  uniqueId, sharedLibraryName, libraryEntryPoint, true)
+                        val isOutProcess = ri.serviceInfo.packageName != context.packageName
+                        currentPlugin = PluginInformation(name, backend, version, category, author, manufacturer,  uniqueId, sharedLibraryName, libraryEntryPoint, isOutProcess)
                         aapServiceInfo.plugins.add(currentPlugin)
                     } else if (xp.name == "port") {
                         if (currentPlugin != null) {

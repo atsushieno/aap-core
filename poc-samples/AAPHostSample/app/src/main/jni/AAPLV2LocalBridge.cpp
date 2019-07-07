@@ -247,9 +247,11 @@ int runHostAAP(int sampleRate, aap::PluginInformation** pluginInfos, const char*
 
     float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
 
-    for (int i = 0; pluginIDs + i; i++) {
+    // FIXME: pluginIDs should be enough (but iteration by it crashes so far)
+    for (int i = 0; i < numPluginIDs; i++) {
         auto instance = host->instantiatePlugin(pluginIDs[i]);
         if (instance == NULL) {
+            // FIXME: the entire code needs review to eliminate those printf/puts/stdout/stderr uses.
             printf("plugin %s failed to instantiate. Skipping.\n", pluginIDs[i]);
             continue;
         }
@@ -477,8 +479,6 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation)
 
 jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPluginInfos, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
-    jboolean isCopy = JNI_TRUE;
-
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     aap::PluginInformation *pluginInfos[infoSize];
     for (int i = 0; i < infoSize; i++) {
@@ -490,9 +490,7 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNI
     const char *pluginIDs[size];
     for (int i = 0; i < size; i++) {
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
-        pluginIDs[i] = env->GetStringUTFChars(strUriObj, &isCopy);
-        if (!isCopy)
-            pluginIDs[i] = strdup(pluginIDs[i]);
+        pluginIDs[i] = strdup_fromJava(env, strUriObj);
     }
 
     int wavLength = env->GetArrayLength(wav);

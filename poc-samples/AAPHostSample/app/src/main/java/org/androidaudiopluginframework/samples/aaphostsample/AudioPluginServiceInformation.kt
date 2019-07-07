@@ -1,25 +1,17 @@
 package org.androidaudiopluginframework
 
-class AudioPluginServiceInformation(name: String, packageName: String, className: String)
+class AudioPluginServiceInformation(var name: String, var packageName: String,
+                                    var className: String
+)
 {
-    var name = name
-    var packageName = packageName
-    var className = className
     var plugins = mutableListOf<PluginInformation>()
 }
 
-class PluginInformation(name: String?, backend: String?, version: String?, category: String?, author: String?, manufacturer: String?, pluginId: String?, sharedLibraryName: String?, libraryEntryPoint: String?, isOutProcess: Boolean)
+class PluginInformation(var name: String?, var backend: String?, var version: String?,
+                        var category: String?, var author: String?, var manufacturer: String?,
+                        var pluginId: String?, var sharedLibraryName: String?,
+                        var libraryEntryPoint: String?, var isOutProcess: Boolean)
 {
-    var name : String? = name
-    var backend : String? = backend
-    var version : String? = version
-    var category : String? = category
-    var author : String? = author
-    var manufacturer : String? = manufacturer
-    var pluginId : String? = pluginId
-    var sharedLibraryName : String? = sharedLibraryName
-    var libraryEntryPoint : String? = libraryEntryPoint
-    var isOutProcess : Boolean = isOutProcess
     var ports = mutableListOf<PortInformation>()
 }
 

@@ -299,9 +299,11 @@ public:
 	
 	const PluginInformation* getPluginDescriptor(const char *identifier)
 	{
-		for(int i = 0; i < getNumPluginDescriptors(); i++) {
+		int n = getNumPluginDescriptors();
+		for(int i = 0; i < n; i++) {
 			auto d = getPluginDescriptorAt(i);
-			if (strcmp(d->getIdentifier(), identifier) == 0)
+			auto id = d->getPluginID();
+			if (strcmp(id, identifier) == 0)
 				return d;
 		}
 		return NULL;

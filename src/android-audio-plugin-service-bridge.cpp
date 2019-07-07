@@ -55,7 +55,10 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 		};
 }
 
-AndroidAudioPluginFactory* GetAndroidAudioPluginFactoryServiceBridge ()
-{
-	return new AndroidAudioPluginFactory { aap_bridge_plugin_new, aap_bridge_plugin_delete };
+extern "C" {
+
+AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryServiceBridge() {
+	return new AndroidAudioPluginFactory{aap_bridge_plugin_new, aap_bridge_plugin_delete};
+}
+
 }

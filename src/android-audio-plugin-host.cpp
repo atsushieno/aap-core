@@ -58,16 +58,16 @@ PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
 	if (descriptor->isOutProcess())
-		instantiateRemotePlugin(descriptor);
+		return instantiateRemotePlugin(descriptor);
 	else
-		instantiateLocalPlugin(descriptor);
+		return instantiateLocalPlugin(descriptor);
 }
 
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
 {
 	const char *file = descriptor->getLocalPluginSharedLibrary();
 	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
-	auto dl = dlopen(file, RTLD_LAZY);
+	auto dl = dlopen(file ? file : "androidaudioplugin", RTLD_LAZY);
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint ? entrypoint : "GetAndroidAudioPluginFactory");
 	auto pluginFactory = factoryGetter();
 
