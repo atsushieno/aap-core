@@ -244,6 +244,7 @@ int runHostAAP(int sampleRate, const char *lv2Path, aap::PluginInformation** plu
 
     float *audioIn = (float*) calloc(buffer_size, 1);
     float *midiIn = (float*) calloc(buffer_size, 1);
+    float *controlIn = (float*) calloc(buffer_size, 1);
     float *dummyBuffer = (float*) calloc(buffer_size, 1);
 
     float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
@@ -273,6 +274,10 @@ int runHostAAP(int sampleRate, const char *lv2Path, aap::PluginInformation** plu
                 iu->plugin_buffer->buffers[p] = currentMidiIn;
             else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT && port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
                 iu->plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size, 1);
+            else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
+                iu->plugin_buffer->buffers[p] = controlIn;
+            else
+                iu->plugin_buffer->buffers[p] = dummyBuffer;
         }
         instances.push_back(iu);
         if (currentAudioOut)
@@ -296,7 +301,7 @@ int runHostAAP(int sampleRate, const char *lv2Path, aap::PluginInformation** plu
     // prepare inputs
     memcpy(audioIn, wav, buffer_size);
     for (int i = 0; i < float_count; i++)
-        midiIn [i] = 0.5;
+        controlIn [i] = 0.5;
 
     // activate, run, deactivate
     for (int i = 0; i < instances.size(); i++) {
