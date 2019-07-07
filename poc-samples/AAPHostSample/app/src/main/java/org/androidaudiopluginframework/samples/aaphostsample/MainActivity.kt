@@ -85,9 +85,13 @@ class MainActivity : AppCompatActivity() {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     val uri = item.second.pluginId?.substring("lv2:".length)
                     AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets)
-                    //AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), in_raw, out_raw)
-                    var pluginInfos = host.queryAudioPluginServices(context).flatMap { i -> i.plugins }.filter { p -> p.pluginId == item.second.pluginId }.toTypedArray()
-                    AAPLV2LocalHost.runHostAAP(pluginInfos, arrayOf(item.second.pluginId!!), fixed_sample_rate, in_raw, out_raw)
+                    if (false)
+                        AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), in_raw, out_raw)
+                    else {
+                        var pluginInfos = host.queryAudioPluginServices(context).flatMap { i -> i.plugins }
+                                .filter { p -> p.pluginId == item.second.pluginId }.toTypedArray()
+                        AAPLV2LocalHost.runHostAAP(pluginInfos, LV2PluginsInThisApp.lv2Paths.joinToString(":"), arrayOf(item.second.pluginId!!), fixed_sample_rate, in_raw, out_raw)
+                    }
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f

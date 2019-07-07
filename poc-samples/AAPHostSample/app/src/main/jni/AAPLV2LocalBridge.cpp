@@ -230,8 +230,9 @@ typedef struct {
     AndroidAudioPluginBuffer *plugin_buffer;
 } AAPInstanceUse;
 
-int runHostAAP(int sampleRate, aap::PluginInformation** pluginInfos, const char** pluginIDs, int numPluginIDs, void* wav, int wavLength, void* outWav)
+int runHostAAP(int sampleRate, const char *lv2Path, aap::PluginInformation** pluginInfos, const char** pluginIDs, int numPluginIDs, void* wav, int wavLength, void* outWav)
 {
+    setenv("LV2_PATH", lv2Path, true);
     auto host = new aap::PluginHost(pluginInfos);
 
     int buffer_size = wavLength;
@@ -477,7 +478,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation)
             );
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPluginInfos, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPluginInfos, jstring lv2Path, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     aap::PluginInformation *pluginInfos[infoSize];
@@ -498,7 +499,7 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNI
     env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
     void* outWavBytes = calloc(wavLength, 1);
 
-    int ret = runHostAAP(sampleRate, pluginInfos, pluginIDs, size, wavBytes, wavLength, outWavBytes);
+    int ret = runHostAAP(sampleRate, strdup_fromJava(env, lv2Path), pluginInfos, pluginIDs, size, wavBytes, wavLength, outWavBytes);
 
     env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
 

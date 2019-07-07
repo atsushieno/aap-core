@@ -20,6 +20,6 @@ class AAPLV2LocalHost
         external fun runHostLilv(pluginUris: Array<String>, wav: ByteArray, outWav: ByteArray) : Int
 
         @JvmStatic
-        external fun runHostAAP(pluginInfos: Array<PluginInformation>, pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
+        external fun runHostAAP(pluginInfos: Array<PluginInformation>, lv2Path: String, pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
     }
 }
