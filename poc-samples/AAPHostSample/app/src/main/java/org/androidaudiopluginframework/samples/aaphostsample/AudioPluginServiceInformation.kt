@@ -13,9 +13,20 @@ class PluginInformation(var name: String?, var backend: String?, var version: St
                         var libraryEntryPoint: String?, var isOutProcess: Boolean)
 {
     var ports = mutableListOf<PortInformation>()
+
+    // These obvious members are for use in C interop.
+    fun getPortCount() : Int
+    {
+        return ports.size
+    }
+
+    fun getPort(index : Int) : PortInformation
+    {
+        return ports[index]
+    }
 }
 
-class PortInformation(name: String, direction: Int, content: Int)
+class PortInformation(var name: String, var direction: Int, var content: Int)
 {
     companion object {
         const val PORT_DIRECTION_INPUT = 0
@@ -25,8 +36,4 @@ class PortInformation(name: String, direction: Int, content: Int)
         const val PORT_CONTENT_TYPE_AUDIO = 1
         const val PORT_CONTENT_TYPE_MIDI = 2
     }
-
-    val name : String = name
-    val direction : Int = direction
-    val content : Int = content
 }

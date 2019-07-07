@@ -43,6 +43,11 @@ class PortInformation
 	PortDirection direction;
 	
 public:
+	PortInformation(const char *name, ContentType content, PortDirection direction)
+		: name(name), content_type(content), direction(direction)
+	{
+	}
+
 	const char* getName() const { return name; }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
@@ -213,6 +218,11 @@ public:
 	{
 		return is_out_process;
 	}
+
+	void addPort(PortInformation* port)
+	{
+		ports.push_back(port);
+	}
 };
 
 class EditorInstance
@@ -263,8 +273,6 @@ public:
 
 	~PluginHost()
 	{
-			for (int i = 0; i < getNumPluginDescriptors(); i++)
-				free((void*) getPluginDescriptorAt(i));
 	}
 	
 	bool isPluginAlive (const char *identifier);
