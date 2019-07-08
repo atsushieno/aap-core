@@ -29,8 +29,9 @@ add_library( # Specifies the name of the library.
             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-host.cpp"
             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-lv2-bridge.cpp"
             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-service-bridge.cpp"
-            src/main/jni/AAPRemoteBridge.cpp
-            src/main/jni/AAPLV2LocalBridge.cpp)
+            "src/main/jni/AAPRemoteBridge.cpp"
+            "src/main/jni/LV2DirectUsageSample.cpp"
+            "src/main/jni/AAPLV2LocalBridge.cpp")
 
 target_compile_options(androidaudioplugin
         PRIVATE
