@@ -16,12 +16,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
+import androidx.loader.content.AsyncTaskLoader
 import org.androidaudiopluginframework.AudioPluginHost
 import org.androidaudiopluginframework.hosting.AAPLV2LocalHost
 import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.androidaudiopluginframework.samples.LV2PluginsInThisApp
 
 class MainActivity : AppCompatActivity() {
@@ -83,14 +86,14 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    val uri = item.second.pluginId?.substring("lv2:".length)
-                    AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths.joinToString(":"), this@MainActivity.assets)
+                    val pluginId = item.second.pluginId!!
+                    val uri = pluginId.substring("lv2:".length)
+                    AAPLV2LocalHost.lv2Paths = LV2PluginsInThisApp.lv2Paths
+                    AAPLV2LocalHost.initialize(this@MainActivity.assets)
                     if (false)
                         AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
                     else {
-                        var pluginInfos = host.queryAudioPluginServices(context).flatMap { i -> i.plugins }
-                                .filter { p -> p.pluginId == item.second.pluginId }.toTypedArray()
-                        AAPLV2LocalHost.runHostAAP(pluginInfos, arrayOf(item.second.pluginId!!), fixed_sample_rate, in_raw, out_raw)
+                        AAPLV2LocalHost.runHostAAP(context, arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
                     }
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
@@ -102,7 +105,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    lateinit var host: AudioPluginHost
     // FIXME: this should be customizible, depending on the device configuration (sample input should be decoded appropriately).
     val fixed_sample_rate = 44100
     lateinit var in_raw: ByteArray
@@ -118,8 +120,7 @@ class MainActivity : AppCompatActivity() {
         out_raw = ByteArray(in_raw.size)
 
         // Query AAPs
-        host = AudioPluginHost()
-        val pluginServices = host.queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val servicedAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, true, servicedPlugins)
@@ -129,8 +130,8 @@ class MainActivity : AppCompatActivity() {
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
 
-        playPrePluginLabel.setOnClickListener { Thread{playSound(fixed_sample_rate, false) }.run() }
-        playPostPluginLabel.setOnClickListener { Thread{playSound(fixed_sample_rate, true) }.run() }
+        playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
+        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
 
         wavePrePlugin.setRawData(in_raw, {})
         wavePrePlugin.progress = 100f
