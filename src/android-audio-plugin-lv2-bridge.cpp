@@ -17,21 +17,6 @@
 
 namespace aaplv2bridge {
 
-LilvNode *audio_port_uri_node, *control_port_uri_node, *cv_port_uri_node, *input_port_uri_node, *output_port_uri_node;
-
-#define PORTCHECKER_SINGLE(_name_,_type_) inline bool _name_ (const LilvPlugin* plugin, const LilvPort* port) { return lilv_port_is_a (plugin, port, _type_); }
-#define PORTCHECKER_AND(_name_,_cond1_,_cond2_) inline bool _name_ (const LilvPlugin* plugin, const LilvPort* port) { return _cond1_ (plugin, port) && _cond2_ (plugin, port); }
-
-PORTCHECKER_SINGLE (IS_AUDIO_PORT, audio_port_uri_node)
-PORTCHECKER_SINGLE (IS_INPUT_PORT, input_port_uri_node)
-PORTCHECKER_SINGLE (IS_OUTPUT_PORT, output_port_uri_node)
-PORTCHECKER_SINGLE (IS_CONTROL_PORT, control_port_uri_node)
-PORTCHECKER_SINGLE (IS_CV_PORT, cv_port_uri_node)
-PORTCHECKER_AND (IS_AUDIO_IN, IS_AUDIO_PORT, IS_INPUT_PORT)
-PORTCHECKER_AND (IS_AUDIO_OUT, IS_AUDIO_PORT, IS_OUTPUT_PORT)
-PORTCHECKER_AND (IS_CONTROL_IN, IS_CONTROL_PORT, IS_INPUT_PORT)
-PORTCHECKER_AND (IS_CONTROL_OUT, IS_CONTROL_PORT, IS_OUTPUT_PORT)
-
 typedef struct {
     bool operator() (char* p1, char* p2) { return strcmp (p1, p2) == 0; }
 } uricomp;
@@ -79,14 +64,31 @@ int log_printf (LV2_Log_Handle handle, LV2_URID type, const char *fmt,...)
     return log_vprintf (handle, type, fmt, ap);
 }
 
+typedef struct {
+    LilvNode *audio_port_uri_node, *control_port_uri_node, *cv_port_uri_node, *input_port_uri_node, *output_port_uri_node;
+} AAPLV2PluginContextStatics;
 
 typedef struct {
-	LilvWorld *world;
+    AAPLV2PluginContextStatics *statics;
+    LilvWorld *world;
 	const LilvPlugin *plugin;
 	LilvInstance *instance;
 	AndroidAudioPluginBuffer* cached_buffer;
 	void* dummy_raw_buffer;
 } AAPLV2PluginContext;
+
+#define PORTCHECKER_SINGLE(_name_,_type_) inline bool _name_ (AAPLV2PluginContext *ctx, const LilvPlugin* plugin, const LilvPort* port) { return lilv_port_is_a (plugin, port, ctx->statics->_type_); }
+#define PORTCHECKER_AND(_name_,_cond1_,_cond2_) inline bool _name_ (AAPLV2PluginContext *ctx, const LilvPlugin* plugin, const LilvPort* port) { return _cond1_ (ctx, plugin, port) && _cond2_ (ctx, plugin, port); }
+
+    PORTCHECKER_SINGLE (IS_AUDIO_PORT, audio_port_uri_node)
+    PORTCHECKER_SINGLE (IS_INPUT_PORT, input_port_uri_node)
+    PORTCHECKER_SINGLE (IS_OUTPUT_PORT, output_port_uri_node)
+    PORTCHECKER_SINGLE (IS_CONTROL_PORT, control_port_uri_node)
+    PORTCHECKER_SINGLE (IS_CV_PORT, cv_port_uri_node)
+    PORTCHECKER_AND (IS_AUDIO_IN, IS_AUDIO_PORT, IS_INPUT_PORT)
+    PORTCHECKER_AND (IS_AUDIO_OUT, IS_AUDIO_PORT, IS_OUTPUT_PORT)
+    PORTCHECKER_AND (IS_CONTROL_IN, IS_CONTROL_PORT, IS_INPUT_PORT)
+    PORTCHECKER_AND (IS_CONTROL_OUT, IS_CONTROL_PORT, IS_OUTPUT_PORT)
 
 
 void aap_lv2_plugin_delete(
@@ -95,7 +97,9 @@ void aap_lv2_plugin_delete(
 {
     auto l = (AAPLV2PluginContext*) plugin->plugin_specific;
 	free(l->dummy_raw_buffer);
-	delete l;
+	delete l->statics;
+	lilv_world_free(l->world);
+    delete l;
     delete plugin;
 }
 
@@ -174,10 +178,11 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 	// Here we expect that LV2_PATH is already set using setenv() etc.
     lilv_world_load_all (world);
 
-    audio_port_uri_node = lilv_new_uri (world, LV2_CORE__AudioPort);
-    control_port_uri_node = lilv_new_uri (world, LV2_CORE__ControlPort);
-    input_port_uri_node = lilv_new_uri (world, LV2_CORE__InputPort);
-    output_port_uri_node = lilv_new_uri (world, LV2_CORE__OutputPort);
+    auto statics = new AAPLV2PluginContextStatics();
+    statics->audio_port_uri_node = lilv_new_uri (world, LV2_CORE__AudioPort);
+    statics->control_port_uri_node = lilv_new_uri (world, LV2_CORE__ControlPort);
+    statics->input_port_uri_node = lilv_new_uri (world, LV2_CORE__InputPort);
+    statics->output_port_uri_node = lilv_new_uri (world, LV2_CORE__OutputPort);
 
     auto allPlugins = lilv_world_get_all_plugins (world);
     LV2_Feature* features [5];
@@ -204,7 +209,7 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
     assert (instance);    
 
     return new AndroidAudioPlugin {
-			new AAPLV2PluginContext { world, plugin, instance, NULL, NULL },
+			new AAPLV2PluginContext { statics, world, plugin, instance, NULL, NULL },
             aap_lv2_plugin_prepare,
             aap_lv2_plugin_activate,
             aap_lv2_plugin_process,

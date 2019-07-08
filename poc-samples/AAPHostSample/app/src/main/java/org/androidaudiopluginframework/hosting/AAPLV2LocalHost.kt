@@ -11,15 +11,16 @@ class AAPLV2LocalHost
         }
 
         @JvmStatic
-        external fun initialize(pluginPaths: Array<String>, assets: AssetManager)
+        external fun initialize(lv2Path: String, assets: AssetManager)
 
         @JvmStatic
         external fun cleanup()
 
+        // It is not really for public use.
         @JvmStatic
-        external fun runHostLilv(pluginUris: Array<String>, wav: ByteArray, outWav: ByteArray) : Int
+        external fun runHostLilv(pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
 
         @JvmStatic
-        external fun runHostAAP(pluginInfos: Array<PluginInformation>, lv2Path: String, pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
+        external fun runHostAAP(pluginInfos: Array<PluginInformation>, pluginUris: Array<String>, sampleRate: Int, wav: ByteArray, outWav: ByteArray) : Int
     }
 }

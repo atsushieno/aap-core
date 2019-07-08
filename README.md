@@ -363,7 +363,7 @@ Behaviors: TODO (For serviecs it connects and disconnects. For local plugins LV2
 
 The wave sample is created by atsushieno using Waveform10 and Collective.
 
-(FIXME: the app completely ignores WAV headers so far.)
+(FIXME: the app does not respect any audio format and processes fixed size.)
 
 The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
 
@@ -400,8 +400,7 @@ External software projects:
     - sratom
   - cerbero (as the builder, private fork)
 - vst3 category
-  - vst3sdk
-    - TODO: fill the rest
+  - vst3sdk (no particular dependency found, for non-GUI parts)
 
 ### cerbero fork
 

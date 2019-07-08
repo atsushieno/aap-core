@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "../include/android-audio-plugin.h"
 
 
@@ -41,7 +42,7 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 AndroidAudioPlugin* aap_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
-	int aap_bridgeRate,
+	int aapSampleRate,
 	const AndroidAudioPluginExtension * const *extensions)
 {
 	return new AndroidAudioPlugin {

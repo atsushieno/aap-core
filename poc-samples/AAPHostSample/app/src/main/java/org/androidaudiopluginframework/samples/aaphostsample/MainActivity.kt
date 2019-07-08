@@ -84,13 +84,13 @@ class MainActivity : AppCompatActivity() {
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     val uri = item.second.pluginId?.substring("lv2:".length)
-                    AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths, this@MainActivity.assets)
+                    AAPLV2LocalHost.initialize(LV2PluginsInThisApp.lv2Paths.joinToString(":"), this@MainActivity.assets)
                     if (false)
-                        AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), in_raw, out_raw)
+                        AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
                     else {
                         var pluginInfos = host.queryAudioPluginServices(context).flatMap { i -> i.plugins }
                                 .filter { p -> p.pluginId == item.second.pluginId }.toTypedArray()
-                        AAPLV2LocalHost.runHostAAP(pluginInfos, LV2PluginsInThisApp.lv2Paths.joinToString(":"), arrayOf(item.second.pluginId!!), fixed_sample_rate, in_raw, out_raw)
+                        AAPLV2LocalHost.runHostAAP(pluginInfos, arrayOf(item.second.pluginId!!), fixed_sample_rate, in_raw, out_raw)
                     }
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
@@ -103,6 +103,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     lateinit var host: AudioPluginHost
+    // FIXME: this should be customizible, depending on the device configuration (sample input should be decoded appropriately).
     val fixed_sample_rate = 44100
     lateinit var in_raw: ByteArray
     lateinit var out_raw: ByteArray
