@@ -76,8 +76,10 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor)
 {
-	// TODO: implement. remote instantiation
-	assert(false);
+	auto dl = dlopen("androidaudioplugin", RTLD_LAZY);
+	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactoryServiceBridge");
+	auto pluginFactory = factoryGetter();
+	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
 
