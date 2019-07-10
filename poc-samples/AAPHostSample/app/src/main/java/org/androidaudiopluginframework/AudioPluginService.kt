@@ -25,6 +25,9 @@ open class AudioPluginService : Service()
 
         @JvmStatic
         external fun createBinder() : IBinder
+
+        @JvmStatic
+        external fun destroyBinder(binder: IBinder)
     }
     var native_binder : IBinder? = null
 
@@ -33,6 +36,12 @@ open class AudioPluginService : Service()
         if (native_binder == null)
             native_binder = createBinder()
         return native_binder
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        if (native_binder != null)
+            destroyBinder(native_binder!!)
+        return true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

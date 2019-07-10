@@ -11,6 +11,9 @@ class AudioPluginHost {
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AudioPluginService"
 
+        @JvmStatic
+        external fun initialize()
+
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
             val resolveInfos =

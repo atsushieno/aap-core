@@ -1,6 +1,8 @@
-package aap;
+package org.androidaudiopluginframework;
 
-interface IAudioPluginService {
+interface AudioPluginService {
+
+	void create(String pluginId, int sampleRate);
 
 	boolean isPluginAlive();
 
@@ -11,5 +13,7 @@ interface IAudioPluginService {
 	int getStateSize();
 	void getState(long pointer);
 	void setState(long pointer, int size);
+	
+	void destroy();
 }
 

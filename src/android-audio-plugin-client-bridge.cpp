@@ -2,19 +2,18 @@
 #include <cstdlib>
 #include <android/sharedmem.h>
 #include "../include/android-audio-plugin.h"
-#include "aap/IAudioPluginService.h"
+#include "org/androidaudiopluginframework/AudioPluginService.h"
 
 class AAPClientContext {
 public:
 	const char *unique_id;
-	int sample_rate;
-	std::shared_ptr<aidl::aap::IAudioPluginService> proxy;
+	std::shared_ptr<aidl::org::androidaudiopluginframework::IAudioPluginService> proxy;
 	AndroidAudioPluginBuffer *previous_buffer;
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
-	AAPClientContext(const char *uniqueId, int sampleRate, std::shared_ptr<aidl::aap::IAudioPluginService> proxy)
-		: unique_id(uniqueId), sample_rate(sampleRate), proxy(proxy)
+	AAPClientContext(const char *pluginUniqueId, std::shared_ptr<aidl::org::androidaudiopluginframework::IAudioPluginService> proxy)
+		: unique_id(pluginUniqueId), proxy(proxy)
 	{
 	}
 };
@@ -104,17 +103,19 @@ void aap_binder_on_destroy(void *userData) {}
 binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out) { return STATUS_OK; }
 
 AndroidAudioPlugin* aap_bridge_plugin_new(
-	AndroidAudioPluginFactory *pluginFactory,
+	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
 	int aapSampleRate,
-	const AndroidAudioPluginExtension * const *extensions)
+	const AndroidAudioPluginExtension * const *extensions	// unused
+	)
 {
 	AIBinder_Class *cls = AIBinder_Class_define("AudioPluginService",
 												aap_binder_on_create,
 												aap_binder_on_destroy,
 												aap_binder_on_transact);
 	auto binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
-	auto ctx = new AAPClientContext(pluginUniqueId, aapSampleRate, aidl::aap::IAudioPluginService::fromBinder(binder));
+	auto ctx = new AAPClientContext(pluginUniqueId, aidl::org::androidaudiopluginframework::IAudioPluginService::fromBinder(binder));
+	ctx->proxy->create(pluginUniqueId, aapSampleRate);
 	return new AndroidAudioPlugin {
 		ctx,
 		aap_bridge_plugin_prepare,
@@ -127,12 +128,14 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 }
 
 void aap_bridge_plugin_delete(
-		AndroidAudioPluginFactory *pluginFactory,
+		AndroidAudioPluginFactory *pluginFactory,	// unused
 		AndroidAudioPlugin *instance)
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
 	releaseStateBuffer(ctx);
+	ctx->proxy->destroy();
 
+	delete ctx;
 	delete instance;
 }
 
