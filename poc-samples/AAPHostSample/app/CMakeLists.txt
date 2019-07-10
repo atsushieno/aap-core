@@ -28,7 +28,7 @@ add_library( # Specifies the name of the library.
             # Provides a relative path to your source file(s).
             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-host.cpp"
             "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-lv2-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-service-bridge.cpp"
+            "${Project_SOURCE_DIR}/../../../src/android-audio-plugin-client-bridge.cpp"
             "${Project_SOURCE_DIR}/../../../src/gen/aap/IAudioPluginService.cpp"
             "src/main/jni/AAPRemoteBridge.cpp"
             "src/main/jni/LV2DirectUsageSample.cpp"

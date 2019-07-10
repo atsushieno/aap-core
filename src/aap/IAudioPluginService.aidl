@@ -2,11 +2,11 @@ package aap;
 
 interface IAudioPluginService {
 
-	bool isPluginAlive();
+	boolean isPluginAlive();
 
 	void prepare(int frameCount, int bufferCount, in long[] bufferPointers);
 	void activate();
-	void process();
+	void process(int timeoutInNanoseconds);
 	void deactivate();
 	int getStateSize();
 	void getState(long pointer);
