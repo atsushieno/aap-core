@@ -1,10 +1,13 @@
-package org.androidaudiopluginframework
+package org.androidaudiopluginframework.hosting
 
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.midi.MidiDeviceInfo
 import android.util.Log
+import org.androidaudiopluginframework.AudioPluginServiceInformation
+import org.androidaudiopluginframework.PluginInformation
+import org.androidaudiopluginframework.PortInformation
 import org.xmlpull.v1.XmlPullParser
 
 class AudioPluginHost {
@@ -12,7 +15,17 @@ class AudioPluginHost {
         const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AudioPluginService"
 
         @JvmStatic
-        external fun initialize()
+        fun initialize(context: Context, pluginUris: Array<String>)
+        {
+            var pluginInfos = queryAudioPluginServices(context).flatMap { i -> i.plugins }.toTypedArray()
+            initialize(pluginInfos)
+        }
+
+        @JvmStatic
+        external fun cleanup()
+
+        @JvmStatic
+        external fun initialize(pluginInfos: Array<PluginInformation>)
 
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)

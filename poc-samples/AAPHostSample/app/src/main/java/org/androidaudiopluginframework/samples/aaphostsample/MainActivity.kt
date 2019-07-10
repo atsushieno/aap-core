@@ -17,7 +17,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import androidx.loader.content.AsyncTaskLoader
-import org.androidaudiopluginframework.AudioPluginHost
+import org.androidaudiopluginframework.hosting.AudioPluginHost
 import org.androidaudiopluginframework.hosting.AAPLV2LocalHost
 import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
@@ -90,10 +90,12 @@ class MainActivity : AppCompatActivity() {
                     val uri = pluginId.substring("lv2:".length)
                     AAPLV2LocalHost.lv2Paths = LV2PluginsInThisApp.lv2Paths
                     AAPLV2LocalHost.initialize(this@MainActivity.assets)
-                    if (false)
+                    if (false) {
                         AAPLV2LocalHost.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
-                    else {
-                        AAPLV2LocalHost.runHostAAP(context, arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
+                    } else {
+                        AudioPluginHost.initialize(context, arrayOf(pluginId))
+                        AAPLV2LocalHost.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
+                        AudioPluginHost.cleanup();
                     }
                     AAPLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})

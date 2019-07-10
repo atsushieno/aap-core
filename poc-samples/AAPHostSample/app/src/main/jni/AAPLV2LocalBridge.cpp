@@ -15,6 +15,7 @@ namespace aap {
     extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
     extern const char *strdup_fromJava(JNIEnv *env, jstring s);
 }
+extern aap::PluginInformation **local_plugin_infos;
 
 namespace aaplv2 {
 
@@ -26,11 +27,10 @@ typedef struct {
     AndroidAudioPluginBuffer *plugin_buffer;
 } AAPInstanceUse;
 
-int runHostAAP(int sampleRate, aap::PluginInformation **pluginInfos,
-               const char **pluginIDs, int numPluginIDs, void *wav, int wavLength,
+int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wav, int wavLength,
                void *outWav) {
     setenv("LV2_PATH", lv2Path, true);
-    auto host = new aap::PluginHost(pluginInfos);
+    auto host = new aap::PluginHost(local_plugin_infos);
 
     int buffer_size = wavLength;
     int float_count = buffer_size / sizeof(float);
@@ -191,15 +191,8 @@ void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_cleanup(JNIEnv
     free((void*) aaplv2::lv2Path);
 }
 
-jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPluginInfos, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
+jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
-    jsize infoSize = env->GetArrayLength(jPluginInfos);
-    aap::PluginInformation *pluginInfos[infoSize];
-    for (int i = 0; i < infoSize; i++) {
-        auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        pluginInfos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
-    }
-
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginIDs[size];
     for (int i = 0; i < size; i++) {
@@ -212,12 +205,9 @@ jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNI
     env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
     void* outWavBytes = calloc(wavLength, 1);
 
-    int ret = aaplv2::runHostAAP(sampleRate, pluginInfos, pluginIDs, size, wavBytes, wavLength, outWavBytes);
+    int ret = aaplv2::runHostAAP(sampleRate, pluginIDs, size, wavBytes, wavLength, outWavBytes);
 
     env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
-
-    for(int i = 0; i < infoSize; i++)
-        delete pluginInfos[i];
 
     for(int i = 0; i < size; i++)
         free((char*) pluginIDs[i]);

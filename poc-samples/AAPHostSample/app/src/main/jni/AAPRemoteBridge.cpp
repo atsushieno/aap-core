@@ -17,6 +17,13 @@
 AIBinder_Class *binder_class;
 AIBinder *binder;
 
+// FIXME: sort out final library header structures.
+namespace aap {
+    extern aap::PluginInformation **local_plugin_infos;
+    extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
+    extern const char *strdup_fromJava(JNIEnv *env, jstring s);
+}
+
 namespace aap {
 
 const char *interface_descriptor = "org.androidaudiopluginframework.AudioPluginService";
@@ -148,6 +155,15 @@ void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_initialize(JNI
             local_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
         }
     }
+}
+
+void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_cleanup(JNIEnv *env, jclass cls)
+{
+    int n = 0;
+    while (local_plugin_infos[n])
+        n++;
+    for(int i = 0; i < n; i++)
+        delete local_plugin_infos[i];
 }
 
 jobject
