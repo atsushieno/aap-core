@@ -3,6 +3,7 @@
 //
 
 #include "AAPRemoteBridge.h"
+#include "../../../../../../src/gen/aidl/org/androidaudiopluginframework/BnAudioPluginService.h"
 #include "../../../../../../include/android-audio-plugin-host.hpp"
 #include <jni.h>
 #include <android/binder_ibinder.h>
@@ -14,12 +15,14 @@
 #include <android/binder_auto_utils.h>
 #include <android/log.h>
 
-AIBinder_Class *binder_class;
-AIBinder *binder;
+aidl::org::androidaudiopluginframework::BnAudioPluginService *sp_binder;
+
+extern "C" {
+aap::PluginInformation **local_plugin_infos;
+}
 
 // FIXME: sort out final library header structures.
 namespace aap {
-    extern aap::PluginInformation **local_plugin_infos;
     extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
     extern const char *strdup_fromJava(JNIEnv *env, jstring s);
 }
@@ -28,6 +31,97 @@ namespace aap {
 
 const char *interface_descriptor = "org.androidaudiopluginframework.AudioPluginService";
 
+
+class AudioPluginServiceImpl : public aidl::org::androidaudiopluginframework::BnAudioPluginService {
+    aap::PluginHost *host;
+    aap::PluginInstance *instance;
+    AndroidAudioPluginBuffer buffer;
+    int sample_rate;
+
+public:
+
+    AudioPluginServiceImpl(int sampleRate) : sample_rate(sampleRate)
+    {
+        host = new PluginHost(local_plugin_infos);
+        buffer.num_frames = 0;
+        buffer.buffers = nullptr;
+    }
+
+    ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate) override
+    {
+        if (instance)
+            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(-1, "Already instantiated"));
+        instance = host->instantiatePlugin(in_pluginId.data());
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus isPluginAlive(bool* _aidl_return) override
+    {
+        *_aidl_return = true;
+        return ndk::ScopedAStatus::ok();
+    }
+
+    void resetBuffers(int frameCount, const std::vector<int64_t>& pointers)
+    {
+        buffer.num_frames = frameCount;
+        int n = pointers.size();
+        if (buffer.buffers)
+            free(buffer.buffers);
+        buffer.buffers = (void**) calloc(sizeof(void*), n);
+        for (int i = 0; i < n; i++)
+            buffer.buffers[i] = (void*) pointers[i];
+    }
+
+    ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_bufferCount, const std::vector<int64_t>& in_bufferPointers) override
+    {
+        resetBuffers(in_bufferCount, in_bufferPointers);
+        instance->prepare(sample_rate, in_frameCount, &buffer);
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus activate() override
+    {
+        instance->activate();
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus process(int32_t in_timeoutInNanoseconds) override
+    {
+
+    }
+
+    ::ndk::ScopedAStatus deactivate() override
+    {
+        instance->deactivate();
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus getStateSize(int32_t* _aidl_return) override
+    {
+        *_aidl_return = instance->getStateSize();
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus getState(int64_t in_pointer) override
+    {
+        void* dst = (void*) in_pointer;
+        memcpy(dst, instance->getState(), instance->getStateSize());
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus setState(int64_t in_pointer, int32_t in_size) override
+    {
+        void* src = (void*) in_pointer;
+        instance->setState(src, 0, in_size);
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus destroy() override
+    {
+        instance->dispose();
+        return ndk::ScopedAStatus::ok();
+    }
+};
 
 // TODO: any code that calls this method needs to implement proper memory management.
 const char *strdup_fromJava(JNIEnv *env, jstring s) {
@@ -143,8 +237,6 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
 
 extern "C" {
 
-aap::PluginInformation **local_plugin_infos;
-
 void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
     if (!local_plugin_infos) {
@@ -167,14 +259,9 @@ void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_cleanup(JNIEnv
 }
 
 jobject
-Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env, jclass clazz) {
-    if (binder == NULL) {
-        if (binder_class == NULL)
-            binder_class = AIBinder_Class_define(aap::interface_descriptor, aap::aap_oncreate, aap::aap_ondestroy,
-                                                 aap::aap_ontransact);
-        binder = AIBinder_new(binder_class, NULL);
-    }
-    return AIBinder_toJavaBinder(env, binder);
+Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate, jstring pluginId) {
+    sp_binder = new aap::AudioPluginServiceImpl(sampleRate);
+    return AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
 }
 
 void

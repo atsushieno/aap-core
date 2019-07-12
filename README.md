@@ -117,6 +117,7 @@ Therefore, at "prepare" step we pass a prepared "buffer" which is supposed to be
 
 We are still unsure if this really helps performance (especially how to deal with circular buffers nicely). Things might change.
 
+A related annoyance is that when targeting API Level 29 direct access to `/dev/ashmem` is prohibited and use of `ASharedMemory` API is required, meaning that it's going to be Android-only codebase. Making it common to desktop require code abstraction for ashmem access, which sounds absurd.
 
 
 ## AAP package bundle
@@ -196,15 +197,16 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 
 `name` should be unique enough so that this standalone string can identify itself. An `xs:NMTOKENS` in XML Schema datatypes is expected (not `xs:NMTOKEN` because we accept `#x20`).
 
-`plugin-id` is used by AAP hosts to regard to identify the plugin and expect compatibility e.g. state data and versions, across various environments. This value is used for calculating JUCE `uid` value. Ideally an UUID string, but it's up to the plugin backend. For example, LV2 does identifies each plugin via URI. Therefore we use `lv2:{URI}` when importing from their metadata.
+`plugin-id` is used by AAP hosts to identify the plugin and expect compatibility e.g. state data and versions, across various environments. This value is used for calculating JUCE `uid` value. Ideally an UUID string, but it's up to the plugin backend. For example, LV2 identifies each plugin via URI. Therefore we use `lv2:{URI}` when importing from their metadata.
 
-`version` can be displayed by hosts. Desirably it contains build versions or "debug" when developing and/or debugging the plugin, otherwise hosts cannot generate an useful identifier to distinfuish from the hosts.
+`version` can be displayed by hosts. Desirably it contains build versions or "debug" when developing and/or debugging the plugin, otherwise hosts cannot generate an useful identifier to distinguish from the hosts.
 
 For `category`, we have undefined format. VST has some strings like `Effect`, `Synth`, `Synth|Instrument`, or `Fx|Delay` when it is detailed. When it contains `Instrument` then it is regarded by the JUCE bridge so far.
 
 `library` is to specify the native shared library name. It is mandatory; if it is skipped, then it points to "androidaudioplugin" which is our internal library which you have no control.
 
 `entrypoint` is to sprcify custom entrypoint function. It is optional; if you simply declared `GetAndroidAudioPluginFactory()` function in the native library, then it is used. Otherwise the function specified by this attribute is used. It is useful if your library has more than one plugin factory entrypoints (like our `libandroidaudioplugin.so` does).
+
 
 
 ## AAP-LV2 backend
@@ -305,9 +307,12 @@ On a related note, JUCE lacks VST3 support on Linux so far. [They have been work
 
 AAP proof-of-concept host is in `poc-samples/AAPHostSample`.
 
-AAP host will have to support multiple backends e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is implemented using lilv.
+AAP will have some "backends" e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is implemented using lilv, and VST3 host bridge is implemented using vst3sdk. However, in principle, every AAP has to be implemented along the way how standalone AAP is implemented.
 
-Currently AAPHostSample contains *direct* LV2 hosting sample. It will be transformed to AAP hosting application.
+Currently AAPHostSample contains two hosting samples, but not making AAP hosting API (described later) generic yet.
+
+- *direct* LV2 hosting
+- AAP-LV2 hosting
 
 
 ### AAP hosting API
@@ -319,9 +324,9 @@ Unlike LV2, hosting API is actually used by plugins too, because it has to serve
 - Types - C API
   - `aap::PluginHostSettings`
   - `aap::PluginHost`
-  - `aap::PluginHostBackend`
-    - `aap::PluginHostBackendLV2`
-    - `aap::PluginHostBackendVST3`
+  - `aap::PluginHostBackend` (TODO, or might vanish)
+    - `aap::PluginHostBackendLV2` (TODO, or might vanish)
+    - `aap::PluginHostBackendVST3` (TODO, or might vanish)
   - `aap::PluginInformation`
   - `aap::PortInformation`
   - `aap::PluginInstance`
@@ -347,9 +352,39 @@ Unlike LV2, hosting API is actually used by plugins too, because it has to serve
     - `void aap_instance_deactivate(AAPInstance*)`
 
 
+### Accessing Remote plugin
+
+Remote plugins can be accessed through AAP "local bridge" which is publicly just an AAP plugin (so that general AAP Hosts can instantiate locally), while it implements the API as a Service client, using NdkBinder.
+
+Each AAP is bound to AudioPluginService, and it works as an AAP service. There is an AIDL which resembles to (but slightly different from) AAP API:
+
+```
+package org.androidaudiopluginframework;
+
+interface AudioPluginService {
+
+	void create(String pluginId, int sampleRate);
+
+	boolean isPluginAlive();
+
+	void prepare(int frameCount, int bufferCount, in long[] bufferPointers);
+	void activate();
+	void process(int timeoutInNanoseconds);
+	void deactivate();
+	int getStateSize();
+	void getState(long pointer);
+	void setState(long pointer, int size);
+	
+	void destroy();
+}
+
+```
+
+
+
 ## JUCE integration
 
-juce_android_audio_plugin_format.cpp implements juce:AudioPluginFormat and related stuff.
+`juce/Source/juce_android_audio_plugin_format.cpp` implements juce:AudioPluginFormat and related stuff.
 
 
 ## Samples
@@ -359,7 +394,7 @@ juce_android_audio_plugin_format.cpp implements juce:AudioPluginFormat and relat
 It shows existing AAPs (services) as well as in-app plugins that can be loaded in-process.
 
 
-Behaviors: TODO (For serviecs it connects and disconnects. For local plugins LV2 host runs which takes the input wav sample and generate output wav.
+Behaviors: TODO (For serviecs it connects and disconnects. For local plugins AAP-LV2 host runs which takes the input wav sample and generate output wav.
 
 The wave sample is created by atsushieno using Waveform10 and Collective.
 
@@ -375,7 +410,7 @@ android-audio-plugin-framework has some dependencies, which are either platform-
 
 Platform wise:
 
-- ashmem (Android 4.0.3)
+- ASharedMemory (ashmem) (Android 4.0.3)
 - Realtime IPC binder (Android 8.0)
 - AudioPluginService depends on NdkBinder (Android 10.0)
 

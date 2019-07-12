@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.os.Build
+import org.androidaudiopluginframework.hosting.AudioPluginHost
 import org.androidaudiopluginframework.samples.aaphostsample.MainActivity
 
 open class AudioPluginService : Service()
@@ -24,7 +25,7 @@ open class AudioPluginService : Service()
         }
 
         @JvmStatic
-        external fun createBinder() : IBinder
+        external fun createBinder(sampleRate: Int, pluginId: String?) : IBinder
 
         @JvmStatic
         external fun destroyBinder(binder: IBinder)
@@ -32,9 +33,12 @@ open class AudioPluginService : Service()
     var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
-        Log.d ("AudioPluginService", "onBind invoked")
+        val pluginId = intent!!.getStringExtra("pluginId")
+        val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
+        Log.d ("AudioPluginService", "onBind invoked with sampleRate " + sampleRate + " / pluginId " + pluginId)
+        AudioPluginHost.Companion.initialize(this, arrayOf(pluginId))
         if (native_binder == null)
-            native_binder = createBinder()
+            native_binder = createBinder(sampleRate, pluginId)
         return native_binder
     }
 
