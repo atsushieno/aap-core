@@ -76,6 +76,8 @@ class MainActivity : AppCompatActivity() {
                             service.packageName,
                             service.className
                         )
+                        intent!!.putExtra("sampleRate", fixed_sample_rate)
+                        intent!!.putExtra("pluginId", plugin.pluginId)
 
                         context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
