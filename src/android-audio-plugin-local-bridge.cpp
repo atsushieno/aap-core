@@ -1,8 +1,9 @@
 #include <sys/mman.h>
 #include <cstdlib>
 #include <android/sharedmem.h>
+#include <android/log.h>
 #include "../include/android-audio-plugin.h"
-#include "org/androidaudiopluginframework/AudioPluginService.h"
+#include "org/androidaudiopluginframework/AudioPluginInterface.h"
 #include "../include/android-audio-plugin-host.hpp"
 
 class AAPLocalContext {
@@ -21,6 +22,8 @@ public:
 
 void aap_local_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
+    __android_log_write(ANDROID_LOG_DEBUG, "AAP_LOCAL_BRIDGE", "aap_local_bridge_plugin_prepare");
+
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
     // FIXME: replace 2 with the actual audio channel count.
     ctx->instance->prepare(ctx->sample_rate, buffer->num_frames * 2, buffer);
@@ -69,6 +72,8 @@ AndroidAudioPlugin* aap_local_bridge_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions	// unused
 	)
 {
+    __android_log_write(ANDROID_LOG_DEBUG, "AAP_LOCAL_BRIDGE", "aap_local_bridge_plugin_new");
+
     auto ctx = new AAPLocalContext();
     ctx->host = new aap::PluginHost(local_plugin_infos);
     ctx->instance = ctx->host->instantiatePlugin(pluginUniqueId);
@@ -99,6 +104,8 @@ void aap_local_bridge_plugin_delete(
 extern "C" {
 
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLocalBridge() {
+    __android_log_write(ANDROID_LOG_DEBUG, "AAP_LOCAL_BRIDGE", "GetAndroidAudioPluginFactoryLocalBridge");
+
     return new AndroidAudioPluginFactory{aap_local_bridge_plugin_new, aap_local_bridge_plugin_delete};
 }
 }

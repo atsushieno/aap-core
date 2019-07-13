@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.midi.MidiDeviceInfo
+import android.os.Binder
+import android.os.IBinder
 import android.util.Log
 import org.androidaudiopluginframework.AudioPluginServiceInformation
 import org.androidaudiopluginframework.PluginInformation
@@ -14,6 +16,10 @@ class AudioPluginHost {
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudiopluginframework.AudioPluginService"
 
+        init {
+            System.loadLibrary("androidaudioplugin")
+        }
+
         @JvmStatic
         fun initialize(context: Context, pluginUris: Array<String>)
         {
@@ -22,11 +28,16 @@ class AudioPluginHost {
         }
 
         @JvmStatic
-        external fun cleanup()
-
-        @JvmStatic
         external fun initialize(pluginInfos: Array<PluginInformation>)
 
+        @JvmStatic
+        external fun cleanup()
+
+        // FIXME: remove this sample-only method
+        @JvmStatic
+        external fun runClientAAP(binder: IBinder, sampleRate: Int, pluginId: String, wav: ByteArray, outWav: ByteArray) : Int
+
+        @JvmStatic
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
             val resolveInfos =

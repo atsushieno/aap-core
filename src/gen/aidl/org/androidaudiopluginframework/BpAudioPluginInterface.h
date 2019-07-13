@@ -1,16 +1,16 @@
 #pragma once
 
-#include "aidl/org/androidaudiopluginframework/AudioPluginService.h"
+#include "aidl/org/androidaudiopluginframework/AudioPluginInterface.h"
 
 #include <android/binder_ibinder.h>
 
 namespace aidl {
 namespace org {
 namespace androidaudiopluginframework {
-class BpAudioPluginService : public ::ndk::BpCInterface<IAudioPluginService> {
+class BpAudioPluginInterface : public ::ndk::BpCInterface<IAudioPluginInterface> {
 public:
-  BpAudioPluginService(const ::ndk::SpAIBinder& binder);
-  virtual ~BpAudioPluginService();
+  BpAudioPluginInterface(const ::ndk::SpAIBinder& binder);
+  virtual ~BpAudioPluginInterface();
 
   ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate) override;
   ::ndk::ScopedAStatus isPluginAlive(bool* _aidl_return) override;

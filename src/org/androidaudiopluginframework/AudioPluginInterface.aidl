@@ -1,6 +1,6 @@
 package org.androidaudiopluginframework;
 
-interface AudioPluginService {
+interface AudioPluginInterface {
 
 	void create(String pluginId, int sampleRate);
 

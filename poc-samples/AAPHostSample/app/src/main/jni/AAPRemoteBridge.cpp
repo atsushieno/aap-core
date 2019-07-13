@@ -3,7 +3,7 @@
 //
 
 #include "AAPRemoteBridge.h"
-#include "../../../../../../src/gen/aidl/org/androidaudiopluginframework/BnAudioPluginService.h"
+#include "../../../../../../src/gen/aidl/org/androidaudiopluginframework/BnAudioPluginInterface.h"
 #include "../../../../../../include/android-audio-plugin-host.hpp"
 #include <jni.h>
 #include <android/binder_ibinder.h>
@@ -14,8 +14,9 @@
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
 #include <android/log.h>
+#include <aidl/org/androidaudiopluginframework/BpAudioPluginInterface.h>
 
-aidl::org::androidaudiopluginframework::BnAudioPluginService *sp_binder;
+aidl::org::androidaudiopluginframework::BnAudioPluginInterface *sp_binder;
 
 extern "C" {
 aap::PluginInformation **local_plugin_infos;
@@ -32,7 +33,7 @@ namespace aap {
 const char *interface_descriptor = "org.androidaudiopluginframework.AudioPluginService";
 
 
-class AudioPluginServiceImpl : public aidl::org::androidaudiopluginframework::BnAudioPluginService {
+class AudioPluginInterfaceImpl : public aidl::org::androidaudiopluginframework::BnAudioPluginInterface {
     aap::PluginHost *host;
     aap::PluginInstance *instance;
     AndroidAudioPluginBuffer buffer;
@@ -40,7 +41,7 @@ class AudioPluginServiceImpl : public aidl::org::androidaudiopluginframework::Bn
 
 public:
 
-    AudioPluginServiceImpl(int sampleRate) : sample_rate(sampleRate)
+    AudioPluginInterfaceImpl(int sampleRate) : sample_rate(sampleRate)
     {
         host = new PluginHost(local_plugin_infos);
         buffer.num_frames = 0;
@@ -87,7 +88,8 @@ public:
 
     ::ndk::ScopedAStatus process(int32_t in_timeoutInNanoseconds) override
     {
-
+        instance->process(&buffer, in_timeoutInNanoseconds);
+        return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus deactivate() override
@@ -122,6 +124,24 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 };
+
+
+void* aap_oncreate(void* args)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_oncreate");
+    return NULL;
+}
+
+void aap_ondestroy(void* userData)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ondestroy");
+}
+
+binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ontransact");
+    return STATUS_OK;
+}
 
 // TODO: any code that calls this method needs to implement proper memory management.
 const char *strdup_fromJava(JNIEnv *env, jstring s) {
@@ -215,27 +235,112 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
     return aapPI;
 }
 
-
-void* aap_oncreate(void* args)
-{
-    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_oncreate");
-    return NULL;
 }
 
-void aap_ondestroy(void* userData)
-{
-    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ondestroy");
+
+// FIXME: sample app code, should be moved elsewhere
+
+namespace aapremote {
+
+int runClientAAP(AIBinder *binder, int sampleRate, const aap::PluginInformation *pluginInfo, void *wav, int wavLength, void *outWav) {
+    auto proxy = new aidl::org::androidaudiopluginframework::BpAudioPluginInterface(ndk::SpAIBinder(binder));
+
+    int buffer_size = wavLength;
+    int float_count = buffer_size / sizeof(float);
+
+    /* instantiate plugins and connect ports */
+
+    float *audioIn = (float *) calloc(buffer_size, 1);
+    float *midiIn = (float *) calloc(buffer_size, 1);
+    float *controlIn = (float *) calloc(buffer_size, 1);
+    float *dummyBuffer = (float *) calloc(buffer_size, 1);
+
+    float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
+
+    auto status = proxy->create(pluginInfo->getPluginID(), sampleRate);
+    assert (status.isOk());
+
+    auto desc = pluginInfo;
+    auto plugin_buffer = new AndroidAudioPluginBuffer();
+    plugin_buffer->num_frames = buffer_size / sizeof(float);
+    int nPorts = desc->getNumPorts();
+    plugin_buffer->buffers = (void **) calloc(nPorts + 1, sizeof(void *));
+    for (int p = 0; p < nPorts; p++) {
+        auto port = desc->getPort(p);
+        if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
+            port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
+            plugin_buffer->buffers[p] = currentAudioIn;
+        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
+                 port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
+            plugin_buffer->buffers[p] = currentAudioOut = (float *) calloc(buffer_size, 1);
+        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
+                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
+            plugin_buffer->buffers[p] = currentMidiIn;
+        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
+                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
+            plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size, 1);
+        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
+            plugin_buffer->buffers[p] = controlIn;
+        else
+            plugin_buffer->buffers[p] = dummyBuffer;
+    }
+    if (currentAudioOut)
+        currentAudioIn = currentAudioOut;
+    if (currentMidiOut)
+        currentMidiIn = currentMidiOut;
+
+    // prepare connections
+    std::vector<int64_t> buffer_proxy;
+    for(int i = 0; i < nPorts; i++)
+        buffer_proxy.push_back((int64_t) plugin_buffer->buffers[i]);
+
+    proxy->prepare(plugin_buffer->num_frames, nPorts, buffer_proxy);
+
+    // prepare inputs
+    memcpy(audioIn, wav, buffer_size);
+    for (int i = 0; i < float_count; i++)
+        controlIn[i] = 0.5;
+
+    // activate, run, deactivate
+    proxy->activate();
+    proxy->process(0);
+    proxy->deactivate();
+
+    memcpy(outWav, currentAudioOut, buffer_size);
+
+    for (int p = 0; plugin_buffer->buffers[p]; p++)
+        free(plugin_buffer->buffers[p]);
+    free(plugin_buffer->buffers);
+    delete plugin_buffer;
+
+    proxy->destroy();
+
+    delete proxy;
+
+    free(audioIn);
+    free(midiIn);
+    free(dummyBuffer);
+
+    return 0;
 }
 
-binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
-{
-    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "aap_ontransact");
-    return STATUS_OK;
-}
+} // namespace aapremote
 
-} // namespace aap
 
 extern "C" {
+
+jobject
+Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate, jstring pluginId) {
+    sp_binder = new aap::AudioPluginInterfaceImpl(sampleRate);
+    return AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
+}
+
+void
+Java_org_androidaudiopluginframework_AudioPluginService_destroyBinder(JNIEnv *env, jclass clazz,
+                                                                      jobject binder) {
+    auto abinder = AIBinder_fromJavaBinder(env, binder);
+    AIBinder_decStrong(abinder);
+}
 
 void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
@@ -258,17 +363,32 @@ void Java_org_androidaudiopluginframework_hosting_AudioPluginHost_cleanup(JNIEnv
         delete local_plugin_infos[i];
 }
 
-jobject
-Java_org_androidaudiopluginframework_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate, jstring pluginId) {
-    sp_binder = new aap::AudioPluginServiceImpl(sampleRate);
-    return AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
-}
+int Java_org_androidaudiopluginframework_hosting_AudioPluginHost_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray wav, jbyteArray outWav) {
 
-void
-Java_org_androidaudiopluginframework_AudioPluginService_destroyBinder(JNIEnv *env, jclass clazz,
-                                                                      jobject binder) {
-    auto abinder = AIBinder_fromJavaBinder(env, binder);
-    AIBinder_decStrong(abinder);
+    int wavLength = env->GetArrayLength(wav);
+    void *wavBytes = calloc(wavLength, 1);
+    env->GetByteArrayRegion(wav, 0, wavLength, (jbyte *) wavBytes);
+    void *outWavBytes = calloc(wavLength, 1);
+
+    jboolean dup;
+    const char *pluginId = env->GetStringUTFChars(jPluginId, &dup);
+    aap::PluginInformation *pluginInfo;
+    int p = 0;
+    while (local_plugin_infos[p]) {
+        if (strcmp(local_plugin_infos[p]->getPluginID(), pluginId) == 0) {
+            pluginInfo = local_plugin_infos[p];
+            break;
+        }
+    }
+
+    auto binder = AIBinder_fromJavaBinder(env, jBinder);
+    int ret = aapremote::runClientAAP(binder, sampleRate, pluginInfo, wavBytes, wavLength, outWavBytes);
+
+    env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
+
+    free(wavBytes);
+    free(outWavBytes);
+    return ret;
 }
 
 } // extern "C"

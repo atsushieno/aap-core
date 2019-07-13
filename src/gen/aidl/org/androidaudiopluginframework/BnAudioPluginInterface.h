@@ -1,16 +1,16 @@
 #pragma once
 
-#include "aidl/org/androidaudiopluginframework/AudioPluginService.h"
+#include "aidl/org/androidaudiopluginframework/AudioPluginInterface.h"
 
 #include <android/binder_ibinder.h>
 
 namespace aidl {
 namespace org {
 namespace androidaudiopluginframework {
-class BnAudioPluginService : public ::ndk::BnCInterface<IAudioPluginService> {
+class BnAudioPluginInterface : public ::ndk::BnCInterface<IAudioPluginInterface> {
 public:
-  BnAudioPluginService();
-  virtual ~BnAudioPluginService();
+  BnAudioPluginInterface();
+  virtual ~BnAudioPluginInterface();
 protected:
   ::ndk::SpAIBinder createBinder() override;
 private:

@@ -1,5 +1,6 @@
 package org.androidaudiopluginframework.samples.aaphostsample
 
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -35,9 +36,20 @@ class MainActivity : AppCompatActivity() {
         var intent: Intent? = null
         val isOutProcess: Boolean = isOutProcess
 
+        lateinit var target_plugin: String
+
         var conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Log.i("HostMainActivity", "onServiceConnected invoked")
+                GlobalScope.launch {
+                    AudioPluginHost.initialize(context, arrayOf(target_plugin))
+                    AudioPluginHost.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, out_raw)
+                    AudioPluginHost.cleanup()
+                    context.applicationContext.run {
+                        wavePostPlugin.setRawData(out_raw, {})
+                        wavePostPlugin.progress = 100f
+                    }
+                }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -79,11 +91,12 @@ class MainActivity : AppCompatActivity() {
                         intent!!.putExtra("sampleRate", fixed_sample_rate)
                         intent!!.putExtra("pluginId", plugin.pluginId)
 
-                        context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
                             context.startForegroundService(intent)
                         else
                             context.startService(intent)
+                        target_plugin = plugin.pluginId!!
+                        context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
                     }
                 }
             } else {
