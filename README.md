@@ -321,7 +321,7 @@ It is simpler than LV2. Similar to LV2, ports are connected only by index and no
 
 Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. However plugin developers should not be required to do so by themselves. It should be as easy as implementing plugin framework API and package in AAP format.
 
-- Types - C API
+- Types - C++ API
   - `aap::PluginHostSettings`
   - `aap::PluginHost`
   - `aap::PluginHostBackend` (TODO, or might vanish)
@@ -398,7 +398,7 @@ Behaviors: TODO (For serviecs it connects and disconnects. For local plugins AAP
 
 The wave sample is created by atsushieno using Waveform10 and Collective.
 
-(FIXME: the app does not respect any audio format and processes fixed size.)
+(FIXME: the app does not respect any audio format and processes in fixed size.)
 
 The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
 
@@ -461,15 +461,18 @@ And note that access to assets is not as simple as that to filesystem. It is imp
   - AAPLV2Sample - AAP-LV2 sample
   - AAPVST3Sample - AAL-VST3 sample (pending; we need NDK r21 or later)
 - external/cerbero - LV2 Android builder (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
+- tools
+  - aap-import-lv2-metadata
 
+TODO: it should be transformed to become like:
 
 - native
-  - libaap
+  - androidaudioplugin
     - include - AAP C/C++ header files
     - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
   - juce - JUCE support project and sources.
 - java
   - AndroidAudioPluginFramework
-- poc-samples
+- samples
 - tools
   - aap-import-lv2-metadata
