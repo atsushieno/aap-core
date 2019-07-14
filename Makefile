@@ -4,11 +4,15 @@ PWD=$(shell pwd)
 
 ABIS_SIMPLE = x86 x86-64 armv7 arm64
 APPNAMES = AAPHostSample AAPLV2Sample
-ANDROID_NDK=~/android-sdk-`uname`/ndk-bundle
+ANDROID_NDK=/home/$(USER)/Android/Sdk/ndk/20.0.5594570/
 
 TOP=`pwd`
 
-all: build
+all: build-native build-poc-samples
+
+.PHONY:
+build-poc-samples:
+	cd poc-samples/AAPHostSample && ./gradlew assembleDebug
 
 .PHONY:
 clean:
@@ -20,12 +24,12 @@ prepare:
 
 
 .PHONY:
-build: build-lv2-deps copy-lv2-deps add-symlinks import-metadata
+build-native: build-lv2-deps copy-lv2-deps add-symlinks import-metadata
 
 
 .PHONY:
 add-symlinks:
-	rm -r symlinked-dist
+	rm -rf symlinked-dist
 	mkdir -p symlinked-dist/
 	if [ ! -e symlinked/x86 ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_x86/ symlinked-dist/x86 ; fi
 	if [ ! -e symlinked/x86_64 ] ; then ln -s $(TOP)/external/cerbero/build/dist/android_x86_64/ symlinked-dist/x86_64 ; fi
@@ -43,6 +47,7 @@ copy-lv2-deps:
 copy-lv2-deps-single:
 	for appname in $(APPNAMES) ; do \
 		mkdir -p poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2) && \
+		mkdir -p poc-samples/$$appname/app/src/main/assets/lv2 ; \
 		cp external/cerbero/build/dist/android_$(A_ARCH)/lib/*.so poc-samples/$$appname/app/src/main/jniLibs/$(A_ARCH2)/ && \
 		cp -R external/cerbero/build/dist/android_$(A_ARCH)/lib/lv2/* poc-samples/$$appname/app/src/main/assets/lv2/ ; \
 		rm poc-samples/$$appname/app/src/main/assets/lv2/*/*.so ; \
@@ -51,7 +56,7 @@ copy-lv2-deps-single:
 
 .PHONY:
 build-lv2-deps:
-	make CERBERO_COMMAND="build mda-lv2 lilv" run-cerbero-command
+	make CERBERO_COMMAND="build lilv mda-lv2" run-cerbero-command
 
 
 .PHONY:

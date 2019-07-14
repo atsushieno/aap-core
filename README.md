@@ -404,7 +404,15 @@ The waveform rendering is done thanks to audiowave-progressbar: https://github.c
 
 
 
-## Build Dependencies
+
+## Building repo
+
+Basically `ANDROID_NDK=/path/to/your/ndk make` will build every native dependencies and `AAPHostSample` proof-of-concept sample.
+
+The native build is actually quite unstable... it will hopefully become better.
+
+
+### Build Dependencies
 
 android-audio-plugin-framework has some dependencies, which are either platform-level-specific, or external.
 
