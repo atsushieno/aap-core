@@ -12,7 +12,7 @@ all: build-native build-poc-samples
 
 .PHONY:
 build-poc-samples:
-	cd poc-samples/AAPHostSample && ./gradlew assembleDebug
+	cd poc-samples/AAPHostSample && ./gradlew assemble
 
 .PHONY:
 clean:
