@@ -14,6 +14,18 @@
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
 #include "../include/android-audio-plugin.h"
 
+extern "C" {
+
+char *_aap_lv2_path = nullptr;
+char *aap_android_get_lv2_path() { return _aap_lv2_path; }
+void aap_android_set_lv2_path(char *path) { _aap_lv2_path = strdup(path); }
+void aap_android_release_lv2_path() { free(_aap_lv2_path); }
+
+}
+
+namespace aaplv2 {
+extern const char *lv2_path;
+}
 
 namespace aaplv2bridge {
 
@@ -175,6 +187,9 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
         const AndroidAudioPluginExtension * const *extensions)
 {
 	auto world = lilv_world_new();
+	assert(aap_android_get_lv2_path());
+    auto lv2_path_node = lilv_new_string(world, aap_android_get_lv2_path());
+    lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_path_node);
 	// Here we expect that LV2_PATH is already set using setenv() etc.
     lilv_world_load_all (world);
 
@@ -222,7 +237,6 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 } // namespace aaplv2bridge
 
 extern "C" {
-
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLV2Bridge() {
     return new AndroidAudioPluginFactory{aaplv2bridge::aap_lv2_plugin_new,
                                          aaplv2bridge::aap_lv2_plugin_delete};

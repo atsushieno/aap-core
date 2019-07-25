@@ -8,6 +8,7 @@
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
 #include "LV2DirectUsageSample.h"
+#include "android-audio-plugin-host.hpp"
 
 namespace aaplv2 {
     extern const char *lv2Path;
@@ -80,7 +81,7 @@ namespace lv2direct {
     int runHostLilv(int sampleRate, const char **pluginUris, int numPluginUris, void *wav,
                     int wavLength, void *outWav) {
         auto world = lilv_world_new();
-        auto lv2_path_node = lilv_new_string(world, aaplv2::lv2Path);
+        auto lv2_path_node = lilv_new_string(world, aap_android_get_lv2_path());
         lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_path_node);
         lilv_world_load_all(world);
 

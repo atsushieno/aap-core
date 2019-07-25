@@ -52,6 +52,7 @@ target_compile_options(androidaudioplugin
 
 target_include_directories(androidaudioplugin
         PRIVATE
+        "${Project_SOURCE_DIR}/../../../include/"
         "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
         "${Project_SOURCE_DIR}/../../../symlinked-dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )

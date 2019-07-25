@@ -472,15 +472,46 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 - tools
   - aap-import-lv2-metadata
 
-TODO: it should be transformed to become like:
 
+
+
+## Source code restructuring
+
+### directory structures
+
+- dependencies
+  - build-lv2-android.sh
+  - lv2-android
+    - cerbero
 - native
-  - androidaudioplugin
+  - common (include files for both plugins and hosts; include file is just for reference for plugin developers)
+  - libaap (primarily targets Android, but should be cross-compilable on Unix)
     - include - AAP C/C++ header files
     - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
-  - juce - JUCE support project and sources.
+  - libaap-android (Android-specific parts; NdkBinder etc.)
+  - libaap-desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
+  - libaap-lv2 (LV2-specific parts)
+  - libaap-vst3 (VST3-specific parts; TODO)
+  - juce (JUCE audio processor implementation)
+
 - java
-  - AndroidAudioPluginFramework
-- samples
+  - AndroidAudioPluginFramework (aar)
+    - lib
+    - test
+  - AndroidAudioPluginFramework-LV2 (aar)
+  - AndroidAudioPluginFramework-VST3 (aar; TODO)
 - tools
   - aap-import-lv2-metadata
+- samples
+
+Here are the build steps. Build inputs and outputs are defined as well:
+
+- step 1: build dependencies.
+  - inputs: nothing
+  - outputs: headers and shared libraries for each ABI.
+- step 2: libandroidaudioplugin
+  - inputs: LV2 dependencies, VST3 dependencies (TODO)
+
+### API
+
+

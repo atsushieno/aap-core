@@ -19,7 +19,7 @@ extern aap::PluginInformation **local_plugin_infos;
 
 namespace aaplv2 {
 
-const char *lv2Path;
+//const char *lv2Path;
 
 // In this implementation we have fixed buffers and everything is simplified
 typedef struct {
@@ -29,7 +29,8 @@ typedef struct {
 
 int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wav, int wavLength,
                void *outWav) {
-    setenv("LV2_PATH", lv2Path, true);
+    auto lv2_path = aap_android_get_lv2_path();
+    setenv("LV2_PATH", lv2_path, true);
     auto host = new aap::PluginHost(local_plugin_infos);
 
     int buffer_size = wavLength;
@@ -165,9 +166,8 @@ void set_io_context(AAssetManager *am) {
 
 void cleanup ()
 {
-    if (lv2Path)
-        free((void*) lv2Path);
-    lv2Path = NULL;
+    if (aap_android_get_lv2_path())
+        aap_android_release_lv2_path();
     set_io_context(NULL);
 }
 
@@ -182,13 +182,13 @@ void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_initialize(JNI
     jboolean isCopy = JNI_TRUE;
     auto s = env->GetStringUTFChars((jstring) lv2PathString, &isCopy);
     s = isCopy ? s : strdup(s);
-    aaplv2::lv2Path = s;
+    aap_android_set_lv2_path((char*) s);
 }
 
 void Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_cleanup(JNIEnv *env, jclass cls)
 {
     aaplv2::cleanup();
-    free((void*) aaplv2::lv2Path);
+    aap_android_release_lv2_path();
 }
 
 jint Java_org_androidaudiopluginframework_hosting_AAPLV2LocalHost_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)

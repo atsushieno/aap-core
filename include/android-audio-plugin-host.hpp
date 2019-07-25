@@ -11,6 +11,14 @@
 #include <vector>
 #include "android-audio-plugin.h"
 
+extern "C" {
+
+char *aap_android_get_lv2_path();
+void aap_android_set_lv2_path(char *path);
+void aap_android_release_lv2_path();
+
+}
+
 
 namespace aap
 {
