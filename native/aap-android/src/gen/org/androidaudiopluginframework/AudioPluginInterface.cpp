@@ -157,7 +157,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
     }
   }
   return _aidl_ret_status;
-};
+}
 
 static AIBinder_Class* _g_aidl_clazz = ::ndk::ICInterface::defineClass(IAudioPluginInterface::descriptor, _aidl_onTransact);
 

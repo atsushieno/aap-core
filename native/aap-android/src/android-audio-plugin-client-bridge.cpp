@@ -1,8 +1,9 @@
+
 #include <sys/mman.h>
 #include <cstdlib>
 #include <android/sharedmem.h>
-#include "../include/android-audio-plugin.h"
-#include "org/androidaudiopluginframework/AudioPluginInterface.h"
+#include "aap/android-audio-plugin.h"
+#include "aidl/org/androidaudiopluginframework/AudioPluginInterface.h"
 
 class AAPClientContext {
 public:
