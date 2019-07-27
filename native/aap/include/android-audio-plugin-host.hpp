@@ -3,6 +3,7 @@
 #ifndef _ANDROID_AUDIO_PLUGIN_HOST_HPP_
 #define _ANDROID_AUDIO_PLUGIN_HOST_HPP_
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>

@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.4.1)
+
+set (aap_sources
+	src/android-audio-plugin-host.cpp
+	src/android-audio-plugin-local-bridge.cpp)
+
+add_library(aap ${aap_sources})
+
+target_include_directories(aap
+	PRIVATE src ../common/include
+	PUBLIC include)
+
+target_compile_options(aap
+	PRIVATE
+	-std=c++14
+	-Wall
+	-Wextra-semi
+	-Wshadow
+	# -Wshadow-field
+	-Ofast
+	"$<$<CONFIG:DEBUG>:-Werror>")
+
+# target_compile_definitions(aap PUBLIC "$<$<CONFIG:DEBUG>:ANY_ADDITIONAL_DEFS>")
+
+# target_link_libraries(aap PRIVATE ANY_ADDIOTIONAL_DEPS)
