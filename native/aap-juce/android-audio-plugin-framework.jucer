@@ -5,11 +5,11 @@
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
       <FILE id="zdPei0" name="android-audio-plugin-host.cpp" compile="1"
-            resource="0" file="../src/android-audio-plugin-host.cpp"/>
+            resource="0" file="../aap/src/android-audio-plugin-host.cpp"/>
       <FILE id="QlUDzX" name="android-audio-plugin.h" compile="0" resource="0"
-            file="../include/android-audio-plugin.h"/>
+            file="../common/include/aap/android-audio-plugin.h"/>
       <FILE id="QlUDzX" name="android-audio-plugin-host.hpp" compile="0"
-            resource="0" file="../include/android-audio-plugin-host.hpp"/>
+            resource="0" file="../aap/include/aap/android-audio-plugin-host.hpp"/>
       <FILE id="AcSfsw" name="juce_android_audio_plugin_format.cpp" compile="1"
             resource="0" file="Source/juce_android_audio_plugin_format.cpp"/>
     </GROUP>
@@ -17,8 +17,8 @@
   <EXPORTFORMATS>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" headerPath="../include"/>
-        <CONFIGURATION isDebug="0" name="Release" headerPath="../include"/>
+        <CONFIGURATION isDebug="1" name="Debug" headerPath="../aap/include"/>
+        <CONFIGURATION isDebug="0" name="Release" headerPath="../aap/include"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
@@ -37,8 +37,8 @@
     </LINUX_MAKE>
     <ANDROIDSTUDIO targetFolder="Builds/Android">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" headerPath="../include"/>
-        <CONFIGURATION isDebug="0" name="Release" headerPath="../include"/>
+        <CONFIGURATION isDebug="1" name="Debug" headerPath="../aap/include"/>
+        <CONFIGURATION isDebug="0" name="Release" headerPath="../aap/include"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
