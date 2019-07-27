@@ -8,7 +8,7 @@
   ==============================================================================
 */
 
-#include "../include/android-audio-plugin-host.hpp"
+#include "aap/android-audio-plugin-host.hpp"
 #include <vector>
 
 namespace aap

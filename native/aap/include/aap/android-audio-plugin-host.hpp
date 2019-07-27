@@ -10,7 +10,7 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <vector>
-#include "android-audio-plugin.h"
+#include "aap/android-audio-plugin.h"
 
 
 namespace aap

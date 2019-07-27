@@ -1,7 +1,7 @@
 #include <sys/mman.h>
 #include <cstdlib>
-#include "android-audio-plugin.h"
-#include "android-audio-plugin-host.hpp"
+#include "aap/android-audio-plugin.h"
+#include "aap/android-audio-plugin-host.hpp"
 
 class AAPLocalContext {
 public:
