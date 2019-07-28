@@ -234,7 +234,7 @@ Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle 
 - `assets/foo.lv2/foo.ttl`
 - `lib/{abi}/foo.so`
 
-The `copy-lv2-deps` target in the top `Makefile` does this task for the `poc-samples`.
+The `import-lv2-deps.sh` does this task for the `java/aaphostsample`.
 
 ### LV2_PATH limitation
 
@@ -305,7 +305,7 @@ On a related note, JUCE lacks VST3 support on Linux so far. [They have been work
 
 ## AAP hosting basics
 
-AAP proof-of-concept host is in `poc-samples/AAPHostSample`.
+AAP proof-of-concept host is in `java/aaphostsample`.
 
 AAP will have some "backends" e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is implemented using lilv, and VST3 host bridge is implemented using vst3sdk. However, in principle, every AAP has to be implemented along the way how standalone AAP is implemented.
 
@@ -479,27 +479,28 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 
 ### directory structures
 
+- README.md - this file.
 - dependencies
   - build-lv2-android.sh
   - lv2-android
     - cerbero
 - native
-  - common (include files for both plugins and hosts; include file is just for reference for plugin developers)
+  - common (include file; it is just for reference for plugin developers)
   - aap (primarily targets Android, but should be cross-compilable on Unix)
-    - include - AAP C/C++ header files
+    - include - AAP C/C++ header files for native host developers.
     - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
   - aap-android (Android-specific parts; NdkBinder etc.)
   - aap-desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
   - aap-lv2 (LV2-specific parts)
   - aap-vst3 (VST3-specific parts; TODO)
   - aap-juce (JUCE audio processor implementation)
-
 - java
   - androidaudioplugin (aar)
     - lib
-    - test
-  - androidaudioplugin-LV2 (aar)
-  - androidaudioplugin-VST3 (aar; TODO)
-  - aaphostsample - sample app
+    - test (currently empty)
+    - androidTest (currently empty)
+  - androidaudioplugin-LV2 (aar) - follows the same AGP-modules structure
+  - androidaudioplugin-VST3 (aar; TODO) - follows the same AGP-modules structure
+  - aaphostsample - sample app - follows the same AGP-modules structure
 - tools
   - aap-import-lv2-metadata
