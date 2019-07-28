@@ -9,6 +9,8 @@ class AudioPluginLV2LocalHost
             System.loadLibrary("androidaudioplugin")
             // FIXME: bring it back once we managed to split those native lib builds
             //System.loadLibrary("androidaudioplugin-lv2")
+            // FIXME: temporarily load from aaphostsample
+            System.loadLibrary("aaphostsample")
         }
 
         var lv2Paths : Array<String> = arrayOf()

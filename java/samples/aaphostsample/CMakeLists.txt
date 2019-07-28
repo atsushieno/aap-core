@@ -11,6 +11,7 @@ cmake_minimum_required(VERSION 3.4.1)
 #        )
 link_directories(
         "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+        "${Project_SOURCE_DIR}/../../../native/build-android/${CMAKE_ANDROID_ARCH_ABI}/"
 )
 
 # Specifies a library name, specifies whether the library is STATIC or
@@ -20,23 +21,18 @@ link_directories(
 # automatically packages shared libraries with your APK.
 
 add_library( # Specifies the name of the library.
-            androidaudioplugin
+            aaphostsample
 
             # Sets the library as a shared library.
             SHARED
 
             # Provides a relative path to your source file(s).
-            "${Project_SOURCE_DIR}/../../../native/core/src/android-audio-plugin-host.cpp"
-            "${Project_SOURCE_DIR}/../../../native/core/src/android-audio-plugin-local-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/lv2/src/android-audio-plugin-lv2-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/android/src/android-audio-plugin-client-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
             "src/main/jni/AAPRemoteBridge.cpp"
             "src/main/jni/LV2DirectUsageSample.cpp"
             "src/main/jni/AudioPluginLV2LocalHost_native.cpp"
             "src/main/jni/AAPSampleLV2Interop_native.cpp")
 
-target_include_directories(androidaudioplugin
+target_include_directories(aaphostsample
         PRIVATE
         "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
         "${Project_SOURCE_DIR}/../../../native/core/include"
@@ -45,7 +41,7 @@ target_include_directories(androidaudioplugin
         "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
 
-target_compile_options(androidaudioplugin
+target_compile_options(aaphostsample
         PRIVATE
         -std=c++17
         -Wall
@@ -54,6 +50,5 @@ target_compile_options(androidaudioplugin
         -Wshadow-field
         )
 
-target_link_libraries(androidaudioplugin android binder_ndk log lilv-0)
-
+target_link_libraries(aaphostsample android binder_ndk log lilv-0 androidaudioplugin)
 

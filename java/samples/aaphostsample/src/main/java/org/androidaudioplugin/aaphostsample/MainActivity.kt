@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                         //AudioPluginHost.cleanup()
                     }
                     // FIXME: uncomment
-                    //AAPLV2LocalHost.cleanup()
+                    //AudioPluginLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
                 }
