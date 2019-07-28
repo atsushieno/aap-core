@@ -3,16 +3,18 @@
 ABIS_SIMPLE=(x86 x86_64 armeabi-v7a arm64-v8a)
 
 # Remove existing jniLibs for sanity
+rm -rf java/androidaudioplugin-lv2/src/main/jniLibs/
 rm -rf java/samples/aaphostsample/src/main/jniLibs/
 
 
 for abi in ${ABIS_SIMPLE[*]}
 do
     echo "ABI: $abi"
-    mkdir -p java/samples/aaphostsample/src/main/jniLibs/$abi
     # Copy native libs for each ABI
-    cp -R dependencies/cerbero-artifacts/outputs/$abi/lib/*.so java/samples/aaphostsample/src/main/jniLibs/$abi/
+    mkdir -p java/androidaudioplugin-lv2/src/main/jniLibs/$abi
+    cp -R dependencies/cerbero-artifacts/outputs/$abi/lib/*.so java/androidaudioplugin-lv2/src/main/jniLibs/$abi/
     # And then copy native libs of LV2 plugins for each ABI.
+    mkdir -p java/samples/aaphostsample/src/main/jniLibs/$abi
     cp -R dependencies/cerbero-artifacts/outputs/$abi/lib/lv2/*/*.so java/samples/aaphostsample/src/main/jniLibs/$abi/
 done
 
