@@ -7,7 +7,7 @@ set (aap_sources
 add_library(aap ${aap_sources})
 
 target_include_directories(aap
-	PRIVATE src ../common/include
+	PRIVATE src ../plugin-api/include
 	PUBLIC include)
 
 target_compile_options(aap

@@ -21,7 +21,7 @@
 namespace aaplv2bridge {
 
 typedef struct {
-    bool operator() (char* p1, char* p2) { return strcmp (p1, p2) == 0; }
+    bool operator() (const char* p1, const char* p2) const { return strcmp (p1, p2) == 0; }
 } uricomp;
 
 LV2_URID urid_map_func (LV2_URID_Map_Handle handle, const char *uri)
@@ -197,7 +197,7 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 
     auto allPlugins = lilv_world_get_all_plugins (world);
     LV2_Feature* features [5];
-    auto urid_map = new std::map<char*,LV2_URID,uricomp> ();
+    auto urid_map = new std::map<const char*,LV2_URID,uricomp> ();
     auto mapData = LV2_URID_Map { urid_map, urid_map_func };
     auto logData = LV2_Log_Log { NULL, log_printf, log_vprintf };
     LV2_Feature uridFeature = { LV2_URID_MAP_URI, &mapData };

@@ -44,8 +44,8 @@ class PortInformation
 	PortDirection direction;
 	
 public:
-	PortInformation(const char *name, ContentType content, PortDirection direction)
-		: name(name), content_type(content), direction(direction)
+	PortInformation(const char *portName, ContentType content, PortDirection portDirection)
+		: name(portName), content_type(content), direction(portDirection)
 	{
 	}
 
@@ -232,8 +232,8 @@ class EditorInstance
 
 public:
 
-	EditorInstance(const PluginInstance *owner)
-		: owner(owner)
+	EditorInstance(const PluginInstance *ownerPlugin)
+		: owner(ownerPlugin)
 	{
 		// TODO: FUTURE (v0.4)
 	}
@@ -337,8 +337,8 @@ class PluginInstance
 	const AndroidAudioPluginExtension * const *extensions;
 	PluginInstantiationState plugin_state;
 
-	PluginInstance(PluginHost* host, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory)
-		: host(host),
+	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory)
+		: host(pluginHost),
 		  descriptor(pluginDescriptor),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(NULL),

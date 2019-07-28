@@ -15,7 +15,7 @@
 aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
 
 extern "C" {
-aap::PluginInformation **local_plugin_infos;
+extern aap::PluginInformation **local_plugin_infos;
 }
 
 // FIXME: sort out final library header structures.

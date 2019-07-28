@@ -485,15 +485,15 @@ And note that access to assets is not as simple as that to filesystem. It is imp
   - lv2-android
     - cerbero
 - native
-  - common (include file; it is just for reference for plugin developers)
-  - aap (primarily targets Android, but should be cross-compilable on Unix)
+  - plugin-api (include file; it is just for reference for plugin developers)
+  - core (primarily targets Android, but should be cross-compilable on Unix)
     - include - AAP C/C++ header files for native host developers.
     - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
-  - aap-android (Android-specific parts; NdkBinder etc.)
-  - aap-desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
-  - aap-lv2 (LV2-specific parts)
-  - aap-vst3 (VST3-specific parts; TODO)
-  - aap-juce (JUCE audio processor implementation)
+  - android (Android-specific parts; NdkBinder etc.)
+  - desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
+  - lv2 (LV2-specific parts)
+  - vst3 (VST3-specific parts; TODO)
+  - juce (JUCE audio processor implementation)
 - java
   - androidaudioplugin (aar)
     - lib

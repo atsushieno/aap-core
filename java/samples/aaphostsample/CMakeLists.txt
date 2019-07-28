@@ -26,11 +26,11 @@ add_library( # Specifies the name of the library.
             SHARED
 
             # Provides a relative path to your source file(s).
-            "${Project_SOURCE_DIR}/../../../native/aap/src/android-audio-plugin-host.cpp"
-            "${Project_SOURCE_DIR}/../../../native/aap-lv2/src/android-audio-plugin-lv2-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/aap-android/src/android-audio-plugin-client-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/aap/src/android-audio-plugin-local-bridge.cpp"
-            "${Project_SOURCE_DIR}/../../../native/aap-android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
+            "${Project_SOURCE_DIR}/../../../native/core/src/android-audio-plugin-host.cpp"
+            "${Project_SOURCE_DIR}/../../../native/core/src/android-audio-plugin-local-bridge.cpp"
+            "${Project_SOURCE_DIR}/../../../native/lv2/src/android-audio-plugin-lv2-bridge.cpp"
+            "${Project_SOURCE_DIR}/../../../native/android/src/android-audio-plugin-client-bridge.cpp"
+            "${Project_SOURCE_DIR}/../../../native/android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
             "src/main/jni/AAPRemoteBridge.cpp"
             "src/main/jni/LV2DirectUsageSample.cpp"
             "src/main/jni/AudioPluginLV2LocalHost_native.cpp"
@@ -38,9 +38,9 @@ add_library( # Specifies the name of the library.
 
 target_include_directories(androidaudioplugin
         PRIVATE
-        "${Project_SOURCE_DIR}/../../../native/common/include"
-        "${Project_SOURCE_DIR}/../../../native/aap/include"
-        "${Project_SOURCE_DIR}/../../../native/aap-android/src/gen/include"
+        "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
+        "${Project_SOURCE_DIR}/../../../native/core/include"
+        "${Project_SOURCE_DIR}/../../../native/android/src/gen/include"
         "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
         "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
