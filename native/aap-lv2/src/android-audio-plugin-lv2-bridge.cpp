@@ -6,6 +6,9 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#if ANDROID
+#include <android/log.h>
+#endif
 
 #include <lilv/lilv.h>
 // FIXME: It is HACK, may not work under some environment...

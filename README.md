@@ -20,7 +20,7 @@ Technically it is not very different from LV2, but you don't have to spend time 
 
 AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
 
-AAP developers implement `org.androidaudiopluginframework.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
+AAP developers implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
 AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance and ease of reusing existing code, somewhat more seriously.)
 
@@ -130,11 +130,11 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudiopluginframework.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudiopluginframework.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="org.androidaudiopluginframework.samples.aapbarebonesample">
+          package="org.androidaudioplugin.samples.aapbarebonesample">
 
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <application>
@@ -143,10 +143,10 @@ AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs
              android:label="AAPBareBoneSamplePlugin">
       <intent-filter>
         <action 
-	      android:name="org.androidaudiopluginframework.AudioPluginService" />
+	      android:name="org.androidaudioplugin.AudioPluginService" />
       </intent-filter>
       <meta-data 
-	    android:name="org.androidaudiopluginframework.AudioPluginService"
+	    android:name="org.androidaudioplugin.AudioPluginService"
 	    android:resource="@xml/aap_metadata"
         />
     </service>
@@ -273,8 +273,8 @@ $ cat res/xml/metadata0.xml
 </plugins>
 $ cat manifest-fragment.xml 
 <service android:name=".AudioPluginService" android:label="Example MIDI Gate">
-  <intent-filter><action android:name="org.androidaudiopluginframework.AudioPluginService" /></intent-filter>
-  <meta-data android:name="org.androidaudiopluginframework.AudioPluginService" android:resource="@xml/metadata0" />
+  <intent-filter><action android:name="org.androidaudioplugin.AudioPluginService" /></intent-filter>
+  <meta-data android:name="org.androidaudioplugin.AudioPluginService" android:resource="@xml/metadata0" />
 </service>
 ```
 
@@ -359,7 +359,7 @@ Remote plugins can be accessed through AAP "local bridge" which is publicly just
 Each AAP is bound to AudioPluginService, and it works as an AAP service. There is an AIDL which resembles to (but slightly different from) AAP API:
 
 ```
-package org.androidaudiopluginframework;
+package org.androidaudioplugin;
 
 interface AudioPluginService {
 
@@ -485,33 +485,21 @@ And note that access to assets is not as simple as that to filesystem. It is imp
     - cerbero
 - native
   - common (include files for both plugins and hosts; include file is just for reference for plugin developers)
-  - libaap (primarily targets Android, but should be cross-compilable on Unix)
+  - aap (primarily targets Android, but should be cross-compilable on Unix)
     - include - AAP C/C++ header files
     - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
-  - libaap-android (Android-specific parts; NdkBinder etc.)
-  - libaap-desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
-  - libaap-lv2 (LV2-specific parts)
-  - libaap-vst3 (VST3-specific parts; TODO)
-  - juce (JUCE audio processor implementation)
+  - aap-android (Android-specific parts; NdkBinder etc.)
+  - aap-desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
+  - aap-lv2 (LV2-specific parts)
+  - aap-vst3 (VST3-specific parts; TODO)
+  - aap-juce (JUCE audio processor implementation)
 
 - java
-  - AndroidAudioPluginFramework (aar)
+  - androidaudioplugin (aar)
     - lib
     - test
-  - AndroidAudioPluginFramework-LV2 (aar)
-  - AndroidAudioPluginFramework-VST3 (aar; TODO)
+  - androidaudioplugin-LV2 (aar)
+  - androidaudioplugin-VST3 (aar; TODO)
+  - aaphostsample - sample app
 - tools
   - aap-import-lv2-metadata
-- samples
-
-Here are the build steps. Build inputs and outputs are defined as well:
-
-- step 1: build dependencies.
-  - inputs: nothing
-  - outputs: headers and shared libraries for each ABI.
-- step 2: libandroidaudioplugin
-  - inputs: LV2 dependencies, VST3 dependencies (TODO)
-
-### API
-
-

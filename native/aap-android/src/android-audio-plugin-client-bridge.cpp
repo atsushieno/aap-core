@@ -3,17 +3,17 @@
 #include <cstdlib>
 #include <android/sharedmem.h>
 #include "aap/android-audio-plugin.h"
-#include "aidl/org/androidaudiopluginframework/AudioPluginInterface.h"
+#include "aidl/org/androidaudioplugin/AudioPluginInterface.h"
 
 class AAPClientContext {
 public:
 	const char *unique_id;
-	std::shared_ptr<aidl::org::androidaudiopluginframework::IAudioPluginInterface> proxy;
+	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
 	AndroidAudioPluginBuffer *previous_buffer;
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
-	AAPClientContext(const char *pluginUniqueId, std::shared_ptr<aidl::org::androidaudiopluginframework::IAudioPluginInterface> proxy)
+	AAPClientContext(const char *pluginUniqueId, std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy)
 		: unique_id(pluginUniqueId), proxy(proxy)
 	{
 	}
@@ -115,7 +115,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 												aap_binder_on_destroy,
 												aap_binder_on_transact);
 	auto binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
-	auto ctx = new AAPClientContext(pluginUniqueId, aidl::org::androidaudiopluginframework::IAudioPluginInterface::fromBinder(binder));
+	auto ctx = new AAPClientContext(pluginUniqueId, aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(binder));
 	ctx->proxy->create(pluginUniqueId, aapSampleRate);
 	return new AndroidAudioPlugin {
 		ctx,

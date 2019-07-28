@@ -4,7 +4,7 @@ enable_language ( CXX )
 
 set (aap-android_sources
 	src/android-audio-plugin-client-bridge.cpp
-	src/gen/org/androidaudiopluginframework/AudioPluginInterface.cpp)
+	src/gen/org/androidaudioplugin/AudioPluginInterface.cpp)
 
 add_library(aap-android ${aap-android_sources})
 
