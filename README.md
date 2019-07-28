@@ -460,37 +460,18 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 ## android-audio-plugin-framework source tree structure
 
 - README.md - this file.
-- include - AAP C++ header files.
-- src - AAP hosting reference implementation.
-- juce - JUCE support project and sources.
-- poc-samples - proof-of-concept Android app samples
-  - AAPHostSample - host sample
-  - AAPBareBoneSample - AAP (plugin) barebone sample
-  - AAPLV2Sample - AAP-LV2 sample
-  - AAPVST3Sample - AAL-VST3 sample (pending; we need NDK r21 or later)
-- external/cerbero - LV2 Android builder (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
-- tools
-  - aap-import-lv2-metadata
-
-
-
-
-## Source code restructuring
-
-### directory structures
-
-- README.md - this file.
 - dependencies
   - build-lv2-android.sh
   - lv2-android
-    - cerbero
+    - cerbero (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
 - native
-  - plugin-api (include file; it is just for reference for plugin developers)
-  - core (primarily targets Android, but should be cross-compilable on Unix)
-    - include - AAP C/C++ header files for native host developers.
-    - src - AAP hosting reference implementation (plugins don't have to reference anything. Packaging is another story though.)
+  - plugin-api (C include file; it is just for reference for plugin developers)
+  - core
+    - include - AAP C++ header files for native host developers.
+      - (plugins don't have to reference anything. Packaging is another story though.)
+    - src - AAP hosting reference implementation
   - android (Android-specific parts; NdkBinder etc.)
-  - desktop (general Unixy desktop specific parts; POSIX-IPC maybe)
+  - desktop (general Unix-y desktop specific parts; POSIX-IPC maybe)
   - lv2 (LV2-specific parts)
   - vst3 (VST3-specific parts; TODO)
   - juce (JUCE audio processor implementation)

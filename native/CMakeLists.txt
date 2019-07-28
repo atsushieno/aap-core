@@ -27,6 +27,8 @@ set (androidaudioplugin_INCLUDES
 
 if (ANDROID)
 
+set (ENV{PKG_CONFIG_PATH} "${Project_SOURCE_DIR}/../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
+
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"${Project_SOURCE_DIR}/../native/android/src/android-audio-plugin-client-bridge.cpp"
