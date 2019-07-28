@@ -1,13 +1,3 @@
-/*
-  ==============================================================================
-
-    android-audio-plugin-host.cpp
-    Created: 9 May 2019 3:09:22am
-    Author:  atsushieno
-
-  ==============================================================================
-*/
-
 #include "aap/android-audio-plugin-host.hpp"
 #include <vector>
 
@@ -82,70 +72,4 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
-
 } // namespace
-
-namespace dogfoodingaap {
-
-void sample_plugin_delete(
-	AndroidAudioPluginFactory *pluginFactory,
-	AndroidAudioPlugin *instance)
-{
-	delete instance;
-}
-
-void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
-{
-}
-void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
-void sample_plugin_process(AndroidAudioPlugin *plugin,
-	AndroidAudioPluginBuffer* buffer,
-	long timeoutInNanoseconds)
-{
-	/* do something */
-}
-void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
-
-AndroidAudioPluginState state;
-const AndroidAudioPluginState* sample_plugin_get_state(AndroidAudioPlugin *plugin)
-{
-	return &state; /* fill it */
-}
-
-void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
-{
-	/* apply argument input */
-}
-
-AndroidAudioPlugin* sample_plugin_new(
-	AndroidAudioPluginFactory *pluginFactory,
-	const char* pluginUniqueId,
-	int sampleRate,
-	const AndroidAudioPluginExtension * const *extensions)
-{
-	return new AndroidAudioPlugin {
-		NULL,
-		sample_plugin_prepare,
-		sample_plugin_activate,
-		sample_plugin_process,
-		sample_plugin_deactivate,
-		sample_plugin_get_state,
-		sample_plugin_set_state
-		};
-}
-
-AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
-{
-	return new AndroidAudioPluginFactory { sample_plugin_new, sample_plugin_delete };
-}
-
-
-void dogfooding_api()
-{
-	aap::PluginHost manager(NULL);
-	auto paths = manager.instantiatePlugin(NULL);
-	GetAndroidAudioPluginFactory();
-}
-
-
-} // namespace dogfoodingaap
