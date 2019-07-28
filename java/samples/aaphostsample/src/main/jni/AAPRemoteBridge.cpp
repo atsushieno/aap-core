@@ -1,10 +1,4 @@
-//
-// Created by atsushi on 19/06/07.
-//
 
-#include "AAPRemoteBridge.h"
-#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
-#include "aap/android-audio-plugin-host.hpp"
 #include <jni.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
@@ -14,7 +8,9 @@
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
 #include <android/log.h>
-#include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
+#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
+#include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
+#include "aap/android-audio-plugin-host.hpp"
 
 aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
 

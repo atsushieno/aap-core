@@ -34,7 +34,7 @@ add_library( # Specifies the name of the library.
             "src/main/jni/AAPRemoteBridge.cpp"
             "src/main/jni/LV2DirectUsageSample.cpp"
             "src/main/jni/AudioPluginLV2LocalHost_native.cpp"
-            "src/main/jni/AAPLV2LocalBridge.cpp")
+            "src/main/jni/AAPSampleLV2Interop_native.cpp")
 
 target_include_directories(androidaudioplugin
         PRIVATE
