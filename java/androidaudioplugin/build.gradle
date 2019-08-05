@@ -29,6 +29,10 @@ android {
         }
     }
     ndkVersion = '20.0.5594570'
+
+    packagingOptions{
+        doNotStrip "*/*/*.so" // debuggable!
+    }
 }
 
 dependencies {
