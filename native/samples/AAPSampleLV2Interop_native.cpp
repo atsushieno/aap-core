@@ -1,7 +1,3 @@
-#include <jni.h>
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
 #include <unistd.h>
 #include <dlfcn.h>
 #include <cmath>
@@ -16,15 +12,9 @@ char *aap_android_get_lv2_path();
 
 }
 
-// FIXME: sort out final library header structures.
-//   This should be under Platform Abstraction Layer (i.e. hide Android specifics).
-namespace aap {
-    extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
-    extern const char *strdup_fromJava(JNIEnv *env, jstring s);
-}
 extern aap::PluginInformation **local_plugin_infos;
 
-namespace aaplv2 {
+namespace aaplv2sample {
 
 // In this implementation we have fixed buffers and everything is simplified
 typedef struct {
@@ -38,7 +28,7 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
     setenv("LV2_PATH", lv2_path, true);
     auto host = new aap::PluginHost(local_plugin_infos);
 
-    int buffer_size = wavLength;
+    int buffer_size = 44100 * 2 * sizeof(float); // FIXME: (ish) get number of channels instead of '2'.
     int float_count = buffer_size / sizeof(float);
 
     std::vector<AAPInstanceUse *> instances;
@@ -104,8 +94,7 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
         plugin->prepare(sampleRate, false, iu->plugin_buffer);
     }
 
-    // prepare inputs
-    memcpy(audioIn, wav, buffer_size);
+    // prepare inputs - dummy
     for (int i = 0; i < float_count; i++)
         controlIn[i] = 0.5;
 
@@ -114,21 +103,31 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
         auto instance = instances[i];
         instance->plugin->activate();
     }
-    for (int i = 0; i < instances.size(); i++) {
-        auto instance = instances[i];
-        instance->plugin->process(instance->plugin_buffer, 0);
+    for (int b = 0; b < wavLength; b += buffer_size) {
+        // prepare inputs -audioIn
+        memcpy(audioIn, ((char*) wav) + b, buffer_size);
+        // process ports
+        for (int i = 0; i < instances.size(); i++) {
+            auto instance = instances[i];
+            instance->plugin->process(instance->plugin_buffer, 0);
+        }
+        memcpy(((char*) outWav) + b, currentAudioOut, buffer_size);
     }
     for (int i = 0; i < instances.size(); i++) {
         auto instance = instances[i];
         instance->plugin->deactivate();
     }
 
-    memcpy(outWav, currentAudioOut, buffer_size);
 
     for (int i = 0; i < instances.size(); i++) {
         auto iu = instances[i];
-        for (int p = 0; iu->plugin_buffer->buffers[p]; p++)
-            free(iu->plugin_buffer->buffers[p]);
+        for (int p = 0; iu->plugin_buffer->buffers[p]; p++) {
+            if(iu->plugin_buffer->buffers[p] != nullptr
+                && iu->plugin_buffer->buffers[p] != dummyBuffer
+                && iu->plugin_buffer->buffers[p] != audioIn
+                && iu->plugin_buffer->buffers[p] != midiIn)
+                free(iu->plugin_buffer->buffers[p]);
+        }
         free(iu->plugin_buffer->buffers);
         delete iu->plugin_buffer;
         delete iu->plugin;
@@ -144,32 +143,3 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
     return 0;
 }
 } // namesoace aaplv2
-
-extern "C" {
-
-jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLV2Interop_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
-{
-    jsize size = env->GetArrayLength(jPlugins);
-    const char *pluginIDs[size];
-    for (int i = 0; i < size; i++) {
-        auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
-        pluginIDs[i] = aap::strdup_fromJava(env, strUriObj);
-    }
-
-    int wavLength = env->GetArrayLength(wav);
-    void* wavBytes = calloc(wavLength, 1);
-    env->GetByteArrayRegion(wav, 0, wavLength, (jbyte*) wavBytes);
-    void* outWavBytes = calloc(wavLength, 1);
-
-    int ret = aaplv2::runHostAAP(sampleRate, pluginIDs, size, wavBytes, wavLength, outWavBytes);
-
-    env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
-
-    for(int i = 0; i < size; i++)
-        free((char*) pluginIDs[i]);
-    free(wavBytes);
-    free(outWavBytes);
-    return ret;
-}
-
-}

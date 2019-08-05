@@ -15,7 +15,7 @@ build-dependencies:
 
 build-desktop:
 	echo TODO: covers core and lv2, build for testing on desktop
-	cd native && mkdir -p build && cd build && cmake .. && make
+	mkdir -p build && cd build && cmake .. && make
 
 build-android:
 	for abi in $(ABIS_SIMPLE) ; do \
@@ -23,7 +23,7 @@ build-android:
 	done
 
 build-android-single:
-	mkdir -p native/build-android/$(A_ABI) && cd native/build-android/$(A_ABI) && cmake -DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on -DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake -DANDROID_ABI=$(A_ABI) -DANDROID_PLATFORM=android-29 ../.. && make
+	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && cmake -DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on -DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake -DANDROID_ABI=$(A_ABI) -DANDROID_PLATFORM=android-29 ../.. && make
 
 all: build-all
 
