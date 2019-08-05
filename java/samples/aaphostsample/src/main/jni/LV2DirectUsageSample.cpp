@@ -16,10 +16,6 @@ char *aap_android_get_lv2_path();
 
 }
 
-namespace aaplv2 {
-    extern const char *lv2Path;
-}
-
 namespace lv2direct {
 
     LilvNode *audio_port_uri_node, *control_port_uri_node, *cv_port_uri_node, *input_port_uri_node, *output_port_uri_node;
