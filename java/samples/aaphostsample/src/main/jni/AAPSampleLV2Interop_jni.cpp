@@ -10,12 +10,6 @@
 
 #include "aap/android-audio-plugin-host.hpp"
 
-// FIXME: sort out final library header structures.
-//   This should be under Platform Abstraction Layer (i.e. hide Android specifics).
-namespace aap {
-    extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
-    extern const char *strdup_fromJava(JNIEnv *env, jstring s);
-}
 namespace aaplv2sample {
     int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wav, int wavLength, void *outWav);
 }
@@ -28,7 +22,9 @@ jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLV2Interop_runHostAAP(JN
     const char *pluginIDs[size];
     for (int i = 0; i < size; i++) {
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
-        pluginIDs[i] = aap::strdup_fromJava(env, strUriObj);
+        jboolean isCopy;
+        const char *s = env->GetStringUTFChars(strUriObj, &isCopy);
+        pluginIDs[i] = isCopy ? s : strdup(s);
     }
 
     int wavLength = env->GetArrayLength(wav);

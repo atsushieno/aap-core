@@ -7,14 +7,7 @@
 #include <../lib/lv2/atom.lv2/atom.h>
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
-#include "LV2DirectUsageSample.h"
 #include "aap/android-audio-plugin-host.hpp"
-
-extern "C" {
-
-char *aap_android_get_lv2_path();
-
-}
 
 namespace lv2direct {
 
