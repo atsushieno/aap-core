@@ -22,7 +22,8 @@ void aap_parse_plugin_descriptor_into(const char* xmlfile, std::vector<PluginInf
                 pluginElement->Attribute("unique-id"),
                 pluginElement->Attribute("library"),
                 pluginElement->Attribute("entrypoint"));
-        for (auto portElement = pluginElement->FirstChildElement("port");
+        auto portsElement = pluginElement->FirstChildElement("ports");
+        for (auto portElement = portsElement->FirstChildElement("port");
                 portElement != nullptr;
                 portElement = portElement->NextSiblingElement("port")) {
             auto portName = portElement->Attribute("name");
@@ -44,7 +45,7 @@ PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile)
     std::vector<PluginInformation*> plugins;
     aap_parse_plugin_descriptor_into(xmlfile, plugins);
     PluginInformation** ret = (PluginInformation**) calloc(sizeof(PluginInformation*), plugins.size() + 1);
-    for(int i = 0; i < plugins.size(); i++)
+    for(size_t i = 0; i < plugins.size(); i++)
         ret[i] = plugins[i];
     ret[plugins.size()] = nullptr;
     return ret;
@@ -56,7 +57,7 @@ PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
 	backends.push_back(&backend_vst3);
 
 	int n = 0;
-	while (auto p = pluginDescriptors[n])
+	while (pluginDescriptors[n])
 		n++;
 	for (int i = 0; i < n; i++)
 		plugin_descriptors.push_back(pluginDescriptors[i]);

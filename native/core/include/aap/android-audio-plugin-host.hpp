@@ -60,6 +60,10 @@ public:
 
 class PluginInformation
 {
+	// hosting information
+	bool is_out_process;
+
+	// basic information
 	const char *name;
 	const char *manufacturer_name;
 	const char *version;
@@ -77,9 +81,6 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> required_extensions;
 	/* NULL-terminated list of optional extensions */
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
-
-	// hosting information
-	bool is_out_process;
 
 public:
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
