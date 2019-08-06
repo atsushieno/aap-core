@@ -226,6 +226,8 @@ public:
 	}
 };
 
+PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile);
+
 class EditorInstance
 {
 	const PluginInstance *owner;

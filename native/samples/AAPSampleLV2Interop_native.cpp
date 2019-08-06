@@ -6,12 +6,6 @@
 
 #include "aap/android-audio-plugin-host.hpp"
 
-extern "C" {
-
-char *aap_android_get_lv2_path();
-
-}
-
 extern aap::PluginInformation **local_plugin_infos;
 
 namespace aaplv2sample {

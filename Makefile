@@ -4,18 +4,18 @@ ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=~/Android/Sdk/ndk/20.0.5594570
 
 build-all: \
-	build-dependencies \
+	build-cerbero-artifacts \
 	build-desktop \
 	build-android \
 	import-lv2-deps \
 	build-java
 
-build-dependencies:
+build-cerbero-artifacts:
 	cd dependencies/cerbero-artifacts && make
 
 build-desktop:
 	echo TODO: covers core and lv2, build for testing on desktop
-	mkdir -p build && cd build && cmake .. && make
+	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-android:
 	for abi in $(ABIS_SIMPLE) ; do \
@@ -23,7 +23,7 @@ build-android:
 	done
 
 build-android-single:
-	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && cmake -DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on -DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake -DANDROID_ABI=$(A_ABI) -DANDROID_PLATFORM=android-29 ../.. && make
+	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && cmake -DCMAKE_BUILD_TYPE=Debug -DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on -DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake -DANDROID_ABI=$(A_ABI) -DANDROID_PLATFORM=android-29 ../.. && make
 
 all: build-all
 

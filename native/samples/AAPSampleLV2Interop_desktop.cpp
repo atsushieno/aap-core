@@ -8,7 +8,7 @@ namespace aaplv2sample {
 int main(int argc, char** argv)
 {
 	int sampleRate = 44100;
-	const char* pluginIDs[1]{argv[0]};
+	const char* pluginIDs[1]{argv[1]};
 	int size = 1;
 	int wavLength = 1000000;
 	void* inWavBytes = calloc(wavLength, 1);

@@ -4,6 +4,10 @@
 
 cmake_minimum_required(VERSION 3.6.0)
 
+if (NOT ANDROID)
+	add_subdirectory ("samples")
+endif (NOT ANDROID)
+
 # it is not usable until cmake 3.14...
 #target_link_directories (androidaudioplugin ...)
 link_directories (
@@ -15,15 +19,19 @@ set (androidaudioplugin_SOURCES
 	"core/src/android-audio-plugin-host.cpp"
 	"core/src/android-audio-plugin-local-bridge.cpp"
 	"lv2/src/android-audio-plugin-lv2-bridge.cpp"
+	"../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
 	"plugin-api/include"
 	"core/include"
 	"android/src/gen/include"
+	"../dependencies/tinyxml2"
 	"../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
 	"../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
 	)
+
+#set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} tinyxml2)
 
 if (ANDROID)
 
