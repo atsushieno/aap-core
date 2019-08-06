@@ -24,8 +24,6 @@ typedef struct {
 
 int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wav, int wavLength,
                void *outWav) {
-    auto lv2_path = aap_android_get_lv2_path();
-    setenv("LV2_PATH", lv2_path, true);
     auto host = new aap::PluginHost(local_plugin_infos);
 
     int buffer_size = 44100 * 2 * sizeof(float); // FIXME: (ish) get number of channels instead of '2'.

@@ -83,8 +83,6 @@ namespace lv2direct {
     int runHostLilv(int sampleRate, const char **pluginUris, int numPluginUris, void *wav,
                     int wavLength, void *outWav) {
         auto world = lilv_world_new();
-        auto lv2_path_node = lilv_new_string(world, aap_android_get_lv2_path());
-        lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_path_node);
         lilv_world_load_all(world);
 
         audio_port_uri_node = lilv_new_uri(world, LV2_CORE__AudioPort);

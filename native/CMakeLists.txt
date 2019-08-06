@@ -51,7 +51,8 @@ pkg_check_modules ( LILV REQUIRED lilv-0>=0.24.0 )
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
-	lv2/src/android-audio-plugin-lv2-bridge.cpp
+	"lv2/src/android-audio-plugin-lv2-bridge.cpp"
+	"lv2/src/AudioPluginLV2LocalHost_native.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES

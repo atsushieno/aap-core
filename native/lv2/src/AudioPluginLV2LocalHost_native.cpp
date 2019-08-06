@@ -1,23 +1,17 @@
-#include <jni.h>
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
 #include <unistd.h>
 #include <dlfcn.h>
 #include <cmath>
 #include <cstring>
 #include <vector>
+#if ANDROID
+#include <jni.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#include <android/log.h>
+#endif
 #include "aap/android-audio-plugin-host.hpp"
 
-extern "C" {
-
-char *_aap_lv2_path = nullptr;
-char *aap_android_get_lv2_path() { return _aap_lv2_path; }
-void aap_android_set_lv2_path(char *path) { _aap_lv2_path = strdup(path); }
-void aap_android_release_lv2_path() { free(_aap_lv2_path); }
-
-}
-
+#if ANDROID
 
 namespace aaplv2 {
 
@@ -48,29 +42,26 @@ namespace aaplv2 {
 
     void cleanup ()
     {
-        if (aap_android_get_lv2_path())
-            aap_android_release_lv2_path();
         set_io_context(NULL);
     }
 }
 
-
 extern "C" {
 
 void Java_org_androidaudioplugin_lv2_AudioPluginLV2LocalHost_initialize(JNIEnv *env, jclass cls,
-                                                                        jobject lv2PathString,
+                                                                        jstring lv2PathString,
                                                                         jobject assets) {
     aaplv2::set_io_context(AAssetManager_fromJava(env, assets));
 
     jboolean isCopy = JNI_TRUE;
     auto s = env->GetStringUTFChars((jstring) lv2PathString, &isCopy);
-    s = isCopy ? s : strdup(s);
-    aap_android_set_lv2_path((char *) s);
+    setenv("LV2_PATH", s, true);
 }
 
 void Java_org_androidaudioplugin_lv2_AudioPluginLV2LocalHost_cleanup(JNIEnv *env, jclass cls) {
     aaplv2::cleanup();
-    aap_android_release_lv2_path();
 }
 
 }
+
+#endif

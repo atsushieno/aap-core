@@ -29,9 +29,8 @@ add_library( # Specifies the name of the library.
         # Provides a relative path to your source file(s).
         "src/main/jni/AAPRemoteBridge.cpp"
         "src/main/jni/LV2DirectUsageSample.cpp"
-        "src/main/jni/AudioPluginLV2LocalHost_native.cpp"
         "src/main/jni/AAPSampleLV2Interop_jni.cpp"
-        "${Project_SOURCE_DIR}/../../../native/samples/AAPSampleLV2Interop_native.cpp"
+        "../../../native/samples/AAPSampleLV2Interop_native.cpp"
         )
 
 target_include_directories(aaphostsample
