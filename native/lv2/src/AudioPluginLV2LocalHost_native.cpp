@@ -17,14 +17,15 @@ namespace aaplv2 {
 
     typedef void (*set_io_context_func)(void *);
 
+    void* libdl;
     set_io_context_func libserd_set_context = NULL;
     set_io_context_func liblilv_set_context = NULL;
 
     void ensureDLEach(const char *libname, set_io_context_func &context) {
         if (context == NULL) {
-            auto lib = dlopen(libname, RTLD_NOW);
-            assert (lib != NULL);
-            context = (set_io_context_func) dlsym(lib, "abstract_set_io_context");
+            libdl = dlopen(libname, RTLD_NOW);
+            assert (libdl != NULL);
+            context = (set_io_context_func) dlsym(libdl, "abstract_set_io_context");
             assert (context != NULL);
         }
     }
@@ -42,6 +43,8 @@ namespace aaplv2 {
 
     void cleanup ()
     {
+        if (libdl)
+            dlclose(libdl);
         set_io_context(NULL);
     }
 }
