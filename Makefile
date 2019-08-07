@@ -15,6 +15,7 @@ build-cerbero-artifacts:
 
 build-desktop:
 	echo TODO: covers core and lv2, build for testing on desktop
+	cd dependencies/lv2-desktop && bash setup.sh && cd ../..
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-android:

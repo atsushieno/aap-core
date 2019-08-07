@@ -8,12 +8,6 @@ if (NOT ANDROID)
 	add_subdirectory ("samples")
 endif (NOT ANDROID)
 
-# it is not usable until cmake 3.14...
-#target_link_directories (androidaudioplugin ...)
-link_directories (
-	"../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
-)
-
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
 	"core/src/android-audio-plugin-host.cpp"
@@ -45,9 +39,31 @@ set (androidaudioplugin_SOURCES
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)
 
+else (ANDROID)
+
+# it is not usable until cmake 3.14...
+#target_link_directories (androidaudioplugin ...)
+link_directories (
+		"../dependencies/lv2-desktop/dist/lib/"
+)
+
 endif (ANDROID)
 
 if (NOT ISOLATE_LV2)
+
+	if (ANDROID)
+
+		# it is not usable until cmake 3.14...
+		#target_link_directories (androidaudioplugin ...)
+		link_directories (
+				"../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+		)
+
+	else (ANDROID)
+
+		set (ENV{PKG_CONFIG_PATH} "../dependencies/lv2-desktop/dist/lib/pkgconfig/")
+
+	endif (ANDROID)
 
 find_package ( PkgConfig REQUIRED )
 

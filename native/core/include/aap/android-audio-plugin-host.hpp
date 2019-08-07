@@ -98,9 +98,9 @@ public:
 		  is_out_process(isOutProcess)
 	{
 		char *cp;
-		int len = snprintf(NULL, 0, "%s+%s+%s", name, plugin_id, version);
-		cp = (char*) malloc(len);
-		sprintf(cp, "%s+%s+%s", name, plugin_id, version);
+		int len = snprintf(nullptr, 0, "%s+%s+%s", name, plugin_id, version);
+		cp = (char*) calloc(len, 1);
+		snprintf(cp, len, "%s+%s+%s", name, plugin_id, version);
 		identifier_string = (const char*) cp;
 	}
 	

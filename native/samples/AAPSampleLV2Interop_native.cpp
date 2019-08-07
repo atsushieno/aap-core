@@ -97,13 +97,13 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
     }
     for (int b = 0; b < wavLength; b += buffer_size) {
         // prepare inputs -audioIn
-        memcpy(audioIn, ((char*) wav) + b, buffer_size);
+        memcpy(audioIn, ((char*) wav) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
         // process ports
         for (int i = 0; i < instances.size(); i++) {
             auto instance = instances[i];
             instance->plugin->process(instance->plugin_buffer, 0);
         }
-        memcpy(((char*) outWav) + b, currentAudioOut, buffer_size);
+        memcpy(((char*) outWav) + b, currentAudioOut, b + buffer_size < wavLength ? buffer_size : wavLength - b);
     }
     for (int i = 0; i < instances.size(); i++) {
         auto instance = instances[i];
@@ -117,7 +117,8 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
             if(iu->plugin_buffer->buffers[p] != nullptr
                 && iu->plugin_buffer->buffers[p] != dummyBuffer
                 && iu->plugin_buffer->buffers[p] != audioIn
-                && iu->plugin_buffer->buffers[p] != midiIn)
+                && iu->plugin_buffer->buffers[p] != midiIn
+                && iu->plugin_buffer->buffers[p] != controlIn)
                 free(iu->plugin_buffer->buffers[p]);
         }
         free(iu->plugin_buffer->buffers);

@@ -92,6 +92,8 @@ bool PluginHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 {
 	const PluginInformation *descriptor = getPluginDescriptor(identifier);
+	assert (descriptor);
+
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
 	if (descriptor->isOutProcess())
