@@ -131,6 +131,7 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
 
     free(audioIn);
     free(midiIn);
+    free(controlIn);
     free(dummyBuffer);
 
     return 0;

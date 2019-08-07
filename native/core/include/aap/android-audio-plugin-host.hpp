@@ -352,6 +352,8 @@ class PluginInstance
 	
 public:
 
+    ~PluginInstance() { dispose(); }
+
 	const PluginInformation* getPluginDescriptor()
 	{
 		return descriptor;

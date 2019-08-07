@@ -108,6 +108,12 @@ void aap_lv2_plugin_delete(
 {
     auto l = (AAPLV2PluginContext*) plugin->plugin_specific;
 	free(l->dummy_raw_buffer);
+    lilv_instance_free(l->instance);
+    lilv_node_free(l->statics->audio_port_uri_node);
+    lilv_node_free(l->statics->control_port_uri_node);
+    lilv_node_free(l->statics->cv_port_uri_node);
+    lilv_node_free(l->statics->input_port_uri_node);
+    lilv_node_free(l->statics->output_port_uri_node);
 	delete l->statics;
 	lilv_world_free(l->world);
     delete l;
@@ -197,9 +203,9 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 
     auto allPlugins = lilv_world_get_all_plugins (world);
     LV2_Feature* features [5];
-    auto urid_map = new std::map<const char*,LV2_URID,uricomp> ();
-    auto mapData = LV2_URID_Map { urid_map, urid_map_func };
-    auto logData = LV2_Log_Log { NULL, log_printf, log_vprintf };
+    std::map<const char*,LV2_URID,uricomp> urid_map;
+    LV2_URID_Map mapData{ &urid_map, urid_map_func };
+    LV2_Log_Log logData { NULL, log_printf, log_vprintf };
     LV2_Feature uridFeature = { LV2_URID_MAP_URI, &mapData };
     LV2_Feature logFeature = { LV2_LOG_URI, &logData };
     LV2_Feature bufSizeFeature = { LV2_BUF_SIZE_URI, NULL };
@@ -215,9 +221,10 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
     assert (!strncmp(pluginUniqueID, "lv2:", strlen("lv2:")));
     auto pluginUriNode = lilv_new_uri (world, pluginUniqueID + strlen("lv2:"));
     const LilvPlugin *plugin = lilv_plugins_get_by_uri (allPlugins, pluginUriNode);
+    lilv_node_free(pluginUriNode);
     assert (plugin);
 	LilvInstance *instance = lilv_plugin_instantiate (plugin, sampleRate, features);
-    assert (instance);    
+    assert (instance);
 
     return new AndroidAudioPlugin {
 			new AAPLV2PluginContext { statics, world, plugin, instance, NULL, NULL },
