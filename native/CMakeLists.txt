@@ -35,6 +35,7 @@ set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"android/src/android-audio-plugin-client-bridge.cpp"
 	"android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
+	"android/src/AudioPluginHost_native.cpp"
 	)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)

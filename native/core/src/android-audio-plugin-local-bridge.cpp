@@ -96,7 +96,8 @@ void aap_local_bridge_plugin_delete(
 
 extern "C" {
 
-AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLocalBridge() {
-    return new AndroidAudioPluginFactory{aap_local_bridge_plugin_new, aap_local_bridge_plugin_delete};
-}
+AndroidAudioPluginFactory _aap_local_hosted_factory{aap_local_bridge_plugin_new, aap_local_bridge_plugin_delete};
+
+AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLocalBridge() { return &_aap_local_hosted_factory; }
+
 }

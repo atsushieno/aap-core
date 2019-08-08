@@ -239,10 +239,10 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 
 } // namespace aaplv2bridge
 
-AndroidAudioPluginFactory factory{aaplv2bridge::aap_lv2_plugin_new, aaplv2bridge::aap_lv2_plugin_delete};
+AndroidAudioPluginFactory _aap_lv2_factory{aaplv2bridge::aap_lv2_plugin_new, aaplv2bridge::aap_lv2_plugin_delete};
 
 extern "C" {
 
-AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLV2Bridge() { return &factory; }
+AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryLV2Bridge() { return &_aap_lv2_factory; }
 
 } // extern "C"

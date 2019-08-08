@@ -31,7 +31,7 @@ open class AudioPluginService : Service()
         val pluginId = intent!!.getStringExtra("pluginId")
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
         Log.d ("AudioPluginService", "onBind invoked with sampleRate " + sampleRate + " / pluginId " + pluginId)
-        AudioPluginHost.Companion.initialize(this, arrayOf(pluginId))
+        AudioPluginHost.initialize(this, arrayOf(pluginId!!))
         if (native_binder == null)
             native_binder = createBinder(sampleRate, pluginId)
         return native_binder
