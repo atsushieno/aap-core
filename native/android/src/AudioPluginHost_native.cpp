@@ -42,6 +42,7 @@ public:
         host = new PluginHost(local_plugin_infos);
         buffer.num_frames = 0;
         buffer.buffers = nullptr;
+        instance = nullptr;
     }
 
     ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate) override
