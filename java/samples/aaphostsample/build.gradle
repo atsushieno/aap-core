@@ -18,6 +18,15 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        /*
+        externalNativeBuild {
+            cmake {
+                // FIXME: remove when building release
+                arguments "-DANDROID_ARM_MODE=arm"//, "-DANDROID_STL=c++_shared"
+                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+            }
+        }*/
     }
     buildTypes {
         release {

@@ -14,6 +14,15 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
+
+        /*
+        externalNativeBuild {
+            cmake {
+                // FIXME: remove when building release
+                arguments "-DANDROID_ARM_MODE=arm" //, "-DANDROID_STL=c++_shared"
+                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+            }
+        }*/
     }
 
     buildTypes {
