@@ -88,10 +88,6 @@ class MainActivity : AppCompatActivity() {
                         intent!!.putExtra("sampleRate", fixed_sample_rate)
                         intent!!.putExtra("pluginId", plugin.pluginId)
 
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
-                            context.startForegroundService(intent)
-                        else
-                            context.startService(intent)
                         target_plugin = plugin.pluginId!!
                         context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
                     }
@@ -110,8 +106,7 @@ class MainActivity : AppCompatActivity() {
                         // FIXME: uncomment
                         //AudioPluginHost.cleanup()
                     }
-                    // FIXME: uncomment
-                    //AudioPluginLV2LocalHost.cleanup()
+                    AudioPluginLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
                     wavePostPlugin.progress = 100f
                 }
