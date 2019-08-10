@@ -27,10 +27,9 @@ namespace aap {
 
 namespace aapremote {
 
-int runClientAAP(AIBinder *binder, int sampleRate, const aap::PluginInformation *pluginInfo, void *wav, int wavLength, void *outWav) {
-    auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
+int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, void *wav, int wavLength, void *outWav) {
 
-    int buffer_size = wavLength;
+    int buffer_size = 44100 * 2 * sizeof(float); // FIXME: (ish) get number of channels instead of '2'.
     int float_count = buffer_size / sizeof(float);
 
     /* instantiate plugins and connect ports */
@@ -88,10 +87,16 @@ int runClientAAP(AIBinder *binder, int sampleRate, const aap::PluginInformation 
 
     // activate, run, deactivate
     proxy->activate();
-    proxy->process(0);
-    proxy->deactivate();
 
-    memcpy(outWav, currentAudioOut, buffer_size);
+    proxy->process(0);
+    for (int b = 0; b < wavLength; b += buffer_size) {
+        // prepare inputs -audioIn
+        memcpy(audioIn, ((char*) wav) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+        proxy->process(0);
+        memcpy(((char*) outWav) + b, currentAudioOut, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+    }
+
+    proxy->deactivate();
 
     for (int p = 0; plugin_buffer->buffers[p]; p++)
         free(plugin_buffer->buffers[p]);
@@ -99,9 +104,6 @@ int runClientAAP(AIBinder *binder, int sampleRate, const aap::PluginInformation 
     delete plugin_buffer;
 
     proxy->destroy();
-
-    // FIXME: this causes crash?
-    //delete proxy;
 
     free(audioIn);
     free(midiIn);
@@ -135,9 +137,12 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     }
 
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
-    int ret = aapremote::runClientAAP(binder, sampleRate, pluginInfo, wavBytes, wavLength, outWavBytes);
-
+    auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
+    int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavBytes, wavLength, outWavBytes);
     env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
+
+    // FIXME: this causes crash?
+    //delete proxy;
 
     free(wavBytes);
     free(outWavBytes);
