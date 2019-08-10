@@ -237,7 +237,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 extern "C" {
 
 jobject
-Java_org_androidaudioplugin_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate, jstring pluginId) {
+Java_org_androidaudioplugin_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate) {
     sp_binder = new aap::AudioPluginInterfaceImpl(sampleRate);
     return AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
 }

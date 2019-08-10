@@ -17,7 +17,7 @@ class AudioPluginHost {
         }
 
         @JvmStatic
-        fun initialize(context: Context, pluginUris: Array<String>)
+        fun initialize(context: Context)
         {
             var pluginInfos = queryAudioPluginServices(context).flatMap { i -> i.plugins }.toTypedArray()
             initialize(pluginInfos)

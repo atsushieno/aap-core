@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Log.i("HostMainActivity", "onServiceConnected invoked")
                 GlobalScope.launch {
-                    AudioPluginHost.initialize(context, arrayOf(target_plugin))
+                    AudioPluginHost.initialize(context)
                     AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, out_raw)
                     AudioPluginHost.cleanup()
                     context.applicationContext.run {
@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                     if (false) {
                         AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
                     } else {
-                        AudioPluginHost.initialize(context, arrayOf(pluginId))
+                        AudioPluginHost.initialize(context)
                         AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
                         // FIXME: uncomment
                         //AudioPluginHost.cleanup()

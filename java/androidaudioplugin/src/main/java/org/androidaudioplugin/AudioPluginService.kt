@@ -20,7 +20,7 @@ open class AudioPluginService : Service()
         }
 
         @JvmStatic
-        external fun createBinder(sampleRate: Int, pluginId: String?) : IBinder
+        external fun createBinder(sampleRate: Int) : IBinder
 
         @JvmStatic
         external fun destroyBinder(binder: IBinder)
@@ -30,9 +30,9 @@ open class AudioPluginService : Service()
     override fun onBind(intent: Intent?): IBinder? {
         val pluginId = intent!!.getStringExtra("pluginId")
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
-        AudioPluginHost.initialize(this, arrayOf(pluginId!!))
+        AudioPluginHost.initialize(this)
         if (native_binder == null)
-            native_binder = createBinder(sampleRate, pluginId)
+            native_binder = createBinder(sampleRate)
         return native_binder
     }
 
