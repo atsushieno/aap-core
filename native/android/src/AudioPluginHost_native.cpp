@@ -18,12 +18,6 @@ extern "C" {
 extern aap::PluginInformation **local_plugin_infos;
 }
 
-// FIXME: sort out final library header structures.
-namespace aap {
-    extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
-    extern const char *strdup_fromJava(JNIEnv *env, jstring s);
-}
-
 namespace aap {
 
 const char *interface_descriptor = "org.androidaudioplugin.AudioPluginService";
