@@ -65,32 +65,12 @@ int stringpool_entry = 0;
 int main(int argc, const char **argv)
 {
 	if (argc < 1) {
-		fprintf (stderr, "Usage: %s [input-lv2dir] ([output-javadir] [output-javapackage])\n", argv[0]);
+		fprintf (stderr, "Usage: %s [input-lv2dir]\n", argv[0]);
 		return 1;
 	}
 	
 	const char* lv2dirName = argc < 2 ?  "lv2" : argv[1];
 	const char* xmldir = argc < 3 ? "res/xml" : argv[2];
-	const char* javadir = argc < 4 ? "java" : argv[3];
-	const char* javapackage = argc < 5 ? "" : argv[4];
-	
-	char* javasubdir = strdup(javapackage);
-	for (auto s = javasubdir ? strchr(javasubdir, '.') : NULL; s; s = strchr(s, '.'))
-		*s = '/';
-	
-	char javaConcatDir[strlen(javadir) + strlen(javasubdir) + 2];
-	strcpy(javaConcatDir, javadir);
-	javaConcatDir[strlen(javadir)] = '/';
-	strcpy(javaConcatDir + strlen(javadir) + 1, javasubdir);
-	javaConcatDir[strlen(javadir) + strlen(javasubdir) + 1] = NULL;
-	free(javasubdir);
-	
-	// FIXME: should we support Windows... ? They have WSL now.
-	char *cmd = (char*) malloc(snprintf(NULL, 0, "mkdir -p %s %s", xmldir, javaConcatDir) + 1);
-	sprintf(cmd, "mkdir -p %s %s", xmldir, javaConcatDir);
-	fprintf(stderr, "run command %s\n", cmd);
-	system(cmd);
-	free(cmd);
 	
 	world = lilv_world_new();
 
@@ -165,25 +145,6 @@ int main(int argc, const char **argv)
 		const LilvNode *author = lilv_plugin_get_author_name(plugin);
 		const LilvNode *manufacturer = lilv_plugin_get_project(plugin);
 
-		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\" entrypoint=\"GetAndroidAudioPluginFactoryLV2Bridge\">\n    <ports>\n",
-			name,
-			/* FIXME: this categorization is super hacky */
-			is_plugin_instrument(plugin) ? "Instrument" : "Effect",
-			author != NULL ? escape_xml(lilv_node_as_string(author)) : "",
-			manufacturer != NULL ? escape_xml(lilv_node_as_string(manufacturer)) : "",
-			escape_xml(lilv_node_as_uri(lilv_plugin_get_uri(plugin)))
-			);
-		
-		for (int p = 0; p < lilv_plugin_get_num_ports(plugin); p++) {
-			auto port = lilv_plugin_get_port_by_index(plugin, p);
-			
-			fprintf(xmlFP, "      <port direction=\"%s\" content=\"%s\" name=\"%s\" />\n",
-				IS_INPUT_PORT(plugin, port) ? "input" : IS_OUTPUT_PORT(plugin, port) ? "output" : "",
-				lilv_port_supports_event(plugin, port, midi_event_uri_node) ? "midi" : IS_AUDIO_PORT(plugin, port) ? "audio" : "other",
-				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
-		}
-		fprintf(xmlFP, "    </ports>\n  </plugin>\n");	
-
 		char *bundle_path = strdup(lilv_file_uri_parse(lilv_node_as_uri(lilv_plugin_get_bundle_uri(plugin)), NULL));
 		if (!bundle_path) {
 			fprintf(stderr, "Failed to retrieve the plugin bundle path: %s\n", bundle_path);
@@ -201,6 +162,26 @@ int main(int argc, const char **argv)
 		plugin_lv2dir = strdup(plugin_lv2dir);
 		free(bundle_path);
 
+		fprintf(xmlFP, "  <plugin backend=\"LV2\" name=\"%s\" category=\"%s\" author=\"%s\" manufacturer=\"%s\" unique-id=\"lv2:%s\" entrypoint=\"GetAndroidAudioPluginFactoryLV2Bridge\" assets=\"/lv2/%s/\">\n    <ports>\n",
+			name,
+			/* FIXME: this categorization is super hacky */
+			is_plugin_instrument(plugin) ? "Instrument" : "Effect",
+			author != NULL ? escape_xml(lilv_node_as_string(author)) : "",
+			manufacturer != NULL ? escape_xml(lilv_node_as_string(manufacturer)) : "",
+			escape_xml(lilv_node_as_uri(lilv_plugin_get_uri(plugin))),
+			escape_xml(plugin_lv2dir)
+			);
+		
+		for (int p = 0; p < lilv_plugin_get_num_ports(plugin); p++) {
+			auto port = lilv_plugin_get_port_by_index(plugin, p);
+			
+			fprintf(xmlFP, "      <port direction=\"%s\" content=\"%s\" name=\"%s\" />\n",
+				IS_INPUT_PORT(plugin, port) ? "input" : IS_OUTPUT_PORT(plugin, port) ? "output" : "",
+				lilv_port_supports_event(plugin, port, midi_event_uri_node) ? "midi" : IS_AUDIO_PORT(plugin, port) ? "audio" : "other",
+				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
+		}
+		fprintf(xmlFP, "    </ports>\n  </plugin>\n");	
+
 		for(int i = 0; i < numPlugins; i++) {
 			if(!pluginLv2Dirs[i]) {
 				pluginLv2Dirs[i] = plugin_lv2dir;
@@ -215,26 +196,6 @@ int main(int argc, const char **argv)
 	fprintf(xmlFP, "</plugins>\n");
 	fclose(xmlFP);
 	free(xmlFilename);
-
-	char *javaFilename = (char*) malloc(snprintf(NULL, 0, "%s/LV2PluginsInThisApp.java", javaConcatDir) + 1);
-	sprintf(javaFilename, "%s/LV2PluginsInThisApp.java", javaConcatDir);
-	fprintf(stderr, "Writing Java file %s\n", javaFilename);
-
-	FILE *javaFP = fopen(javaFilename, "w+");
-	if (javapackage)
-		fprintf(javaFP, "package %s;\n", javapackage);
-	fprintf(javaFP, "public class LV2PluginsInThisApp {\n");
-	fprintf(javaFP, "\tpublic static final String[] lv2Paths = new String[] {\n");
-	for(int i = 0; i < numPluginDirEntries; i++) {
-		char* p = pluginLv2Dirs[i];
-		fprintf(javaFP, "\t\t%s \"/lv2/%s/\"\n", i == 0 ? "" : ",", p);
-		free(p);
-	}
-
-	fprintf(javaFP, " };\n");
-	fprintf(javaFP, "}\n");
-	fclose(javaFP);
-	free(javaFilename);
 	
 	lilv_world_free(world);
 	

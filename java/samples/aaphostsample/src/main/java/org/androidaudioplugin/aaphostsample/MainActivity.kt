@@ -96,7 +96,9 @@ class MainActivity : AppCompatActivity() {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                     val pluginId = item.second.pluginId!!
                     val uri = pluginId.substring("lv2:".length)
-                    AudioPluginLV2LocalHost.lv2Paths = LV2PluginsInThisApp.lv2Paths
+                    AudioPluginLV2LocalHost.lv2Paths = AudioPluginHost.queryLocalAudioPlugins(context)
+                        .filter { p -> p.backend == "LV2" }.map { p -> if(p.assets != null) p.assets!! else "" }
+                        .distinct().toTypedArray()
                     AudioPluginLV2LocalHost.initialize(this@MainActivity.assets)
                     if (false) {
                         AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)

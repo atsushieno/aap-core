@@ -190,6 +190,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
   - `category`: category of the plugin.
   - `library`: native library file name that contains the plugin entrypoint
   - `entrypoint`: name of the entrypoint function name in the library. If it is not specified, then `GetAndroidAudioPluginFactory` is used.
+  - `assets`: an asset directory which contains related resources. It is optional. Most of the plugins would contain additional resources though.
 - `<port>` element
   - `name`: a name string. An `xs:NMTOKENS` in XML Schema datatypes is expected.
   - `direction`: either `input` or `output`.
@@ -254,7 +255,9 @@ We decided to NOT support shorthand metadata notation like
 
 ... because it will make metadata non-queryable to normal Android app developers.
 
-Instead we provide a metadata generator tool `app-import-lv2-metadata`:
+Instead we ask LV2 plugin developers (importers) to describe everything in `aap-metadata.xml`and provide a metadata generator tool `app-import-lv2-metadata`:
+
+FIXME: this description is too old. Replace this with newer tool outputs.
 
 ```
 $ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 

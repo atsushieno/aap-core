@@ -28,8 +28,11 @@ build-android-single:
 
 all: build-all
 
-import-lv2-deps:
+import-lv2-deps: build-lv2-importer
 	bash import-lv2-deps.sh
+
+build-lv2-importer:
+	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake .. && make
 
 build-java:
 	cd java && ./gradlew assembleDebug
