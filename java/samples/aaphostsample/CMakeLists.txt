@@ -27,7 +27,7 @@ add_library( # Specifies the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        "src/main/jni/AAPRemoteBridge.cpp"
+        "src/main/jni/AAPSampleRemoteInterop_native.cpp"
         "src/main/jni/LV2DirectUsageSample.cpp"
         "src/main/jni/AAPSampleLV2Interop_jni.cpp"
         "../../../native/samples/AAPSampleLV2Interop_native.cpp"
