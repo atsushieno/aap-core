@@ -13,9 +13,10 @@ class AudioPluginLV2LocalHost
             //System.loadLibrary("androidaudioplugin-lv2")
         }
 
+        @JvmStatic
         fun initialize(context: Context)
         {
-            var lv2Paths = AudioPluginHost.queryLocalAudioPlugins(context)
+            var lv2Paths = AudioPluginHost.getLocalAudioPluginService(context).plugins
                 .filter { p -> p.backend == "LV2" }.map { p -> if(p.assets != null) p.assets!! else "" }
                 .distinct().toTypedArray()
             initialize(lv2Paths.joinToString(":"), context.assets)

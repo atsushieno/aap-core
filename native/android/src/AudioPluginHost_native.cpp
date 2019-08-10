@@ -241,6 +241,7 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
                                                                       jobject binder) {
     auto abinder = AIBinder_fromJavaBinder(env, binder);
     AIBinder_decStrong(abinder);
+    delete sp_binder;
 }
 
 void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)

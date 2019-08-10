@@ -149,6 +149,10 @@ AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs
 	    android:name="org.androidaudioplugin.AudioPluginService#Plugins"
 	    android:resource="@xml/aap_metadata"
         />
+      <meta-data
+        android:name="org.androidaudioplugin.AudioPluginService#Extensions"
+        android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
+        />
     </service>
   </application>
 </manifest>
@@ -156,7 +160,25 @@ AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs
 
 It should be noted that `AudioPluginService` works as a foreground service, which is required for this kind of audio apps for Android 8.0 or later. Therefore an additional `<uses-permission>` is required for `FOREGROUND_SERVICE`.
 
-The `<service>` element comes up with a `<meta-data>` element. It is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
+The `<service>` element comes up with two `<meta-data>` elements.
+
+The simpler one with `org.androidaudioplugin.AudioPluginService#Extensions` is a ',' (comma)-separated list, to specify service-specific "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument. Any AAP service that contains LV2-based plugins has to specify `org.androidaudioplugin.lv2.AudioPluginLV2LocalHost` as the extension. For reference, its `initialize` method looks like:
+
+```
+@JvmStatic
+fun initialize(context: Context)
+{
+	var lv2Paths = AudioPluginHost.getLocalAudioPluginService(context).plugins
+		.filter { p -> p.backend == "LV2" }.map { p -> if(p.assets != null) p.assets!! else "" }
+		.distinct().toTypedArray()
+	initialize(lv2Paths.joinToString(":"), context.assets)
+}
+
+@JvmStatic
+external fun initialize(lv2Path: String, assets: AssetManager)
+```
+
+The other one with `org.androidaudioplugin.AudioPluginService#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
 <plugins>

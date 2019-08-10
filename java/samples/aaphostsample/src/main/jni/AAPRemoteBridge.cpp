@@ -100,7 +100,8 @@ int runClientAAP(AIBinder *binder, int sampleRate, const aap::PluginInformation 
 
     proxy->destroy();
 
-    delete proxy;
+    // FIXME: this causes crash?
+    //delete proxy;
 
     free(audioIn);
     free(midiIn);

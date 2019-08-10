@@ -27,7 +27,10 @@
                 android:name="org.androidaudioplugin.AudioPluginService#Plugins"
                 android:resource="@xml/aap_metadata"
                 />
+            <meta-data
+                android:name="org.androidaudioplugin.AudioPluginService#Extensions"
+                android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
+                />
         </service>
     </application>
-
 </manifest>

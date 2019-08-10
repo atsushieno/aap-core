@@ -11,6 +11,7 @@ class AudioPluginHost {
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
+        const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService#Extensions"
 
         init {
             System.loadLibrary("androidaudioplugin")
@@ -19,6 +20,18 @@ class AudioPluginHost {
         @JvmStatic
         fun initialize(context: Context)
         {
+            var si = getLocalAudioPluginService(context)
+            si.extensions.forEach { e ->
+                if(e == null || e == "")
+                    return
+                var c = Class.forName(e)
+                if (c == null) {
+                    Log.d("AAP", "Extension class not found: " + e)
+                    return@forEach
+                }
+                var method = c.getMethod("initialize", Context::class.java)
+                method.invoke(null, context)
+            }
             var pluginInfos = queryAudioPluginServices(context).flatMap { i -> i.plugins }.toTypedArray()
             initialize(pluginInfos)
         }
@@ -106,13 +119,17 @@ class AudioPluginHost {
                 var name = ri.serviceInfo.loadLabel(context.packageManager).toString()
                 var packageName = ri.serviceInfo.packageName
                 var className = ri.serviceInfo.name
-                plugins.add(parseAapMetadata(isOutProcess, name, packageName, className, xp))
+                var plugin = parseAapMetadata(isOutProcess, name, packageName, className, xp)
+                var extensions = ri.serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
+                if (extensions != null)
+                    plugin.extensions = extensions.toString().split(',').toMutableList()
+                plugins.add(plugin)
             }
 
             return plugins.toTypedArray()
         }
 
         @JvmStatic
-        fun queryLocalAudioPlugins(context: Context) = queryAudioPluginServices(context).first { svc -> svc.packageName == context.packageName}.plugins.toTypedArray()
+        fun getLocalAudioPluginService(context: Context) = queryAudioPluginServices(context).first { svc -> svc.packageName == context.packageName}
     }
 }

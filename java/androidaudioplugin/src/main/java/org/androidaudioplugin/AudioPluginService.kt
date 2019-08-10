@@ -7,13 +7,13 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.app.NotificationChannel
+import android.content.Context
 import android.os.Build
 
 open class AudioPluginService : Service()
 {
     companion object {
         const val NATIVE_LIBRARY_NAME = "androidaudioplugin"
-        const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
 
         init {
             System.loadLibrary(NATIVE_LIBRARY_NAME)
