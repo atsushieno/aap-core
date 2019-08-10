@@ -10,6 +10,7 @@ import org.xmlpull.v1.XmlPullParser
 class AudioPluginHost {
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
+        const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
 
         init {
             System.loadLibrary("androidaudioplugin")
@@ -28,10 +29,6 @@ class AudioPluginHost {
         @JvmStatic
         external fun cleanup()
 
-        // FIXME: remove this sample-only method
-//        @JvmStatic
-//        external fun runClientAAP(binder: IBinder, sampleRate: Int, pluginId: String, wav: ByteArray, outWav: ByteArray) : Int
-
         @JvmStatic
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
@@ -40,8 +37,12 @@ class AudioPluginHost {
             var plugins = mutableListOf<AudioPluginServiceInformation>()
             for (ri in resolveInfos) {
                 Log.i("AAP", "Service " + ri.serviceInfo.name)
-                // TODO: it is super hacky so far.
-                val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AAP_ACTION_NAME)
+                val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
+                if (xp == null) {
+                    Log.w("AAP", "Service " + ri.serviceInfo.name + " has no AAP metadata XML resource.")
+                    continue
+                }
+                // TODO: this XML parsing is super hacky so far.
                 val aapServiceInfo = AudioPluginServiceInformation(
                     ri.serviceInfo.loadLabel(context.packageManager).toString(),
                     ri.serviceInfo.packageName,

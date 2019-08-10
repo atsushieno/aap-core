@@ -24,7 +24,7 @@
                     android:name="org.androidaudioplugin.AudioPluginService" />
             </intent-filter>
             <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService"
+                android:name="org.androidaudioplugin.AudioPluginService#Plugins"
                 android:resource="@xml/aap_metadata"
                 />
         </service>

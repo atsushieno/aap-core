@@ -146,7 +146,7 @@ AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs
 	      android:name="org.androidaudioplugin.AudioPluginService" />
       </intent-filter>
       <meta-data 
-	    android:name="org.androidaudioplugin.AudioPluginService"
+	    android:name="org.androidaudioplugin.AudioPluginService#Plugins"
 	    android:resource="@xml/aap_metadata"
         />
     </service>
@@ -312,9 +312,10 @@ AAP will have some "backends" e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is impl
 
 Currently AAPHostSample contains two hosting samples, but not making AAP hosting API (described later) generic yet.
 
-- *direct* LV2 hosting
-- AAP-LV2 hosting
-
+- AAP-LV2 hosting via AudioPluginService:
+  plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder.
+- AAP-LV2 local direct hosting:
+  plugins are collected from local assets, directly opened by local AAP-LV2 hosting API which subsequently uses lilv to process audio.
 
 ### AAP hosting API
 
