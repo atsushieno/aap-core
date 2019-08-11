@@ -15,14 +15,14 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
 
-        /* Enable this section if you want to debug native code using AddressSanitizer
+        //* Enable this section if you want to debug native code using AddressSanitizer
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                 cppFlags "-fsanitize=address -fno-omit-frame-pointer"
             }
         }
-        */
+        //*/
     }
 
     buildTypes {

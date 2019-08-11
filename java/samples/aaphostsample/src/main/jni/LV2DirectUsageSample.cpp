@@ -219,9 +219,9 @@ jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLV2Interop_runHostLilv(J
     const char *pluginUris[size];
     for (int i = 0; i < size; i++) {
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
-        pluginUris[i] = env->GetStringUTFChars(strUriObj, &isCopy);
-        if (!isCopy)
-            pluginUris[i] = strdup(pluginUris[i]);
+        auto s = env->GetStringUTFChars(strUriObj, &isCopy);
+        pluginUris[i] = strdup(s);
+        env->ReleaseStringUTFChars(strUriObj, s);
     }
 
     int wavLength = env->GetArrayLength(wav);

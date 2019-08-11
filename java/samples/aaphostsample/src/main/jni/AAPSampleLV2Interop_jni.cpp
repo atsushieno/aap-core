@@ -24,7 +24,8 @@ jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLV2Interop_runHostAAP(JN
         auto strUriObj = (jstring) env->GetObjectArrayElement(jPlugins, i);
         jboolean isCopy;
         const char *s = env->GetStringUTFChars(strUriObj, &isCopy);
-        pluginIDs[i] = isCopy ? s : strdup(s);
+        pluginIDs[i] = strdup(s);
+        env->ReleaseStringUTFChars(strUriObj, s);
     }
 
     int wavLength = env->GetArrayLength(wav);

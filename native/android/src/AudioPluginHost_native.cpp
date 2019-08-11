@@ -139,8 +139,10 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
     jboolean isCopy;
     if (!s)
         return NULL;
-    const char *ret = env->GetStringUTFChars(s, &isCopy);
-    return isCopy ? ret : strdup(ret);
+    const char *u8 = env->GetStringUTFChars(s, &isCopy);
+    auto ret = strdup(u8);
+    env->ReleaseStringUTFChars(s, u8);
+    return ret;
 }
 
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",

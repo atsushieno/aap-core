@@ -57,8 +57,9 @@ void Java_org_androidaudioplugin_lv2_AudioPluginLV2LocalHost_initialize(JNIEnv *
     aaplv2::set_io_context(AAssetManager_fromJava(env, assets));
 
     jboolean isCopy = JNI_TRUE;
-    auto s = env->GetStringUTFChars((jstring) lv2PathString, &isCopy);
+    auto s = env->GetStringUTFChars(lv2PathString, &isCopy);
     setenv("LV2_PATH", s, true);
+    env->ReleaseStringUTFChars(lv2PathString, s);
 }
 
 void Java_org_androidaudioplugin_lv2_AudioPluginLV2LocalHost_cleanup(JNIEnv *env, jclass cls) {

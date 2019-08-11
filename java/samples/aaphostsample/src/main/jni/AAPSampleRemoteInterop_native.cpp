@@ -126,7 +126,9 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     void *outWavBytes = calloc(wavLength, 1);
 
     jboolean dup;
-    const char *pluginId = env->GetStringUTFChars(jPluginId, &dup);
+    const char *pluginId_ = env->GetStringUTFChars(jPluginId, &dup);
+    auto pluginId = strdup(pluginId_);
+    env->ReleaseStringUTFChars(jPluginId, pluginId_);
     aap::PluginInformation *pluginInfo;
     int p = 0;
     while (local_plugin_infos[p]) {
