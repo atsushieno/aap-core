@@ -30,6 +30,7 @@ class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPl
     std::vector<int64_t> sharedMemoryFDs;
     AndroidAudioPluginBuffer buffer;
     int sample_rate;
+    int current_buffer_size;
 
 public:
 
@@ -61,7 +62,8 @@ public:
         if (sharedMemoryFDs.size() != newFDs.size())
             sharedMemoryFDs.resize(newFDs.size(), 0);
 
-        int bufferSize = buffer.num_frames * sizeof(float);
+        // FIXME: get number of channels from somewhere.
+        current_buffer_size = buffer.num_frames * sizeof(float) * 2;
         buffer.num_frames = frameCount;
         int n = newFDs.size();
         if (!buffer.buffers)
@@ -69,9 +71,9 @@ public:
         for (int i = 0; i < n; i++) {
             if (sharedMemoryFDs[i] != newFDs[i]) { // shm FD has changed
                 if (buffer.buffers[i])
-                    munmap(buffer.buffers[i], bufferSize);
+                    munmap(buffer.buffers[i], current_buffer_size);
                 sharedMemoryFDs[i] = newFDs[i];
-                buffer.buffers[i] = mmap(nullptr, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemoryFDs[i], 0);
+                buffer.buffers[i] = mmap(nullptr, current_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemoryFDs[i], 0);
             }
         }
     }
@@ -130,7 +132,7 @@ public:
         if (buffer.buffers)
             for (int i = 0; i < sharedMemoryFDs.size(); i++)
                 if (buffer.buffers[i])
-                    munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
+                    munmap(buffer.buffers[i], current_buffer_size);
         return ndk::ScopedAStatus::ok();
     }
 };
