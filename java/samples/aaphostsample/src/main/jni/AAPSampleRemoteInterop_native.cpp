@@ -81,14 +81,12 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     proxy->prepare(plugin_buffer->num_frames, nPorts, buffer_proxy);
 
     // prepare inputs
-    memcpy(audioIn, wav, buffer_size);
     for (int i = 0; i < float_count; i++)
         controlIn[i] = 0.5;
 
     // activate, run, deactivate
     proxy->activate();
 
-    proxy->process(0);
     for (int b = 0; b < wavLength; b += buffer_size) {
         // prepare inputs -audioIn
         memcpy(audioIn, ((char*) wav) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
@@ -99,7 +97,12 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     proxy->deactivate();
 
     for (int p = 0; plugin_buffer->buffers[p]; p++)
-        free(plugin_buffer->buffers[p]);
+        if(plugin_buffer->buffers[p] != nullptr
+           && plugin_buffer->buffers[p] != dummyBuffer
+           && plugin_buffer->buffers[p] != audioIn
+           && plugin_buffer->buffers[p] != midiIn
+           && plugin_buffer->buffers[p] != controlIn)
+            free(plugin_buffer->buffers[p]);
     free(plugin_buffer->buffers);
     delete plugin_buffer;
 
@@ -107,6 +110,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     free(audioIn);
     free(midiIn);
+    free(controlIn);
     free(dummyBuffer);
 
     return 0;
