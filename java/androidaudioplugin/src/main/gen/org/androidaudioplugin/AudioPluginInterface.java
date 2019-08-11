@@ -14,7 +14,7 @@ public interface AudioPluginInterface extends android.os.IInterface
     {
       return false;
     }
-    @Override public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException
+    @Override public void prepare(int frameCount, int portCount, long[] sharedMemoryFDs) throws android.os.RemoteException
     {
     }
     @Override public void activate() throws android.os.RemoteException
@@ -233,18 +233,18 @@ public interface AudioPluginInterface extends android.os.IInterface
         }
         return _result;
       }
-      @Override public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException
+      @Override public void prepare(int frameCount, int portCount, long[] sharedMemoryFDs) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(frameCount);
-          _data.writeInt(bufferCount);
+          _data.writeInt(portCount);
           _data.writeLongArray(sharedMemoryFDs);
           boolean _status = mRemote.transact(Stub.TRANSACTION_prepare, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepare(frameCount, bufferCount, sharedMemoryFDs);
+            getDefaultImpl().prepare(frameCount, portCount, sharedMemoryFDs);
             return;
           }
           _reply.readException();
@@ -411,7 +411,7 @@ public interface AudioPluginInterface extends android.os.IInterface
   }
   public void create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
   public boolean isPluginAlive() throws android.os.RemoteException;
-  public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException;
+  public void prepare(int frameCount, int portCount, long[] sharedMemoryFDs) throws android.os.RemoteException;
   public void activate() throws android.os.RemoteException;
   public void process(int timeoutInNanoseconds) throws android.os.RemoteException;
   public void deactivate() throws android.os.RemoteException;

@@ -52,6 +52,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     buffer_shm_fds.resize(nPorts, 0);
 
     float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
+    int64_t currentAudioInFD = 0, currentAudioOutFD = 0, currentMidiInFD = 0, currentMidiOutFD = 0;
 
     // enter processing...
 
@@ -64,30 +65,42 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     for (int p = 0; p < nPorts; p++) {
         auto port = desc->getPort(p);
         if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
-            port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
+            port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
+            buffer_shm_fds[p] = currentAudioInFD;
             plugin_buffer->buffers[p] = currentAudioIn;
+        }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
-            buffer_shm_fds[p] = ASharedMemory_create(port->getName(), buffer_size);
+            buffer_shm_fds[p] = currentAudioOutFD = ASharedMemory_create(port->getName(), buffer_size);
             plugin_buffer->buffers[p] = currentAudioOut = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
-                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
+                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
+            buffer_shm_fds[p] = currentMidiInFD;
             plugin_buffer->buffers[p] = currentMidiIn;
+        }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
-            buffer_shm_fds[p] = ASharedMemory_create(port->getName(), buffer_size);
+            buffer_shm_fds[p] = currentMidiOutFD = ASharedMemory_create(port->getName(), buffer_size);
             plugin_buffer->buffers[p] = currentMidiOut = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
         }
-        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
+        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT) {
+            buffer_shm_fds[p] = controlInFD;
             plugin_buffer->buffers[p] = controlIn;
-        else
+        }
+        else {
+            buffer_shm_fds[p] = dummyBufferFD;
             plugin_buffer->buffers[p] = dummyBuffer;
+        }
     }
-    if (currentAudioOut)
+    if (currentAudioOut) {
         currentAudioIn = currentAudioOut;
-    if (currentMidiOut)
+        currentAudioInFD = currentAudioOutFD;
+    }
+    if (currentMidiOut) {
         currentMidiIn = currentMidiOut;
+        currentMidiInFD = currentMidiOutFD;
+    }
 
     // prepare connections
     proxy->prepare(plugin_buffer->num_frames, nPorts, buffer_shm_fds);

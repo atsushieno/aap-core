@@ -6,7 +6,7 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive();
 
-	void prepare(int frameCount, int bufferCount, in long[] sharedMemoryFDs);
+	void prepare(int frameCount, int portCount, in long[] sharedMemoryFDs);
 	void activate();
 	void process(int timeoutInNanoseconds);
 	void deactivate();

@@ -62,9 +62,9 @@ public:
         if (sharedMemoryFDs.size() != newFDs.size())
             sharedMemoryFDs.resize(newFDs.size(), 0);
 
+        buffer.num_frames = frameCount;
         // FIXME: get number of channels from somewhere.
         current_buffer_size = buffer.num_frames * sizeof(float) * 2;
-        buffer.num_frames = frameCount;
         int n = newFDs.size();
         if (!buffer.buffers)
             buffer.buffers = (void**) calloc(sizeof(void*), n);
@@ -78,9 +78,9 @@ public:
         }
     }
 
-    ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_bufferCount, const std::vector<int64_t>& in_sharedMemoryFDs) override
+    ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_portCount, const std::vector<int64_t>& in_sharedMemoryFDs) override
     {
-        resetBuffers(in_bufferCount, in_sharedMemoryFDs);
+        resetBuffers(in_frameCount, in_sharedMemoryFDs);
         instance->prepare(sample_rate, in_frameCount, &buffer);
         return ndk::ScopedAStatus::ok();
     }
