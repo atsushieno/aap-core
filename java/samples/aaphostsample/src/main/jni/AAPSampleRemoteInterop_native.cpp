@@ -31,7 +31,9 @@ namespace aapremote {
 
 int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, void *wav, int wavLength, void *outWav) {
 
-    int buffer_size = 44100 * 2 * sizeof(float); // FIXME: (ish) get number of channels instead of '2'.
+    // FIXME: (ish) get number of channels instead of '2'.
+    int num_channels = 2;
+    int buffer_size = 44100 * num_channels * sizeof(float);
     int float_count = buffer_size / sizeof(float);
 
     /* instantiate plugins and connect ports */
@@ -60,7 +62,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     assert (status.isOk());
 
     auto plugin_buffer = new AndroidAudioPluginBuffer();
-    plugin_buffer->num_frames = buffer_size / sizeof(float);
+    plugin_buffer->num_frames = buffer_size / sizeof(float) / num_channels;
     plugin_buffer->buffers = (void **) calloc(nPorts + 1, sizeof(void *));
     for (int p = 0; p < nPorts; p++) {
         auto port = desc->getPort(p);
