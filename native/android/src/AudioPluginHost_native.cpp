@@ -248,11 +248,12 @@ void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass 
 {
     if (!local_plugin_infos) {
         jsize infoSize = env->GetArrayLength(jPluginInfos);
-        local_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize);
+        local_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
         for (int i = 0; i < infoSize; i++) {
             auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
             local_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
         }
+        local_plugin_infos[infoSize] = nullptr;
     }
 }
 
