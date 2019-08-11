@@ -6,13 +6,13 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive();
 
-	void prepare(int frameCount, int bufferCount, in long[] bufferPointers);
+	void prepare(int frameCount, int bufferCount, in long[] sharedMemoryFDs);
 	void activate();
 	void process(int timeoutInNanoseconds);
 	void deactivate();
 	int getStateSize();
-	void getState(long pointer);
-	void setState(long pointer, int size);
+	void getState(long sharedMemoryFD);
+	void setState(long sharedMemoryFD, int size);
 	
 	void destroy();
 }

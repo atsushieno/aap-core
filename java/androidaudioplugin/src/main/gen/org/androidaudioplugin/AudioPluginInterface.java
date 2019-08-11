@@ -14,7 +14,7 @@ public interface AudioPluginInterface extends android.os.IInterface
     {
       return false;
     }
-    @Override public void prepare(int frameCount, int bufferCount, long[] bufferPointers) throws android.os.RemoteException
+    @Override public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException
     {
     }
     @Override public void activate() throws android.os.RemoteException
@@ -30,10 +30,10 @@ public interface AudioPluginInterface extends android.os.IInterface
     {
       return 0;
     }
-    @Override public void getState(long pointer) throws android.os.RemoteException
+    @Override public void getState(long sharedMemoryFD) throws android.os.RemoteException
     {
     }
-    @Override public void setState(long pointer, int size) throws android.os.RemoteException
+    @Override public void setState(long sharedMemoryFD, int size) throws android.os.RemoteException
     {
     }
     @Override public void destroy() throws android.os.RemoteException
@@ -233,7 +233,7 @@ public interface AudioPluginInterface extends android.os.IInterface
         }
         return _result;
       }
-      @Override public void prepare(int frameCount, int bufferCount, long[] bufferPointers) throws android.os.RemoteException
+      @Override public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
@@ -241,10 +241,10 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(frameCount);
           _data.writeInt(bufferCount);
-          _data.writeLongArray(bufferPointers);
+          _data.writeLongArray(sharedMemoryFDs);
           boolean _status = mRemote.transact(Stub.TRANSACTION_prepare, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepare(frameCount, bufferCount, bufferPointers);
+            getDefaultImpl().prepare(frameCount, bufferCount, sharedMemoryFDs);
             return;
           }
           _reply.readException();
@@ -329,16 +329,16 @@ public interface AudioPluginInterface extends android.os.IInterface
         }
         return _result;
       }
-      @Override public void getState(long pointer) throws android.os.RemoteException
+      @Override public void getState(long sharedMemoryFD) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeLong(pointer);
+          _data.writeLong(sharedMemoryFD);
           boolean _status = mRemote.transact(Stub.TRANSACTION_getState, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().getState(pointer);
+            getDefaultImpl().getState(sharedMemoryFD);
             return;
           }
           _reply.readException();
@@ -348,17 +348,17 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.recycle();
         }
       }
-      @Override public void setState(long pointer, int size) throws android.os.RemoteException
+      @Override public void setState(long sharedMemoryFD, int size) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeLong(pointer);
+          _data.writeLong(sharedMemoryFD);
           _data.writeInt(size);
           boolean _status = mRemote.transact(Stub.TRANSACTION_setState, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().setState(pointer, size);
+            getDefaultImpl().setState(sharedMemoryFD, size);
             return;
           }
           _reply.readException();
@@ -411,12 +411,12 @@ public interface AudioPluginInterface extends android.os.IInterface
   }
   public void create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
   public boolean isPluginAlive() throws android.os.RemoteException;
-  public void prepare(int frameCount, int bufferCount, long[] bufferPointers) throws android.os.RemoteException;
+  public void prepare(int frameCount, int bufferCount, long[] sharedMemoryFDs) throws android.os.RemoteException;
   public void activate() throws android.os.RemoteException;
   public void process(int timeoutInNanoseconds) throws android.os.RemoteException;
   public void deactivate() throws android.os.RemoteException;
   public int getStateSize() throws android.os.RemoteException;
-  public void getState(long pointer) throws android.os.RemoteException;
-  public void setState(long pointer, int size) throws android.os.RemoteException;
+  public void getState(long sharedMemoryFD) throws android.os.RemoteException;
+  public void setState(long sharedMemoryFD, int size) throws android.os.RemoteException;
   public void destroy() throws android.os.RemoteException;
 }
