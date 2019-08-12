@@ -26,13 +26,11 @@ typedef struct {
 
 LV2_URID urid_map_func (LV2_URID_Map_Handle handle, const char *uri)
 {
-    printf ("-- map %s", uri);
     auto map = static_cast<std::map<const char*,LV2_URID>*> (handle);
     auto it = map->find (uri);
     if (it == map->end())
         map->emplace (uri, map->size() + 1);
     auto ret = map->find (uri)->second;
-    printf (" ... as %d\n", ret);
     return ret;
 }
 
@@ -126,8 +124,7 @@ void resetPorts(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 	auto lilvPlugin = l->plugin;
 	auto instance = l->instance;
 	
-	// FIXME: get audio channel count and replace "2"
-	auto dummyBuffer = calloc(buffer->num_frames * 2 * sizeof(float), 1);
+	auto dummyBuffer = calloc(buffer->num_frames * sizeof(float), 1);
 	l->dummy_raw_buffer = dummyBuffer;
 	
 	l->cached_buffer = buffer;

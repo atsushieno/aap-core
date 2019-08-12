@@ -63,8 +63,7 @@ public:
             sharedMemoryFDs.resize(newFDs.size(), 0);
 
         buffer.num_frames = frameCount;
-        // FIXME: get number of channels from somewhere.
-        current_buffer_size = buffer.num_frames * sizeof(float) * 2;
+        current_buffer_size = buffer.num_frames * sizeof(float);
         int n = newFDs.size();
         if (!buffer.buffers)
             buffer.buffers = (void**) calloc(sizeof(void*), n + 1);

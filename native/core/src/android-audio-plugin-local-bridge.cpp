@@ -20,8 +20,7 @@ public:
 void aap_local_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
-    // FIXME: replace 2 with the actual audio channel count.
-    ctx->instance->prepare(ctx->sample_rate, buffer->num_frames * 2, buffer);
+    ctx->instance->prepare(ctx->sample_rate, buffer->num_frames, buffer);
 }
 
 void aap_local_bridge_plugin_activate(AndroidAudioPlugin *plugin)

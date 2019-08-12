@@ -20,7 +20,7 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
                void *outWav) {
     auto host = new aap::PluginHost(local_plugin_infos);
 
-    int buffer_size = 44100 * 2 * sizeof(float); // FIXME: (ish) get number of channels instead of '2'.
+    int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);
 
     std::vector<AAPInstanceUse *> instances;
