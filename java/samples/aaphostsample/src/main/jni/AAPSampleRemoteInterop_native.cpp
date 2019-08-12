@@ -39,9 +39,9 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     /* instantiate plugins and connect ports */
 
     int audioInFD = ASharedMemory_create("audioInFD", buffer_size);
-    int midiInFD = ASharedMemory_create("audioInFD", buffer_size);
-    int controlInFD = ASharedMemory_create("audioInFD", buffer_size);
-    int dummyBufferFD = ASharedMemory_create("audioInFD", buffer_size);
+    int midiInFD = ASharedMemory_create("midiInFD", buffer_size);
+    int controlInFD = ASharedMemory_create("controlInFD", buffer_size);
+    int dummyBufferFD = ASharedMemory_create("dummyBufferFD", buffer_size);
 
     float *audioIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInFD, 0);
     float *midiIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, midiInFD, 0);
@@ -54,7 +54,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     buffer_shm_fds.resize(nPorts, 0);
 
     float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
-    int64_t currentAudioInFD = 0, currentAudioOutFD = 0, currentMidiInFD = 0, currentMidiOutFD = 0;
+    int64_t currentAudioInFD = audioInFD, currentAudioOutFD = 0, currentMidiInFD = midiInFD, currentMidiOutFD = 0;
 
     // enter processing...
 
@@ -115,7 +115,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     proxy->activate();
 
     for (int b = 0; b < wavLength; b += buffer_size) {
-        // prepare inputs -audioIn
         memcpy(audioIn, ((char*) wav) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
         proxy->process(0);
         memcpy(((char*) outWav) + b, currentAudioOut, b + buffer_size < wavLength ? buffer_size : wavLength - b);

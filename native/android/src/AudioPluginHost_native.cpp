@@ -67,7 +67,7 @@ public:
         current_buffer_size = buffer.num_frames * sizeof(float) * 2;
         int n = newFDs.size();
         if (!buffer.buffers)
-            buffer.buffers = (void**) calloc(sizeof(void*), n);
+            buffer.buffers = (void**) calloc(sizeof(void*), n + 1);
         for (int i = 0; i < n; i++) {
             if (sharedMemoryFDs[i] != newFDs[i]) { // shm FD has changed
                 if (buffer.buffers[i])
@@ -76,6 +76,7 @@ public:
                 buffer.buffers[i] = mmap(nullptr, current_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemoryFDs[i], 0);
             }
         }
+        buffer.buffers[newFDs.size()] = nullptr;
     }
 
     ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_portCount, const std::vector<int64_t>& in_sharedMemoryFDs) override
