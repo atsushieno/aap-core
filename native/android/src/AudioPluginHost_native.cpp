@@ -268,24 +268,25 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
 
 void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
-    if (!local_plugin_infos) {
-        jsize infoSize = env->GetArrayLength(jPluginInfos);
-        local_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
-        for (int i = 0; i < infoSize; i++) {
-            auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-            local_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
-        }
-        local_plugin_infos[infoSize] = nullptr;
+    assert(local_plugin_infos == nullptr);
+    jsize infoSize = env->GetArrayLength(jPluginInfos);
+    local_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
+    for (int i = 0; i < infoSize; i++) {
+        auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
+        local_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
     }
+    local_plugin_infos[infoSize] = nullptr;
 }
 
 void Java_org_androidaudioplugin_AudioPluginHost_cleanup(JNIEnv *env, jclass cls)
 {
+    assert(local_plugin_infos != nullptr);
     int n = 0;
     while (local_plugin_infos[n])
         n++;
     for(int i = 0; i < n; i++)
         delete local_plugin_infos[i];
+    local_plugin_infos = nullptr;
 }
 
 } // extern "C"

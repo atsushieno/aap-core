@@ -35,22 +35,32 @@ class MainActivity : AppCompatActivity() {
 
         lateinit var target_plugin: String
 
-        var conn = object : ServiceConnection {
+        fun disconnect() {
+            Log.i("HostMainActivity", "disconnect invoked")
+            GlobalScope.launch {
+                context.unbindService(conn)
+                intent = null
+            }
+        }
+
+        var conn : ServiceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                Log.i("HostMainActivity", "onServiceConnected invoked")
+                Log.i("MainActivity", "onServiceConnected invoked")
                 GlobalScope.launch {
-                    AudioPluginHost.initialize(context)
+                    // FIXME: do we need initialization here too? Not likely
+                    //AudioPluginHost.initialize(context)
                     AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, out_raw)
-                    AudioPluginHost.cleanup()
+                    //AudioPluginHost.cleanup()
                     context.applicationContext.run {
                         wavePostPlugin.setRawData(out_raw, {})
                         wavePostPlugin.progress = 100f
                     }
+                    disconnect()
                 }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                Log.i("HostMainActivity", "onServiceDisconnected invoked")
+                Log.i("MainActivity", "onServiceDisconnected invoked, most likely an unexpected crash?")
             }
         }
 
@@ -72,25 +82,21 @@ class MainActivity : AppCompatActivity() {
 
             if (isOutProcess) {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    if (intent != null) {
-                        Log.i("Stopping ", "${service.name} | ${service.packageName} | ${service.className}")
-                        context.stopService(intent)
-                        context.unbindService(conn)
-                        intent = null
-                    } else {
-                        Log.i("Instantiating ", "${service.name} | ${service.packageName} | ${service.className}")
+                    Log.i(
+                        "Instantiating ",
+                        "${service.name} | ${service.packageName} | ${service.className}"
+                    )
 
-                        intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
-                        intent!!.component = ComponentName(
-                            service.packageName,
-                            service.className
-                        )
-                        intent!!.putExtra("sampleRate", fixed_sample_rate)
-                        intent!!.putExtra("pluginId", plugin.pluginId)
+                    intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
+                    intent!!.component = ComponentName(
+                        service.packageName,
+                        service.className
+                    )
+                    intent!!.putExtra("sampleRate", fixed_sample_rate)
+                    intent!!.putExtra("pluginId", plugin.pluginId)
 
-                        target_plugin = plugin.pluginId!!
-                        context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
-                    }
+                    target_plugin = plugin.pluginId!!
+                    context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
                 }
             } else {
                 view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->

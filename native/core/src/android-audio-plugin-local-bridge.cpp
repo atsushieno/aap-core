@@ -57,7 +57,7 @@ void aap_local_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioP
     ctx->instance->setState(input->raw_data, 0, input->data_size);
 }
 
-aap::PluginInformation **local_plugin_infos;
+aap::PluginInformation **local_plugin_infos{nullptr};
 
 AndroidAudioPlugin* aap_local_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
