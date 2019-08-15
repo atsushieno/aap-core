@@ -108,8 +108,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         AudioPluginHost.initialize(context)
                         AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
-                        // FIXME: uncomment
-                        //AudioPluginHost.cleanup()
+                        AudioPluginHost.cleanup()
                     }
                     AudioPluginLV2LocalHost.cleanup()
                     wavePostPlugin.setRawData(out_raw, {})
