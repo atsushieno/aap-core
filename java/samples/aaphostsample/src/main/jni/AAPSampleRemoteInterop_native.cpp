@@ -29,7 +29,7 @@ namespace aap {
 
 namespace aapremote {
 
-int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, void *wav, int wavLength, void *outWav)
+int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, int wavLength, void *audioInBytesL, void *audioInBytesR, void *audioOutBytesL, void *audioOutBytesR)
 {
     int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);
@@ -114,9 +114,11 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
-        memcpy(audioIn, ((char*) wav) + b, size);
+        // FIXME: handle ALL audio in bytes
+        memcpy(audioIn, ((char*) audioInBytesL) + b, size);
         proxy->process(0);
-        memcpy(((char*) outWav) + b, currentAudioOut, size);
+        // FIXME: handle ALL audio out bytes
+        memcpy(((char*) audioOutBytesL) + b, currentAudioOut, size);
     }
 
     proxy->deactivate();
@@ -152,12 +154,18 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 extern "C" {
 
 
-int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray wav, jbyteArray outWav)
+int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
 {
-    int wavLength = env->GetArrayLength(wav);
-    void *wavBytes = calloc(wavLength, 1);
-    env->GetByteArrayRegion(wav, 0, wavLength, (jbyte *) wavBytes);
-    void *outWavBytes = calloc(wavLength, 1);
+    int wavLength = env->GetArrayLength(audioInL);
+    assert(wavLength == env->GetArrayLength(audioInR));
+    assert(wavLength == env->GetArrayLength(audioOutL));
+    assert(wavLength == env->GetArrayLength(audioOutR));
+    void *audioInBytesL = calloc(wavLength, 1);
+    void *audioInBytesR = calloc(wavLength, 1);
+    env->GetByteArrayRegion(audioInL, 0, wavLength, (jbyte *) audioInBytesL);
+    env->GetByteArrayRegion(audioInR, 0, wavLength, (jbyte *) audioInBytesR);
+    void *audioOutBytesL = calloc(wavLength, 1);
+    void *audioOutBytesR = calloc(wavLength, 1);
 
     jboolean dup;
     const char *pluginId_ = env->GetStringUTFChars(jPluginId, &dup);
@@ -174,14 +182,17 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
 
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
     auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
-    int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavBytes, wavLength, outWavBytes);
-    env->SetByteArrayRegion(outWav, 0, wavLength, (jbyte*) outWavBytes);
+    int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
+    env->SetByteArrayRegion(audioOutL, 0, wavLength, (jbyte*) audioOutBytesL);
+    env->SetByteArrayRegion(audioOutR, 0, wavLength, (jbyte*) audioOutBytesR);
 
     // FIXME: this causes crash?
     //delete proxy;
 
-    free(wavBytes);
-    free(outWavBytes);
+    free(audioInBytesL);
+    free(audioInBytesR);
+    free(audioOutBytesL);
+    free(audioOutBytesR);
     return ret;
 }
 

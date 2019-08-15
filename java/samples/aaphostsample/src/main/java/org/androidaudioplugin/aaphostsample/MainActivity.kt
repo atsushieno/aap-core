@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         lateinit var target_plugin: String
 
         fun disconnect() {
-            Log.i("HostMainActivity", "disconnect invoked")
+            Log.i("MainActivity", "disconnect invoked")
             GlobalScope.launch {
                 context.unbindService(conn)
                 intent = null
@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
                 GlobalScope.launch {
                     // FIXME: do we need initialization here too? Not likely
                     //AudioPluginHost.initialize(context)
-                    AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, out_raw)
+                    AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, in_raw, out_raw, out_raw)
                     //AudioPluginHost.cleanup()
                     context.applicationContext.run {
                         wavePostPlugin.setRawData(out_raw, {})
@@ -107,6 +107,7 @@ class MainActivity : AppCompatActivity() {
                         AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
                     } else {
                         AudioPluginHost.initialize(context)
+                        // FIXME: get valid buffers
                         AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
                         AudioPluginHost.cleanup()
                     }
