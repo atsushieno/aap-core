@@ -36,12 +36,15 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     /* instantiate plugins and connect ports */
 
-    int audioInFD = ASharedMemory_create("audioInFD", buffer_size);
+    int audioInLFD = ASharedMemory_create("audioInLFD", buffer_size);
+    int audioInRFD = ASharedMemory_create("audioInRFD", buffer_size);
     int midiInFD = ASharedMemory_create("midiInFD", buffer_size);
     int controlInFD = ASharedMemory_create("controlInFD", buffer_size);
     int dummyBufferFD = ASharedMemory_create("dummyBufferFD", buffer_size);
 
-    float *audioIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInFD, 0);
+    // FIXME: process more channels
+    float *audioInL = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInLFD, 0);
+    float *audioInR = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInRFD, 0);
     float *midiIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, midiInFD, 0);
     float *controlIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, controlInFD, 0);
     float *dummyBuffer = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, dummyBufferFD, 0);
@@ -51,8 +54,10 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     std::vector<int64_t> buffer_shm_fds;
     buffer_shm_fds.resize(nPorts, 0);
 
-    float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
-    int64_t currentAudioInFD = audioInFD, currentAudioOutFD = 0, currentMidiInFD = midiInFD, currentMidiOutFD = 0;
+    float *currentAudioInL = audioInL, *currentAudioInR = audioInR, *currentAudioOutL = NULL, *currentAudioOutR = NULL,
+        *currentMidiIn = midiIn, *currentMidiOut = NULL;
+    int64_t currentAudioInLFD = audioInLFD, currentAudioInRFD = audioInRFD, currentAudioOutLFD = 0, currentAudioOutRFD = 0,
+        currentMidiInFD = midiInFD, currentMidiOutFD = 0;
 
     // enter processing...
 
@@ -62,17 +67,28 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     auto plugin_buffer = new AndroidAudioPluginBuffer();
     plugin_buffer->num_frames = buffer_size / sizeof(float);
     plugin_buffer->buffers = (void **) calloc(nPorts + 1, sizeof(void *));
+    int audioInChannelMapped = 0, audioOutChannelMapped = 0;
     for (int p = 0; p < nPorts; p++) {
         auto port = desc->getPort(p);
         if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
             port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
-            buffer_shm_fds[p] = currentAudioInFD;
-            plugin_buffer->buffers[p] = currentAudioIn;
+            buffer_shm_fds[p] = audioInChannelMapped > 0 ? currentAudioInRFD : currentAudioInLFD;
+            plugin_buffer->buffers[p] = audioInChannelMapped > 0 ? currentAudioInR : currentAudioInL;
+            audioInChannelMapped++;
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
-            buffer_shm_fds[p] = currentAudioOutFD = ASharedMemory_create(port->getName(), buffer_size);
-            plugin_buffer->buffers[p] = currentAudioOut = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
+            auto s = ASharedMemory_create(port->getName(), buffer_size);
+            if (audioOutChannelMapped > 0)
+                currentAudioOutRFD = buffer_shm_fds[p] = s;
+            else
+                currentAudioOutLFD = buffer_shm_fds[p] = s;
+            auto b = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
+            if (audioOutChannelMapped > 0)
+                plugin_buffer->buffers[p] = currentAudioOutR = b;
+            else
+                plugin_buffer->buffers[p] = currentAudioOutL = b;
+            audioOutChannelMapped++;
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
@@ -93,9 +109,13 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             plugin_buffer->buffers[p] = dummyBuffer;
         }
     }
-    if (currentAudioOut) {
-        currentAudioIn = currentAudioOut;
-        currentAudioInFD = currentAudioOutFD;
+    if (currentAudioOutL) {
+        currentAudioInL = currentAudioOutL;
+        currentAudioInLFD = currentAudioOutLFD;
+    }
+    if (currentAudioOutR) {
+        currentAudioInR = currentAudioOutR;
+        currentAudioInRFD = currentAudioOutRFD;
     }
     if (currentMidiOut) {
         currentMidiIn = currentMidiOut;
@@ -114,11 +134,17 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
-        // FIXME: handle ALL audio in bytes
-        memcpy(audioIn, ((char*) audioInBytesL) + b, size);
+        // FIXME: handle more channels
+        if (audioInBytesL)
+            memcpy(audioInL, ((char*) audioInBytesL) + b, size);
+        if (audioInBytesR)
+            memcpy(audioInR, ((char*) audioInBytesR) + b, size);
         proxy->process(0);
-        // FIXME: handle ALL audio out bytes
-        memcpy(((char*) audioOutBytesL) + b, currentAudioOut, size);
+        // FIXME: handle more channels
+        if (audioOutBytesL)
+            memcpy(((char*) audioOutBytesL) + b, currentAudioOutL, size);
+        if (audioOutBytesR)
+            memcpy(((char*) audioOutBytesR) + b, currentAudioOutR, size);
     }
 
     proxy->deactivate();
@@ -126,7 +152,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     for (int p = 0; plugin_buffer->buffers[p]; p++)
         if(plugin_buffer->buffers[p] != nullptr
            && plugin_buffer->buffers[p] != dummyBuffer
-           && plugin_buffer->buffers[p] != audioIn
+           && plugin_buffer->buffers[p] != audioInL
+           && plugin_buffer->buffers[p] != audioInR
            && plugin_buffer->buffers[p] != midiIn
            && plugin_buffer->buffers[p] != controlIn)
             munmap(plugin_buffer->buffers[p], buffer_size);
@@ -135,12 +162,14 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     proxy->destroy();
 
-    munmap(audioIn, buffer_size);
+    munmap(audioInL, buffer_size);
+    munmap(audioInR, buffer_size);
     munmap(midiIn, buffer_size);
     munmap(controlIn, buffer_size);
     munmap(dummyBuffer, buffer_size);
 
-    close(audioInFD);
+    close(audioInLFD);
+    close(audioInRFD);
     close(midiInFD);
     close(controlInFD);
     close(dummyBufferFD);
@@ -168,18 +197,19 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     void *audioOutBytesL = calloc(wavLength, 1);
     void *audioOutBytesR = calloc(wavLength, 1);
 
+    assert(jPluginId != nullptr);
     jboolean dup;
     const char *pluginId_ = env->GetStringUTFChars(jPluginId, &dup);
     auto pluginId = strdup(pluginId_);
     env->ReleaseStringUTFChars(jPluginId, pluginId_);
     aap::PluginInformation *pluginInfo;
-    int p = 0;
-    while (local_plugin_infos[p]) {
+    for (int p = 0; local_plugin_infos[p] != nullptr; p++) {
         if (strcmp(local_plugin_infos[p]->getPluginID(), pluginId) == 0) {
             pluginInfo = local_plugin_infos[p];
             break;
         }
     }
+    assert(pluginInfo != nullptr);
 
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
     auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
@@ -195,6 +225,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     free(audioInBytesR);
     free(audioOutBytesL);
     free(audioOutBytesR);
+
     return ret;
 }
 
