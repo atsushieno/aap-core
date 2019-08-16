@@ -107,17 +107,22 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	const char *file = descriptor->getLocalPluginSharedLibrary();
 	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file ? file : "libandroidaudioplugin.so", RTLD_LAZY);
+	assert (dl != nullptr);
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint ? entrypoint : "GetAndroidAudioPluginFactory");
+	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
-
+	assert (pluginFactory != nullptr);
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor)
 {
-	auto dl = dlopen("androidaudioplugin", RTLD_LAZY);
+	auto dl = dlopen("libandroidaudioplugin.so", RTLD_LAZY);
+	assert (dl != nullptr);
 	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactoryClientBridge");
+	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
+	assert (pluginFactory != nullptr);
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
