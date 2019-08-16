@@ -1,5 +1,7 @@
 package org.androidaudioplugin.aaphostsample
 
+import org.androidaudioplugin.aaphostsample.*
+
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -47,10 +49,16 @@ class MainActivity : AppCompatActivity() {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Log.i("MainActivity", "onServiceConnected invoked")
                 GlobalScope.launch {
-                    // FIXME: do we need initialization here too? Not likely
-                    //AudioPluginHost.initialize(context)
+
+                    var handleInitialization = !AudioPluginHost.initialized
+                    if (handleInitialization)
+                        AudioPluginHost.initialize(context)
+
                     AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
-                    //AudioPluginHost.cleanup()
+
+                    if (handleInitialization)
+                        AudioPluginHost.cleanup()
+
                     context.applicationContext.run {
                         // FIXME: merge L/R
                         wavePostPlugin.setRawData(out_rawL, {})

@@ -278,7 +278,7 @@ void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass 
     local_plugin_infos[infoSize] = nullptr;
 }
 
-void Java_org_androidaudioplugin_AudioPluginHost_cleanup(JNIEnv *env, jclass cls)
+void Java_org_androidaudioplugin_AudioPluginHost_cleanupNatives(JNIEnv *env, jclass cls)
 {
     assert(local_plugin_infos != nullptr);
     int n = 0;

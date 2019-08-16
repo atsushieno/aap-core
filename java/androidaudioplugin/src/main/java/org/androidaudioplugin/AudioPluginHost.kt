@@ -17,6 +17,8 @@ class AudioPluginHost {
             System.loadLibrary("androidaudioplugin")
         }
 
+        var initialized: Boolean = false
+
         @JvmStatic
         fun initialize(context: Context)
         {
@@ -34,13 +36,21 @@ class AudioPluginHost {
             }
             var pluginInfos = queryAudioPluginServices(context).flatMap { i -> i.plugins }.toTypedArray()
             initialize(pluginInfos)
+            initialized = true
         }
 
         @JvmStatic
         external fun initialize(pluginInfos: Array<PluginInformation>)
 
         @JvmStatic
-        external fun cleanup()
+        fun cleanup()
+        {
+            cleanupNatives()
+            initialized = false
+        }
+
+        @JvmStatic
+        external fun cleanupNatives()
 
         private fun parseAapMetadata(isOutProcess: Boolean, name: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
             // TODO: this XML parsing is super hacky so far.
