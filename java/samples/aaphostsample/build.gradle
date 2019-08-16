@@ -12,21 +12,21 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.1"
     defaultConfig {
-        applicationId "org.androidaudioplugin"
+        applicationId "org.androidaudioplugin.aaphostsample"
         minSdkVersion 29
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        /* Enable this section if you want to debug native code using AddressSanitizer
+        //* Enable this section if you want to debug native code using AddressSanitizer
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                 cppFlags "-fsanitize=address -fno-omit-frame-pointer"
             }
         }
-        */
+        //*/
     }
     buildTypes {
         release {

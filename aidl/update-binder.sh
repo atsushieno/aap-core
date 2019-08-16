@@ -11,5 +11,5 @@ $AIDL_TOOL --lang=ndk \
 	-h $THIS_DIR/../native/aap-android/src/gen/include \
 	org/androidaudioplugin/AudioPluginInterface.aidl
 $AIDL_TOOL --lang=java \
-	-o $THIS_DIR/../java/androidaudioplugin/src/main/gen org/androidaudioplugin/AudioPluginInterface.aidl
+	-o $THIS_DIR/../java/androidaudioplugin/src/main/ org/androidaudioplugin/AudioPluginInterface.aidl
 

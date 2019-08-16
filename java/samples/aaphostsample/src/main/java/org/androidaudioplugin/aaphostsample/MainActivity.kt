@@ -48,13 +48,20 @@ class MainActivity : AppCompatActivity() {
         var conn : ServiceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Log.i("MainActivity", "onServiceConnected invoked")
+
+                if (binder == null)
+                    throw UnsupportedOperationException ("binder must not be null")
+
+                // FIXME: it would make more sense if the binder is attached "org.androidaudioplugin.AudioPluginInterface" here.
+                //        Or... actually I'm not sure. The interface should be sorted out.
+
                 GlobalScope.launch {
 
                     var handleInitialization = !AudioPluginHost.initialized
                     if (handleInitialization)
                         AudioPluginHost.initialize(context)
 
-                    AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
+                    AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
 
                     if (handleInitialization)
                         AudioPluginHost.cleanup()

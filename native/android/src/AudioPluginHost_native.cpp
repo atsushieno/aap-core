@@ -73,6 +73,7 @@ public:
                     munmap(buffer.buffers[i], current_buffer_size);
                 sharedMemoryFDs[i] = newFDs[i];
                 buffer.buffers[i] = mmap(nullptr, current_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, sharedMemoryFDs[i], 0);
+                assert(buffer.buffers[i] != nullptr);
             }
         }
         buffer.buffers[newFDs.size()] = nullptr;

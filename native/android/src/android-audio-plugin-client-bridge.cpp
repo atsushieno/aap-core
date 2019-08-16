@@ -2,21 +2,33 @@
 #include <sys/mman.h>
 #include <cstdlib>
 #include <android/sharedmem.h>
+#include <android/log.h>
+#include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
 #include "aidl/org/androidaudioplugin/AudioPluginInterface.h"
 
 class AAPClientContext {
 public:
 	const char *unique_id;
+	ndk::SpAIBinder binder;
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
 	AndroidAudioPluginBuffer *previous_buffer;
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
-	AAPClientContext(const char *pluginUniqueId, std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy)
-		: unique_id(pluginUniqueId), proxy(proxy)
+	AAPClientContext(const char *pluginUniqueId, AIBinder_Class *cls)
+		: unique_id(pluginUniqueId)
 	{
-	}
+		// FIXME: this cls should be altered.
+        binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
+        proxy = aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(binder);
+    }
+
+    ~AAPClientContext()
+    {
+	    proxy->destroy();
+	    binder.set(nullptr);
+    }
 };
 
 void releaseStateBuffer(AAPClientContext *ctx)
@@ -99,9 +111,22 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	ctx->proxy->setState((long) input->raw_data, input->data_size);
 }
 
-void* aap_binder_on_create(void* args) { return nullptr; }
-void aap_binder_on_destroy(void *userData) {}
-binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out) { return STATUS_OK; }
+void* aap_binder_on_create(void* args)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_create invoked");
+    return nullptr;
+}
+
+void aap_binder_on_destroy(void *userData)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_destroy invoked");
+}
+
+binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
+{
+    __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_transact invoked");
+    return STATUS_OK;
+}
 
 AndroidAudioPlugin* aap_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
@@ -110,12 +135,15 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions	// unused
 	)
 {
-	AIBinder_Class *cls = AIBinder_Class_define("AudioPluginService",
-												aap_binder_on_create,
-												aap_binder_on_destroy,
-												aap_binder_on_transact);
-	auto binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
-	auto ctx = new AAPClientContext(pluginUniqueId, aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(binder));
+	assert(pluginFactory != nullptr);
+	assert(pluginUniqueId != nullptr);
+
+	// FIXME: it feels like very dummy.
+	AIBinder_Class *cls = AIBinder_Class_define("org.androidaudioplugin.AudioPluginInterface",
+                                                aap_binder_on_create,
+                                                aap_binder_on_destroy,
+                                                aap_binder_on_transact);
+	auto ctx = new AAPClientContext(pluginUniqueId, cls);
 	ctx->proxy->create(pluginUniqueId, aapSampleRate);
 	return new AndroidAudioPlugin {
 		ctx,
@@ -134,7 +162,6 @@ void aap_bridge_plugin_delete(
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
 	releaseStateBuffer(ctx);
-	ctx->proxy->destroy();
 
 	delete ctx;
 	delete instance;

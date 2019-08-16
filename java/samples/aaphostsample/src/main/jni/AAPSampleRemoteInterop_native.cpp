@@ -185,6 +185,8 @@ extern "C" {
 
 int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
 {
+    assert(local_plugin_infos != nullptr);
+
     int wavLength = env->GetArrayLength(audioInL);
     assert(wavLength == env->GetArrayLength(audioInR));
     assert(wavLength == env->GetArrayLength(audioOutL));
@@ -212,6 +214,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(pluginInfo != nullptr);
 
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
+
     auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
     int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
 
@@ -225,7 +228,6 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     free(audioInBytesR);
     free(audioOutBytesL);
     free(audioOutBytesR);
-
     return ret;
 }
 

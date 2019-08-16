@@ -413,6 +413,8 @@ interface AudioPluginService {
 
 `juce/Source/juce_android_audio_plugin_format.cpp` implements juce:AudioPluginFormat and related stuff.
 
+We are quite unsure if JUCE audio processors builds for Android.
+
 
 ## Samples
 
