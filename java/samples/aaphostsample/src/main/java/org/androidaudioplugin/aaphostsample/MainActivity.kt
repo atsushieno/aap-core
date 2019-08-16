@@ -49,10 +49,11 @@ class MainActivity : AppCompatActivity() {
                 GlobalScope.launch {
                     // FIXME: do we need initialization here too? Not likely
                     //AudioPluginHost.initialize(context)
-                    AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_raw, in_raw, out_raw, out_raw)
+                    AAPSampleInterop.runClientAAP(binder!!, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
                     //AudioPluginHost.cleanup()
                     context.applicationContext.run {
-                        wavePostPlugin.setRawData(out_raw, {})
+                        // FIXME: merge L/R
+                        wavePostPlugin.setRawData(out_rawL, {})
                         wavePostPlugin.progress = 100f
                     }
                     disconnect()
@@ -104,15 +105,17 @@ class MainActivity : AppCompatActivity() {
                     val uri = pluginId.substring("lv2:".length)
                     AudioPluginLV2LocalHost.initialize(this@MainActivity)
                     if (false) {
-                        AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_raw, out_raw)
+                        // FIXME: pass valid buffers
+                        AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_rawL, out_rawL)
                     } else {
                         AudioPluginHost.initialize(context)
-                        // FIXME: get valid buffers
-                        AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_raw, out_raw)
+                        // FIXME: pass valid buffers
+                        AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, out_rawL)
                         AudioPluginHost.cleanup()
                     }
                     AudioPluginLV2LocalHost.cleanup()
-                    wavePostPlugin.setRawData(out_raw, {})
+                    // FIXME: merge L/R
+                    wavePostPlugin.setRawData(out_rawL, {})
                     wavePostPlugin.progress = 100f
                 }
             }
@@ -123,17 +126,21 @@ class MainActivity : AppCompatActivity() {
 
     // FIXME: this should be customizible, depending on the device configuration (sample input should be decoded appropriately).
     val fixed_sample_rate = 44100
-    lateinit var in_raw: ByteArray
-    lateinit var out_raw: ByteArray
+    lateinit var in_rawL: ByteArray
+    lateinit var in_rawR: ByteArray
+    lateinit var out_rawL: ByteArray
+    lateinit var out_rawR: ByteArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         val wavAsset = assets.open("sample.wav")
-        in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        in_rawL = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
         wavAsset.close()
-        out_raw = ByteArray(in_raw.size)
+        in_rawR = in_rawL.clone()
+        out_rawL = ByteArray(in_rawL.size)
+        out_rawR = ByteArray(in_rawL.size)
 
         // Query AAPs
         val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
@@ -149,13 +156,13 @@ class MainActivity : AppCompatActivity() {
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
 
-        wavePrePlugin.setRawData(in_raw, {})
+        wavePrePlugin.setRawData(in_rawL, {})
         wavePrePlugin.progress = 100f
     }
 
     fun playSound(sampleRate: Int, postApplied: Boolean)
     {
-        val w = if(postApplied) out_raw else in_raw
+        val w = if(postApplied) out_rawL else in_rawL
         val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()

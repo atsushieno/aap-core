@@ -160,6 +160,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(wavLength == env->GetArrayLength(audioInR));
     assert(wavLength == env->GetArrayLength(audioOutL));
     assert(wavLength == env->GetArrayLength(audioOutR));
+
     void *audioInBytesL = calloc(wavLength, 1);
     void *audioInBytesR = calloc(wavLength, 1);
     env->GetByteArrayRegion(audioInL, 0, wavLength, (jbyte *) audioInBytesL);
@@ -183,6 +184,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
     auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
     int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
+
     env->SetByteArrayRegion(audioOutL, 0, wavLength, (jbyte*) audioOutBytesL);
     env->SetByteArrayRegion(audioOutR, 0, wavLength, (jbyte*) audioOutBytesR);
 
