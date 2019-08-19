@@ -124,14 +124,16 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     }
 
     // prepare connections
-    proxy->prepare(plugin_buffer->num_frames, nPorts, buffer_shm_fds);
+    auto status2 = proxy->prepare(plugin_buffer->num_frames, nPorts, buffer_shm_fds);
+    assert (status2.isOk());
 
     // prepare inputs
     for (int i = 0; i < float_count; i++)
         controlIn[i] = 0.5;
 
     // activate, run, deactivate
-    proxy->activate();
+    auto status3 = proxy->activate();
+    assert (status3.isOk());
 
     for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
@@ -140,7 +142,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             memcpy(audioInL, ((char*) audioInBytesL) + b, size);
         if (audioInBytesR)
             memcpy(audioInR, ((char*) audioInBytesR) + b, size);
-        proxy->process(0);
+        auto status4 = proxy->process(0);
+        assert (status4.isOk());
         // FIXME: handle more channels
         if (audioOutBytesL)
             memcpy(((char*) audioOutBytesL) + b, currentAudioOutL, size);
@@ -148,7 +151,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             memcpy(((char*) audioOutBytesR) + b, currentAudioOutR, size);
     }
 
-    proxy->deactivate();
+    auto status5 = proxy->deactivate();
+    assert (status5.isOk());
 
     for (int p = 0; plugin_buffer->buffers[p]; p++)
         if(plugin_buffer->buffers[p] != nullptr
@@ -161,7 +165,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     free(plugin_buffer->buffers);
     delete plugin_buffer;
 
-    proxy->destroy();
+    auto status6 = proxy->destroy();
+    assert (status6.isOk());
 
     munmap(audioInL, buffer_size);
     munmap(audioInR, buffer_size);

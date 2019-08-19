@@ -57,7 +57,8 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	for (int i = 0; i < n; i++)
 		pointers.push_back((long) buffer->buffers[i]);
 	// FIXME: status check
-	ctx->proxy->prepare(buffer->num_frames, n, pointers);
+	auto status = ctx->proxy->prepare(buffer->num_frames, n, pointers);
+    assert (status.isOk());
 	ctx->previous_buffer = buffer;
 }
 
@@ -71,7 +72,8 @@ void aap_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuf
 void aap_bridge_plugin_activate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	ctx->proxy->activate();
+    auto status = ctx->proxy->activate();
+    assert (status.isOk());
 }
 
 void aap_bridge_plugin_process(AndroidAudioPlugin *plugin,
@@ -81,13 +83,15 @@ void aap_bridge_plugin_process(AndroidAudioPlugin *plugin,
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	if (ctx->previous_buffer != buffer)
 		resetBuffers(ctx, buffer);
-	ctx->proxy->process(timeoutInNanoseconds);
+	auto status = ctx->proxy->process(timeoutInNanoseconds);
+    assert (status.isOk());
 }
 
 void aap_bridge_plugin_deactivate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	ctx->proxy->deactivate();
+	auto status = ctx->proxy->deactivate();
+    assert (status.isOk());
 }
 
 const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin)
@@ -95,11 +99,13 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	int size;
 	// FIXME: status check
-	ctx->proxy->getStateSize(&size);
+	auto status = ctx->proxy->getStateSize(&size);
+    assert (status.isOk());
 	ensureStateBuffer(ctx, size);
 	// FIXME: status check
 	// FIXME: Maybe this should be one call for potential state length mismatch.
-	ctx->proxy->getState((long) &ctx->state.raw_data);
+	auto status2 = ctx->proxy->getState((long) &ctx->state.raw_data);
+    assert (status2.isOk());
 }
 
 void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
@@ -108,7 +114,8 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	// we have to ensure that the pointer is shared memory, so use state buffer inside ctx.
 	ensureStateBuffer(ctx, input->data_size);
 	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
-	ctx->proxy->setState((long) input->raw_data, input->data_size);
+	auto status = ctx->proxy->setState((long) input->raw_data, input->data_size);
+    assert (status.isOk());
 }
 
 binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
@@ -129,7 +136,8 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 
 	auto cls = aidl::org::androidaudioplugin::BpAudioPluginInterface::defineClass("org_androidaudioplugin.AudioPluginInterface", aap_binder_on_transact);
 	auto ctx = new AAPClientContext(pluginUniqueId, cls);
-	ctx->proxy->create(pluginUniqueId, aapSampleRate);
+	auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate);
+    assert (status.isOk());
 	return new AndroidAudioPlugin {
 		ctx,
 		aap_bridge_plugin_prepare,
