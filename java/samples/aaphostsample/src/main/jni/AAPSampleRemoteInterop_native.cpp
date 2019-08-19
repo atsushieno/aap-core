@@ -10,11 +10,9 @@
 #include <android/sharedmem.h>
 #include <android/log.h>
 #include <sys/mman.h>
-#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
+#include "aidl/org/androidaudioplugin/AudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/android-audio-plugin-host.hpp"
-
-aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
 
 extern "C" {
 extern aap::PluginInformation **local_plugin_infos;
@@ -31,6 +29,9 @@ namespace aapremote {
 
 int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, int wavLength, void *audioInBytesL, void *audioInBytesR, void *audioOutBytesL, void *audioOutBytesR)
 {
+    assert(proxy != nullptr);
+    assert(pluginInfo != nullptr);
+
     int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);
 
@@ -214,9 +215,9 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(pluginInfo != nullptr);
 
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
-
-    auto proxy = new aidl::org::androidaudioplugin::BpAudioPluginInterface(ndk::SpAIBinder(binder));
-    int ret = aapremote::runClientAAP(proxy, sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
+    auto spBinder = ndk::SpAIBinder{binder};
+    auto proxy = aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(spBinder);
+    int ret = aapremote::runClientAAP(proxy.get(), sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
 
     env->SetByteArrayRegion(audioOutL, 0, wavLength, (jbyte*) audioOutBytesL);
     env->SetByteArrayRegion(audioOutR, 0, wavLength, (jbyte*) audioOutBytesR);
