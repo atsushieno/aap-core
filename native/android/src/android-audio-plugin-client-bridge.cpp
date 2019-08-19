@@ -19,9 +19,8 @@ public:
 	AAPClientContext(const char *pluginUniqueId, AIBinder_Class *cls)
 		: unique_id(pluginUniqueId)
 	{
-		// FIXME: this cls should be altered.
         binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
-        proxy = aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(binder);
+        proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(binder);
     }
 
     ~AAPClientContext()
