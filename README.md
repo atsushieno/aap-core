@@ -486,7 +486,7 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 
 
 
-## android-audio-plugin-framework source tree structure
+### android-audio-plugin-framework source tree structure
 
 - README.md - this file.
 - dependencies
@@ -511,6 +511,36 @@ And note that access to assets is not as simple as that to filesystem. It is imp
     - androidTest (currently empty)
   - androidaudioplugin-LV2 (aar) - follows the same AGP-modules structure
   - androidaudioplugin-VST3 (aar; TODO) - follows the same AGP-modules structure
-  - aaphostsample - sample app - follows the same AGP-modules structure
+  - samples
+    - aaphostsample - sample app - follows the same AGP-modules structure
 - tools
   - aap-import-lv2-metadata
+
+
+### Building two apps
+
+AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). At this state the code structure and the way how we debug apps is hacky; we rewrite `applicationId` part of `build.gradle` in `aaphostsample` to basically duplicate two apps, and run the client which launches service in the end.
+
+It is manually done for now, depending on which part we want to debug. There should be better way to handle that in the future.
+
+
+### Build with AddressSanitizer
+
+When debugging AAP framework itself (and probably plugins too), AddressSanitizer (asan) is very helpful to investigate the native code issues. To enable asan, we have additional lines in `build.gradle` wherever NDK-based native builds are involved:
+
+```
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
+                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+            }
+        }
+    }
+```
+
+Depending on the development stage they are either enabled or not. Stable releases should have these lines commented out.
+
+Note that the ASAN options are specified only for libandroidaudioplugin.so and libaaphostsample.so. To enable ASAN in dependencies, pass appropriate build arguments to them as well.
+
