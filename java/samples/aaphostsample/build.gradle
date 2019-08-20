@@ -12,7 +12,7 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.1"
     defaultConfig {
-        applicationId "org.androidaudioplugin.aaphostsample2"
+        applicationId "org.androidaudioplugin.aaphostsample"
         minSdkVersion 29
         targetSdkVersion 29
         versionCode 1

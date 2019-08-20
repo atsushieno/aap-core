@@ -45,10 +45,15 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     // FIXME: process more channels
     float *audioInL = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInLFD, 0);
+    assert(audioInL != nullptr);
     float *audioInR = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, audioInRFD, 0);
+    assert(audioInR != nullptr);
     float *midiIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, midiInFD, 0);
+    assert(midiIn != nullptr);
     float *controlIn = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, controlInFD, 0);
+    assert(controlIn != nullptr);
     float *dummyBuffer = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, dummyBufferFD, 0);
+    assert(dummyBuffer != nullptr);
 
     auto desc = pluginInfo;
     int nPorts = desc->getNumPorts();
@@ -85,6 +90,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             else
                 currentAudioOutLFD = buffer_shm_fds[p] = s;
             auto b = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
+            assert(b != nullptr);
             if (audioOutChannelMapped > 0)
                 plugin_buffer->buffers[p] = currentAudioOutR = b;
             else
@@ -100,6 +106,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
             buffer_shm_fds[p] = currentMidiOutFD = ASharedMemory_create(port->getName(), buffer_size);
             plugin_buffer->buffers[p] = currentMidiOut = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
+            assert(currentMidiOut != nullptr);
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT) {
             buffer_shm_fds[p] = controlInFD;
@@ -137,6 +144,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
+        //__android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "b %d size %d bs %d wl %d", b, size, buffer_size, wavLength);
         // FIXME: handle more channels
         if (audioInBytesL)
             memcpy(audioInL, ((char*) audioInBytesL) + b, size);
@@ -192,6 +200,10 @@ extern "C" {
 int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
 {
     assert(local_plugin_infos != nullptr);
+    assert(audioInL != nullptr);
+    assert(audioInR != nullptr);
+    assert(audioOutL != nullptr);
+    assert(audioOutR != nullptr);
 
     int wavLength = env->GetArrayLength(audioInL);
     assert(wavLength == env->GetArrayLength(audioInR));
@@ -199,11 +211,15 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(wavLength == env->GetArrayLength(audioOutR));
 
     void *audioInBytesL = calloc(wavLength, 1);
+    assert(audioInBytesL != nullptr);
     void *audioInBytesR = calloc(wavLength, 1);
+    assert(audioInBytesR != nullptr);
     env->GetByteArrayRegion(audioInL, 0, wavLength, (jbyte *) audioInBytesL);
     env->GetByteArrayRegion(audioInR, 0, wavLength, (jbyte *) audioInBytesR);
     void *audioOutBytesL = calloc(wavLength, 1);
+    assert(audioOutBytesL != nullptr);
     void *audioOutBytesR = calloc(wavLength, 1);
+    assert(audioOutBytesR != nullptr);
 
     assert(jPluginId != nullptr);
     jboolean dup;
