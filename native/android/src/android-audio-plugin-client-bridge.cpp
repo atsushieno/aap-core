@@ -4,7 +4,11 @@
 #include <android/sharedmem.h>
 #include <android/log.h>
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
+#include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
+#include "AudioPluginInterfaceImpl.h"
+
+const AIBinder_Class *_audio_plugin_clazz{nullptr};
 
 class AAPClientContext {
 public:
@@ -16,17 +20,28 @@ public:
 	int state_ashmem_fd;
 
 
-	AAPClientContext(const char *pluginUniqueId, AIBinder_Class *cls)
+    binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
+    {
+        __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_transact invoked");
+        return STATUS_OK;
+    }
+
+    AAPClientContext(const char *pluginUniqueId)
 		: unique_id(pluginUniqueId)
 	{
-        binder = ndk::SpAIBinder(AIBinder_new(cls, nullptr));
+        if (_audio_plugin_clazz == nullptr) {
+            aap::AudioPluginInterfaceImpl dummy{44100};
+            _audio_plugin_clazz = AIBinder_getClass(dummy.asBinder().get());
+        }
+        auto dummyUD = calloc(20000, 1);
+    	auto aibinder = AIBinder_new(_audio_plugin_clazz, dummyUD);
+	    binder.set(aibinder);
         proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(binder);
     }
 
     ~AAPClientContext()
     {
 	    proxy->destroy();
-	    binder.set(nullptr);
     }
 };
 
@@ -118,12 +133,6 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
     assert (status.isOk());
 }
 
-binder_status_t aap_binder_on_transact(AIBinder *binder, transaction_code_t code, const AParcel *in, AParcel *out)
-{
-    __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_transact invoked");
-    return STATUS_OK;
-}
-
 AndroidAudioPlugin* aap_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
@@ -134,8 +143,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
 
-	auto cls = aidl::org::androidaudioplugin::BpAudioPluginInterface::defineClass("org_androidaudioplugin.AudioPluginInterface", aap_binder_on_transact);
-	auto ctx = new AAPClientContext(pluginUniqueId, cls);
+	auto ctx = new AAPClientContext(pluginUniqueId);
 	auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate);
     assert (status.isOk());
 	return new AndroidAudioPlugin {
