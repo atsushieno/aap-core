@@ -2,7 +2,7 @@
 # This ensures that a certain set of CMake features is available to
 # your build.
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.6.0)
 
 # it is not usable until cmake 3.14...
 #target_link_directories(aapnativebridge
@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.4.1)
 #        )
 link_directories(
         "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
-        "${Project_SOURCE_DIR}/../../../native/build-android/${CMAKE_ANDROID_ARCH_ABI}/"
+        "${Project_SOURCE_DIR}/../../../build-android/${CMAKE_ANDROID_ARCH_ABI}/native/"
 )
 
 # Specifies a library name, specifies whether the library is STATIC or
