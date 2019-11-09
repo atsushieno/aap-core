@@ -19,14 +19,14 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        /* Enable this section if you want to debug native code using AddressSanitizer
         externalNativeBuild {
             cmake {
-                arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
-                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+                version "3.10"
+                // Enable this section if you want to debug native code using AddressSanitizer
+                //arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
+                //cppFlags "-fsanitize=address -fno-omit-frame-pointer"
             }
         }
-        */
     }
     buildTypes {
         release {
