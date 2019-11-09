@@ -10,6 +10,7 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <vector>
+#include <string>
 #include "aap/android-audio-plugin.h"
 
 
@@ -39,7 +40,7 @@ enum PluginInstantiationState {
 
 class PortInformation
 {
-	const char *name;
+	std::string name{};
 	ContentType content_type;
 	PortDirection direction;
 	
@@ -49,7 +50,7 @@ public:
 	{
 	}
 
-	const char* getName() const { return name; }
+	const char* getName() const { return name.data(); }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
 };
@@ -64,17 +65,17 @@ class PluginInformation
 	bool is_out_process;
 
 	// basic information
-	const char *name;
-	const char *manufacturer_name;
-	const char *version;
-	const char *identifier_string;
-	const char *shared_library_filename;
-	const char *library_entrypoint;
-	const char *plugin_id;
+	std::string name{};
+	std::string manufacturer_name{};
+	std::string version{};
+	std::string identifier_string{};
+	std::string shared_library_filename{};
+	std::string library_entrypoint{};
+	std::string plugin_id{};
 	long last_info_updated_unixtime;
 
 	/* NULL-terminated list of categories */
-	const char *primary_category;
+	std::string primary_category{};
 	/* NULL-terminated list of ports */
 	std::vector<const PortInformation*> ports;
 	/* NULL-terminated list of required extensions */
@@ -88,56 +89,49 @@ public:
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
 	PluginInformation(bool isOutProcess, const char* pluginName, const char* manufacturerName, const char* versionString, const char* pluginID, const char* sharedLibraryFilename, const char *libraryEntrypoint)
-		: name(safe_strdup(pluginName)),
-		  manufacturer_name(safe_strdup(manufacturerName)),
-		  version(safe_strdup(versionString)),
-		  shared_library_filename(safe_strdup(sharedLibraryFilename)),
-		  library_entrypoint(safe_strdup(libraryEntrypoint)),
-		  plugin_id(safe_strdup(pluginID)),
+		: name(pluginName),
+		  manufacturer_name(manufacturerName ? manufacturerName : ""),
+		  version(versionString ? versionString : ""),
+		  shared_library_filename(sharedLibraryFilename ? sharedLibraryFilename : ""),
+		  library_entrypoint(libraryEntrypoint ? libraryEntrypoint : ""),
+		  plugin_id(pluginID ? pluginID : ""),
 		  last_info_updated_unixtime((long) time(NULL)),
 		  is_out_process(isOutProcess)
 	{
 		char *cp;
-		int len = snprintf(nullptr, 0, "%s+%s+%s", name, plugin_id, version);
+		int len = snprintf(nullptr, 0, "%s+%s+%s", name.data(), plugin_id.data(), version.data());
 		cp = (char*) calloc(len, 1);
-		snprintf(cp, len, "%s+%s+%s", name, plugin_id, version);
-		identifier_string = (const char*) cp;
+		snprintf(cp, len, "%s+%s+%s", name.data(), plugin_id.data(), version.data());
+		identifier_string = cp;
 	}
 	
 	~PluginInformation()
 	{
-		SAFE_FREE(name)
-		SAFE_FREE(manufacturer_name)
-		SAFE_FREE(version)
-		SAFE_FREE(plugin_id)
-		SAFE_FREE(shared_library_filename)
-		SAFE_FREE(library_entrypoint)
-		SAFE_FREE(identifier_string)
 	}
 	
-	const char* getName() const
+	const std::string getName() const
 	{
 		return name;
 	}
 	
-	const char* getManufacturerName() const
+	const std::string getManufacturerName() const
 	{
 		return manufacturer_name;
 	}
 	
-	const char* getVersion() const
+	const std::string getVersion() const
 	{
 		return version;
 	}
 	
 	/* locally identifiable string.
 	 * It is combination of name+unique_id+version, to support plugin debugging. */
-	const char* getIdentifier() const
+	const std::string getIdentifier() const
 	{
 		return identifier_string;
 	}
 	
-	const char* getPrimaryCategory() const
+	const std::string getPrimaryCategory() const
 	{
 		return primary_category;
 	}
@@ -178,7 +172,7 @@ public:
 	}
 	
 	/* unique identifier across various environment */
-	const char* getPluginID() const
+	const std::string getPluginID() const
 	{
 		return plugin_id;
 	}
@@ -186,7 +180,7 @@ public:
 	bool isInstrument() const
 	{
 		// The purpose of this function seems to be based on hacky premise. So do we.
-		return strstr(getPrimaryCategory(), "Instrument") != NULL;
+		return strstr(getPrimaryCategory().data(), "Instrument") != NULL;
 	}
 	
 	bool hasSharedContainer() const
@@ -202,7 +196,7 @@ public:
 		return false;
 	}
 
-	const char* getLocalPluginSharedLibrary() const
+	const std::string getLocalPluginSharedLibrary() const
 	{
 		// By metadata or inferred.
 		// Since Android expects libraries stored in `lib` directory,
@@ -210,7 +204,7 @@ public:
 		return shared_library_filename;
 	}
 
-	const char* getLocalPluginLibraryEntryPoint() const
+	const std::string getLocalPluginLibraryEntryPoint() const
 	{
 		// can be null. "GetAndroidAudioPluginFactory" is used by default.
 		return library_entrypoint;
@@ -314,7 +308,7 @@ public:
 		int n = getNumPluginDescriptors();
 		for(int i = 0; i < n; i++) {
 			auto d = getPluginDescriptorAt(i);
-			auto id = d->getPluginID();
+			auto id = d->getPluginID().data();
 			if (strcmp(id, identifier) == 0)
 				return d;
 		}
@@ -363,7 +357,7 @@ public:
 	{
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 		
-		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID(), sampleRate, extensions);
+		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().data(), sampleRate, extensions);
 		plugin->prepare(plugin, preparedBuffer);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}

@@ -228,7 +228,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     env->ReleaseStringUTFChars(jPluginId, pluginId_);
     aap::PluginInformation *pluginInfo;
     for (int p = 0; local_plugin_infos[p] != nullptr; p++) {
-        if (strcmp(local_plugin_infos[p]->getPluginID(), pluginId) == 0) {
+        if (strcmp(local_plugin_infos[p]->getPluginID().data(), pluginId) == 0) {
             pluginInfo = local_plugin_infos[p];
             break;
         }

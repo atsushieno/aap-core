@@ -11,7 +11,7 @@ public:
 	aap::PluginInstance *instance;
 	int sample_rate;
 
-	const char* getPluginId()
+	const std::string getPluginId()
     {
         return instance->getPluginDescriptor()->getPluginID();
     }
