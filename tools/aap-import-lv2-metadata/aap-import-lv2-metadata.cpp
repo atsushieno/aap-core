@@ -132,6 +132,11 @@ int main(int argc, const char **argv)
 	sprintf(xmlFilename, "%s/aap_metadata.xml", xmldir);
 	fprintf(stderr, "Writing metadata file %s\n", xmlFilename);
 	FILE *xmlFP = fopen(xmlFilename, "w+");
+	if (!xmlFP) {
+		fprintf(stderr, "Failed to create XML output file: %s\n", xmlFilename);
+		return 1;
+	}
+	
 	fprintf(xmlFP, "<plugins>\n");
 
 	int numPlugins = lilv_plugins_size(plugins);

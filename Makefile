@@ -29,10 +29,11 @@ build-android-single:
 all: build-all
 
 import-lv2-deps: build-lv2-importer
+	mkdir -p java/samples/aaphostsample/src/main/res/xml
 	bash import-lv2-deps.sh
 
 build-lv2-importer:
-	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake .. && make
+	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:
 	cd java && ./gradlew assembleDebug
