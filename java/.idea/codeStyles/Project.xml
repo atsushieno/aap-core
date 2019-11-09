@@ -6,6 +6,11 @@
     <Objective-C>
       <option name="INDENT_NAMESPACE_MEMBERS" value="0" />
     </Objective-C>
+    <codeStyleSettings language="ObjectiveC">
+      <indentOptions>
+        <option name="USE_TAB_CHARACTER" value="true" />
+      </indentOptions>
+    </codeStyleSettings>
     <codeStyleSettings language="XML">
       <indentOptions>
         <option name="CONTINUATION_INDENT_SIZE" value="4" />
