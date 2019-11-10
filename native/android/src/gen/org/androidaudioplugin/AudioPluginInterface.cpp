@@ -45,19 +45,15 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
     }
     case (FIRST_CALL_TRANSACTION + 2 /*prepare*/): {
       int32_t in_frameCount;
-      int32_t in_bufferCount;
-      std::vector<int64_t> in_bufferPointers;
+      int32_t in_portCount;
 
       _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_frameCount);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_bufferCount);
+      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_portCount);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = ::ndk::AParcel_readVector(_aidl_in, &in_bufferPointers);
-      if (_aidl_ret_status != STATUS_OK) break;
-
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->prepare(in_frameCount, in_bufferCount, in_bufferPointers);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->prepare(in_frameCount, in_portCount);
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
       if (_aidl_ret_status != STATUS_OK) break;
 
@@ -65,7 +61,25 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 3 /*activate*/): {
+    case (FIRST_CALL_TRANSACTION + 3 /*prepareMemory*/): {
+      int32_t in_shmFDIndex;
+      ::ndk::ScopedFileDescriptor in_sharedMemoryFD;
+
+      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_shmFDIndex);
+      if (_aidl_ret_status != STATUS_OK) break;
+
+      _aidl_ret_status = ::ndk::AParcel_readRequiredParcelFileDescriptor(_aidl_in, &in_sharedMemoryFD);
+      if (_aidl_ret_status != STATUS_OK) break;
+
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->prepareMemory(in_shmFDIndex, in_sharedMemoryFD);
+      _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
+      if (_aidl_ret_status != STATUS_OK) break;
+
+      if (!AStatus_isOk(_aidl_status.get())) break;
+
+      break;
+    }
+    case (FIRST_CALL_TRANSACTION + 4 /*activate*/): {
 
       ::ndk::ScopedAStatus _aidl_status = _aidl_impl->activate();
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
@@ -75,7 +89,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 4 /*process*/): {
+    case (FIRST_CALL_TRANSACTION + 5 /*process*/): {
       int32_t in_timeoutInNanoseconds;
 
       _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_timeoutInNanoseconds);
@@ -89,7 +103,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 5 /*deactivate*/): {
+    case (FIRST_CALL_TRANSACTION + 6 /*deactivate*/): {
 
       ::ndk::ScopedAStatus _aidl_status = _aidl_impl->deactivate();
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
@@ -99,7 +113,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 6 /*getStateSize*/): {
+    case (FIRST_CALL_TRANSACTION + 7 /*getStateSize*/): {
       int32_t _aidl_return;
 
       ::ndk::ScopedAStatus _aidl_status = _aidl_impl->getStateSize(&_aidl_return);
@@ -113,13 +127,13 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 7 /*getState*/): {
-      int64_t in_pointer;
+    case (FIRST_CALL_TRANSACTION + 8 /*getState*/): {
+      ::ndk::ScopedFileDescriptor in_sharedMemoryFD;
 
-      _aidl_ret_status = AParcel_readInt64(_aidl_in, &in_pointer);
+      _aidl_ret_status = ::ndk::AParcel_readRequiredParcelFileDescriptor(_aidl_in, &in_sharedMemoryFD);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->getState(in_pointer);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->getState(in_sharedMemoryFD);
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
       if (_aidl_ret_status != STATUS_OK) break;
 
@@ -127,17 +141,17 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 8 /*setState*/): {
-      int64_t in_pointer;
+    case (FIRST_CALL_TRANSACTION + 9 /*setState*/): {
+      ::ndk::ScopedFileDescriptor in_sharedMemoryFD;
       int32_t in_size;
 
-      _aidl_ret_status = AParcel_readInt64(_aidl_in, &in_pointer);
+      _aidl_ret_status = ::ndk::AParcel_readRequiredParcelFileDescriptor(_aidl_in, &in_sharedMemoryFD);
       if (_aidl_ret_status != STATUS_OK) break;
 
       _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_size);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->setState(in_pointer, in_size);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->setState(in_sharedMemoryFD, in_size);
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
       if (_aidl_ret_status != STATUS_OK) break;
 
@@ -145,7 +159,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
 
       break;
     }
-    case (FIRST_CALL_TRANSACTION + 9 /*destroy*/): {
+    case (FIRST_CALL_TRANSACTION + 10 /*destroy*/): {
 
       ::ndk::ScopedAStatus _aidl_status = _aidl_impl->destroy();
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
@@ -231,7 +245,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_status.set(AStatus_fromStatus(_aidl_ret_status));
   return _aidl_status;
 }
-::ndk::ScopedAStatus BpAudioPluginInterface::prepare(int32_t in_frameCount, int32_t in_bufferCount, const std::vector<int64_t>& in_bufferPointers) {
+::ndk::ScopedAStatus BpAudioPluginInterface::prepare(int32_t in_frameCount, int32_t in_portCount) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -243,10 +257,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_frameCount);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_bufferCount);
-  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
-
-  _aidl_ret_status = ::ndk::AParcel_writeVector(_aidl_in.get(), in_bufferPointers);
+  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_portCount);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AIBinder_transact(
@@ -256,7 +267,42 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     _aidl_out.getR(),
     0);
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
-    return IAudioPluginInterface::getDefaultImpl()->prepare(in_frameCount, in_bufferCount, in_bufferPointers);
+    return IAudioPluginInterface::getDefaultImpl()->prepare(in_frameCount, in_portCount);
+  }
+  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
+
+  _aidl_ret_status = AParcel_readStatusHeader(_aidl_out.get(), _aidl_status.getR());
+  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
+
+  if (!AStatus_isOk(_aidl_status.get())) return _aidl_status;
+
+  _aidl_error:
+  _aidl_status.set(AStatus_fromStatus(_aidl_ret_status));
+  return _aidl_status;
+}
+::ndk::ScopedAStatus BpAudioPluginInterface::prepareMemory(int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) {
+  binder_status_t _aidl_ret_status = STATUS_OK;
+  ::ndk::ScopedAStatus _aidl_status;
+  ::ndk::ScopedAParcel _aidl_in;
+  ::ndk::ScopedAParcel _aidl_out;
+
+  _aidl_ret_status = AIBinder_prepareTransaction(asBinder().get(), _aidl_in.getR());
+  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
+
+  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_shmFDIndex);
+  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
+
+  _aidl_ret_status = ::ndk::AParcel_writeRequiredParcelFileDescriptor(_aidl_in.get(), in_sharedMemoryFD);
+  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
+
+  _aidl_ret_status = AIBinder_transact(
+    asBinder().get(),
+    (FIRST_CALL_TRANSACTION + 3 /*prepareMemory*/),
+    _aidl_in.getR(),
+    _aidl_out.getR(),
+    0);
+  if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
+    return IAudioPluginInterface::getDefaultImpl()->prepareMemory(in_shmFDIndex, in_sharedMemoryFD);
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
@@ -280,7 +326,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 3 /*activate*/),
+    (FIRST_CALL_TRANSACTION + 4 /*activate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
@@ -312,7 +358,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 4 /*process*/),
+    (FIRST_CALL_TRANSACTION + 5 /*process*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
@@ -341,7 +387,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 5 /*deactivate*/),
+    (FIRST_CALL_TRANSACTION + 6 /*deactivate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
@@ -370,7 +416,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 6 /*getStateSize*/),
+    (FIRST_CALL_TRANSACTION + 7 /*getStateSize*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
@@ -391,7 +437,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_status.set(AStatus_fromStatus(_aidl_ret_status));
   return _aidl_status;
 }
-::ndk::ScopedAStatus BpAudioPluginInterface::getState(int64_t in_pointer) {
+::ndk::ScopedAStatus BpAudioPluginInterface::getState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -400,17 +446,17 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_ret_status = AIBinder_prepareTransaction(asBinder().get(), _aidl_in.getR());
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt64(_aidl_in.get(), in_pointer);
+  _aidl_ret_status = ::ndk::AParcel_writeRequiredParcelFileDescriptor(_aidl_in.get(), in_sharedMemoryFD);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 7 /*getState*/),
+    (FIRST_CALL_TRANSACTION + 8 /*getState*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
-    return IAudioPluginInterface::getDefaultImpl()->getState(in_pointer);
+    return IAudioPluginInterface::getDefaultImpl()->getState(in_sharedMemoryFD);
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
@@ -423,7 +469,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_status.set(AStatus_fromStatus(_aidl_ret_status));
   return _aidl_status;
 }
-::ndk::ScopedAStatus BpAudioPluginInterface::setState(int64_t in_pointer, int32_t in_size) {
+::ndk::ScopedAStatus BpAudioPluginInterface::setState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -432,7 +478,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_ret_status = AIBinder_prepareTransaction(asBinder().get(), _aidl_in.getR());
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt64(_aidl_in.get(), in_pointer);
+  _aidl_ret_status = ::ndk::AParcel_writeRequiredParcelFileDescriptor(_aidl_in.get(), in_sharedMemoryFD);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_size);
@@ -440,12 +486,12 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 8 /*setState*/),
+    (FIRST_CALL_TRANSACTION + 9 /*setState*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
-    return IAudioPluginInterface::getDefaultImpl()->setState(in_pointer, in_size);
+    return IAudioPluginInterface::getDefaultImpl()->setState(in_sharedMemoryFD, in_size);
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
@@ -469,7 +515,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
 
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 9 /*destroy*/),
+    (FIRST_CALL_TRANSACTION + 10 /*destroy*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     0);
@@ -540,7 +586,12 @@ std::shared_ptr<IAudioPluginInterface> IAudioPluginInterface::default_impl = nul
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;
 }
-::ndk::ScopedAStatus IAudioPluginInterfaceDefault::prepare(int32_t /*in_frameCount*/, int32_t /*in_bufferCount*/, const std::vector<int64_t>& /*in_bufferPointers*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceDefault::prepare(int32_t /*in_frameCount*/, int32_t /*in_portCount*/) {
+  ::ndk::ScopedAStatus _aidl_status;
+  _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
+  return _aidl_status;
+}
+::ndk::ScopedAStatus IAudioPluginInterfaceDefault::prepareMemory(int32_t /*in_shmFDIndex*/, const ::ndk::ScopedFileDescriptor& /*in_sharedMemoryFD*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;
@@ -565,12 +616,12 @@ std::shared_ptr<IAudioPluginInterface> IAudioPluginInterface::default_impl = nul
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;
 }
-::ndk::ScopedAStatus IAudioPluginInterfaceDefault::getState(int64_t /*in_pointer*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceDefault::getState(const ::ndk::ScopedFileDescriptor& /*in_sharedMemoryFD*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;
 }
-::ndk::ScopedAStatus IAudioPluginInterfaceDefault::setState(int64_t /*in_pointer*/, int32_t /*in_size*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceDefault::setState(const ::ndk::ScopedFileDescriptor& /*in_sharedMemoryFD*/, int32_t /*in_size*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;

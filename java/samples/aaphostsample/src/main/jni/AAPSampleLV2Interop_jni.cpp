@@ -16,7 +16,7 @@ namespace aaplv2sample {
 
 extern "C" {
 
-jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLV2Interop_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
+jint Java_org_androidaudioplugin_aaphostsample_AAPSampleLocalInterop_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginIDs[size];

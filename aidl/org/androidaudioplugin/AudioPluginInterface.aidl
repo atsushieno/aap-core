@@ -6,13 +6,14 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive();
 
-	void prepare(int frameCount, int portCount, in long[] sharedMemoryFDs);
+	void prepare(int frameCount, int portCount);
+	void prepareMemory(int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
 	void activate();
 	void process(int timeoutInNanoseconds);
 	void deactivate();
 	int getStateSize();
-	void getState(long sharedMemoryFD);
-	void setState(long sharedMemoryFD, int size);
+	void getState(in ParcelFileDescriptor sharedMemoryFD);
+	void setState(in ParcelFileDescriptor sharedMemoryFD, int size);
 	
 	void destroy();
 }

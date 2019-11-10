@@ -13,7 +13,8 @@ const AIBinder_Class *_audio_plugin_clazz{nullptr};
 class AAPClientContext {
 public:
 	const char *unique_id;
-	ndk::SpAIBinder binder;
+	AIBinder* aibinder;
+	ndk::SpAIBinder binder{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
 	AndroidAudioPluginBuffer *previous_buffer;
 	AndroidAudioPluginState state;
@@ -34,8 +35,10 @@ public:
             _audio_plugin_clazz = AIBinder_getClass(dummy.asBinder().get());
         }
         auto dummyUD = calloc(20000, 1);
-    	auto aibinder = AIBinder_new(_audio_plugin_clazz, dummyUD);
+    	aibinder = AIBinder_new(_audio_plugin_clazz, dummyUD);
+		__android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "spbinder setting...");
 	    binder.set(aibinder);
+		__android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "spbinder set.");
         proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(binder);
     }
 
@@ -66,13 +69,13 @@ void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 {
 	int n = 0;
-	while (auto p = buffer->buffers[n])
+	while (auto p = buffer->buffers[n]) {
+		::ndk::ScopedFileDescriptor fd;
+		fd.set((int64_t) p);
+		ctx->proxy->prepareMemory(n, fd);
 		n++;
-	std::vector<int64_t > pointers;
-	for (int i = 0; i < n; i++)
-		pointers.push_back((long) buffer->buffers[i]);
-	// FIXME: status check
-	auto status = ctx->proxy->prepare(buffer->num_frames, n, pointers);
+	}
+	auto status = ctx->proxy->prepare(buffer->num_frames, n);
     assert (status.isOk());
 	ctx->previous_buffer = buffer;
 }
@@ -119,7 +122,9 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 	ensureStateBuffer(ctx, size);
 	// FIXME: status check
 	// FIXME: Maybe this should be one call for potential state length mismatch.
-	auto status2 = ctx->proxy->getState((long) &ctx->state.raw_data);
+	::ndk::ScopedFileDescriptor fd;
+	fd.set((int64_t) &ctx->state.raw_data);
+	auto status2 = ctx->proxy->getState(fd);
     assert (status2.isOk());
 }
 
@@ -129,7 +134,9 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	// we have to ensure that the pointer is shared memory, so use state buffer inside ctx.
 	ensureStateBuffer(ctx, input->data_size);
 	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
-	auto status = ctx->proxy->setState((long) input->raw_data, input->data_size);
+	::ndk::ScopedFileDescriptor fd;
+	fd.set((int64_t) input->raw_data);
+	auto status = ctx->proxy->setState(fd, input->data_size);
     assert (status.isOk());
 }
 

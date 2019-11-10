@@ -1,7 +1,5 @@
 package org.androidaudioplugin.aaphostsample
 
-import org.androidaudioplugin.aaphostsample.*
-
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -119,15 +117,10 @@ class MainActivity : AppCompatActivity() {
                     val pluginId = item.second.pluginId!!
                     val uri = pluginId.substring("lv2:".length)
                     AudioPluginLV2LocalHost.initialize(this@MainActivity)
-                    if (false) {
-                        // FIXME: pass valid buffers
-                        AAPSampleLV2Interop.runHostLilv(arrayOf(uri!!), fixed_sample_rate, in_rawL, out_rawL)
-                    } else {
-                        AudioPluginHost.initialize(context)
-                        // FIXME: pass valid buffers
-                        AAPSampleLV2Interop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, out_rawL)
-                        AudioPluginHost.cleanup()
-                    }
+                    AudioPluginHost.initialize(context)
+                    // FIXME: pass valid buffers
+                    AAPSampleLocalInterop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, out_rawL)
+                    AudioPluginHost.cleanup()
                     AudioPluginLV2LocalHost.cleanup()
                     // FIXME: merge L/R
                     wavePostPlugin.setRawData(out_rawL, {})

@@ -2,6 +2,9 @@
 #include <cstdlib>
 #include "aap/android-audio-plugin.h"
 #include "aap/android-audio-plugin-host.hpp"
+#if ANDROID
+#include <android/log.h>
+#endif
 
 class AAPLocalContext {
 public:
@@ -19,12 +22,22 @@ public:
 
 void aap_local_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
+	__android_log_print(ANDROID_LOG_INFO, "AAP_DEBUG", "!!!!! prepare 1 !!!!!");
+	assert(buffer);
+	assert(buffer->buffers);
+	int numBuffers = 0;
+	while (buffer->buffers[numBuffers])
+		numBuffers++;
+	__android_log_print(ANDROID_LOG_INFO, "AAP_DEBUG", "!!!!! prepare 2: %d %d !!!!!", buffer->num_frames, numBuffers);
+	for (int i = 0; i < numBuffers; i++)
+		memset(buffer->buffers[i], 1, buffer->num_frames);
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
     ctx->instance->prepare(ctx->sample_rate, buffer->num_frames, buffer);
 }
 
 void aap_local_bridge_plugin_activate(AndroidAudioPlugin *plugin)
 {
+	__android_log_print(ANDROID_LOG_INFO, "AAP_DEBUG", "!!!!! activate !!!!!");
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
     ctx->instance->activate();
 }
@@ -33,12 +46,14 @@ void aap_local_bridge_plugin_process(AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* buffer,
 	long timeoutInNanoseconds)
 {
+	__android_log_print(ANDROID_LOG_INFO, "AAP_DEBUG", "!!!!! process !!!!!");
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
     ctx->instance->process(buffer, timeoutInNanoseconds);
 }
 
 void aap_local_bridge_plugin_deactivate(AndroidAudioPlugin *plugin)
 {
+	__android_log_print(ANDROID_LOG_INFO, "AAP_DEBUG", "!!!!! deactivate !!!!!");
     auto ctx = (AAPLocalContext*) plugin->plugin_specific;
     ctx->instance->deactivate();
 }

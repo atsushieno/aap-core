@@ -7,8 +7,8 @@ AIDL_DIR=$THIS_DIR
 AIDL_TOOL=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aidl
 
 $AIDL_TOOL --lang=ndk \
-	-o $THIS_DIR/../native/aap-android/src/gen \
-	-h $THIS_DIR/../native/aap-android/src/gen/include \
+	-o $THIS_DIR/../native/android/src/gen \
+	-h $THIS_DIR/../native/android/src/gen/include \
 	org/androidaudioplugin/AudioPluginInterface.aidl
 $AIDL_TOOL --lang=java \
 	-o $THIS_DIR/../java/androidaudioplugin/src/main/java/ org/androidaudioplugin/AudioPluginInterface.aidl
