@@ -438,7 +438,9 @@ The waveform rendering is done thanks to audiowave-progressbar: https://github.c
 
 Basically `ANDROID_NDK=/path/to/your/ndk make` will build every native dependencies and `AAPHostSample` proof-of-concept sample.
 
-The native build is actually quite unstable... it will hopefully become better.
+CMake is used as **part of** the entire builds, for building native part of the code, **once for one ABI**. `make`, on the other hand, will build the native libraries for all supported ABIs.
+
+gradle is used as **part of** the entire builds, for Android application samples and libraries.
 
 
 ### Build Dependencies
