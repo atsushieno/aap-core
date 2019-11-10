@@ -388,25 +388,29 @@ Each AAP is bound to AudioPluginService, and it works as an AAP service. There i
 ```
 package org.androidaudioplugin;
 
-interface AudioPluginService {
+interface AudioPluginInterface {
 
 	void create(String pluginId, int sampleRate);
 
 	boolean isPluginAlive();
 
-	void prepare(int frameCount, int bufferCount, in long[] bufferPointers);
+	void prepare(int frameCount, int portCount);
+	void prepareMemory(int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
 	void activate();
 	void process(int timeoutInNanoseconds);
 	void deactivate();
 	int getStateSize();
-	void getState(long pointer);
-	void setState(long pointer, int size);
+	void getState(in ParcelFileDescriptor sharedMemoryFD);
+	void setState(in ParcelFileDescriptor sharedMemoryFD, int size);
 	
 	void destroy();
 }
 
 ```
 
+Due to [AIDL tool limitation or framework limitation](https://issuetracker.google.com/issues/144204660), we cannot use `List<ParcelFileDescriptor>`, therefore `prepareMemory()` is added apart from `prepare()` to workaround this issue.
+
+Actually native server does not work due to [another NdkBinder issue](https://github.com/android/ndk/issues/1129) that totally disables ParcelFileDescriptor.
 
 
 ## JUCE integration
