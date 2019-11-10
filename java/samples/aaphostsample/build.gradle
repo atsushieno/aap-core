@@ -21,7 +21,6 @@ android {
 
         externalNativeBuild {
             cmake {
-                version "3.10"
                 // Enable this section if you want to debug native code using AddressSanitizer
                 //arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                 //cppFlags "-fsanitize=address -fno-omit-frame-pointer"
@@ -37,6 +36,7 @@ android {
     externalNativeBuild {
         cmake {
             path "CMakeLists.txt"
+            version "3.10.2"
         }
     }
     ndkVersion = '20.0.5594570'
