@@ -34,7 +34,7 @@ class AudioPluginHost {
                 var method = c.getMethod("initialize", Context::class.java)
                 method.invoke(null, context)
             }
-            var pluginInfos = queryAudioPluginServices(context).flatMap { i -> i.plugins }.toTypedArray()
+            var pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
             initialize(pluginInfos)
             initialized = true
         }
