@@ -28,6 +28,7 @@ open class AudioPluginService : Service()
     var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
+        android.os.Debug.waitForDebugger()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
         AudioPluginHost.initialize(this)
         if (native_binder == null)
