@@ -27,7 +27,5 @@ rm java/samples/aaphostsample/src/main/assets/lv2/*/*.so
 # Generate `aap-metadata.xml` that AAP service look up plugins.
 tools/aap-import-lv2-metadata/build/aap-import-lv2-metadata \
 	java/samples/aaphostsample/src/main/assets/lv2 \
-	java/samples/aaphostsample/src/main/res/xml \
-	java/samples/aaphostsample/src/main/java \
-	org.androidaudioplugin.aaphostsample
+	java/samples/aaphostsample/src/main/res/xml
 

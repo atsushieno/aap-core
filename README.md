@@ -12,7 +12,7 @@ On the other hand it is designed so that cross-audio-plugin frameworks can suppo
 
 Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have. Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins.
 
-Technically it is not very different from LV2, but you don't have to spend time on learning RDF and Turtle to start actual plugin development (you still have to write manifests in XML). Audio developers should spend their time on implementing or porting high quality audio processors.
+Technically it is not very different from LV2, but Android is the first citizen in AAP. Also you don't have to spend time on learning RDF and Turtle to start actual plugin development (you still have to write manifests in XML). Audio developers should spend their time on implementing or porting high quality audio processors.
 
 
 
@@ -20,7 +20,7 @@ Technically it is not very different from LV2, but you don't have to spend time 
 
 AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries in Dalvik land).
 
-AAP developers implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
+AAP developers create audio plugin in native code using Android NDK, implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, and create plugin "metadata" in XML. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the first specification stage.)
 
 AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. (We are rather native oriented for performance and ease of reusing existing code, somewhat more seriously.)
 
@@ -30,7 +30,7 @@ From each audio plugin's point of view, it is locally instantiated by each servi
 
 - get plugin factory
 - instantiate plugin (pass plugin ID and sampleRate)
-- prepare (pass initial pointers, which can be used to fix LV2 buffers)
+- prepare (pass initial buffer pointers)
 - activate (DAW enabled it, playback is active or preview is active)
 - process audio block (and/or control blocks)
 - deactivate (DAW disabled it, playback is inactive and preview is inactive)
@@ -102,22 +102,22 @@ AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
 
 Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
 
-An important note is that NdkBinder API is available only after Android 10 (Android Q). On earlier Android targets the binder must be implemented in Java API. At this state we are not sure if we support compatibility with old targets. They are not great for high audio processing requirement either way.
+An important note is that NdkBinder API is available only after Android 10. On earlier Android targets the binder must be implemented in Java API (or through non-public native API, which is now prohibited). At this state we are not sure if we support compatibility with old targets. They are not great for high audio processing requirement either way.
 
-A Remote plugin client is actually implemented just as a plugin, when it is used by host i.e. the it does not matter how the plugin is implemented.
+<del>A Remote plugin client is actually implemented just as a plugin, when it is used by host i.e. it does not matter how the plugin is implemented.</del> At this state we are not sure if we provide direct native client API.
 
 
 ### fixed pointers
 
 LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least give hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
-In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) (ashmem) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
+In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) should play an important role here. There wouldn't be binary array transmits over binder IPC so far (but if it works better then things might change).
 
 Therefore, at "prepare" step we pass a prepared "buffer" which is supposed to be constructed based on each plugin's ports, so that the plugins do not have to set them up at "process" time.
 
 We are still unsure if this really helps performance (especially how to deal with circular buffers nicely). Things might change.
 
-A related annoyance is that when targeting API Level 29 direct access to `/dev/ashmem` is prohibited and use of `ASharedMemory` API is required, meaning that it's going to be Android-only codebase. Making it common to desktop require code abstraction for ashmem access, which sounds absurd.
+(A related annoyance is that when targeting API Level 29 direct access to `/dev/ashmem` is prohibited and use of `ASharedMemory` API is required, meaning that it's going to be Android-only codebase. Making it common to desktop require code abstraction for ashmem access, which sounds absurd.)
 
 
 ## AAP package bundle
@@ -130,7 +130,7 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -277,17 +277,20 @@ We decided to NOT support shorthand metadata notation like
 
 ... because it will make metadata non-queryable to normal Android app developers.
 
-Instead we ask LV2 plugin developers (importers) to describe everything in `aap-metadata.xml`and provide a metadata generator tool `app-import-lv2-metadata`:
+Instead we provide a metadata generator tool `app-import-lv2-metadata` and ask LV2 plugin developers (importers) to describe everything in `aap-metadata.xml`:
 
 FIXME: this description is too old. Replace this with newer tool outputs.
 
 ```
-$ ./aap-import-lv2-metadata /sources/LV2/dist/lib/lv2/eg-midigate.lv2 
-Loading from /sources/LV2/dist/lib/lv2/eg-midigate.lv2/manifest.ttl
-manifest fragment: manifest-fragment.xml
+$ ./aap-import-lv2-metadata [lv2path] [res_xml_path]
+(...)
+LV2 directory: /sources/android-audio-plugin-framework/java/samples/aaphostsample/src/main/assets/lv2
+Loading from /sources/android-audio-plugin-framework/java/samples/aaphostsample/src/main/assets/lv2/ui.lv2/manifest.ttl
 Loaded bundle. Dumping all plugins from there.
-Writing metadata file res/xml/metadata0.xml
+all plugins loaded
+Writing metadata file java/samples/aaphostsample/src/main/res/xml/aap_metadata.xml
 done.
+
 $ cat res/xml/metadata0.xml 
 <plugins>
   <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
@@ -299,10 +302,20 @@ $ cat res/xml/metadata0.xml
   </plugin>
 </plugins>
 $ cat manifest-fragment.xml 
-<service android:name=".AudioPluginService" android:label="Example MIDI Gate">
-  <intent-filter><action android:name="org.androidaudioplugin.AudioPluginService" /></intent-filter>
-  <meta-data android:name="org.androidaudioplugin.AudioPluginService" android:resource="@xml/metadata0" />
-</service>
+<plugins>
+  <plugin backend="LV2" name="MDA Ambience" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Ambience" entrypoint="GetAndroidAudioPluginFactoryLV2Bridge" assets="/lv2/mda.lv2/">
+    <ports>
+      <port direction="input" content="other" name="Size" />
+      <port direction="input" content="other" name="HF Damp" />
+      <port direction="input" content="other" name="Mix" />
+      <port direction="input" content="other" name="Output" />
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+  ...
 ```
 
 For `content`, if a port is `atom:atomPort` and `atom:supports` has `midi:MidiEvent`, then it is `midi`. Any LV2 port that is `lv2:AudioPort` are regarded as `audio`. Anything else is `other` in AAP.
@@ -335,12 +348,13 @@ AAP proof-of-concept host is in `java/aaphostsample`.
 
 AAP will have some "backends" e.g. AAP-LV2 and AAP-VST3. LV2 host bridge is implemented using lilv, and VST3 host bridge is implemented using vst3sdk. However, in principle, every AAP has to be implemented along the way how standalone AAP is implemented.
 
-Currently AAPHostSample contains two hosting samples, but not making AAP hosting API (described later) generic yet.
+Currently AAPHostSample contains two kinds of hosting samples:
 
-- AAP-LV2 hosting via AudioPluginService:
-  plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder.
-- AAP-LV2 local direct hosting:
-  plugins are collected from local assets, directly opened by local AAP-LV2 hosting API which subsequently uses lilv to process audio.
+- AAP remote hosting via AudioPluginService (not working):
+  plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder. And it lists only non-local ones.
+  The actual plugins are all LV2 so far.
+- AAP hosting via AudioPluginService:
+  plugins are queried via `AudioPluginHost.queryLocalAudioPluginServices()` which filters out non-local plugins.
 
 ### AAP hosting API
 
