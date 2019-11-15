@@ -1,5 +1,6 @@
-include ':androidaudioplugin', ':androidaudioplugin-lv2', ':aaphostsample', ':localpluginsample', ':aaplv2plugins'
+include ':androidaudioplugin', ':androidaudioplugin-lv2', ':aaphostsample', ':localpluginsample', ':aaplv2plugins', ':aappluginsample'
 rootProject.name='AndroidAudioPlugin'
 project(':aaplv2plugins').projectDir = new File('samples/aaplv2plugins')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
+project(':aappluginsample').projectDir = new File('samples/aappluginsample')
 project(':localpluginsample').projectDir = new File('samples/localpluginsample')

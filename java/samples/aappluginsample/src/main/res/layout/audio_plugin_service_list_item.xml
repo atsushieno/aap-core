@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        <TextView
+            android:id="@+id/audio_plugin_service_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/servicename"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@+id/audio_plugin_name"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+                android:text="@string/audio_plugin_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:id="@+id/audio_plugin_name" android:textStyle="bold"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/audio_plugin_service_name" android:layout_marginTop="4dp"
+                android:layout_marginStart="4dp"/>
+
+        <TextView
+            android:id="@+id/audio_plugin_identifier"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="@string/identifier"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/audio_plugin_name" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>
