@@ -14,6 +14,7 @@
             <option value="$PROJECT_DIR$/androidaudioplugin" />
             <option value="$PROJECT_DIR$/androidaudioplugin-lv2" />
             <option value="$PROJECT_DIR$/samples/aaphostsample" />
+            <option value="$PROJECT_DIR$/samples/localpluginsample" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />

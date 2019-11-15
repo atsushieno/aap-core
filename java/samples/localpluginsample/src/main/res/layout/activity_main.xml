@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   xmlns:tools="http://schemas.android.com/tools"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="match_parent"
+                                                   tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/localPluginsLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="#2A3F51B5"
+        android:text="@string/audio_plugins_in_this_application"
+        android:textAlignment="viewStart"
+        android:textColor="#3F51B5"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+    <ListView
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toBottomOf="@+id/localPluginsLabel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" android:id="@+id/localAudioPluginListView"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintVertical_bias="1.0" app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
+            android:layout_marginTop="8dp" android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp"/>
+    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                                android:id="@+id/pluginsWaveformSplitter" app:layout_constraintGuide_begin="20dp"
+                                                android:orientation="horizontal"
+                                                app:layout_constraintGuide_percent="0.8"/>
+
+    <rm.com.audiowave.AudioWaveView
+            android:id="@+id/wavePrePlugin"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_margin="16dp"
+            app:animateExpansion="false"
+            app:chunkWidth="3dp"
+            app:chunkHeight="24dp"
+            app:minChunkHeight="2dp"
+            app:chunkSpacing="1dp"
+            app:chunkRadius="1dp"
+            app:touchable="true"
+            app:waveColor="@android:color/black"
+            app:layout_constraintTop_toBottomOf="@+id/localAudioPluginListView"
+            app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
+            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"
+            />
+    <rm.com.audiowave.AudioWaveView
+            android:id="@+id/wavePostPlugin"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_margin="16dp"
+            app:animateExpansion="false"
+            app:chunkWidth="3dp"
+            app:chunkHeight="24dp"
+            app:minChunkHeight="2dp"
+            app:chunkSpacing="1dp"
+            app:chunkRadius="1dp"
+            app:touchable="true"
+            app:waveColor="@android:color/black"
+            app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
+            app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="@+id/twoWaveformsSplitter"/>
+    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                                android:id="@+id/buttonsWaveformSplitter" app:layout_constraintGuide_begin="20dp"
+                                                android:orientation="vertical"
+                                                app:layout_constraintGuide_percent="0.2"/>
+    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                                android:id="@+id/twoWaveformsSplitter"
+                                                android:orientation="horizontal"
+                                                app:layout_constraintGuide_percent="0.9"
+                                                app:layout_constraintBottom_toBottomOf="parent"
+                                                app:layout_constraintTop_toTopOf="parent"
+    />
+    <TextView
+            android:text="[pre-plugin]"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/playPrePluginLabel" app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
+            app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
+            app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"/>
+    <TextView
+            android:text="[post-plugin]"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/playPostPluginLabel" app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
+            app:layout_constraintTop_toTopOf="@+id/twoWaveformsSplitter"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

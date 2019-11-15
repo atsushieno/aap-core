@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">LocalPluginSample</string>
+    <string name="audio_plugins_on_this_device">remote audio plugins on this device</string>
+    <string name="audio_plugins_in_this_application">audio plugins in this application</string>
+</resources>
