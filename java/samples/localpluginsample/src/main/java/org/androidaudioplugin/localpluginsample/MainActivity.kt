@@ -30,51 +30,6 @@ class MainActivity : AppCompatActivity() {
     inner class PluginViewAdapter(ctx:Context, layout: Int, isOutProcess: Boolean, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
-        var intent: Intent? = null
-        val isOutProcess: Boolean = isOutProcess
-
-        lateinit var target_plugin: String
-
-        fun disconnect() {
-            Log.i("MainActivity", "disconnect invoked")
-            GlobalScope.launch {
-                context.unbindService(conn)
-                intent = null
-            }
-        }
-
-        var conn : ServiceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                Log.i("MainActivity", "onServiceConnected invoked")
-
-                if (binder == null)
-                    throw UnsupportedOperationException ("binder must not be null")
-
-                GlobalScope.launch {
-
-                    var handleInitialization = !AudioPluginHost.initialized
-                    if (handleInitialization)
-                        AudioPluginHost.initialize(context)
-
-                    AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
-
-                    if (handleInitialization)
-                        AudioPluginHost.cleanup()
-
-                    context.applicationContext.run {
-                        // FIXME: merge L/R
-                        wavePostPlugin.setRawData(out_rawL, {})
-                        wavePostPlugin.progress = 100f
-                    }
-                    disconnect()
-                }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                Log.i("MainActivity", "onServiceDisconnected invoked, most likely an unexpected crash?")
-            }
-        }
-
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val item = getItem(position)
             var view = convertView

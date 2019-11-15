@@ -7,7 +7,6 @@
 #include <../lib/lv2/atom.lv2/atom.h>
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
-#include "aap/android-audio-plugin-host.hpp"
 
 namespace lv2direct {
 
@@ -211,6 +210,7 @@ namespace lv2direct {
 
 extern "C" {
 
+// We can actually remove this source but in case we would like to test LV2 standalone...
 jint Java_org_androidaudioplugin_localpluginsample_AAPSampleLV2Interop_runHostLilv(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray wav, jbyteArray outWav)
 {
     jboolean isCopy = JNI_TRUE;
