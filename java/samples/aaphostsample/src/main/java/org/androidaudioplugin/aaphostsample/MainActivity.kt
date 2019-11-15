@@ -94,38 +94,22 @@ class MainActivity : AppCompatActivity() {
             val service = item.first
             val plugin = item.second
 
-            if (isOutProcess) {
-                view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    Log.i(
-                        "Instantiating ",
-                        "${service.name} | ${service.packageName} | ${service.className}"
-                    )
+            view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
+                Log.i(
+                    "Instantiating ",
+                    "${service.name} | ${service.packageName} | ${service.className}"
+                )
 
-                    intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
-                    intent!!.component = ComponentName(
-                        service.packageName,
-                        service.className
-                    )
-                    intent!!.putExtra("sampleRate", fixed_sample_rate)
-                    intent!!.putExtra("pluginId", plugin.pluginId)
+                intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
+                intent!!.component = ComponentName(
+                    service.packageName,
+                    service.className
+                )
+                intent!!.putExtra("sampleRate", fixed_sample_rate)
+                intent!!.putExtra("pluginId", plugin.pluginId)
 
-                    target_plugin = plugin.pluginId!!
-                    context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
-                }
-            } else {
-                view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                    val pluginId = item.second.pluginId!!
-                    val uri = pluginId.substring("lv2:".length)
-                    AudioPluginLV2LocalHost.initialize(this@MainActivity)
-                    AudioPluginHost.initialize(context)
-                    // FIXME: pass valid buffers
-                    AAPSampleLocalInterop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, out_rawL)
-                    AudioPluginHost.cleanup()
-                    AudioPluginLV2LocalHost.cleanup()
-                    // FIXME: merge L/R
-                    wavePostPlugin.setRawData(out_rawL, {})
-                    wavePostPlugin.progress = 100f
-                }
+                target_plugin = plugin.pluginId!!
+                context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
             }
 
             return view

@@ -8,6 +8,9 @@
 #include "aap/android-audio-plugin.h"
 #include "AudioPluginInterfaceImpl.h"
 
+// NOTE: this code does not work because there is no valid way to retrieve AIBinder_Class for
+// an AudioPluginService we want to connect.
+
 const AIBinder_Class *_audio_plugin_clazz{nullptr};
 
 class AAPClientContext {
