@@ -358,7 +358,7 @@ Currently AAPHostSample contains two kinds of hosting samples:
 
 ### AAP hosting API
 
-It is simpler than LV2. Similar to LV2, ports are connected only by index and no port instance structure for runtime.
+It is similar to LV2. Ports are connected only by index and no port instance structure for runtime.
 
 Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. However plugin developers should not be required to do so by themselves. It should be as easy as implementing plugin framework API and package in AAP format.
 
@@ -448,8 +448,6 @@ The wave sample is created by atsushieno using Waveform10 and Collective.
 (FIXME: the app does not respect any audio format and processes in fixed size.)
 
 The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
-
-
 
 
 ## Building repo

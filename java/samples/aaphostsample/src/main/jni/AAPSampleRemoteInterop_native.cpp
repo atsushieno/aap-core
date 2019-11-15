@@ -44,11 +44,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     int midiInFD = ASharedMemory_create(nullptr, buffer_size);
     int controlInFD = ASharedMemory_create(nullptr, buffer_size);
     int dummyBufferFD = ASharedMemory_create(nullptr, buffer_size);
-	ASharedMemory_setProt(audioInLFD, PROT_READ | PROT_WRITE);
-	ASharedMemory_setProt(audioInRFD, PROT_READ | PROT_WRITE);
-	ASharedMemory_setProt(midiInFD, PROT_READ | PROT_WRITE);
-	ASharedMemory_setProt(controlInFD, PROT_READ | PROT_WRITE);
-	ASharedMemory_setProt(dummyBufferFD, PROT_READ | PROT_WRITE);
 	__android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "shmFDs: AudioInL %d AudioInR %d MidiIn %d ControlIn %d Dummy %d", audioInLFD, audioInRFD, midiInFD, controlInFD, dummyBufferFD);
 
     // FIXME: process more channels
@@ -94,7 +89,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
             auto s = ASharedMemory_create(nullptr, buffer_size);
-			ASharedMemory_setProt(s, PROT_READ | PROT_WRITE);
 			__android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "created shm for port %s %d -> %d, size %d", port->getName(), buffer_size, s, ASharedMemory_getSize(s));
             if (audioOutChannelMapped > 0)
                 currentAudioOutRFD = buffer_shm_fds[p] = s;
@@ -111,7 +105,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
 			auto s = ASharedMemory_create(nullptr, buffer_size);
-			ASharedMemory_setProt(s, PROT_READ | PROT_WRITE);
 			__android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "created shm for MIDI port %s %d -> %d", port->getName(), buffer_size, s);
             buffer_shm_fds[p] = s;
 			auto b = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
@@ -127,7 +120,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT) {
 			auto s = ASharedMemory_create(nullptr, buffer_size);
-			ASharedMemory_setProt(s, PROT_READ | PROT_WRITE);
 			__android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "created shm for CONTROL port %s %d -> %d", port->getName(), buffer_size, s);
             buffer_shm_fds[p] = s;
 			auto b = (float *) mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, buffer_shm_fds[p], 0);
@@ -153,10 +145,12 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     }
 
     // prepare connections
+    std::vector<::ndk::ScopedFileDescriptor> fds;
     for (int i = 0; i < buffer_shm_fds.size(); i++) {
         ::ndk::ScopedFileDescriptor fd;
         fd.set(buffer_shm_fds[i]);
         auto status2 = proxy->prepareMemory(i, fd);
+        fds.push_back(std::move(fd));
         assert (status2.isOk());
     }
     auto status2x = proxy->prepare(plugin_buffer->num_frames, nPorts);

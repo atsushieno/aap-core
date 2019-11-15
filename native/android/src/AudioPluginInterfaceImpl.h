@@ -81,7 +81,7 @@ public:
 				}
                 //sharedMemoryFDs[i] = newFDs[i];
                 buffer.buffers[i] = mmap(nullptr, current_buffer_size, PROT_READ | PROT_WRITE,
-                                         MAP_SHARED | MAP_FIXED, sharedMemoryFDs[i], 0);
+                                         MAP_SHARED, sharedMemoryFDs[i], 0);
                 if(buffer.buffers[i] == MAP_FAILED) {
                 	int err = errno;
 					__android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",
@@ -102,10 +102,11 @@ public:
     // Since AIDL does not support sending List of ParcelFileDescriptor it is sent one by one.
     // Here we just cache the FDs, and process them later at prepare().
     ::ndk::ScopedAStatus prepareMemory(int32_t index, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override {
-    	auto fd = in_sharedMemoryFD.get();
+        auto fd = dup(in_sharedMemoryFD.get());
     	while (sharedMemoryFDs.size() <= index)
     		sharedMemoryFDs.push_back(0); // dummy
     	sharedMemoryFDs[index] = fd;
+        return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_portCount) override {
