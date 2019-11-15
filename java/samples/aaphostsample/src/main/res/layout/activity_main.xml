@@ -5,71 +5,60 @@
                                                    android:layout_width="match_parent"
                                                    android:layout_height="match_parent"
                                                    tools:context=".MainActivity">
+
     <TextView
-            android:text="@string/audio_plugins_on_this_device"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:id="@+id/pluginServicesLabel" app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent"
-            android:textStyle="bold" android:textAlignment="viewStart"
-            app:layout_constraintHorizontal_bias="0.0" android:layout_marginStart="8dp" android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp" android:textSize="18sp" android:textColor="#3F51B5"
-            android:background="#293F51B5"/>
+        android:id="@+id/pluginServicesLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="#293F51B5"
+        android:text="@string/audio_plugins_on_this_device"
+        android:textAlignment="viewStart"
+        android:textColor="#3F51B5"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <ListView
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintTop_toBottomOf="@+id/pluginServicesLabel"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" android:id="@+id/audioPluginServiceListView"
-            app:layout_constraintBottom_toTopOf="@+id/pluginTypesSplitter" android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp" android:layout_marginEnd="8dp" android:layout_marginBottom="8dp">
-    </ListView>
-    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                                android:id="@+id/pluginTypesSplitter"
-                                                android:orientation="horizontal"
-                                                app:layout_constraintGuide_percent="0.4"/>
-    <TextView
-            android:text="@string/audio_plugins_in_this_application"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:id="@+id/localPluginsLabel" app:layout_constraintTop_toTopOf="@+id/pluginTypesSplitter"
-            app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent"
-            android:textStyle="bold" android:textAlignment="viewStart"
-            app:layout_constraintHorizontal_bias="0.0" android:layout_marginTop="8dp" android:layout_marginEnd="8dp"
-            android:layout_marginStart="8dp" android:textSize="18sp" android:textColor="#3F51B5"
-            android:background="#2A3F51B5"/>
-    <ListView
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintTop_toBottomOf="@+id/localPluginsLabel"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" android:id="@+id/localAudioPluginListView"
-            app:layout_constraintHorizontal_bias="1.0"
-            app:layout_constraintVertical_bias="1.0" app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
-            android:layout_marginTop="8dp" android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
-            android:layout_marginBottom="8dp"/>
+        android:id="@+id/audioPluginServiceListView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/pluginServicesLabel"></ListView>
+
     <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
                                                 android:id="@+id/pluginsWaveformSplitter" app:layout_constraintGuide_begin="20dp"
                                                 android:orientation="horizontal"
                                                 app:layout_constraintGuide_percent="0.8"/>
 
     <rm.com.audiowave.AudioWaveView
-            android:id="@+id/wavePrePlugin"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_margin="16dp"
-            app:animateExpansion="false"
-            app:chunkWidth="3dp"
-            app:chunkHeight="24dp"
-            app:minChunkHeight="2dp"
-            app:chunkSpacing="1dp"
-            app:chunkRadius="1dp"
-            app:touchable="true"
-            app:waveColor="@android:color/black"
-            app:layout_constraintTop_toBottomOf="@+id/localAudioPluginListView"
-            app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
-            app:layout_constraintEnd_toEndOf="parent" app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"
-            />
+        android:id="@+id/wavePrePlugin"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        app:animateExpansion="false"
+        app:chunkHeight="24dp"
+        app:chunkRadius="1dp"
+        app:chunkSpacing="1dp"
+        app:chunkWidth="3dp"
+        app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
+        app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
+        app:minChunkHeight="2dp"
+        app:touchable="true"
+        app:waveColor="@android:color/black" />
     <rm.com.audiowave.AudioWaveView
             android:id="@+id/wavePostPlugin"
             android:layout_width="0dp"

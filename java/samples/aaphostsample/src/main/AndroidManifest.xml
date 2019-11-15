@@ -17,20 +17,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name="org.androidaudioplugin.AudioPluginService"
-            android:label="AAPBareBoneSamplePlugin">
-            <intent-filter>
-                <action
-                    android:name="org.androidaudioplugin.AudioPluginService" />
-            </intent-filter>
-            <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService#Plugins"
-                android:resource="@xml/aap_metadata"
-                />
-            <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService#Extensions"
-                android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
-                />
-        </service>
     </application>
 </manifest>

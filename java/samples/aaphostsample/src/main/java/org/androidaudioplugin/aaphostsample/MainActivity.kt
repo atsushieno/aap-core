@@ -142,10 +142,6 @@ class MainActivity : AppCompatActivity() {
         val remoteAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, true, remotePlugins)
         this.audioPluginServiceListView.adapter = remoteAdapter
 
-        val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName && p.second.backend == "LV2" }.toTypedArray()
-        val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
-        this.localAudioPluginListView.adapter = localAdapter
-
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
 
