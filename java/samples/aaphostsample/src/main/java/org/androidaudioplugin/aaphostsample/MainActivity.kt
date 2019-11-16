@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         lateinit var target_plugin: String
 
         fun disconnect() {
-            Log.i("MainActivity", "disconnect invoked")
+            Log.d("MainActivity", "disconnect invoked")
             GlobalScope.launch {
                 context.unbindService(conn)
                 intent = null
@@ -45,24 +45,18 @@ class MainActivity : AppCompatActivity() {
 
         var conn : ServiceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                Log.i("MainActivity", "onServiceConnected invoked")
+                Log.d("MainActivity", "onServiceConnected is invoked")
 
                 if (binder == null)
                     throw UnsupportedOperationException ("binder must not be null")
 
-                // FIXME: it would make more sense if the binder is attached "org.androidaudioplugin.AudioPluginInterface" here.
-                //        Or... actually I'm not sure. The interface should be sorted out.
-
                 GlobalScope.launch {
 
-                    var handleInitialization = !AudioPluginHost.initialized
-                    if (handleInitialization)
-                        AudioPluginHost.initialize(context)
+                    Log.d("MainActivity", "starting AAPSampleInterop.initialize")
+                    AAPSampleInterop.initialize(AudioPluginHost.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
 
+                    Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                     AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
-
-                    if (handleInitialization)
-                        AudioPluginHost.cleanup()
 
                     context.applicationContext.run {
                         // FIXME: merge L/R
@@ -74,7 +68,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                Log.i("MainActivity", "onServiceDisconnected invoked, most likely an unexpected crash?")
+                Log.d("MainActivity", "onServiceDisconnected is invoked, most likely an unexpected crash?")
             }
         }
 
@@ -94,21 +88,22 @@ class MainActivity : AppCompatActivity() {
             val service = item.first
             val plugin = item.second
 
-            view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-                Log.i(
-                    "Instantiating ",
-                    "${service.name} | ${service.packageName} | ${service.className}"
-                )
+            if (plugin.pluginId == null)
+                throw UnsupportedOperationException ("Insufficient plugin information was returned; missing pluginId")
 
-                intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
-                intent!!.component = ComponentName(
+            view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
+
+                var intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
+                this.intent = intent
+                intent.component = ComponentName(
                     service.packageName,
                     service.className
                 )
-                intent!!.putExtra("sampleRate", fixed_sample_rate)
-                intent!!.putExtra("pluginId", plugin.pluginId)
+                intent.putExtra("sampleRate", fixed_sample_rate)
+                intent.putExtra("pluginId", plugin.pluginId)
 
                 target_plugin = plugin.pluginId!!
+                Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
                 context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
             }
 

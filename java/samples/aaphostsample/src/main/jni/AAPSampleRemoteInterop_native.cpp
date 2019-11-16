@@ -14,9 +14,7 @@
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/android-audio-plugin-host.hpp"
 
-extern "C" {
-extern aap::PluginInformation **local_plugin_infos;
-}
+aap::PluginInformation **all_plugin_infos{nullptr};
 
 // FIXME: sort out final library header structures.
 namespace aap {
@@ -74,7 +72,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO) {
-            if (audioInChannelMapped)
+            if (audioOutChannelMapped)
                 audioOutPortR = p;
             else
                 audioOutPortL = p;
@@ -153,9 +151,24 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 extern "C" {
 
 
+void Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+{
+	assert(all_plugin_infos == nullptr);
+	jsize infoSize = env->GetArrayLength(jPluginInfos);
+	all_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
+	for (int i = 0; i < infoSize; i++) {
+		auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
+		all_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
+	}
+	all_plugin_infos[infoSize] = nullptr;
+}
+
 int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
 {
-    assert(local_plugin_infos != nullptr);
+	// NOTE: setting a breakpoint in this method might cause SIGSEGV.
+	// That's of course non-user code issue but you would't like to waste your time on diagnosing it...
+
+    assert(all_plugin_infos != nullptr);
     assert(audioInL != nullptr);
     assert(audioInR != nullptr);
     assert(audioOutL != nullptr);
@@ -183,9 +196,9 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     auto pluginId = strdup(pluginId_);
     env->ReleaseStringUTFChars(jPluginId, pluginId_);
     aap::PluginInformation *pluginInfo{nullptr};
-    for (int p = 0; local_plugin_infos[p] != nullptr; p++) {
-        if (strcmp(local_plugin_infos[p]->getPluginID().data(), pluginId) == 0) {
-            pluginInfo = local_plugin_infos[p];
+    for (int p = 0; all_plugin_infos[p] != nullptr; p++) {
+        if (strcmp(all_plugin_infos[p]->getPluginID().data(), pluginId) == 0) {
+            pluginInfo = all_plugin_infos[p];
             break;
         }
     }
