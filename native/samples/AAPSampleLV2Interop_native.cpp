@@ -16,8 +16,8 @@ typedef struct {
     AndroidAudioPluginBuffer *plugin_buffer;
 } AAPInstanceUse;
 
-int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wav, int wavLength,
-               void *outWav) {
+int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wavL, void *wavR, int wavLength,
+               void *outWavL, void *outWavR) {
     auto host = new aap::PluginHost(local_plugin_infos);
 
     int buffer_size = 44100 * sizeof(float);
@@ -27,17 +27,18 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
 
     /* instantiate plugins and connect ports */
 
-    float *audioIn = (float *) calloc(buffer_size, 1);
+    float *audioInL = (float *) calloc(buffer_size, 1);
+    float *audioInR = (float *) calloc(buffer_size, 1);
     float *midiIn = (float *) calloc(buffer_size, 1);
     float *controlIn = (float *) calloc(buffer_size, 1);
     float *dummyBuffer = (float *) calloc(buffer_size, 1);
 
-    float *currentAudioIn = audioIn, *currentAudioOut = NULL, *currentMidiIn = midiIn, *currentMidiOut = NULL;
+    float *currentAudioInL = audioInL, *currentAudioInR = audioInR, *currentAudioOutL = nullptr, *currentAudioOutR = nullptr, *currentMidiIn = midiIn, *currentMidiOut = nullptr;
 
     // FIXME: pluginIDs should be enough (but iteration by it crashes so far)
     for (int i = 0; i < numPluginIDs; i++) {
         auto instance = host->instantiatePlugin(pluginIDs[i]);
-        if (instance == NULL) {
+        if (instance == nullptr) {
             // FIXME: the entire code needs review to eliminate those printf/puts/stdout/stderr uses.
             printf("plugin %s failed to instantiate. Skipping.\n", pluginIDs[i]);
             continue;
@@ -49,30 +50,31 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
         iu->plugin_buffer->num_frames = buffer_size / sizeof(float);
         int nPorts = desc->getNumPorts();
         iu->plugin_buffer->buffers = (void **) calloc(nPorts + 1, sizeof(void *));
+        int numAudioIn = 0, numAudioOut = 0;
         for (int p = 0; p < nPorts; p++) {
             auto port = desc->getPort(p);
             if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
                 port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
-                iu->plugin_buffer->buffers[p] = currentAudioIn;
+                iu->plugin_buffer->buffers[p] = numAudioIn++ > 0 ? currentAudioInR : currentAudioInL;
             else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                      port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
-                iu->plugin_buffer->buffers[p] = currentAudioOut = (float *) calloc(buffer_size,
-                                                                                   1);
+                iu->plugin_buffer->buffers[p] = (numAudioOut++ > 0 ? currentAudioOutR : currentAudioOutL) = (float *) calloc(buffer_size, 1);
             else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
                      port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
                 iu->plugin_buffer->buffers[p] = currentMidiIn;
             else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                      port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
-                iu->plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size,
-                                                                                  1);
+                iu->plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size, 1);
             else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
                 iu->plugin_buffer->buffers[p] = controlIn;
             else
                 iu->plugin_buffer->buffers[p] = dummyBuffer;
         }
         instances.push_back(iu);
-        if (currentAudioOut)
-            currentAudioIn = currentAudioOut;
+        if (currentAudioOutL)
+            currentAudioInL = currentAudioOutL;
+        if (currentAudioOutR)
+            currentAudioInR = currentAudioOutR;
         if (currentMidiOut)
             currentMidiIn = currentMidiOut;
     }
@@ -97,13 +99,15 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
     }
     for (int b = 0; b < wavLength; b += buffer_size) {
         // prepare inputs -audioIn
-        memcpy(audioIn, ((char*) wav) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+        memcpy(audioInL, ((char*) wavL) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+        memcpy(audioInR, ((char*) wavR) + b, b + buffer_size < wavLength ? buffer_size : wavLength - b);
         // process ports
         for (int i = 0; i < instances.size(); i++) {
             auto instance = instances[i];
             instance->plugin->process(instance->plugin_buffer, 0);
         }
-        memcpy(((char*) outWav) + b, currentAudioOut, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+        memcpy(((char*) outWavL) + b, currentAudioOutL, b + buffer_size < wavLength ? buffer_size : wavLength - b);
+        memcpy(((char*) outWavR) + b, currentAudioOutR, b + buffer_size < wavLength ? buffer_size : wavLength - b);
     }
     for (int i = 0; i < instances.size(); i++) {
         auto instance = instances[i];
@@ -116,7 +120,8 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
         for (int p = 0; iu->plugin_buffer->buffers[p]; p++) {
             if(iu->plugin_buffer->buffers[p] != nullptr
                 && iu->plugin_buffer->buffers[p] != dummyBuffer
-                && iu->plugin_buffer->buffers[p] != audioIn
+                && iu->plugin_buffer->buffers[p] != audioInL
+                && iu->plugin_buffer->buffers[p] != audioInR
                 && iu->plugin_buffer->buffers[p] != midiIn
                 && iu->plugin_buffer->buffers[p] != controlIn)
                 free(iu->plugin_buffer->buffers[p]);
@@ -129,7 +134,8 @@ int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *w
 
     delete host;
 
-    free(audioIn);
+    free(audioInL);
+    free(audioInR);
     free(midiIn);
     free(controlIn);
     free(dummyBuffer);
