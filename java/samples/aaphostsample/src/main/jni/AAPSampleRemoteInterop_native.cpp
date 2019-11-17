@@ -112,7 +112,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
-        __android_log_print(ANDROID_LOG_INFO, "!!!AAPDEBUG!!!", "b %d size %d bs %d wl %d", b, size, buffer_size, wavLength);
         // FIXME: handle more channels
         if (audioInPortL >= 0)
             memcpy(plugin_buffer->buffers[audioInPortL], ((char*) audioInBytesL) + b, size);
