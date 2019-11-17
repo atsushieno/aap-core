@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
+import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 import org.androidaudioplugin.AudioPluginHost
 import org.androidaudioplugin.AudioPluginServiceInformation
@@ -74,6 +75,7 @@ class MainActivity : AppCompatActivity() {
 
                     runOnUiThread {
                         wavePostPlugin.setRawData(out_raw)
+                        Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
                     }
                     disconnect()
                 }
@@ -170,6 +172,7 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 wavePrePlugin.setRawData(in_raw)
+                Toast.makeText(this@MainActivity, "loaded input wav", Toast.LENGTH_LONG).show()
             }
         }
     }
