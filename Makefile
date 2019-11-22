@@ -24,7 +24,12 @@ build-android:
 	done
 
 build-android-single:
-	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && cmake -DCMAKE_BUILD_TYPE=Debug -DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on -DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake -DANDROID_ABI=$(A_ABI) -DCMAKE_ANDROID_ARCH_ABI=$(A_ABI) -DANDROID_PLATFORM=android-29 ../.. && make
+	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && \
+	cmake -DCMAKE_BUILD_TYPE=Debug \
+		-DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on \
+		-DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake \
+		-DANDROID_ABI=$(A_ABI) -DCMAKE_ANDROID_ARCH_ABI=$(A_ABI) \
+		-DANDROID_PLATFORM=android-29 ../.. && make
 
 all: build-all
 
@@ -36,5 +41,5 @@ build-lv2-importer:
 	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:
-	cd java && ./gradlew assembleDebug
+	cd java && ./gradlew build
 

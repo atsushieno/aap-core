@@ -119,7 +119,6 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	int size;
-	// FIXME: status check
 	auto status = ctx->proxy->getStateSize(&size);
     assert (status.isOk());
 	ensureStateBuffer(ctx, size);
@@ -129,6 +128,7 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 	fd.set((int64_t) &ctx->state.raw_data);
 	auto status2 = ctx->proxy->getState(fd);
     assert (status2.isOk());
+
 }
 
 void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)

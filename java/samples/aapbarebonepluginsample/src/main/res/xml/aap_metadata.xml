@@ -1,0 +1,11 @@
+<plugins>
+  <plugin name="Flat Filter" category="Effect" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter">
+    <ports>
+      <port direction="input" content="audio" name="Left In" />
+      <port direction="input" content="audio" name="Right In" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
+  </plugin>
+</plugins>
+

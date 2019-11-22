@@ -89,14 +89,14 @@ public:
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
 	PluginInformation(bool isOutProcess, const char* pluginName, const char* manufacturerName, const char* versionString, const char* pluginID, const char* sharedLibraryFilename, const char *libraryEntrypoint)
-		: name(pluginName),
+		: is_out_process(isOutProcess),
+		  name(pluginName),
 		  manufacturer_name(manufacturerName ? manufacturerName : ""),
 		  version(versionString ? versionString : ""),
 		  shared_library_filename(sharedLibraryFilename ? sharedLibraryFilename : ""),
 		  library_entrypoint(libraryEntrypoint ? libraryEntrypoint : ""),
 		  plugin_id(pluginID ? pluginID : ""),
-		  last_info_updated_unixtime((long) time(NULL)),
-		  is_out_process(isOutProcess)
+		  last_info_updated_unixtime((long) time(NULL))
 	{
 		char *cp;
 		int len = snprintf(nullptr, 0, "%s+%s+%s", name.data(), plugin_id.data(), version.data());

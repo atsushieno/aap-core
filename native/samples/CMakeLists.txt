@@ -22,7 +22,7 @@ add_executable(aaphostsample
 target_include_directories(aaphostsample
         PRIVATE
         "../plugin-api/include"
-        "../core/include"
+        "../androidaudioplugin/core/include"
         )
 
 target_compile_options(aaphostsample

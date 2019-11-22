@@ -24,7 +24,6 @@ import org.androidaudioplugin.PluginInformation
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.androidaudioplugin.lv2.AudioPluginLV2LocalHost
 
 class MainActivity : AppCompatActivity() {
 

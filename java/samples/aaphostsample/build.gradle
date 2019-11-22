@@ -55,8 +55,7 @@ android {
 }
 
 dependencies {
-    api project(':androidaudioplugin')
-    api project(':androidaudioplugin-lv2')
+    implementation project(':androidaudioplugin')
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.50"
     implementation 'androidx.appcompat:appcompat:1.1.0'
