@@ -24,12 +24,16 @@ open class AudioPluginService : Service()
 
         @JvmStatic
         external fun destroyBinder(binder: IBinder)
+
+        @JvmStatic
+        var enableDebug = false
     }
     var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         // NOTE: enable it only if you're debugging. Otherwise it will suspend if the debuggee is different process.
-        //android.os.Debug.waitForDebugger()
+        if (enableDebug)
+            android.os.Debug.waitForDebugger()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
         AudioPluginHost.initialize(this)
         if (native_binder == null)
