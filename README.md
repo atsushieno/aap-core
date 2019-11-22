@@ -530,16 +530,27 @@ And note that access to assets is not as simple as that to filesystem. It is imp
   - androidaudioplugin-LV2 (aar) - follows the same AGP-modules structure
   - androidaudioplugin-VST3 (aar; TODO) - follows the same AGP-modules structure
   - samples
-    - aaphostsample - sample app - follows the same AGP-modules structure
+    - aaphostsample - sample host app - follows the same AGP-modules structure
+    - aaplv2plugins - library module (aar) that contains LV2 plugins (resources and manifests)
+    - aappluginsample - sample LV2 plugins to be consumed by out of process hosts
+    - localpluginsample - sample host and plugins bundled within an application
 - tools
   - aap-import-lv2-metadata
 
 
-### Building two apps
+### Running host app and plugins app
 
-AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). At this state the code structure and the way how we debug apps is hacky; we rewrite `applicationId` part of `build.gradle` in `aaphostsample` to basically duplicate two apps, and run the client which launches service in the end.
+AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). Therefore, there are `aaphostsample` and `aappluginsample` for completeness. Both have to be installed to try out.
 
-It is manually done for now, depending on which part we want to debug. There should be better way to handle that in the future.
+There is another sample `localpluginsample` which does not really demonstrate inter-app connection but demonstrates local plugin processing instead. Note that those plugins in the app is also queryabled and indeed shows up when `aaphostsample` is run (and if this `localpluginsample` in installed).
+
+On Android Studio, you can switch which app to launch.
+
+### Debugging Audio Plugins (Services)
+
+When you would like to debug your AudioPluginServices, an important thing to note is that services (plugins) are not debuggable until you invoke `android.os.Debug.waitForDebugger()`, and you cannot invoke this method when you are NOT debugging (it will wait forever!) as long as the host and client are different apps. This also applies to native debugging via lldb (to my understanding).
+
+`aappluginsample` therefore invokes this method only at `MainAcivity.onCreate()` i,e. it is kind of obvious that it is being debugged.
 
 
 ### Build with AddressSanitizer
