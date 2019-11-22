@@ -98,15 +98,11 @@ public:
     }
 
     ::ndk::ScopedAStatus prepare(int32_t in_frameCount, int32_t in_portCount) override {
-        // FIXME: error check
         if (!resetBuffers(in_frameCount, sharedMemoryFDs)) {
             __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin", "Failed to prepare shared memory buffers.");
             return ndk::ScopedAStatus{AStatus_fromServiceSpecificError(2)}; // FIXME : define error codes
         }
         instance->prepare(sample_rate, in_frameCount, &buffer);
-        for (int i = 0; i < sharedMemoryFDs.size(); i++) {
-			memset(buffer.buffers[i], 1, 10);
-		}
         return ndk::ScopedAStatus::ok();
     }
 

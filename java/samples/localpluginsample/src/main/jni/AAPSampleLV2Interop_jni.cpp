@@ -11,7 +11,7 @@
 #include "aap/android-audio-plugin-host.hpp"
 
 namespace aaplv2sample {
-    int runHostAAP(int sampleRate, const char **pluginIDs, int numPluginIDs, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR);
+    int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR);
 }
 
 extern "C" {
@@ -37,7 +37,7 @@ jint Java_org_androidaudioplugin_localpluginsample_AAPSampleLocalInterop_runHost
     void* outWavBytesL = calloc(wavLength, 1);
 	void* outWavBytesR = calloc(wavLength, 1);
 
-    int ret = aaplv2sample::runHostAAP(sampleRate, pluginIDs, size, wavBytesL, wavBytesR, wavLength, outWavBytesL, outWavBytesR);
+    int ret = aaplv2sample::runHostAAP(sampleRate, pluginIDs[0], wavBytesL, wavBytesR, wavLength, outWavBytesL, outWavBytesR);
 
     env->SetByteArrayRegion(outWavL, 0, wavLength, (jbyte*) outWavBytesL);
 	env->SetByteArrayRegion(outWavR, 0, wavLength, (jbyte*) outWavBytesR);

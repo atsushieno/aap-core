@@ -54,6 +54,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         assert(fd >= 0);
         buffer_shm_fds.push_back(fd);
         void* ptr = mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        memset(ptr, 0, buffer_size);
         assert(ptr != nullptr);
         plugin_buffer->buffers[i] = ptr;
     }
@@ -100,8 +101,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         ::ndk::ScopedFileDescriptor fd;
         fd.set(buffer_shm_fds[i]);
         auto status2 = proxy->prepareMemory(i, fd);
-        fds.push_back(std::move(fd));
         assert (status2.isOk());
+		fds.push_back(std::move(fd));
     }
     auto status2x = proxy->prepare(plugin_buffer->num_frames, nPorts);
     assert (status2x.isOk());
@@ -152,7 +153,6 @@ extern "C" {
 
 void Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
-	assert(all_plugin_infos == nullptr);
 	jsize infoSize = env->GetArrayLength(jPluginInfos);
 	all_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
 	for (int i = 0; i < infoSize; i++) {

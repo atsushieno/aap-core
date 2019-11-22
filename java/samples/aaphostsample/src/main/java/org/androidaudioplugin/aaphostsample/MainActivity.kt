@@ -28,11 +28,10 @@ import org.androidaudioplugin.lv2.AudioPluginLV2LocalHost
 
 class MainActivity : AppCompatActivity() {
 
-    inner class PluginViewAdapter(ctx:Context, layout: Int, isOutProcess: Boolean, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
+    inner class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         var intent: Intent? = null
-        val isOutProcess: Boolean = isOutProcess
 
         lateinit var target_plugin: String
 
@@ -58,20 +57,7 @@ class MainActivity : AppCompatActivity() {
 
                     Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                     AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
-
-                    // merge L/R
-                    assert(out_rawL.size == out_rawR.size)
-                    assert(in_raw.size == out_rawL.size + out_rawR.size)
-                    for (i in 0 until out_rawL.size / 4) {
-                        out_raw[i * 8] = out_rawL[i * 4]
-                        out_raw[i * 8 + 1] = out_rawL[i * 4 + 1]
-                        out_raw[i * 8 + 2] = out_rawL[i * 4 + 2]
-                        out_raw[i * 8 + 3] = out_rawL[i * 4 + 3]
-                        out_raw[i * 8 + 4] = out_rawR[i * 4]
-                        out_raw[i * 8 + 5] = out_rawR[i * 4 + 1]
-                        out_raw[i * 8 + 6] = out_rawR[i * 4 + 2]
-                        out_raw[i * 8 + 7] = out_rawR[i * 4 + 3]
-                    }
+                    processAudioOutputData()
 
                     runOnUiThread {
                         wavePostPlugin.setRawData(out_raw)
@@ -83,6 +69,23 @@ class MainActivity : AppCompatActivity() {
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 Log.d("MainActivity", "onServiceDisconnected is invoked, most likely an unexpected crash?")
+            }
+        }
+
+        fun processAudioOutputData()
+        {
+            // merge L/R
+            assert(out_rawL.size == out_rawR.size)
+            assert(in_raw.size == out_rawL.size + out_rawR.size)
+            for (i in 0 until out_rawL.size / 4) {
+                out_raw[i * 8] = out_rawL[i * 4]
+                out_raw[i * 8 + 1] = out_rawL[i * 4 + 1]
+                out_raw[i * 8 + 2] = out_rawL[i * 4 + 2]
+                out_raw[i * 8 + 3] = out_rawL[i * 4 + 3]
+                out_raw[i * 8 + 4] = out_rawR[i * 4]
+                out_raw[i * 8 + 5] = out_rawR[i * 4 + 1]
+                out_raw[i * 8 + 6] = out_rawR[i * 4 + 2]
+                out_raw[i * 8 + 7] = out_rawR[i * 4 + 3]
             }
         }
 
@@ -142,13 +145,18 @@ class MainActivity : AppCompatActivity() {
         val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
-        val remotePlugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
-        val remoteAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, true, remotePlugins)
-        this.audioPluginServiceListView.adapter = remoteAdapter
+        val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
+        val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
+        this.audioPluginServiceListView.adapter = adapter
 
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
 
+        prepareAudioData()
+    }
+
+    fun prepareAudioData()
+    {
         GlobalScope.launch {
             val wavAsset = assets.open("sample.wav")
             // read wave samples and and deinterleave into L/R
