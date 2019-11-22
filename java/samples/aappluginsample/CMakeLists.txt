@@ -48,5 +48,5 @@ target_compile_options(aappluginsample
         -Wshadow-field
         )
 
-target_link_libraries(aappluginsample android binder_ndk log lilv-0 androidaudioplugin)
+target_link_libraries(aappluginsample android log androidaudioplugin)
 

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AAP Sample Plugins</string>
+    <string name="audio_plugins_in_this_application">audio plugins in this application</string>
+    <string name="servicename">ServicevName</string>
+    <string name="audio_plugin_name">(audio plugin name)</string>
+    <string name="identifier">(identifier)</string>
+</resources>

@@ -72,6 +72,10 @@ void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState
 	/* apply argument input */
 }
 
+typedef struct {
+    /* any kind of extension information, which will be passed as void* */
+} SamplePluginSpecific;
+
 AndroidAudioPlugin* sample_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
@@ -79,7 +83,7 @@ AndroidAudioPlugin* sample_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions)
 {
 	return new AndroidAudioPlugin {
-		new SamplePluginSpecific { pluginUniqueId },
+		new SamplePluginSpecific {},
 		sample_plugin_prepare,
 		sample_plugin_activate,
 		sample_plugin_process,

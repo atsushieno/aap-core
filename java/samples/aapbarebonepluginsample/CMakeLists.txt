@@ -10,7 +10,6 @@ cmake_minimum_required(VERSION 3.6.0)
 #        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
 #        )
 link_directories(
-        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
         "${Project_SOURCE_DIR}/../../../build-android/${CMAKE_ANDROID_ARCH_ABI}/native/"
 )
 
@@ -21,25 +20,23 @@ link_directories(
 # automatically packages shared libraries with your APK.
 
 add_library( # Specifies the name of the library.
-        aaphostsample
+        aapbarebonepluginsample
 
         # Sets the library as a shared library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        "src/main/jni/AAPSampleRemoteInterop_native.cpp"
+        "src/main/jni/aapbarebonepluginsample.cpp"
         )
 
-target_include_directories(aaphostsample
+target_include_directories(aapbarebonepluginsample
         PRIVATE
         "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
         "${Project_SOURCE_DIR}/../../../native/core/include"
         "${Project_SOURCE_DIR}/../../../native/android/src/gen/include"
-        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
-        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
 
-target_compile_options(aaphostsample
+target_compile_options(aapbarebonepluginsample
         PRIVATE
         -std=c++17
         -Wall
@@ -48,5 +45,5 @@ target_compile_options(aaphostsample
         -Wshadow-field
         )
 
-target_link_libraries(aaphostsample android binder_ndk log androidaudioplugin)
+target_link_libraries(aapbarebonepluginsample android log androidaudioplugin)
 

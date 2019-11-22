@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/androidaudioplugin" />
             <option value="$PROJECT_DIR$/androidaudioplugin-lv2" />
+            <option value="$PROJECT_DIR$/samples/aapbarebonepluginsample" />
             <option value="$PROJECT_DIR$/samples/aaphostsample" />
             <option value="$PROJECT_DIR$/samples/aaplv2plugins" />
             <option value="$PROJECT_DIR$/samples/aappluginsample" />
