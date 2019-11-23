@@ -108,7 +108,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint().data();
 	auto dl = dlopen(file && file[0] ? file : "libandroidaudioplugin.so", RTLD_LAZY);
 	assert (dl != nullptr);
-	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint ? entrypoint : "GetAndroidAudioPluginFactory");
+	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint && entrypoint[0] ? entrypoint : "GetAndroidAudioPluginFactory");
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
