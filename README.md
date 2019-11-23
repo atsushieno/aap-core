@@ -297,7 +297,7 @@ done.
 
 $ cat res/xml/metadata0.xml 
 <plugins>
-  <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate">
+  <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate" library="..." entrypoint="...">
     <ports>
       <port direction="input" content="midi" name="Control" />
       <port direction="input" content="audio" name="In" />
@@ -356,7 +356,6 @@ Currently AAPHostSample contains two kinds of hosting samples:
 
 - AAP remote hosting via AudioPluginService (not working):
   plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder. And it lists only non-local ones.
-  The actual plugins are all LV2 so far.
 - AAP hosting via AudioPluginService:
   plugins are queried via `AudioPluginHost.queryLocalAudioPluginServices()` which filters out non-local plugins.
 

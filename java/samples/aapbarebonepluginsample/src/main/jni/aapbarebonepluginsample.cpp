@@ -20,8 +20,10 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 						   AndroidAudioPluginBuffer *buffer,
 						   long timeoutInNanoseconds) {
 	/* do anything. In this example, fill all buffer with '6' */
+	int size = buffer->num_frames * sizeof(float);
 	for (int i = 0; buffer->buffers[i]; i++) {
-		memset(buffer->buffers[i], '6', buffer->num_frames * sizeof(float));
+		for (int x = 0; x < size; x++)
+			((char*) buffer->buffers[i])[x] = (char) (x % 128);
 	}
 }
 
