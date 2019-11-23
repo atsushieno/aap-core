@@ -17,7 +17,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name="org.androidaudioplugin.AudioPluginService"
+        <service android:name="org.androidaudioplugin.lv2.LV2AudioPluginService"
             android:label="AAPBareBoneSamplePlugin">
             <intent-filter>
                 <action

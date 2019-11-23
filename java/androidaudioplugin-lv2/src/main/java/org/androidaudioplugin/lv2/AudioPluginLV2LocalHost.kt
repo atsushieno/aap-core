@@ -9,8 +9,7 @@ class AudioPluginLV2LocalHost
     companion object {
         init {
             System.loadLibrary("androidaudioplugin")
-            // FIXME: bring it back once we managed to split those native lib builds
-            //System.loadLibrary("androidaudioplugin-lv2")
+            System.loadLibrary("androidaudioplugin-lv2")
         }
 
         @JvmStatic
