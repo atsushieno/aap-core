@@ -69,7 +69,6 @@ class MainActivity : AppCompatActivity() {
                 val uri = pluginId.substring("lv2:".length)
                 AudioPluginLV2LocalHost.initialize(this@MainActivity)
                 AudioPluginHost.initialize(context)
-                // FIXME: pass valid buffers
                 AAPSampleLocalInterop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, in_rawR, out_rawL, out_rawR)
                 AudioPluginHost.cleanup()
                 AudioPluginLV2LocalHost.cleanup()
