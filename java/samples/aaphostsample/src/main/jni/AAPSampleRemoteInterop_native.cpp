@@ -111,7 +111,14 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     auto status3 = proxy->activate();
     assert (status3.isOk());
 
-    for (int b = 0; b < wavLength; b += buffer_size) {
+	// prepare control inputs - dummy
+	for (int p = 0; p < buffer_shm_fds.size(); p++) {
+		if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
+			for (int i = 0; i < float_count; i++)
+				((float*) plugin_buffer->buffers[p])[i] = 0.5;
+	}
+
+	for (int b = 0; b < wavLength; b += buffer_size) {
         int size = b + buffer_size < wavLength ? buffer_size : wavLength - b;
         // FIXME: handle more channels
         if (audioInPortL >= 0)
