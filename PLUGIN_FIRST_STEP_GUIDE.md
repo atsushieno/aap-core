@@ -1,7 +1,16 @@
 
 # Building AAP: First Step Guide
 
-## Steps From Scratch
+This is a brief introduction for plugin developers to create audio plugin
+for Android using AAP.
+
+AAP project consists of fairly complicated set of files, so ideally there
+should be some project template. Unfortunately Android Studio is too general
+for that purpose to provide additional template for AAP. At this state,
+it's best to cope our simplest example `AAPBareBoneSamplePlugin` and
+rewrite wherever appropriate.
+
+## Where to make changes
 
 - `build.gradle`
   - It's best to create Android Application project with the template
