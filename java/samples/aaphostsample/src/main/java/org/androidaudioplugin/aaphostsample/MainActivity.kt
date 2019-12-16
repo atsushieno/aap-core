@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
                     processAudioOutputData()
 
                     runOnUiThread {
-                        wavePostPlugin.setRawData(out_raw)
+                        wavePostPlugin.sample = out_raw.map { b -> b.toInt() }.toIntArray()
                         Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
                     }
                     disconnect()
@@ -138,7 +138,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        prepareAudioData()
+        Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
+
         setContentView(R.layout.activity_main)
+        wavePrePlugin.sample = arrayOf(0).toIntArray()
+        wavePostPlugin.sample = arrayOf(0).toIntArray()
 
         // Query AAPs
         val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
@@ -151,37 +157,31 @@ class MainActivity : AppCompatActivity() {
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
 
-        prepareAudioData()
+        wavePrePlugin.sample = in_raw.map { b -> b.toInt() }.toIntArray()
+        wavePrePlugin.requestLayout()
     }
 
     fun prepareAudioData()
     {
-        GlobalScope.launch {
-            val wavAsset = assets.open("sample.wav")
-            // read wave samples and and deinterleave into L/R
-            in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
-            wavAsset.close()
-            in_rawR = ByteArray(in_raw.size / 2)
-            in_rawL = ByteArray(in_raw.size / 2)
-            for (i in 0 until in_raw.size / 8) {
-                in_rawL [i * 4] = in_raw[i * 8]
-                in_rawL [i * 4 + 1] = in_raw[i * 8 + 1]
-                in_rawL [i * 4 + 2] = in_raw[i * 8 + 2]
-                in_rawL [i * 4 + 3] = in_raw[i * 8 + 3]
-                in_rawR [i * 4] = in_raw[i * 8 + 4]
-                in_rawR [i * 4 + 1] = in_raw[i * 8 + 5]
-                in_rawR [i * 4 + 2] = in_raw[i * 8 + 6]
-                in_rawR [i * 4 + 3] = in_raw[i * 8 + 7]
-            }
-            out_raw = ByteArray(in_raw.size)
-            out_rawL = ByteArray(in_rawL.size)
-            out_rawR = ByteArray(in_rawL.size)
-
-            runOnUiThread {
-                wavePrePlugin.setRawData(in_raw)
-                Toast.makeText(this@MainActivity, "loaded input wav", Toast.LENGTH_LONG).show()
-            }
+        val wavAsset = assets.open("sample.wav")
+        // read wave samples and and deinterleave into L/R
+        in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        wavAsset.close()
+        in_rawR = ByteArray(in_raw.size / 2)
+        in_rawL = ByteArray(in_raw.size / 2)
+        for (i in 0 until in_raw.size / 8) {
+            in_rawL [i * 4] = in_raw[i * 8]
+            in_rawL [i * 4 + 1] = in_raw[i * 8 + 1]
+            in_rawL [i * 4 + 2] = in_raw[i * 8 + 2]
+            in_rawL [i * 4 + 3] = in_raw[i * 8 + 3]
+            in_rawR [i * 4] = in_raw[i * 8 + 4]
+            in_rawR [i * 4 + 1] = in_raw[i * 8 + 5]
+            in_rawR [i * 4 + 2] = in_raw[i * 8 + 6]
+            in_rawR [i * 4 + 3] = in_raw[i * 8 + 7]
         }
+        out_raw = ByteArray(in_raw.size)
+        out_rawL = ByteArray(in_rawL.size)
+        out_rawR = ByteArray(in_rawL.size)
     }
 
     fun playSound(sampleRate: Int, postApplied: Boolean)

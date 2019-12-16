@@ -2,7 +2,7 @@
 
 ## What is AAP?
 
-Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used.
+Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used, to some extent.
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
@@ -14,6 +14,7 @@ Extensibility is provided like what LV2 does. VST3-specifics, or AAX-specifics, 
 
 Technically it is not very different from LV2, but Android is the first citizen in AAP. Also you don't have to spend time on learning RDF and Turtle to start actual plugin development (you still have to write manifests in XML). Audio developers should spend their time on implementing or porting high quality audio processors.
 
+There are samples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)).
 
 
 ## How AAPs work
@@ -108,7 +109,7 @@ Unlike in-host-process plugin processing, switching process context is important
 
 An important note is that NdkBinder API is available only after Android 10. On earlier Android targets the binder must be implemented in Java API (or through non-public native API, which is now prohibited). At this state we are not sure if we support compatibility with old targets. They are not great for high audio processing requirement either way.
 
-<del>A Remote plugin client is actually implemented just as a plugin, when it is used by host i.e. it does not matter how the plugin is implemented.</del> At this state we are not sure if we provide direct native client API.
+<del>A Remote plugin client is actually implemented just as a plugin, when it is used by host i.e. it does not matter how the plugin is implemented.</del> At this state we are not sure if we provide direct native client API. It is not very easy in terms of querying and connecting to services.
 
 
 ### fixed pointers
@@ -450,7 +451,7 @@ The wave sample is created by atsushieno using Waveform10 and Collective.
 
 (FIXME: the app does not respect any audio format and processes in fixed size.)
 
-The waveform rendering is done thanks to audiowave-progressbar: https://github.com/alxrm/audiowave-progressbar
+The waveform rendering is done thanks to [waveformSeekBar](https://github.com/massoudss/waveformSeekBar).
 
 
 ## Building repo
