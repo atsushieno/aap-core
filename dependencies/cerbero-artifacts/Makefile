@@ -3,7 +3,6 @@
 PWD=$(shell pwd)
 
 ABIS_SIMPLE = x86 x86-64 armv7 arm64
-APPNAMES = AAPHostSample AAPLV2Sample
 ANDROID_NDK=/home/$(USER)/Android/Sdk/ndk/20.0.5594570/
 
 TOP=`pwd`
@@ -37,12 +36,14 @@ add-symlinks:
 
 .PHONY:
 build-lv2-deps:
-	make CERBERO_COMMAND="build lilv mda-lv2" run-cerbero-command
+	make CERBERO_COMMAND="build libsndfile" run-cerbero-command
+	# make CERBERO_COMMAND="build serd sord" run-cerbero-command
+	# make CERBERO_COMMAND="build lv2 sratom lilv mda-lv2" run-cerbero-command
 
 
 .PHONY:
 run-cerbero-command:
 	cd cerbero && for abi in $(ABIS_SIMPLE) ; do \
-		ANDROID_NDK_HOME=$(ANDROID_NDK) ./cerbero-uninstalled -c config/cross-android-$$abi.cbc $(CERBERO_COMMAND) ; \
+		ANDROID_NDK_HOME=$(ANDROID_NDK) BUILD_ANDROID_ABI=$$abi ./cerbero-uninstalled -c config/cross-android-$$abi.cbc $(CERBERO_COMMAND) ; \
 	done
 

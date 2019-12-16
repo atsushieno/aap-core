@@ -11,7 +11,7 @@ build-all: \
 	build-java
 
 build-cerbero-artifacts:
-	cd dependencies/cerbero-artifacts && make
+	cd dependencies && make
 
 build-desktop:
 	echo TODO: covers core and lv2, build for testing on desktop

@@ -7,3 +7,21 @@
 [submodule "dependencies/tinyxml2"]
 	path = dependencies/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
+[submodule "dependencies/serd"]
+	path = dependencies/serd
+	url = https://github.com/atsushieno/serd.git
+[submodule "dependencies/sord"]
+	path = dependencies/sord
+	url = https://github.com/atsushieno/sord.git
+[submodule "dependencies/lv2"]
+	path = dependencies/lv2
+	url = https://gitlab.com/lv2/lv2.git
+[submodule "dependencies/sratom"]
+	path = dependencies/sratom
+	url = https://gitlab.com/lv2/sratom.git
+[submodule "dependencies/lilv"]
+	path = dependencies/lilv
+	url = https://github.com/atsushieno/lilv.git
+[submodule "dependencies/mda-lv2"]
+	path = dependencies/mda-lv2
+	url = https://gitlab.com/drobilla/mda-lv2.git
