@@ -1,24 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="KpzU0f" name="AndroidAudioPluginFramework" projectType="dll"
-              jucerVersion="5.4.3" cppLanguageStandard="17">
+              jucerVersion="5.4.5" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
       <FILE id="zdPei0" name="android-audio-plugin-host.cpp" compile="1"
-            resource="0" file="../aap/src/android-audio-plugin-host.cpp"/>
-      <FILE id="QlUDzX" name="android-audio-plugin.h" compile="0" resource="0"
-            file="../common/include/aap/android-audio-plugin.h"/>
-      <FILE id="QlUDzX" name="android-audio-plugin-host.hpp" compile="0"
-            resource="0" file="../aap/include/aap/android-audio-plugin-host.hpp"/>
-      <FILE id="AcSfsw" name="juce_android_audio_plugin_format.cpp" compile="1"
-            resource="0" file="Source/juce_android_audio_plugin_format.cpp"/>
+            resource="0" file="../androidaudioplugin/core/src/android-audio-plugin-host.cpp"/>
+      <FILE id="AcSfsw" name="test.cpp" compile="1" resource="0" file="Source/test.cpp"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" headerPath="../aap/include"/>
-        <CONFIGURATION isDebug="0" name="Release" headerPath="../aap/include"/>
+        <CONFIGURATION isDebug="1" name="Debug" headerPath="../plugin-api/include"/>
+        <CONFIGURATION isDebug="0" name="Release" headerPath="../androidaudioplugin/core/include"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
@@ -33,12 +28,13 @@
         <MODULEPATH id="juce_gui_basics" path=""/>
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
+        <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
-    <ANDROIDSTUDIO targetFolder="Builds/Android">
+    <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" headerPath="../aap/include"/>
-        <CONFIGURATION isDebug="0" name="Release" headerPath="../aap/include"/>
+        <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>
+        <CONFIGURATION isDebug="0" name="Release" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>
@@ -53,6 +49,7 @@
         <MODULEPATH id="juce_gui_basics" path=""/>
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
+        <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
       </MODULEPATHS>
     </ANDROIDSTUDIO>
     <CLION targetFolder="Builds/CLion" clionMakefileEnabled="1">
@@ -69,10 +66,13 @@
         <MODULEPATH id="juce_gui_basics" path=""/>
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
+        <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
       </MODULEPATHS>
     </CLION>
   </EXPORTFORMATS>
   <MODULES>
+    <MODULE id="android_audio_plugin_processors" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

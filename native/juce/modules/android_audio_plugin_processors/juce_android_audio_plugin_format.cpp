@@ -1,6 +1,6 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
-#include "../aap/include/aap/android-audio-plugin-host.hpp"
+#include "aap/android-audio-plugin-host.hpp"
 
 using namespace aap;
 using namespace juce;

@@ -1,4 +1,4 @@
-#include "aap/android-audio-plugin-host.hpp"
+#include "../include/aap/android-audio-plugin-host.hpp"
 #include <vector>
 #include <tinyxml2.h>
 

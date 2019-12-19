@@ -1,6 +1,6 @@
 #!/bin/sh
 
-Projucer --resave android-audio-plugin-framework.jucer
+$JUCE_DIR/Projucer --resave android-audio-plugin-framework.jucer
 
 cd Builds/Android/lib/
 mkdir -p build-android
