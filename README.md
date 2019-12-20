@@ -329,6 +329,12 @@ The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentP
 
 We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
 
+### Licensing notice
+
+Note that `mda-lv2` is distributed under the GPLv3 license and you have to
+follow it when distributing or making changes to that part (the LV2 plugin
+samples). This does not apply to other LV2 related bits.
+
 
 ## AAP-VST3 backend
 
@@ -433,10 +439,15 @@ Actually native server does not work due to [another NdkBinder issue](https://gi
 
 ## JUCE integration
 
-`juce/Source/juce_android_audio_plugin_format.cpp` implements juce:AudioPluginFormat and related stuff.
+`native/juce/Source/juce_android_audio_plugin_format.cpp` implements juce:AudioPluginFormat and related stuff.
 
 We are quite unsure if JUCE audio processors builds for Android.
 
+### Licensing notice
+
+Note that any JUCE-originated code, including sample app code which is
+basically a port of JUCE AudioPluginHost, cannot be distributed uner the
+MIT license.
 
 ## Samples
 

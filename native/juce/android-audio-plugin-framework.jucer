@@ -4,9 +4,32 @@
               jucerVersion="5.4.5" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
+      <GROUP id="{8455AB25-C22F-FB26-6542-D8AC10E808A1}" name="Plugins">
+        <FILE id="H9V4cP" name="InternalPlugins.cpp" compile="1" resource="0"
+              file="Source/Plugins/InternalPlugins.cpp"/>
+        <FILE id="NvZLwA" name="InternalPlugins.h" compile="0" resource="0"
+              file="Source/Plugins/InternalPlugins.h"/>
+        <FILE id="sUQk8l" name="IOConfigurationWindow.cpp" compile="1" resource="0"
+              file="Source/Plugins/IOConfigurationWindow.cpp"/>
+        <FILE id="SrsZuX" name="IOConfigurationWindow.h" compile="0" resource="0"
+              file="Source/Plugins/IOConfigurationWindow.h"/>
+        <FILE id="oZZSTh" name="PluginGraph.cpp" compile="1" resource="0" file="Source/Plugins/PluginGraph.cpp"/>
+        <FILE id="Rc0gW9" name="PluginGraph.h" compile="0" resource="0" file="Source/Plugins/PluginGraph.h"/>
+      </GROUP>
+      <GROUP id="{9298684E-3569-B865-BB18-2E326A36B535}" name="UI">
+        <FILE id="XROsFE" name="GraphEditorPanel.cpp" compile="1" resource="0"
+              file="Source/UI/GraphEditorPanel.cpp"/>
+        <FILE id="EN9bBy" name="GraphEditorPanel.h" compile="0" resource="0"
+              file="Source/UI/GraphEditorPanel.h"/>
+        <FILE id="NC0j9K" name="MainHostWindow.cpp" compile="1" resource="0"
+              file="Source/UI/MainHostWindow.cpp"/>
+        <FILE id="yzl49z" name="MainHostWindow.h" compile="0" resource="0"
+              file="Source/UI/MainHostWindow.h"/>
+        <FILE id="GJMCh3" name="PluginWindow.h" compile="0" resource="0" file="Source/UI/PluginWindow.h"/>
+      </GROUP>
       <FILE id="zdPei0" name="android-audio-plugin-host.cpp" compile="1"
             resource="0" file="../androidaudioplugin/core/src/android-audio-plugin-host.cpp"/>
-      <FILE id="AcSfsw" name="test.cpp" compile="1" resource="0" file="Source/test.cpp"/>
+      <FILE id="VXsJ9G" name="HostStartup.cpp" compile="1" resource="0" file="Source/HostStartup.cpp"/>
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
@@ -29,6 +52,7 @@
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
         <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../home/atsushi/SDKs/JUCE/modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
     <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include"
@@ -51,6 +75,7 @@
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
         <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../home/atsushi/SDKs/JUCE/modules"/>
       </MODULEPATHS>
     </ANDROIDSTUDIO>
     <CLION targetFolder="Builds/CLion" clionMakefileEnabled="1">
@@ -68,6 +93,7 @@
         <MODULEPATH id="juce_gui_extra" path=""/>
         <MODULEPATH id="juce_opengl" path=""/>
         <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../home/atsushi/SDKs/JUCE/modules"/>
       </MODULEPATHS>
     </CLION>
   </EXPORTFORMATS>
@@ -78,6 +104,7 @@
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
