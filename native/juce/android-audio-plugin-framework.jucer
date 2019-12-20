@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="KpzU0f" name="AndroidAudioPluginFramework" projectType="dll"
+<JUCERPROJECT id="KpzU0f" name="AndroidAudioPluginFramework" projectType="guiapp"
               jucerVersion="5.4.5" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="AndroidAudioPluginFramework">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
@@ -56,7 +56,7 @@
       </MODULEPATHS>
     </LINUX_MAKE>
     <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include"
-                   externalLibraries="tinyxml">
+                   externalLibraries="tinyxml" microphonePermissionNeeded="1">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>
         <CONFIGURATION isDebug="0" name="Release" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>

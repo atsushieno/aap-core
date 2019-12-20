@@ -360,8 +360,4 @@ protected:
 	}
 };
 
-
-JuceAndroidAudioPluginInstance p(NULL);
-JuceAndroidAudioPluginFormat f(NULL);
-
 } // namespace
