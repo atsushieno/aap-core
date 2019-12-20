@@ -31,7 +31,8 @@
         <MODULEPATH id="android_audio_plugin_processors" path="modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
-    <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include">
+    <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include"
+                   externalLibraries="tinyxml">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>
         <CONFIGURATION isDebug="0" name="Release" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"/>

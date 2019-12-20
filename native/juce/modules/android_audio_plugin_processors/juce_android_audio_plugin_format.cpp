@@ -40,7 +40,7 @@ static void fillPluginDescriptionFromNative(PluginDescription &description, cons
 	description.pluginFormatName = "AAP";
 	
 	description.category.clear();
-	description.category += src.getPrimaryCategory();
+	description.category += juce::String(src.getPrimaryCategory());
 	
 	description.manufacturerName = src.getManufacturerName();
 	description.version = src.getVersion();
@@ -264,18 +264,18 @@ public:
 		cached_descs.clear();
 	}
 
-	String getName() const
+	String getName() const override
 	{
 		return "AAP";
 	}
 	
-	void findAllTypesForFile(OwnedArray<PluginDescription>& results, const String& fileOrIdentifier)
+	void findAllTypesForFile(OwnedArray<PluginDescription>& results, const String& fileOrIdentifier) override
 	{
 		auto id = fileOrIdentifier.toRawUTF8();
 		// FIXME: everything is already cached, so this can be simplified.
 		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
 			auto d = android_host.getPluginDescriptorAt(i);
-			if (strcmp(id, d->getName()) == 0 || strcmp(id, d->getIdentifier()) == 0) {
+			if (strcmp(id, d->getName().data()) == 0 || strcmp(id, d->getIdentifier().data()) == 0) {
 				auto dst = cached_descs [d];
 				if (!dst)
 					// doesn't JUCE handle invalid fileOrIdentifier?
@@ -285,36 +285,36 @@ public:
 		}
 	}
 	
-	bool fileMightContainThisPluginType(const String &fileOrIdentifier)
+	bool fileMightContainThisPluginType(const String &fileOrIdentifier) override
 	{
 		auto f = File::createFileWithoutCheckingPath(fileOrIdentifier);
 		return f.hasFileExtension(".aap");
 	}
 	
-	String getNameOfPluginFromIdentifier(const String &fileOrIdentifier)
+	String getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override
 	{
 		auto descriptor = android_host.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
 		return descriptor != NULL ? String(descriptor->getName()) : String();
 	}
 	
-	bool pluginNeedsRescanning(const PluginDescription &description)
+	bool pluginNeedsRescanning(const PluginDescription &description) override
 	{
 		return android_host.isPluginUpToDate (description.fileOrIdentifier.toRawUTF8(), description.lastInfoUpdateTime.toMilliseconds());
 	}
 	
-	bool doesPluginStillExist(const PluginDescription &description)
+	bool doesPluginStillExist(const PluginDescription &description) override
 	{
 		return android_host.isPluginAlive (description.fileOrIdentifier.toRawUTF8());
 	}
 	
-	bool canScanForPlugins() const
+	bool canScanForPlugins() const override
 	{
 		return true;
 	}
 	
 	StringArray searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
 		bool recursive,
-		bool allowPluginsWhichRequireAsynchronousInstantiation = false)
+		bool allowPluginsWhichRequireAsynchronousInstantiation = false) override
 	{
 		// regardless of whatever parameters this function is passed, it is
 		// impossible to change the list of detected plugins.
@@ -327,32 +327,33 @@ public:
 	// Unlike desktop system, it is not practical to either look into file systems
 	// on Android. And it is simply impossible to "enumerate" asset directories.
 	// Therefore we simply return empty list.	
-	FileSearchPath getDefaultLocationsToSearch()
+	FileSearchPath getDefaultLocationsToSearch() override
 	{
 		FileSearchPath ret("");
 		return ret;
 	}
+	
+	bool isTrivialToScan() const override { return true; }
 
-protected:
 	void createPluginInstance(const PluginDescription &description,
 		double initialSampleRate,
 		int initialBufferSize,
-		void *userData,
-		PluginCreationCallback callback)
+		PluginCreationCallback callback) override
 	{
 		auto descriptor = findDescriptorFrom(description);
 		String error("");
 		if (descriptor == nullptr) {
 			error << "Android Audio Plugin " << description.name << "was not found.";
-			callback(userData, nullptr, error);
+			callback(nullptr, error);
 		} else {
-			auto androidInstance = android_host.instantiatePlugin(descriptor->getIdentifier());
-			auto instance = new JuceAndroidAudioPluginInstance(androidInstance);
-			callback(userData, instance, error);
+			auto androidInstance = android_host.instantiatePlugin(descriptor->getIdentifier().data());
+			std::unique_ptr<JuceAndroidAudioPluginInstance> instance{new JuceAndroidAudioPluginInstance(androidInstance)};
+			callback(std::move(instance), error);
 		}
 	}
 	
-	bool requiresUnblockedMessageThreadDuringCreation(const PluginDescription &description) const noexcept
+protected:
+	bool requiresUnblockedMessageThreadDuringCreation(const PluginDescription &description) const noexcept override
 	{
 		// FIXME: implement correctly(?)
 		return false;
