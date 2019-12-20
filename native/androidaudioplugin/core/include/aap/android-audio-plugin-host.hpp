@@ -84,6 +84,8 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
+	inline static PluginInformation** ParsePluginDescriptor(const char* xmlfile) { return aap_parse_plugin_descriptor(xmlfile); }
+
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
