@@ -7,7 +7,7 @@ import android.os.IBinder
 import android.util.Log
 import org.xmlpull.v1.XmlPullParser
 
-class AudioPluginHost {
+class AudioPluginHostHelper {
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"

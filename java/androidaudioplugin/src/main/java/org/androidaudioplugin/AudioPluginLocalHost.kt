@@ -3,7 +3,7 @@ package org.androidaudioplugin
 import android.content.Context
 import android.util.Log
 
-class AudioPluginLocalHost : AudioPluginService() {
+class AudioPluginLocalHost {
     companion object {
 
         init {
@@ -46,7 +46,7 @@ class AudioPluginLocalHost : AudioPluginService() {
         external fun cleanupNatives()
 
         @JvmStatic
-        fun getLocalAudioPluginService(context: Context) = AudioPluginHost.queryAudioPluginServices(
+        fun getLocalAudioPluginService(context: Context) = AudioPluginHostHelper.queryAudioPluginServices(
             context
         ).first { svc -> svc.packageName == context.packageName }
     }

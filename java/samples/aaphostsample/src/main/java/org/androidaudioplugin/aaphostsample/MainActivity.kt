@@ -18,7 +18,7 @@ import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
                 GlobalScope.launch {
 
                     Log.d("MainActivity", "starting AAPSampleInterop.initialize")
-                    AAPSampleInterop.initialize(AudioPluginHost.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
+                    AAPSampleInterop.initialize(AudioPluginHostHelper.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
 
                     Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                     AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity() {
 
             view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
 
-                var intent = Intent(AudioPluginHost.AAP_ACTION_NAME)
+                var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
                 this.intent = intent
                 intent.component = ComponentName(
                     service.packageName,
@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
         wavePostPlugin.sample = arrayOf(0).toIntArray()
 
         // Query AAPs
-        val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()

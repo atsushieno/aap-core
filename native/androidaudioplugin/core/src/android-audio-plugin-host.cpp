@@ -55,9 +55,6 @@ PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile)
 
 PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
 {
-	backends.push_back(&backend_lv2);
-	backends.push_back(&backend_vst3);
-
 	int n = 0;
 	while (pluginDescriptors[n])
 		n++;

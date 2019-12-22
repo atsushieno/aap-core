@@ -18,12 +18,13 @@ import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.AudioPluginLocalHost
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.lv2.AudioPluginLV2LocalHost
 
 class MainActivity : AppCompatActivity() {
@@ -68,9 +69,9 @@ class MainActivity : AppCompatActivity() {
                 val pluginId = item.second.pluginId!!
                 val uri = pluginId.substring("lv2:".length)
                 AudioPluginLV2LocalHost.initialize(this@MainActivity)
-                AudioPluginHost.initialize(context)
+                AudioPluginLocalHost.initialize(context)
                 AAPSampleLocalInterop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, in_rawR, out_rawL, out_rawR)
-                AudioPluginHost.cleanup()
+                AudioPluginLocalHost.cleanup()
                 AudioPluginLV2LocalHost.cleanup()
 
                 processAudioOutputData()
@@ -100,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Query AAPs
-        val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val plugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()

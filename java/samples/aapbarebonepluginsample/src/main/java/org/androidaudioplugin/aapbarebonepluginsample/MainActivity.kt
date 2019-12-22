@@ -9,7 +9,7 @@ import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         AudioPluginService.enableDebug = true
 
         // Query AAPs
-        val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()

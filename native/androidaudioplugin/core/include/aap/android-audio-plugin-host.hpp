@@ -257,9 +257,6 @@ class PluginHostBackendVST3 : public PluginHostBackend
 
 class PluginHost
 {
-	PluginHostBackendLV2 backend_lv2;
-	PluginHostBackendLV2 backend_vst3;
-
 	std::vector<const PluginHostBackend*> backends;
 	
 	std::vector<const PluginInformation*> plugin_descriptors;

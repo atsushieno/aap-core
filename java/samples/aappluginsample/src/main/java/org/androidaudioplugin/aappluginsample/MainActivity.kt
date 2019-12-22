@@ -9,14 +9,14 @@ import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 
 class MainActivity : AppCompatActivity() {
 
-    inner class PluginViewAdapter(ctx:Context, layout: Int, isOutProcess: Boolean, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
+    inner class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -43,11 +43,11 @@ class MainActivity : AppCompatActivity() {
         AudioPluginService.enableDebug = true
 
         // Query AAPs
-        val pluginServices = AudioPluginHost.queryAudioPluginServices(this)
+        val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
         val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName && p.second.backend == "LV2" }.toTypedArray()
-        val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, false, localPlugins)
+        val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
     }
 }
