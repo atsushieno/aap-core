@@ -38,7 +38,7 @@ build-single-abi:
 	make MODULE=sord MODULE_DIRECTORY=sord MODULE_MAJOR=0 MODULE_VER=0.16.4 MODULE_OPTIONS="--no-utils" build-single
 	make MODULE=lv2 MODULE_DIRECTORY=lv2 MODULE_MAJOR=0 build-single-no-soname-opt
 	make MODULE=sratom MODULE_DIRECTORY=sratom MODULE_MAJOR=0 MODULE_VER=0.6.4 build-single
-	make MODULE=lilv MODULE_DIRECTORY=lilv MODULE_MAJOR=0 MODULE_VER=0.24.5 MODULE_OPTIONS="--no-utils" build-single
+	make MODULE=lilv MODULE_DIRECTORY=lilv MODULE_MAJOR=0 MODULE_VER=0.24.7 MODULE_OPTIONS="--no-utils" build-single
 	make MODULE=mda-lv2 MODULE_DIRECTORY=mda-lv2 MODULE_MAJOR=0 build-single-no-soname-opt
 
 .PHONY:
@@ -55,7 +55,7 @@ build-single-no-soname-opt:
 	CC=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang \
 	CXX=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang++ \
 	LD=$(ANDROID_TOOLCHAIN)/bin/$(ABI_COMPLEX)-ld \
-	CFLAGS="--sysroot=$(ANDROID_NDK)/sysroot -I$(ANDROID_NDK)/sysroot/usr/include/ -DANDROID" \
+	CFLAGS="--sysroot=$(ANDROID_NDK)/sysroot -I$(ANDROID_NDK)/sysroot/usr/include/ -DANDROID -g" \
 	LDFLAGS="-landroid $(LDFLAGS)" \
 	./waf -d $(MODULE_OPTIONS) --prefix=../dist/$(ABI_FORMAL) configure build install && \
 	cd ..
