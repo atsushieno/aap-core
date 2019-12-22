@@ -142,7 +142,7 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
     delete sp_binder;
 }
 
-void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
     assert(local_plugin_infos == nullptr);
     jsize infoSize = env->GetArrayLength(jPluginInfos);
@@ -154,7 +154,7 @@ void Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass 
     local_plugin_infos[infoSize] = nullptr;
 }
 
-void Java_org_androidaudioplugin_AudioPluginHost_cleanupNatives(JNIEnv *env, jclass cls)
+void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env, jclass cls)
 {
     assert(local_plugin_infos != nullptr);
     int n = 0;

@@ -35,7 +35,7 @@ open class AudioPluginService : Service()
         if (enableDebug)
             android.os.Debug.waitForDebugger()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
-        AudioPluginHost.initialize(this)
+        AudioPluginLocalHost.initialize(this)
         if (native_binder == null)
             native_binder = createBinder(sampleRate)
         Log.d("AudioPluginService", "onBind done");
@@ -43,7 +43,7 @@ open class AudioPluginService : Service()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        AudioPluginHost.cleanup()
+        AudioPluginLocalHost.cleanup()
         if (native_binder != null)
             destroyBinder(native_binder!!)
         return true

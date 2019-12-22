@@ -13,45 +13,6 @@ class AudioPluginHost {
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
         const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService#Extensions"
 
-        init {
-            System.loadLibrary("androidaudioplugin")
-        }
-
-        var initialized: Boolean = false
-
-        @JvmStatic
-        fun initialize(context: Context)
-        {
-            var si = getLocalAudioPluginService(context)
-            si.extensions.forEach { e ->
-                if(e == null || e == "")
-                    return
-                var c = Class.forName(e)
-                if (c == null) {
-                    Log.d("AAP", "Extension class not found: " + e)
-                    return@forEach
-                }
-                var method = c.getMethod("initialize", Context::class.java)
-                method.invoke(null, context)
-            }
-            var pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
-            initialize(pluginInfos)
-            initialized = true
-        }
-
-        @JvmStatic
-        external fun initialize(pluginInfos: Array<PluginInformation>)
-
-        @JvmStatic
-        fun cleanup()
-        {
-            cleanupNatives()
-            initialized = false
-        }
-
-        @JvmStatic
-        external fun cleanupNatives()
-
         private fun parseAapMetadata(isOutProcess: Boolean, name: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
             // TODO: this XML parsing is super hacky so far.
             val aapServiceInfo = AudioPluginServiceInformation(name, packageName, className)
@@ -138,8 +99,5 @@ class AudioPluginHost {
 
             return plugins.toTypedArray()
         }
-
-        @JvmStatic
-        fun getLocalAudioPluginService(context: Context) = queryAudioPluginServices(context).first { svc -> svc.packageName == context.packageName}
     }
 }
