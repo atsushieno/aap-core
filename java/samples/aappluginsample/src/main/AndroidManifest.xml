@@ -17,7 +17,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name="org.androidaudioplugin.lv2.LV2AudioPluginService"
+        <service android:name="org.androidaudioplugin.AudioPluginService"
             android:label="AAPLV2SamplePlugin">
             <intent-filter>
                 <action
@@ -29,7 +29,7 @@
                 />
             <meta-data
                 android:name="org.androidaudioplugin.AudioPluginService#Extensions"
-                android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
+                android:value="org.androidaudioplugin.lv2.AudioPluginLV2ServiceExtension"
                 />
         </service>
     </application>

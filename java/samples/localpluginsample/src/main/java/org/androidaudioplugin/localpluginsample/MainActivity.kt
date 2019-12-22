@@ -1,16 +1,11 @@
 package org.androidaudioplugin.localpluginsample
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.IBinder
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,7 +20,6 @@ import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.AudioPluginHostHelper
-import org.androidaudioplugin.lv2.AudioPluginLV2LocalHost
 
 class MainActivity : AppCompatActivity() {
 
@@ -68,11 +62,9 @@ class MainActivity : AppCompatActivity() {
             view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
                 val pluginId = item.second.pluginId!!
                 val uri = pluginId.substring("lv2:".length)
-                AudioPluginLV2LocalHost.initialize(this@MainActivity)
                 AudioPluginLocalHost.initialize(context)
                 AAPSampleLocalInterop.runHostAAP(arrayOf(pluginId), fixed_sample_rate, in_rawL, in_rawR, out_rawL, out_rawR)
                 AudioPluginLocalHost.cleanup()
-                AudioPluginLV2LocalHost.cleanup()
 
                 processAudioOutputData()
 

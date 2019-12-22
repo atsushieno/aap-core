@@ -11,6 +11,7 @@ class AudioPluginLocalHost {
         }
 
         var initialized: Boolean = false
+        var extensions = mutableListOf<AudioPluginService.Extension>()
 
         @JvmStatic
         fun initialize(context: Context)
@@ -24,8 +25,9 @@ class AudioPluginLocalHost {
                     Log.d("AAP", "Extension class not found: " + e)
                     return@forEach
                 }
-                var method = c.getMethod("initialize", Context::class.java)
-                method.invoke(null, context)
+                var ext = c.newInstance() as AudioPluginService.Extension
+                ext.initialize(context)
+                extensions.add(ext)
             }
             var pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
             initialize(pluginInfos)
@@ -38,6 +40,8 @@ class AudioPluginLocalHost {
         @JvmStatic
         fun cleanup()
         {
+            for(ext in extensions)
+                ext.cleanup()
             cleanupNatives()
             initialized = false
         }

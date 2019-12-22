@@ -12,6 +12,11 @@ import android.os.Build
 
 open class AudioPluginService : Service()
 {
+    interface Extension {
+        fun initialize(ctx: Context)
+        fun cleanup()
+    }
+
     companion object {
         const val NATIVE_LIBRARY_NAME = "androidaudioplugin"
 
@@ -28,7 +33,8 @@ open class AudioPluginService : Service()
         @JvmStatic
         var enableDebug = false
     }
-    var native_binder : IBinder? = null
+
+    private var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         // NOTE: enable it only if you're debugging. Otherwise it will suspend if the debuggee is different process.

@@ -29,7 +29,7 @@
                 />
             <meta-data
                 android:name="org.androidaudioplugin.AudioPluginService#Extensions"
-                android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
+                android:value="org.androidaudioplugin.lv2.AudioPluginLV2ServiceExtension"
                 />
         </service>
     </application>
