@@ -36,7 +36,7 @@ build-lv2-stuff:
 build-single-abi:
 	make MODULE=serd MODULE_DIRECTORY=serd MODULE_MAJOR=0 MODULE_VER=0.30.3 MODULE_OPTIONS="--no-utils" build-single
 	make MODULE=sord MODULE_DIRECTORY=sord MODULE_MAJOR=0 MODULE_VER=0.16.4 MODULE_OPTIONS="--no-utils" build-single
-	make MODULE=lv2 MODULE_DIRECTORY=lv2 MODULE_MAJOR=0 build-single-no-soname-opt
+	make MODULE=lv2 MODULE_DIRECTORY=lv2 MODULE_MAJOR=0 MODULE_OPTIONS=--copy-headers build-single-no-soname-opt
 	make MODULE=sratom MODULE_DIRECTORY=sratom MODULE_MAJOR=0 MODULE_VER=0.6.4 build-single
 	make MODULE=lilv MODULE_DIRECTORY=lilv MODULE_MAJOR=0 MODULE_VER=0.24.7 MODULE_OPTIONS="--no-utils" build-single
 	make MODULE=mda-lv2 MODULE_DIRECTORY=mda-lv2 MODULE_MAJOR=0 build-single-no-soname-opt

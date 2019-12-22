@@ -14,6 +14,7 @@ set (androidaudioplugin-lv2_INCLUDES
 	"../androidaudioplugin/core/include"
 	"../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
+	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include"
 	)
 
 if (ANDROID)
