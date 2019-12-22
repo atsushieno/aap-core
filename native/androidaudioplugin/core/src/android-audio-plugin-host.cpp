@@ -40,6 +40,8 @@ void aap_parse_plugin_descriptor_into(const char* xmlfile, std::vector<PluginInf
     }
 }
 
+PluginInformation** PluginInformation::ParsePluginDescriptor(const char* xmlfile) { return aap_parse_plugin_descriptor(xmlfile); }
+
 PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile)
 {
     std::vector<PluginInformation*> plugins;
