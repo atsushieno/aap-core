@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
                 processAudioOutputData()
 
                 runOnUiThread {
-                    wavePostPlugin.setRawData(out_raw)
+                    wavePostPlugin.sample = out_raw.map { b -> b.toInt() }.toIntArray()
                     Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
                 }
             }
@@ -99,6 +99,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        wavePrePlugin.sample = arrayOf(0).toIntArray()
+        wavePostPlugin.sample = arrayOf(0).toIntArray()
 
         // Query AAPs
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
@@ -138,7 +140,7 @@ class MainActivity : AppCompatActivity() {
             out_rawR = ByteArray(in_rawL.size)
 
             runOnUiThread {
-                wavePrePlugin.setRawData(in_raw)
+                wavePrePlugin.sample = in_raw.map { b -> b.toInt() }.toIntArray()
                 Toast.makeText(this@MainActivity, "loaded input wav", Toast.LENGTH_LONG).show()
             }
         }
