@@ -34,7 +34,7 @@ android {
             version "3.10.2"
         }
     }
-    ndkVersion = '21.0.6011959'
+    ndkVersion = '20.0.5594570'
 
     packagingOptions{
         // FIXME: (ASAN) looks like a hack, but -DANDROID_STL=c++_shared causes this https://stackoverflow.com/questions/48749876/more-than-one-file-was-found-with-os-independent-path-lib-armeabi-v7a-libopencv
