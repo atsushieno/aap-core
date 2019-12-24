@@ -85,7 +85,7 @@ build-single-no-soname-opt:
 	CFLAGS="$(CFLAGS)" \
 	LDFLAGS="-landroid $(LDFLAGS)" \
 	./waf -d $(MODULE_OPTIONS) --prefix=../../../dist/$(ABI_FORMAL) configure && \
-	echo "autowaf has a horrible issue that it moves away all those required external CFLAGS and it's used everywhere, meaning that making changes to it will mess the future builds. As a workaround, we hack those configure results"
+	echo "autowaf has a horrible issue that it moves away all those required external CFLAGS and it's used everywhere, meaning that making changes to it will mess the future builds. As a workaround, we hack those configure results" && \
 	sed -i -e "s/^CFLAGS \[/CFLAGS \[$(CFLAGS) /" build/c4che/_cache.py && \
 	./waf -d $(MODULE_OPTIONS) --prefix=../../../dist/$(ABI_FORMAL) build install && \
 	cd ../../..
