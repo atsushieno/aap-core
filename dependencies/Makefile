@@ -6,6 +6,14 @@ ANDROID_NDK=/home/$(USER)/Android/Sdk/ndk/20.0.5594570/
 LLVM_TOOLCHAIN=$(ANDROID_NDK)/toolchains/llvm/prebuilt/linux-x86_64
 ANDROID_TOOLCHAIN=$(ANDROID_NDK)/toolchains/$(ABI_COMPLEX)-4.9/prebuilt/linux-x86_64
 
+# for build-single
+PKG_CONFIG_PATH=$(PWD)/dist/$(ABI_FORMAL)/lib/pkgconfig:$(PWD)/cerbero-artifacts/outputs/$(ABI_FORMAL)/lib/pkgconfig
+CC=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang
+CXX=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang++
+LD=$(ANDROID_TOOLCHAIN)/bin/$(ABI_COMPLEX)-ld
+#CFLAGS=--sysroot='$(ANDROID_NDK)/sysroot' -I'$(ANDROID_NDK)/sysroot/usr/include/' -DANDROID
+CFLAGS=-DANDROID
+
 TOP=`pwd`
 
 all: build
@@ -70,13 +78,16 @@ build-single-no-soname-opt:
 	mkdir -p build/$(ABI_FORMAL)/$(MODULE_DIRECTORY)
 	cp -R $(MODULE_DIRECTORY)/* build/$(ABI_FORMAL)/$(MODULE_DIRECTORY)/
 	cd build/$(ABI_FORMAL)/$(MODULE_DIRECTORY) && \
-	PKG_CONFIG_PATH=$(PWD)/dist/$(ABI_FORMAL)/lib/pkgconfig:$(PWD)/cerbero-artifacts/outputs/$(ABI_FORMAL)/lib/pkgconfig \
-	CC=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang \
-	CXX=$(LLVM_TOOLCHAIN)/bin/$(ABI_CLANG)29-clang++ \
-	LD=$(ANDROID_TOOLCHAIN)/bin/$(ABI_COMPLEX)-ld \
-	CFLAGS="--sysroot=$(ANDROID_NDK)/sysroot -I$(ANDROID_NDK)/sysroot/usr/include/ -DANDROID -g" \
+	PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" \
+	CC="$(CC)" \
+	CXX="$(CXX)" \
+	LD="$(LD)" \
+	CFLAGS="$(CFLAGS)" \
 	LDFLAGS="-landroid $(LDFLAGS)" \
-	./waf -d $(MODULE_OPTIONS) --prefix=../../../dist/$(ABI_FORMAL) configure build install && \
+	./waf -d $(MODULE_OPTIONS) --prefix=../../../dist/$(ABI_FORMAL) configure && \
+	echo "autowaf has a horrible issue that it moves away all those required external CFLAGS and it's used everywhere, meaning that making changes to it will mess the future builds. As a workaround, we hack those configure results"
+	sed -i -e "s/^CFLAGS \[/CFLAGS \[$(CFLAGS) /" build/c4che/_cache.py && \
+	./waf -d $(MODULE_OPTIONS) --prefix=../../../dist/$(ABI_FORMAL) build install && \
 	cd ../../..
 
 .PHONY:
