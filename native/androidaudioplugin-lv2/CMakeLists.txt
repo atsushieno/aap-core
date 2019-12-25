@@ -40,6 +40,7 @@ if (ANDROID)
 	link_directories (
 			"../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
 			"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+			"../../java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 	)
 
 else (ANDROID)
@@ -70,7 +71,7 @@ set (androidaudioplugin-lv2_INCLUDES
 	${LILV_INCLUDE_DIRS}
 	)
 
-set (androidaudioplugin-lv2_LIBS ${androidaudioplugin-lv2_LIBS} lilv-0)
+set (androidaudioplugin-lv2_LIBS ${androidaudioplugin-lv2_LIBS} lilv-0 androidaudioplugin)
 
 # Specifies a library name, specifies whether the library is STATIC or
 # SHARED, and provides relative paths to the source code. You can

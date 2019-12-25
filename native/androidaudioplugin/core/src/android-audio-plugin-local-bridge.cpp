@@ -67,8 +67,6 @@ void aap_local_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioP
     ctx->instance->setState(input->raw_data, 0, input->data_size);
 }
 
-aap::PluginInformation **local_plugin_infos{nullptr};
-
 AndroidAudioPlugin* aap_local_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
@@ -76,8 +74,9 @@ AndroidAudioPlugin* aap_local_bridge_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions	// unused
 	)
 {
+	auto knownPlugins = aap::getKnownPluginInfos();
     auto ctx = new AAPLocalContext();
-    ctx->host = new aap::PluginHost(local_plugin_infos);
+    ctx->host = new aap::PluginHost(knownPlugins);
     ctx->instance = ctx->host->instantiatePlugin(pluginUniqueId);
     ctx->sample_rate = sampleRate;
 	return new AndroidAudioPlugin {

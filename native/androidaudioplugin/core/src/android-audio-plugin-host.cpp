@@ -4,6 +4,9 @@
 
 namespace aap
 {
+aap::PluginInformation **_local_plugin_infos{nullptr};
+aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
+void setKnownPluginInfos(aap::PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
 
 void aap_parse_plugin_descriptor_into(const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {

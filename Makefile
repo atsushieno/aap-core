@@ -6,7 +6,6 @@ ANDROID_NDK=~/Android/Sdk/ndk/20.0.5594570
 build-all: \
 	build-cerbero-artifacts \
 	build-desktop \
-	build-android \
 	import-lv2-deps \
 	build-java
 

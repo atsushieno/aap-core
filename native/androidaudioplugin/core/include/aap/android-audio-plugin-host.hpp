@@ -454,6 +454,9 @@ public:
 	}
 };
 
+aap::PluginInformation** getKnownPluginInfos();
+void setKnownPluginInfos(aap::PluginInformation **pluginInfos);
+
 } // namespace
 
 #endif // _ANDROID_AUDIO_PLUGIN_HOST_HPP_

@@ -15,10 +15,6 @@
 #include <android/binder_auto_utils.h>
 #include "aap/android-audio-plugin-host.hpp"
 
-extern "C" {
-extern aap::PluginInformation **local_plugin_infos;
-}
-
 namespace aap {
 
 class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterface {
@@ -33,7 +29,7 @@ public:
 
     AudioPluginInterfaceImpl(int sampleRate)
             : sample_rate(sampleRate) {
-        host = new PluginHost(local_plugin_infos);
+        host = new PluginHost(getKnownPluginInfos());
         buffer.num_frames = 0;
         buffer.buffers = nullptr;
         instance = nullptr;

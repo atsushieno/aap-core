@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.6.0)
 #        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
 #        )
 link_directories(
-        "${Project_SOURCE_DIR}/../../../build-android/${CMAKE_ANDROID_ARCH_ABI}/native/androidaudioplugin"
+        "${Project_SOURCE_DIR}/../../androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 )
 
 # Specifies a library name, specifies whether the library is STATIC or
