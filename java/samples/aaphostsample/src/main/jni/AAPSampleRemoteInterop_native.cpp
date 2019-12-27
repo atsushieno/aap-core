@@ -14,8 +14,6 @@
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/android-audio-plugin-host.hpp"
 
-aap::PluginInformation **all_plugin_infos{nullptr};
-
 // FIXME: sort out final library header structures.
 namespace aap {
     extern aap::PluginInformation *pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
@@ -161,12 +159,13 @@ extern "C" {
 void Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
 	jsize infoSize = env->GetArrayLength(jPluginInfos);
-	all_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
+	auto plugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
 	for (int i = 0; i < infoSize; i++) {
 		auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-		all_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
+		plugins[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
 	}
-	all_plugin_infos[infoSize] = nullptr;
+	plugins[infoSize] = nullptr;
+	aap::setKnownPluginInfos(plugins);
 }
 
 int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
@@ -174,7 +173,8 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
 	// NOTE: setting a breakpoint in this method might cause SIGSEGV.
 	// That's of course non-user code issue but you would't like to waste your time on diagnosing it...
 
-    assert(all_plugin_infos != nullptr);
+    auto plugins = aap::getKnownPluginInfos();
+    assert(plugins != nullptr);
     assert(audioInL != nullptr);
     assert(audioInR != nullptr);
     assert(audioOutL != nullptr);
@@ -202,9 +202,9 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     auto pluginId = strdup(pluginId_);
     env->ReleaseStringUTFChars(jPluginId, pluginId_);
     aap::PluginInformation *pluginInfo{nullptr};
-    for (int p = 0; all_plugin_infos[p] != nullptr; p++) {
-        if (strcmp(all_plugin_infos[p]->getPluginID().data(), pluginId) == 0) {
-            pluginInfo = all_plugin_infos[p];
+    for (int p = 0; plugins[p] != nullptr; p++) {
+        if (strcmp(plugins[p]->getPluginID().data(), pluginId) == 0) {
+            pluginInfo = plugins[p];
             break;
         }
     }
