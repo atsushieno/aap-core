@@ -6,9 +6,6 @@ cmake_minimum_required(VERSION 3.6.0)
 
 # it is not usable until cmake 3.14...
 #target_link_directories(aapnativebridge
-#        PRIVATE
-#        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
-#        )
 link_directories(
         "../../androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 )

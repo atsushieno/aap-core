@@ -12,14 +12,13 @@ set (androidaudioplugin-lv2_SOURCES
 set (androidaudioplugin-lv2_INCLUDES
 	"../plugin-api/include"
 	"../androidaudioplugin/core/include"
-	"../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include"
 	)
 
 if (ANDROID)
 
-set (ENV{PKG_CONFIG_PATH} "../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/:../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
+set (ENV{PKG_CONFIG_PATH} "../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
 
 set (androidaudioplugin-lv2_LIBS ${androidaudioplugin_LIBS} android log)
 
@@ -38,7 +37,6 @@ if (ANDROID)
 	# it is not usable until cmake 3.14...
 	#target_link_directories (androidaudioplugin-lv2 ...)
 	link_directories (
-			"../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
 			"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
 			"../../java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 	)

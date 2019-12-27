@@ -6,11 +6,7 @@ cmake_minimum_required(VERSION 3.6.0)
 
 # it is not usable until cmake 3.14...
 #target_link_directories(aapnativebridge
-#        PRIVATE
-#        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
-#        )
 link_directories(
-        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/lib/"
         "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
         "../../androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 )
@@ -37,7 +33,7 @@ target_include_directories(localpluginsample
         "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
         "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/core/include"
         "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/android/src/gen/include"
-        "${Project_SOURCE_DIR}/../../../dependencies/cerbero-artifacts/outputs/${CMAKE_ANDROID_ARCH_ABI}/include/"
+        "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
         "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
         )
 
