@@ -30,8 +30,16 @@ build-cerbero-artifacts:
 	cd dependencies && make
 
 build-desktop:
-	echo TODO: covers core and lv2, build for testing on desktop
-	cd dependencies/lv2-desktop && bash setup.sh && cd ../..
+	echo TODO: covers core and lv2 so far. Need to build for testing on desktop
+	export PKG_CONFIG_PATH=../lv2-desktop/dist/lib/pkgconfig && \
+	cd dependencies && \
+		cd serd && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd sord && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd lv2 && ./waf  --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd sratom && ./waf   --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd lilv && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd mda-lv2 && ./waf   --prefix=../lv2-desktop/dist configure build install && cd .. && \
+	cd ..
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-android:
