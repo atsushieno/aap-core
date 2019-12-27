@@ -65,7 +65,6 @@ target_compile_options (androidaudioplugin
         PRIVATE
         -std=c++17
         -Wall
-        -Wextra-semi
         -Wshadow
         )
 
