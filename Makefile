@@ -3,10 +3,20 @@ ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=~/Android/Sdk/ndk/20.0.5594570
 
 build-all: \
+	maybe-download-ndk \
 	get-lv2-deps \
 	build-desktop \
 	import-lv2-deps \
 	build-java
+
+.PHONY:
+maybe-download-ndk: $(ANDROID_NDK)
+
+$(ANDROID_NDK):
+	wget https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip >/dev/null
+	unzip android-ndk-r20b-linux-x86_64.zip >/dev/null
+	mkdir -p $(ANDROID_NDK)
+	mv android-ndk-r20b/* $(ANDROID_NDK)
 
 get-lv2-deps: dependencies/dist
 
