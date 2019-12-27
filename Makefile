@@ -1,6 +1,7 @@
 
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=~/Android/Sdk/ndk/20.0.5594570
+NATIVE_BINARIES_TAG=r1
 
 build-all: \
 	maybe-download-ndk \
@@ -21,7 +22,7 @@ $(ANDROID_NDK):
 get-lv2-deps: dependencies/dist
 
 dependencies/dist:
-	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs%2Fheads%2Fmaster/android-lv2-binaries.zip
+	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs/heads/$(NATIVE_BINARIES_TAG)/android-lv2-binaries.zip
 	mkdir -p dependencies
 	unzip android-lv2-binaries -d dependencies
 
