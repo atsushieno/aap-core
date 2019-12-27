@@ -23,6 +23,6 @@ jobs:
         java-version: 1.8
     - name: apt install
       run: |
-        echo y | sudo apt-get install make
+        echo y | sudo apt-get install liblilv-dev
     - name: build
       run: make
