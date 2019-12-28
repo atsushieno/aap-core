@@ -467,16 +467,22 @@ The waveform rendering is done thanks to [waveformSeekBar](https://github.com/ma
 
 ## Building repo
 
-Basically `ANDROID_NDK=/path/to/your/ndk make` will build every native dependencies and `AAPHostSample` proof-of-concept sample.
+Basically `make` on Unix-y environment will build every native dependencies and `AAPHostSample` proof-of-concept sample. You will have to specify `ANDROID_SDK_ROOT`.
+
+Android NDK will be downloaded to `~/Android/Sdk/ndk/{rev}` unless `ANDROID_NDK` variable is externally specified to `make`.
 
 CMake is used as **part of** the entire builds, for building native part of the code, **once for one ABI**. `make`, on the other hand, will build the native libraries for all supported ABIs.
 
 gradle is used as **part of** the entire builds, for Android application samples and libraries.
 
+Once native dependencies is set up, Android Studio can be used for development by opening `java` directory.
 
-### Build Dependencies
 
-android-audio-plugin-framework has some dependencies, which are either platform-level-specific, or external.
+## Build Dependencies
+
+### Platform features and modules
+
+android-audio-plugin-framework repo has some dependencies, which are either platform-level-specific, or external. Note that this is NOT about build script.
 
 Platform wise:
 
@@ -504,7 +510,7 @@ External software projects:
     - sord (private fork)
     - sratom
   - cerbero (as the builder, private fork)
-- vst3 category
+- vst3 category (TODO)
   - vst3sdk (no particular dependency found, for non-GUI parts)
 
 ### cerbero fork
@@ -522,10 +528,8 @@ And note that access to assets is not as simple as that to filesystem. It is imp
 ### android-audio-plugin-framework source tree structure
 
 - README.md - this file.
-- dependencies
-  - build-lv2-android.sh
-  - lv2-android
-    - cerbero (reusing GStreamer's builder project, private fork of mine for LV2 recipes)
+- aidl - contains common internal interface definitions for native and Kotlin modules.
+- dependencies - native source dependencies. Most of them are now part of [android-native-audio-builders](https://github.com/atsushieno/android-native-audio-builders/).
 - native
   - plugin-api (C include file; it is just for reference for plugin developers)
   - core

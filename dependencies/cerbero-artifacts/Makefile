@@ -7,7 +7,7 @@ ANDROID_NDK=/home/$(USER)/Android/Sdk/ndk/20.0.5594570/
 
 TOP=`pwd`
 
-all: build add-symlinks
+all: build copy-outputs
 
 build: build-native
 
@@ -19,27 +19,20 @@ clean:
 prepare:
 	cd cerbero && ANDROID_NDK_HOME=$(ANDROID_NDK) ./cerbero-uninstalled -c config/cross-android-x86.cbc bootstrap
 
+.PHONY:
+copy-outputs:
+	mkdir -p ../dist/x86
+	mkdir -p ../dist/x86_64
+	mkdir -p ../dist/armeabi-v7a
+	mkdir -p ../dist/arm64-v8a
+	cp -uR $(TOP)/cerbero/build/dist/android_x86/* ../dist/x86/
+	cp -uR $(TOP)/cerbero/build/dist/android_x86_64/* ../dist/x86_64/
+	cp -uR $(TOP)/cerbero/build/dist/android_armv7/* ../dist/armeabi-v7a/
+	cp -uR $(TOP)/cerbero/build/dist/android_arm64/* ../dist/arm64-v8a/
 
 .PHONY:
-build-native: build-lv2-deps
-
-
-.PHONY:
-add-symlinks:
-	rm -rf outputs
-	mkdir -p outputs/
-	if [ ! -e symlinked/x86 ] ; then ln -s $(TOP)/cerbero/build/dist/android_x86/ outputs/x86 ; fi
-	if [ ! -e symlinked/x86_64 ] ; then ln -s $(TOP)/cerbero/build/dist/android_x86_64/ outputs/x86_64 ; fi
-	if [ ! -e symlinked/armeabi-v7a ] ; then ln -s $(TOP)/cerbero/build/dist/android_armv7/ outputs/armeabi-v7a ; fi
-	if [ ! -e symlinked/arm64-v8a ] ; then ln -s $(TOP)/cerbero/build/dist/android_arm64/ outputs/arm64-v8a ; fi
-
-
-.PHONY:
-build-lv2-deps:
+build-native:
 	make CERBERO_COMMAND="build libsndfile" run-cerbero-command
-	# make CERBERO_COMMAND="build serd sord" run-cerbero-command
-	# make CERBERO_COMMAND="build lv2 sratom lilv mda-lv2" run-cerbero-command
-
 
 .PHONY:
 run-cerbero-command:

@@ -24,6 +24,7 @@ import org.androidaudioplugin.PluginInformation
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.androidaudioplugin.AudioPluginHost
 
 class MainActivity : AppCompatActivity() {
 
@@ -50,10 +51,6 @@ class MainActivity : AppCompatActivity() {
                     throw UnsupportedOperationException ("binder must not be null")
 
                 GlobalScope.launch {
-
-                    Log.d("MainActivity", "starting AAPSampleInterop.initialize")
-                    AAPSampleInterop.initialize(AudioPluginHostHelper.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
-
                     Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                     AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
                     processAudioOutputData()
@@ -136,8 +133,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var out_rawL: ByteArray
     lateinit var out_rawR: ByteArray
 
+    lateinit var host : AudioPluginHost
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        host = AudioPluginHost(applicationContext)
 
         prepareAudioData()
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()

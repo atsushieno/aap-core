@@ -1,21 +1,47 @@
 
-
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=~/Android/Sdk/ndk/20.0.5594570
+NATIVE_BINARIES_TAG=r1
 
 build-all: \
-	build-cerbero-artifacts \
+	maybe-download-ndk \
+	get-lv2-deps \
 	build-desktop \
-	build-android \
 	import-lv2-deps \
 	build-java
+
+.PHONY:
+maybe-download-ndk: $(ANDROID_NDK)
+
+$(ANDROID_NDK):
+	wget https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip >/dev/null
+	unzip android-ndk-r20b-linux-x86_64.zip >/dev/null
+	mkdir -p $(ANDROID_NDK)
+	mv android-ndk-r20b/* $(ANDROID_NDK)
+
+get-lv2-deps: dependencies/dist
+
+dependencies/dist: android-lv2-binaries.zip
+	mkdir -p dependencies
+	unzip android-lv2-binaries -d dependencies
+
+android-lv2-binaries.zip:
+	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs/heads/$(NATIVE_BINARIES_TAG)/android-lv2-binaries.zip
 
 build-cerbero-artifacts:
 	cd dependencies && make
 
 build-desktop:
-	echo TODO: covers core and lv2, build for testing on desktop
-	cd dependencies/lv2-desktop && bash setup.sh && cd ../..
+	echo TODO: covers core and lv2 so far. Need to build for testing on desktop
+	export PKG_CONFIG_PATH=../lv2-desktop/dist/lib/pkgconfig && \
+	cd dependencies && \
+		cd serd && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd sord && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd lv2 && ./waf  --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd sratom && ./waf   --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd lilv && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd mda-lv2 && ./waf   --prefix=../lv2-desktop/dist configure build install && cd .. && \
+	cd ..
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-android:

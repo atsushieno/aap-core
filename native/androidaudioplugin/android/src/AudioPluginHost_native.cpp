@@ -11,6 +11,33 @@ aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
 
 namespace aap {
 
+JavaVM *jvm;
+jobject globalApplicationContext;
+
+JNIEnv *getJNIEnv()
+{
+    assert(jvm != nullptr);
+
+    JNIEnv* env;
+    JavaVMAttachArgs args;
+    args.version = JNI_VERSION_1_6;
+    args.name = NULL;
+    args.group = NULL;
+    jvm->AttachCurrentThread(&env, &args);
+    return env;
+}
+
+jobjectArray queryInstalledPlugins()
+{
+    auto env = getJNIEnv();
+    jclass cls = env->FindClass("org/androidaudioplugin/AudioPluginHostHelper");
+    assert(cls != nullptr);
+    jmethodID methodID = env->GetStaticMethodID(cls, "queryAudioPlugins",
+                                                "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
+    assert(methodID != nullptr);
+    return (jobjectArray) env->CallStaticObjectMethod(cls, methodID, globalApplicationContext);
+}
+
 const char *interface_descriptor = "org.androidaudioplugin.AudioPluginService";
 
 
@@ -142,27 +169,55 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
     delete sp_binder;
 }
 
-void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+void cleanupKnownPlugins()
 {
-    assert(local_plugin_infos == nullptr);
+	auto localPlugins = aap::getKnownPluginInfos();
+	assert(localPlugins != nullptr);
+	int n = 0;
+	while (localPlugins[n])
+		n++;
+	for(int i = 0; i < n; i++)
+		delete localPlugins[i];
+	localPlugins = nullptr;
+}
+
+void initializeKnownPlugins(JNIEnv *env, jobjectArray jPluginInfos)
+{
+    auto localPlugins = aap::getKnownPluginInfos();
+    if(localPlugins)
+    	cleanupKnownPlugins();
     jsize infoSize = env->GetArrayLength(jPluginInfos);
-    local_plugin_infos = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
+    localPlugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        local_plugin_infos[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
+        localPlugins[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
     }
-    local_plugin_infos[infoSize] = nullptr;
+    localPlugins[infoSize] = nullptr;
+    aap::setKnownPluginInfos(localPlugins);
+}
+
+void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+{
+	if (jPluginInfos == nullptr)
+		jPluginInfos = aap::queryInstalledPlugins();
+    initializeKnownPlugins(env, jPluginInfos);
 }
 
 void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env, jclass cls)
 {
-    assert(local_plugin_infos != nullptr);
-    int n = 0;
-    while (local_plugin_infos[n])
-        n++;
-    for(int i = 0; i < n; i++)
-        delete local_plugin_infos[i];
-    local_plugin_infos = nullptr;
+	cleanupKnownPlugins();
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, jclass clazz,
+																  jobject applicationContext) {
+	env->GetJavaVM(&aap::jvm);
+    aap::globalApplicationContext = applicationContext;
+}
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass clazz,
+                                                       jobjectArray jPluginInfos) {
+    initializeKnownPlugins(env, jPluginInfos);
 }
 
 } // extern "C"

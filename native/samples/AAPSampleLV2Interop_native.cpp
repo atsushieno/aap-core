@@ -6,8 +6,6 @@
 
 #include "aap/android-audio-plugin-host.hpp"
 
-extern aap::PluginInformation **local_plugin_infos;
-
 namespace aaplv2sample {
 
 // In this implementation we have fixed buffers and everything is simplified
@@ -18,7 +16,7 @@ typedef struct {
 
 int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength,
                void *outWavL, void *outWavR) {
-    auto host = new aap::PluginHost(local_plugin_infos);
+    auto host = new aap::PluginHost(aap::getKnownPluginInfos());
 
     int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);
