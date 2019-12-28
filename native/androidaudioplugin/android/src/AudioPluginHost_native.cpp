@@ -11,6 +11,8 @@ aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
 
 namespace aap {
 
+JavaVM *jvm;
+jobject globalApplicationContext;
 const char *interface_descriptor = "org.androidaudioplugin.AudioPluginService";
 
 
@@ -142,10 +144,11 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
     delete sp_binder;
 }
 
-void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+void initializeKnownPlugins(JNIEnv *env, jobjectArray jPluginInfos)
 {
     auto localPlugins = aap::getKnownPluginInfos();
-    assert(localPlugins == nullptr);
+    if(localPlugins)
+    	free(localPlugins); // FIXME: free plugin information list too. The list should be managed by host.
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     localPlugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
     for (int i = 0; i < infoSize; i++) {
@@ -154,6 +157,11 @@ void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jc
     }
     localPlugins[infoSize] = nullptr;
     aap::setKnownPluginInfos(localPlugins);
+}
+
+void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+{
+    initializeKnownPlugins(env, jPluginInfos);
 }
 
 void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env, jclass cls)
@@ -166,6 +174,18 @@ void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env
     for(int i = 0; i < n; i++)
         delete localPlugins[i];
     localPlugins = nullptr;
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, jclass clazz,
+																  jobject applicationContext) {
+	env->GetJavaVM(&aap::jvm);
+    aap::globalApplicationContext = applicationContext;
+}
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass clazz,
+                                                       jobjectArray jPluginInfos) {
+    initializeKnownPlugins(env, jPluginInfos);
 }
 
 } // extern "C"

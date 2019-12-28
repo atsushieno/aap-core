@@ -103,10 +103,10 @@ class MainActivity : AppCompatActivity() {
         wavePostPlugin.sample = arrayOf(0).toIntArray()
 
         // Query AAPs
-        val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
-        val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
-
-        val plugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()
+        val plugins = AudioPluginHostHelper.queryAudioPluginServices(this)
+            .flatMap { s -> s.plugins.map { p -> Pair (s, p) } }
+            .filter { p -> p.first.packageName == applicationInfo.packageName }
+            .toTypedArray()
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
         this.localAudioPluginListView.adapter = adapter
 

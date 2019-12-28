@@ -156,18 +156,6 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 extern "C" {
 
 
-void Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
-{
-	jsize infoSize = env->GetArrayLength(jPluginInfos);
-	auto plugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
-	for (int i = 0; i < infoSize; i++) {
-		auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-		plugins[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
-	}
-	plugins[infoSize] = nullptr;
-	aap::setKnownPluginInfos(plugins);
-}
-
 int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
 {
 	// NOTE: setting a breakpoint in this method might cause SIGSEGV.
