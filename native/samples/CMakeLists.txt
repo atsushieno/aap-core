@@ -29,7 +29,6 @@ target_compile_options(aaphostsample
         PRIVATE
         -std=c++17
         -Wall
-        -Wextra-semi
         -Wshadow
         )
 

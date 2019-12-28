@@ -96,7 +96,6 @@ target_compile_options (androidaudioplugin-lv2
         PRIVATE
         -std=c++17
         -Wall
-        -Wextra-semi
         -Wshadow
         )
 
