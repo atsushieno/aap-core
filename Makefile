@@ -19,11 +19,12 @@ $(ANDROID_NDK):
 	mkdir -p $(ANDROID_NDK)
 	mv android-ndk-r20b/* $(ANDROID_NDK)
 
-get-lv2-deps: dependencies/dist
+get-lv2-deps: dependencies/dist/stamp
 
-dependencies/dist: android-lv2-binaries.zip
+dependencies/dist/stamp: android-lv2-binaries.zip
 	mkdir -p dependencies
 	unzip android-lv2-binaries -d dependencies
+	touch dependencies/dist/stamp
 
 android-lv2-binaries.zip:
 	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs/heads/$(NATIVE_BINARIES_TAG)/android-lv2-binaries.zip
