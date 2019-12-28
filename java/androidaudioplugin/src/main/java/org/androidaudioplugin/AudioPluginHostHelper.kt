@@ -73,6 +73,14 @@ class AudioPluginHostHelper {
             return aapServiceInfo
         }
 
+        // Not sure if this is a good idea. It is used by native code because we are not sure if
+        // expanding kotlin list operators in JNI code is good idea, but we don't want to have
+        // methods like this a lot...
+        @JvmStatic
+        fun queryAudioPlugins(context: Context): Array<PluginInformation> {
+            return queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray()
+        }
+
         @JvmStatic
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
