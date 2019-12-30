@@ -38,6 +38,7 @@ class AudioPluginHostHelper {
                         val assets = xp.getAttributeValue(null, "assets")
                         val isOutProcess = isOutProcess
                         currentPlugin = PluginInformation(
+                            "$packageName/$className",
                             name,
                             backend,
                             version,

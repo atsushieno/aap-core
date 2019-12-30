@@ -8,7 +8,7 @@ class AudioPluginServiceInformation(var name: String, var packageName: String,
     var plugins = mutableListOf<PluginInformation>()
 }
 
-class PluginInformation(var name: String?, var backend: String?, var version: String?,
+class PluginInformation(var packageClassName: String, var name: String, var backend: String?, var version: String?,
                         var category: String?, var author: String?, var manufacturer: String?,
                         var pluginId: String?, var sharedLibraryName: String?,
                         var libraryEntryPoint: String?, var assets: String?, var isOutProcess: Boolean)

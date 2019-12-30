@@ -8,7 +8,7 @@ aap::PluginInformation **_local_plugin_infos{nullptr};
 aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
 void setKnownPluginInfos(aap::PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
 
-void aap_parse_plugin_descriptor_into(const char* xmlfile, std::vector<PluginInformation*>& plugins)
+void aap_parse_plugin_descriptor_into(const char* packageClassName, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
     tinyxml2::XMLDocument doc;
     auto error = doc.LoadFile(xmlfile);
@@ -43,12 +43,15 @@ void aap_parse_plugin_descriptor_into(const char* xmlfile, std::vector<PluginInf
     }
 }
 
-PluginInformation** PluginInformation::ParsePluginDescriptor(const char* xmlfile) { return aap_parse_plugin_descriptor(xmlfile); }
+PluginInformation** PluginInformation::parsePluginDescriptor(const char * packageClassName, const char* xmlfile)
+{
+	return aap_parse_plugin_descriptor(packageClassName, xmlfile);
+}
 
-PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile)
+PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, const char* xmlfile)
 {
     std::vector<PluginInformation*> plugins;
-    aap_parse_plugin_descriptor_into(xmlfile, plugins);
+    aap_parse_plugin_descriptor_into(packageClassName, xmlfile, plugins);
     PluginInformation** ret = (PluginInformation**) calloc(sizeof(PluginInformation*), plugins.size() + 1);
     for(size_t i = 0; i < plugins.size(); i++)
         ret[i] = plugins[i];

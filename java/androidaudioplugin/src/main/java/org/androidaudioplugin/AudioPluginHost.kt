@@ -2,7 +2,6 @@ package org.androidaudioplugin
 
 import android.content.Context
 import android.os.IBinder
-import java.io.Closeable
 
 class AudioPluginHost(context: Context) {
     companion object {
@@ -17,7 +16,7 @@ class AudioPluginHost(context: Context) {
         external fun initialize(pluginInfos: Array<PluginInformation>)
     }
 
-    var connectedServices = mutableListOf<AudioPluginHostConnection>()
+    var connectedBinders = mutableListOf<IBinder>()
 
     init {
         setApplicationContext(context)
@@ -25,37 +24,16 @@ class AudioPluginHost(context: Context) {
     }
 
     fun connect(binder: IBinder) {
-        if (connectedServices.any { c -> c.binder.interfaceDescriptor == binder.interfaceDescriptor })
+        if (connectedBinders.any { c -> c.interfaceDescriptor == binder.interfaceDescriptor })
             return
-        connectedServices.add(AudioPluginHostConnection(binder))
+        connectedBinders.add(binder)
     }
 
     fun disconnect(binder: IBinder) {
-        var existing = connectedServices.firstOrNull { c -> c.binder.interfaceDescriptor == binder.interfaceDescriptor }
+        var existing = connectedBinders.firstOrNull { c -> c.interfaceDescriptor == binder.interfaceDescriptor }
         if (existing == null)
             return
-        existing.close()
-        connectedServices.remove(existing)
-    }
-}
-
-class AudioPluginHostConnection(binder: IBinder) : Closeable
-{
-    companion object {
-        @JvmStatic
-        external fun connect(binder : IBinder) : Long
-        @JvmStatic
-        external fun disconnect(handle: Long)
-    }
-
-    var binder : IBinder = binder
-    private var handle : Long;
-
-    init {
-        handle = connect(binder)
-    }
-
-    override fun close() {
-        disconnect(handle)
+        // Do we need this?
+        existing.unlinkToDeath({}, 0)
     }
 }

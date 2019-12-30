@@ -65,6 +65,7 @@ class PluginInformation
 	bool is_out_process;
 
 	// basic information
+	std::string package_class_name{}; // optional for apps, host needs to query it missing and needed.
 	std::string name{};
 	std::string manufacturer_name{};
 	std::string version{};
@@ -84,7 +85,7 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
-	static PluginInformation** ParsePluginDescriptor(const char* xmlfile);
+	static PluginInformation** parsePluginDescriptor(const char* packageClassName, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
@@ -223,7 +224,7 @@ public:
 	}
 };
 
-PluginInformation** aap_parse_plugin_descriptor(const char* xmlfile);
+PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, const char* xmlfile);
 
 class EditorInstance
 {
