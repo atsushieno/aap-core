@@ -2,7 +2,7 @@
 # This ensures that a certain set of CMake features is available to
 # your build.
 
-cmake_minimum_required(VERSION 3.6.0)
+cmake_minimum_required(VERSION 3.5.1)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
