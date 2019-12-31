@@ -81,6 +81,7 @@ MainHostWindow::MainHostWindow()
 {
     formatManager.addDefaultFormats();
     formatManager.addFormat (new InternalPluginFormat());
+    formatManager.addFormat (new juceaap::AndroidAudioPluginFormat());
 
     auto safeThis = SafePointer<MainHostWindow> (this);
     RuntimePermissions::request (RuntimePermissions::recordAudio,

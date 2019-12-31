@@ -37,6 +37,11 @@ set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)
 
 else (ANDROID)
 
+set (androidaudioplugin_SOURCES
+	${androidaudioplugin_SOURCES}
+	"desktop/src/audio-plugin-host-desktop.cpp"
+        )
+
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} dl)
 endif (ANDROID)
 

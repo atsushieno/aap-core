@@ -27,7 +27,7 @@ JNIEnv *getJNIEnv()
     return env;
 }
 
-jobjectArray queryInstalledPlugins()
+jobjectArray queryInstalledPluginsJNI()
 {
     auto env = getJNIEnv();
     jclass cls = env->FindClass("org/androidaudioplugin/AudioPluginHostHelper");
@@ -37,6 +37,7 @@ jobjectArray queryInstalledPlugins()
     assert(methodID != nullptr);
     return (jobjectArray) env->CallStaticObjectMethod(cls, methodID, globalApplicationContext);
 }
+
 
 const char *interface_descriptor = "org.androidaudioplugin.AudioPluginService";
 
@@ -151,6 +152,61 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
     return aapPI;
 }
 
+void cleanupKnownPlugins()
+{
+    auto localPlugins = aap::getKnownPluginInfos();
+    assert(localPlugins != nullptr);
+    int n = 0;
+    while (localPlugins[n])
+        n++;
+    for(int i = 0; i < n; i++)
+        delete localPlugins[i];
+    localPlugins = nullptr;
+}
+
+aap::PluginInformation** convertPluginList(jobjectArray jPluginInfos)
+{
+    assert(jPluginInfos != nullptr);
+    auto localPlugins = aap::getKnownPluginInfos();
+    if(localPlugins)
+        cleanupKnownPlugins();
+    auto env = getJNIEnv();
+    jsize infoSize = env->GetArrayLength(jPluginInfos);
+    localPlugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
+    for (int i = 0; i < infoSize; i++) {
+        auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
+        localPlugins[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
+    }
+    localPlugins[infoSize] = nullptr;
+    return localPlugins;
+}
+
+void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr)
+{
+    jPluginInfos = jPluginInfos != nullptr ? jPluginInfos : queryInstalledPluginsJNI();
+    aap::setKnownPluginInfos(convertPluginList(jPluginInfos));
+}
+
+aap::PluginInformation** queryInstalledPlugins()
+{
+    return convertPluginList(queryInstalledPluginsJNI());
+}
+
+class AndroidPluginHostPAL : public PluginHostPAL
+{
+public:
+    PluginInformation** getInstalledPlugins() override {
+        return queryInstalledPlugins();
+    }
+};
+
+AndroidPluginHostPAL android_pal_instance{};
+
+PluginHostPAL* getPluginHostPAL()
+{
+    return &android_pal_instance;
+}
+
 }
 
 extern "C" {
@@ -169,43 +225,17 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
     delete sp_binder;
 }
 
-void cleanupKnownPlugins()
-{
-	auto localPlugins = aap::getKnownPluginInfos();
-	assert(localPlugins != nullptr);
-	int n = 0;
-	while (localPlugins[n])
-		n++;
-	for(int i = 0; i < n; i++)
-		delete localPlugins[i];
-	localPlugins = nullptr;
-}
-
-void initializeKnownPlugins(JNIEnv *env, jobjectArray jPluginInfos)
-{
-    auto localPlugins = aap::getKnownPluginInfos();
-    if(localPlugins)
-    	cleanupKnownPlugins();
-    jsize infoSize = env->GetArrayLength(jPluginInfos);
-    localPlugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
-    for (int i = 0; i < infoSize; i++) {
-        auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        localPlugins[i] = aap::pluginInformation_fromJava(env, jPluginInfo);
-    }
-    localPlugins[infoSize] = nullptr;
-    aap::setKnownPluginInfos(localPlugins);
-}
-
 void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
+    assert(aap::getJNIEnv() == env);
 	if (jPluginInfos == nullptr)
-		jPluginInfos = aap::queryInstalledPlugins();
-    initializeKnownPlugins(env, jPluginInfos);
+		jPluginInfos = aap::queryInstalledPluginsJNI();
+    aap::initializeKnownPlugins(jPluginInfos);
 }
 
 void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env, jclass cls)
 {
-	cleanupKnownPlugins();
+	aap::cleanupKnownPlugins();
 }
 
 JNIEXPORT void JNICALL
@@ -217,7 +247,8 @@ Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, j
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass clazz,
                                                        jobjectArray jPluginInfos) {
-    initializeKnownPlugins(env, jPluginInfos);
+    assert(aap::getJNIEnv() == env);
+    aap::initializeKnownPlugins(jPluginInfos);
 }
 
 } // extern "C"

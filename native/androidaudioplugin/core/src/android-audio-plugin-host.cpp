@@ -59,8 +59,16 @@ PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, co
     return ret;
 }
 
-PluginHost::PluginHost(const PluginInformation* const* pluginDescriptors)
+PluginHost::PluginHost()
 {
+    updateKnownPlugins();
+}
+
+void PluginHost::updateKnownPlugins(PluginInformation** plugins)
+{
+    auto pal = aap::getPluginHostPAL();
+	auto pluginDescriptors = plugins != nullptr ? plugins : pal->getInstalledPlugins();
+	assert(pluginDescriptors != nullptr);
 	int n = 0;
 	while (pluginDescriptors[n])
 		n++;

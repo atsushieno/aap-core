@@ -16,7 +16,7 @@ typedef struct {
 
 int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength,
                void *outWavL, void *outWavR) {
-    auto host = new aap::PluginHost(aap::getKnownPluginInfos());
+    auto host = new aap::PluginHost();
 
     int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);

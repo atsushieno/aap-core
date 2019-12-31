@@ -112,7 +112,7 @@ class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
 	const char *default_plugin_search_paths[1];
 
 public:
-	AndroidAudioPluginFormat(const aap::PluginInformation *const *pluginDescriptors);
+	AndroidAudioPluginFormat();
 
 	~AndroidAudioPluginFormat();
 

@@ -143,9 +143,8 @@ AndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) {
     return NULL;
 }
 
-AndroidAudioPluginFormat::AndroidAudioPluginFormat(
-        const aap::PluginInformation *const *pluginDescriptors)
-        : android_host(aap::PluginHost(pluginDescriptors)) {
+AndroidAudioPluginFormat::AndroidAudioPluginFormat()
+        : android_host(aap::PluginHost()) {
     for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
         auto d = android_host.getPluginDescriptorAt(i);
         auto dst = new PluginDescription();

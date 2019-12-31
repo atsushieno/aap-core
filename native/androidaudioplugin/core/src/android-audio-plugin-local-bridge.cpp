@@ -74,9 +74,8 @@ AndroidAudioPlugin* aap_local_bridge_plugin_new(
 	const AndroidAudioPluginExtension * const *extensions	// unused
 	)
 {
-	auto knownPlugins = aap::getKnownPluginInfos();
     auto ctx = new AAPLocalContext();
-    ctx->host = new aap::PluginHost(knownPlugins);
+    ctx->host = new aap::PluginHost();
     ctx->instance = ctx->host->instantiatePlugin(pluginUniqueId);
     ctx->sample_rate = sampleRate;
 	return new AndroidAudioPlugin {

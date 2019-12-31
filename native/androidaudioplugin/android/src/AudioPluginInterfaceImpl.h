@@ -29,7 +29,7 @@ public:
 
     AudioPluginInterfaceImpl(int sampleRate)
             : sample_rate(sampleRate) {
-        host = new PluginHost(getKnownPluginInfos());
+        host = new PluginHost();
         buffer.num_frames = 0;
         buffer.buffers = nullptr;
         instance = nullptr;

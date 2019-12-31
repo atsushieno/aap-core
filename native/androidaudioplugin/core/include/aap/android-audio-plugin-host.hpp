@@ -18,7 +18,6 @@ namespace aap
 {
 
 class PluginInstance;
-class AAPEditor;
 
 enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED,
@@ -54,10 +53,6 @@ public:
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
 };
-
-#define safe_strdup(s) ((const char*) s ? strdup(s) : NULL)
-
-#define SAFE_FREE(s) if (s) { free((void*) s); s = NULL; }
 
 class PluginInformation
 {
@@ -256,6 +251,18 @@ class PluginHostBackendVST3 : public PluginHostBackend
 {
 };
 
+
+class PluginHostPAL
+{
+public:
+	// FIXME: rewrite to safer function signature
+    //virtual std::unique_ptr<std::vector<std::unique_ptr<PluginInformation>>> getInstalledPlugins() = 0;
+	virtual PluginInformation** getInstalledPlugins() = 0;
+};
+
+PluginHostPAL* getPluginHostPAL();
+
+
 class PluginHost
 {
 	std::vector<const PluginHostBackend*> backends;
@@ -267,11 +274,13 @@ class PluginHost
 
 public:
 
-	PluginHost(const PluginInformation* const* pluginDescriptors);
+	PluginHost();
 
 	~PluginHost()
 	{
 	}
+
+	void updateKnownPlugins(PluginInformation** plugins = nullptr);
 	
 	bool isPluginAlive (const char *identifier);
 	
