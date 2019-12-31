@@ -254,15 +254,13 @@ while normal `lv2` packages usually look like:
 - `lib/foo.lv2/foo.ttl`
 - `lib/foo.lv2/foo.so`
 
-At this state we are not sure if keeping `.lv2` directory like this is doable. It is not doable to support multiple ABIs with this directory layout anyways.
-
 Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle script failed. Asking plugin developers to add `copy(from/into)` operation hack (which might still not work) is awkward, so we would rather provide simpler solution - we put `lv2/` contents under `assets`, and put ABI-specific `*.so` files directly under `lib/{abi}`. Loading `*.so` from `assets` subdirectories is not possible either.
 
 - `assets/foo.lv2/manifest.ttl`
 - `assets/foo.lv2/foo.ttl`
 - `lib/{abi}/foo.so`
 
-The `import-lv2-deps.sh` does this task for the `java/aaphostsample`.
+The `import-lv2-deps.sh` does this task for `java/aaplv2samples` which is used by `aaphostsample` and `localpluginsample`.
 
 ### LV2_PATH limitation
 
@@ -433,8 +431,6 @@ interface AudioPluginInterface {
 ```
 
 Due to [AIDL tool limitation or framework limitation](https://issuetracker.google.com/issues/144204660), we cannot use `List<ParcelFileDescriptor>`, therefore `prepareMemory()` is added apart from `prepare()` to workaround this issue.
-
-Actually native server does not work due to [another NdkBinder issue](https://github.com/android/ndk/issues/1129) that totally disables ParcelFileDescriptor.
 
 
 ## JUCE integration
