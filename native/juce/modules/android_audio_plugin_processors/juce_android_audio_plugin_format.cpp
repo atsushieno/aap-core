@@ -6,12 +6,12 @@ using namespace juce;
 
 namespace juceaap {
 
-JuceAndroidAudioPluginEditor::JuceAndroidAudioPluginEditor(AudioProcessor *processor, aap::EditorInstance *native)
+AndroidAudioPluginEditor::AndroidAudioPluginEditor(AudioProcessor *processor, aap::EditorInstance *native)
     : juce::AudioProcessorEditor(processor), native(native)
 {
 }
 
-double JuceAndroidAudioPluginInstance::getTailLengthSeconds() const {
+double AndroidAudioPluginInstance::getTailLengthSeconds() const {
     return native->getTailTimeInMilliseconds() / 1000.0;
 }
 
@@ -43,19 +43,19 @@ static void fillPluginDescriptionFromNative(PluginDescription &description,
 }
 
 
-void JuceAndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst,
-                                                            AudioBuffer<float> &buffer) {
+void AndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst,
+                                                        AudioBuffer<float> &buffer) {
     int n = buffer.getNumChannels();
     for (int i = 0; i < n; i++)
         dst->buffers[i] = (void *) buffer.getReadPointer(i);
 }
 
-void JuceAndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst,
-                                                           MidiBuffer &buffer, int bufferIndex) {
+void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst,
+                                                       MidiBuffer &buffer, int bufferIndex) {
     dst->buffers[bufferIndex] = (void *) buffer.data.getRawDataPointer();
 }
 
-int JuceAndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buffer) {
+int AndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buffer) {
     auto b = buffer->buffers;
     int n = 0;
     while (b) {
@@ -65,13 +65,13 @@ int JuceAndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buff
     return n;
 }
 
-JuceAndroidAudioPluginInstance::JuceAndroidAudioPluginInstance(aap::PluginInstance *nativePlugin)
+AndroidAudioPluginInstance::AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin)
         : native(nativePlugin),
           sample_rate(-1) {
 }
 
 void
-JuceAndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) {
+AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) {
     sample_rate = sampleRate;
 
     // minimum setup, as the pointers are not passed by JUCE framework side.
@@ -88,7 +88,7 @@ JuceAndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpe
     native->activate();
 }
 
-void JuceAndroidAudioPluginInstance::releaseResources() {
+void AndroidAudioPluginInstance::releaseResources() {
     native->dispose();
 
     if (buffer.buffers) {
@@ -102,14 +102,14 @@ void JuceAndroidAudioPluginInstance::releaseResources() {
     }
 }
 
-void JuceAndroidAudioPluginInstance::processBlock(AudioBuffer<float> &audioBuffer,
-                                                  MidiBuffer &midiMessages) {
+void AndroidAudioPluginInstance::processBlock(AudioBuffer<float> &audioBuffer,
+                                              MidiBuffer &midiMessages) {
     fillNativeAudioBuffers(&buffer, audioBuffer);
     fillNativeMidiBuffers(&buffer, midiMessages, audioBuffer.getNumChannels());
     native->process(&buffer, 0);
 }
 
-bool JuceAndroidAudioPluginInstance::hasMidiPort(bool isInput) const {
+bool AndroidAudioPluginInstance::hasMidiPort(bool isInput) const {
     auto d = native->getPluginDescriptor();
     for (int i = 0; i < d->getNumPorts(); i++) {
         auto p = d->getPort(i);
@@ -121,21 +121,21 @@ bool JuceAndroidAudioPluginInstance::hasMidiPort(bool isInput) const {
     return false;
 }
 
-AudioProcessorEditor *JuceAndroidAudioPluginInstance::createEditor() {
+AudioProcessorEditor *AndroidAudioPluginInstance::createEditor() {
     if (!native->getPluginDescriptor()->hasEditor())
         return nullptr;
-    auto ret = new JuceAndroidAudioPluginEditor(this, native->createEditor());
+    auto ret = new AndroidAudioPluginEditor(this, native->createEditor());
     ret->startEditorUI();
     return ret;
 }
 
-void JuceAndroidAudioPluginInstance::fillInPluginDescription(PluginDescription &description) const {
+void AndroidAudioPluginInstance::fillInPluginDescription(PluginDescription &description) const {
     auto src = native->getPluginDescriptor();
     fillPluginDescriptionFromNative(description, *src);
 }
 
 const aap::PluginInformation *
-JuceAndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) {
+AndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) {
     auto it = cached_descs.begin();
     while (it.next())
         if (it.getValue()->uid == desc.uid)
@@ -143,7 +143,7 @@ JuceAndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) 
     return NULL;
 }
 
-JuceAndroidAudioPluginFormat::JuceAndroidAudioPluginFormat(
+AndroidAudioPluginFormat::AndroidAudioPluginFormat(
         const aap::PluginInformation *const *pluginDescriptors)
         : android_host(aap::PluginHost(pluginDescriptors)) {
     for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
@@ -154,15 +154,15 @@ JuceAndroidAudioPluginFormat::JuceAndroidAudioPluginFormat(
     }
 }
 
-JuceAndroidAudioPluginFormat::~JuceAndroidAudioPluginFormat() {
+AndroidAudioPluginFormat::~AndroidAudioPluginFormat() {
     auto it = cached_descs.begin();
     while (it.next())
         delete it.getValue();
     cached_descs.clear();
 }
 
-void JuceAndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescription> &results,
-                                                       const String &fileOrIdentifier) {
+void AndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescription> &results,
+                                                   const String &fileOrIdentifier) {
     auto id = fileOrIdentifier.toRawUTF8();
     // FIXME: everything is already cached, so this can be simplified.
     for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
@@ -178,10 +178,10 @@ void JuceAndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescrip
     }
 }
 
-void JuceAndroidAudioPluginFormat::createPluginInstance(const PluginDescription &description,
-                                                        double initialSampleRate,
-                                                        int initialBufferSize,
-                                                        PluginCreationCallback callback) {
+void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &description,
+                                                    double initialSampleRate,
+                                                    int initialBufferSize,
+                                                    PluginCreationCallback callback) {
     auto descriptor = findDescriptorFrom(description);
     String error("");
     if (descriptor == nullptr) {
@@ -190,8 +190,8 @@ void JuceAndroidAudioPluginFormat::createPluginInstance(const PluginDescription 
     } else {
         auto androidInstance = android_host.instantiatePlugin(
                 descriptor->getIdentifier().data());
-        std::unique_ptr <JuceAndroidAudioPluginInstance> instance{
-                new JuceAndroidAudioPluginInstance(androidInstance)};
+        std::unique_ptr <AndroidAudioPluginInstance> instance{
+                new AndroidAudioPluginInstance(androidInstance)};
         callback(std::move(instance), error);
     }
 }

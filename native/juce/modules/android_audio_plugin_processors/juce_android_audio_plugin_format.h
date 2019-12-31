@@ -7,12 +7,12 @@ using namespace juce;
 
 namespace juceaap {
 
-class JuceAndroidAudioPluginEditor : public juce::AudioProcessorEditor {
+class AndroidAudioPluginEditor : public juce::AudioProcessorEditor {
 	aap::EditorInstance *native;
 
 public:
 
-    JuceAndroidAudioPluginEditor(juce::AudioProcessor *processor, aap::EditorInstance *native);
+    AndroidAudioPluginEditor(juce::AudioProcessor *processor, aap::EditorInstance *native);
 
 	inline void startEditorUI() {
 		native->startEditorUI();
@@ -26,7 +26,7 @@ public:
     */
 };
 
-class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance {
+class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	aap::PluginInstance *native;
 	int sample_rate;
 	AndroidAudioPluginBuffer buffer;
@@ -40,7 +40,7 @@ class JuceAndroidAudioPluginInstance : public juce::AudioPluginInstance {
 
 public:
 
-	JuceAndroidAudioPluginInstance(aap::PluginInstance *nativePlugin);
+	AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin);
 
 	inline const String getName() const override {
 		return native->getPluginDescriptor()->getName();
@@ -103,7 +103,7 @@ public:
 	void fillInPluginDescription(PluginDescription &description) const override;
 };
 
-class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat {
+class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
 	aap::PluginHost android_host;
 	HashMap<const aap::PluginInformation *, PluginDescription *> cached_descs;
 
@@ -112,9 +112,9 @@ class JuceAndroidAudioPluginFormat : public juce::AudioPluginFormat {
 	const char *default_plugin_search_paths[1];
 
 public:
-	JuceAndroidAudioPluginFormat(const aap::PluginInformation *const *pluginDescriptors);
+	AndroidAudioPluginFormat(const aap::PluginInformation *const *pluginDescriptors);
 
-	~JuceAndroidAudioPluginFormat();
+	~AndroidAudioPluginFormat();
 
 	inline String getName() const override {
 		return "AAP";
