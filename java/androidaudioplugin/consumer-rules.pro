@@ -1,0 +1,3 @@
+-keep class org.androidaudioplugin.AudioPluginNativeHostContentProvider
+-keep class org.androidaudioplugin.AudioPluginService
+-keep class org.androidaudioplugin.AudioPluginHostHelper
