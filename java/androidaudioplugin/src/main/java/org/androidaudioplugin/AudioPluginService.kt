@@ -42,8 +42,9 @@ open class AudioPluginService : Service()
             android.os.Debug.waitForDebugger()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
         AudioPluginLocalHost.initialize(this)
-        if (native_binder == null)
-            native_binder = createBinder(sampleRate)
+        if (native_binder != null)
+            destroyBinder(native_binder!!)
+        native_binder = createBinder(sampleRate)
         Log.d("AudioPluginService", "onBind done");
         return native_binder
     }

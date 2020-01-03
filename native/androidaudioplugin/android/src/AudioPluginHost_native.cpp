@@ -153,7 +153,7 @@ jobjectArray queryInstalledPluginsJNI()
 {
     auto env = getJNIEnv();
     jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
-    return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins);
+    return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, globalApplicationContext);
 }
 
 
@@ -246,8 +246,10 @@ void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, jclass clazz,
 																  jobject applicationContext) {
+    if (aap::globalApplicationContext != nullptr)
+        env->DeleteGlobalRef(applicationContext);
 	env->GetJavaVM(&aap::jvm);
-    aap::globalApplicationContext = applicationContext;
+    aap::globalApplicationContext = env->NewGlobalRef(applicationContext);
     aap::initializeJNIMetadata(env);
 }
 JNIEXPORT void JNICALL
