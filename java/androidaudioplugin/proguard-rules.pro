@@ -21,3 +21,5 @@
 #-renamesourcefileattribute SourceFile
 
 -keep class androidx.core.app.CoreComponentFactory { <init>(); }
+-keep class org.androidaudioplugin.AudioPluginNativeHostContentProvider
+-keep class org.androidaudioplugin.AudioPluginService
