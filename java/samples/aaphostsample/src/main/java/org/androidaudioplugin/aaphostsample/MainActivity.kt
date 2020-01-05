@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        var conn : ServiceConnection = object : ServiceConnection {
+        var conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                 Log.d("MainActivity", "onServiceConnected is invoked")
 
@@ -52,7 +52,12 @@ class MainActivity : AppCompatActivity() {
 
                 GlobalScope.launch {
                     Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
-                    AAPSampleInterop.runClientAAP(binder, fixed_sample_rate, target_plugin, in_rawL, in_rawR, out_rawL, out_rawR)
+                    prepareAudioData()
+                    AAPSampleInterop.runClientAAP(binder, host.sampleRate, target_plugin,
+                        host.audioInputs[0],
+                        host.audioInputs[1],
+                        host.audioOutputs[0],
+                        host.audioOutputs[1])
                     processAudioOutputData()
 
                     runOnUiThread {
@@ -70,9 +75,11 @@ class MainActivity : AppCompatActivity() {
 
         fun processAudioOutputData()
         {
+            var out_rawL = host.audioOutputs[0]
+            var out_rawR = host.audioOutputs[1]
+            out_raw = ByteArray(out_rawL.size + out_rawR.size)
             // merge L/R
             assert(out_rawL.size == out_rawR.size)
-            assert(in_raw.size == out_rawL.size + out_rawR.size)
             for (i in 0 until out_rawL.size / 4) {
                 out_raw[i * 8] = out_rawL[i * 4]
                 out_raw[i * 8 + 1] = out_rawL[i * 4 + 1]
@@ -112,7 +119,7 @@ class MainActivity : AppCompatActivity() {
                     service.packageName,
                     service.className
                 )
-                intent.putExtra("sampleRate", fixed_sample_rate)
+                intent.putExtra("sampleRate", host.sampleRate)
                 intent.putExtra("pluginId", plugin.pluginId)
 
                 target_plugin = plugin.pluginId!!
@@ -124,28 +131,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // FIXME: this should be customizible, depending on the device configuration (sample input should be decoded appropriately).
-    val fixed_sample_rate = 44100
-    lateinit var in_raw: ByteArray
-    lateinit var in_rawL: ByteArray
-    lateinit var in_rawR: ByteArray
-    lateinit var out_raw: ByteArray
-    lateinit var out_rawL: ByteArray
-    lateinit var out_rawR: ByteArray
-
     lateinit var host : AudioPluginHost
+
+    lateinit var in_raw : ByteArray
+    lateinit var out_raw : ByteArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         host = AudioPluginHost(applicationContext)
 
-        prepareAudioData()
+        val wavAsset = assets.open("sample.wav")
+        // read wave samples and and deinterleave into L/R
+        in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        wavAsset.close()
+        host.audioBufferSize = in_raw.size / 2
+
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
 
         setContentView(R.layout.activity_main)
-        wavePrePlugin.sample = arrayOf(0).toIntArray()
-        wavePostPlugin.sample = arrayOf(0).toIntArray()
+        wavePrePlugin.sample = arrayOf(0).toIntArray() // dummy
+        wavePostPlugin.sample = arrayOf(0).toIntArray() // dummy
 
         // Query AAPs
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
@@ -154,22 +160,44 @@ class MainActivity : AppCompatActivity() {
         val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
         this.audioPluginServiceListView.adapter = adapter
+        /*
+        this.audioPluginServiceListView.setOnItemLongClickListener {parent, view, position, id ->
+            val item = adapter.getItem(position)
+            if (item == null)
+                false
+            val service = item!!.first
+            val plugin = item!!.second
 
-        playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, false) } }
-        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(fixed_sample_rate, true) } }
+            var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
+            this.intent = intent
+            intent.component = ComponentName(
+                service.packageName,
+                service.className
+            )
+            intent.putExtra("sampleRate", fixed_sample_rate)
+            intent.putExtra("pluginId", plugin.pluginId)
 
+            target_plugin = plugin.pluginId!!
+            Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
+            bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            true
+        }
+         */
+
+        playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, false) } }
+        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, true) } }
+
+        out_raw = in_raw
         wavePrePlugin.sample = in_raw.map { b -> b.toInt() }.toIntArray()
         wavePrePlugin.requestLayout()
+        wavePostPlugin.sample = in_raw.map { b -> b.toInt() }.toIntArray()
+        wavePostPlugin.requestLayout()
     }
 
     fun prepareAudioData()
     {
-        val wavAsset = assets.open("sample.wav")
-        // read wave samples and and deinterleave into L/R
-        in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
-        wavAsset.close()
-        in_rawR = ByteArray(in_raw.size / 2)
-        in_rawL = ByteArray(in_raw.size / 2)
+        var in_rawL = host.audioInputs[0]
+        var in_rawR = host.audioInputs[1]
         for (i in 0 until in_raw.size / 8) {
             in_rawL [i * 4] = in_raw[i * 8]
             in_rawL [i * 4 + 1] = in_raw[i * 8 + 1]
@@ -180,14 +208,12 @@ class MainActivity : AppCompatActivity() {
             in_rawR [i * 4 + 2] = in_raw[i * 8 + 6]
             in_rawR [i * 4 + 3] = in_raw[i * 8 + 7]
         }
-        out_raw = ByteArray(in_raw.size)
-        out_rawL = ByteArray(in_rawL.size)
-        out_rawR = ByteArray(in_rawL.size)
     }
 
     fun playSound(sampleRate: Int, postApplied: Boolean)
     {
         val w = if(postApplied) out_raw else in_raw
+
         val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()

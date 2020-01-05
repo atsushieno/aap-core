@@ -7,7 +7,7 @@
 #include "aap/android-audio-plugin-host.hpp"
 #include "AudioPluginInterfaceImpl.h"
 
-aidl::org::androidaudioplugin::BnAudioPluginInterface *sp_binder;
+std::unique_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
 
 namespace aap {
 
@@ -133,19 +133,15 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 }
 
 
-JavaVM *jvm;
-jobject globalApplicationContext;
+JavaVM *jvm{nullptr};
+jobject globalApplicationContext{nullptr};
 
 JNIEnv *getJNIEnv()
 {
     assert(jvm != nullptr);
 
     JNIEnv* env;
-    JavaVMAttachArgs args;
-    args.version = JNI_VERSION_1_6;
-    args.name = NULL;
-    args.group = NULL;
-    jvm->AttachCurrentThread(&env, &args);
+    jvm->AttachCurrentThread(&env, nullptr);
     return env;
 }
 
@@ -153,6 +149,8 @@ jobjectArray queryInstalledPluginsJNI()
 {
     auto env = getJNIEnv();
     jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
+    j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
+                                                          "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
     return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, globalApplicationContext);
 }
 
@@ -218,8 +216,9 @@ extern "C" {
 
 jobject
 Java_org_androidaudioplugin_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate) {
-    sp_binder = new aap::AudioPluginInterfaceImpl(sampleRate);
-    return AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
+    sp_binder.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
+    auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
+    return ret;
 }
 
 void
@@ -227,7 +226,7 @@ Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass
                                                                       jobject binder) {
     auto abinder = AIBinder_fromJavaBinder(env, binder);
     AIBinder_decStrong(abinder);
-    delete sp_binder;
+    sp_binder.reset(nullptr);
 }
 
 void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
@@ -246,10 +245,8 @@ void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, jclass clazz,
 																  jobject applicationContext) {
-    if (aap::globalApplicationContext != nullptr)
-        env->DeleteGlobalRef(applicationContext);
 	env->GetJavaVM(&aap::jvm);
-    aap::globalApplicationContext = env->NewGlobalRef(applicationContext);
+    aap::globalApplicationContext = applicationContext;
     aap::initializeJNIMetadata(env);
 }
 JNIEXPORT void JNICALL

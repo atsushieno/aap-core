@@ -16,7 +16,6 @@ class AudioPluginLocalHost {
         @JvmStatic
         fun initialize(context: Context)
         {
-            AudioPluginHost.setApplicationContext(context.applicationContext)
             var si = getLocalAudioPluginService(context)
             si.extensions.forEach { e ->
                 if(e == null || e == "")
