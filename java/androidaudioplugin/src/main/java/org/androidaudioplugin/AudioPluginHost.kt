@@ -88,6 +88,9 @@ class AudioPluginHost(context: Context) {
             (0 until newSize - list.size).forEach {list.add(ByteArray(bufferSize)) }
         while (newSize < list.size)
             list.remove(list.last())
+        for (i in 0 until newSize)
+            if (list[i].size < bufferSize)
+                list[i] = ByteArray(bufferSize)
     }
 
     init {
