@@ -66,8 +66,8 @@ PluginHost::PluginHost()
 
 void PluginHost::updateKnownPlugins(PluginInformation** plugins)
 {
-    auto pal = aap::getPluginHostPAL();
-	auto pluginDescriptors = plugins != nullptr ? plugins : pal->getInstalledPlugins();
+	auto pluginDescriptors = plugins != nullptr ? plugins : getKnownPluginInfos();
+	pluginDescriptors = pluginDescriptors != nullptr ? pluginDescriptors : aap::getPluginHostPAL()->getInstalledPlugins();
 	assert(pluginDescriptors != nullptr);
 	int n = 0;
 	while (pluginDescriptors[n])
