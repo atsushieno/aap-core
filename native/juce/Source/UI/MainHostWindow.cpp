@@ -109,6 +109,8 @@ MainHostWindow::MainHostWindow()
 
     InternalPluginFormat internalFormat;
     internalFormat.getAllTypes (internalTypes);
+    // FIXME: AAP plugins should be added here (but looks like it is not necessary...?)
+    //juceaap::AndroidAudioPluginFormat androidFormat;
 
     if (auto savedPluginList = getAppProperties().getUserSettings()->getXmlValue ("pluginList"))
         knownPluginList.recreateFromXml (*savedPluginList);
