@@ -145,7 +145,6 @@ class MainActivity : AppCompatActivity() {
         // read wave samples and and deinterleave into L/R
         in_raw = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
         wavAsset.close()
-        host.audioBufferSize = in_raw.size / 2
 
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
 
@@ -196,6 +195,7 @@ class MainActivity : AppCompatActivity() {
 
     fun prepareAudioData()
     {
+        host.audioBufferSizeInBytes = in_raw.size / 2
         var in_rawL = host.audioInputs[0]
         var in_rawR = host.audioInputs[1]
         for (i in 0 until in_raw.size / 8) {

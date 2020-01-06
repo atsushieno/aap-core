@@ -5,11 +5,6 @@ import android.util.Log
 
 class AudioPluginLocalHost {
     companion object {
-
-        init {
-            System.loadLibrary("androidaudioplugin")
-        }
-
         var initialized: Boolean = false
         var extensions = mutableListOf<AudioPluginService.Extension>()
 
@@ -29,25 +24,20 @@ class AudioPluginLocalHost {
                 ext.initialize(context)
                 extensions.add(ext)
             }
+            AudioPluginNatives.setApplicationContext(context.applicationContext)
             var pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
-            initialize(pluginInfos)
+            AudioPluginNatives.initializeLocalHost(pluginInfos)
             initialized = true
         }
-
-        @JvmStatic
-        external fun initialize(pluginInfos: Array<PluginInformation>)
 
         @JvmStatic
         fun cleanup()
         {
             for(ext in extensions)
                 ext.cleanup()
-            cleanupNatives()
+            AudioPluginNatives.cleanupLocalHostNatives()
             initialized = false
         }
-
-        @JvmStatic
-        external fun cleanupNatives()
 
         @JvmStatic
         fun getLocalAudioPluginService(context: Context) = AudioPluginHostHelper.queryAudioPluginServices(

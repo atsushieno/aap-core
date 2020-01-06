@@ -8,17 +8,6 @@ import java.lang.UnsupportedOperationException
 // Its implementation is hacky and not really with decent API design.
 // It is to provide usable utilities for for developers as a proof of concept.
 class AudioPluginHost(context: Context) {
-    companion object {
-        init {
-            System.loadLibrary("androidaudioplugin")
-        }
-
-        @JvmStatic
-        external fun setApplicationContext(applicationContext: Context)
-
-        @JvmStatic
-        external fun initialize(pluginInfos: Array<PluginInformation>)
-    }
 
     var connectedBinders = mutableListOf<IBinder>()
 
@@ -45,13 +34,13 @@ class AudioPluginHost(context: Context) {
 
     var sampleRate = 44100
 
-    var audioBufferSize = 44100
+    var audioBufferSizeInBytes = 44100 * 4
         set(value) {
             field = value
             resetInputBuffer()
             resetOutputBuffer()
         }
-    var controlBufferSize = 44100
+    var controlBufferSizeInBytes = 44100 * 4
         set(value) {
             field = value
             resetControlBuffer()
@@ -65,7 +54,7 @@ class AudioPluginHost(context: Context) {
             field = value
             resetInputBuffer()
         }
-    fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSize)
+    fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
 
     var inputControlBus = AudioBusPresets.monoral
         set(value) {
@@ -73,7 +62,7 @@ class AudioPluginHost(context: Context) {
             field = value
             resetControlBuffer()
         }
-    fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, controlBufferSize)
+    fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, controlBufferSizeInBytes)
 
     var outputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
         set(value) {
@@ -81,7 +70,7 @@ class AudioPluginHost(context: Context) {
             field = value
             resetOutputBuffer()
         }
-    fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSize)
+    fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
 
     fun expandBufferArrays(list : MutableList<ByteArray>, newSize : Int, bufferSize : Int) {
         if (newSize > list.size)
@@ -94,8 +83,8 @@ class AudioPluginHost(context: Context) {
     }
 
     init {
-        setApplicationContext(context)
-        initialize(AudioPluginHostHelper.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
+        AudioPluginNatives.setApplicationContext(context)
+        AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPluginServices(context).flatMap { s -> s.plugins }.toTypedArray())
         inputAudioBus = AudioBusPresets.stereo
         outputAudioBus = AudioBusPresets.stereo
     }

@@ -18,18 +18,6 @@ open class AudioPluginService : Service()
     }
 
     companion object {
-        const val NATIVE_LIBRARY_NAME = "androidaudioplugin"
-
-        init {
-            System.loadLibrary(NATIVE_LIBRARY_NAME)
-        }
-
-        @JvmStatic
-        external fun createBinder(sampleRate: Int) : IBinder
-
-        @JvmStatic
-        external fun destroyBinder(binder: IBinder)
-
         @JvmStatic
         var enableDebug = false
     }
@@ -43,8 +31,8 @@ open class AudioPluginService : Service()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
         AudioPluginLocalHost.initialize(this)
         if (native_binder != null)
-            destroyBinder(native_binder!!)
-        native_binder = createBinder(sampleRate)
+            AudioPluginNatives.destroyBinderForService(native_binder!!)
+        native_binder = AudioPluginNatives.createBinderForService(sampleRate)
         Log.d("AudioPluginService", "onBind done");
         return native_binder
     }

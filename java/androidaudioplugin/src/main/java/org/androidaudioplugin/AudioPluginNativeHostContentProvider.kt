@@ -14,14 +14,6 @@ import java.lang.RuntimeException
 // audio plugin list for local setup.
 class AudioPluginNativeHostContentProvider : ContentProvider()
 {
-    companion object {
-        const val NATIVE_LIBRARY_NAME = "androidaudioplugin"
-
-        init {
-            System.loadLibrary(NATIVE_LIBRARY_NAME)
-        }
-    }
-
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
         throw RuntimeException("not supported")
     }
@@ -36,8 +28,8 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
     }
 
     override fun attachInfo(context: Context?, info: ProviderInfo?) {
-        AudioPluginHost.setApplicationContext(context!!)
-        AudioPluginHost.initialize(AudioPluginHostHelper.queryAudioPlugins(context))
+        AudioPluginNatives.setApplicationContext(context!!)
+        AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPlugins(context))
     }
 
     override fun update(

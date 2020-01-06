@@ -216,42 +216,43 @@ PluginHostPAL* getPluginHostPAL()
 extern "C" {
 
 jobject
-Java_org_androidaudioplugin_AudioPluginService_createBinder(JNIEnv *env, jclass clazz, jint sampleRate) {
+Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz, jint sampleRate) {
     sp_binder.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
     auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
     return ret;
 }
 
 void
-Java_org_androidaudioplugin_AudioPluginService_destroyBinder(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *env, jclass clazz,
                                                                       jobject binder) {
     auto abinder = AIBinder_fromJavaBinder(env, binder);
     AIBinder_decStrong(abinder);
     sp_binder.reset(nullptr);
 }
 
-void Java_org_androidaudioplugin_AudioPluginLocalHost_initialize(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHost(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
-    assert(aap::getJNIEnv() == env);
-	if (jPluginInfos == nullptr)
-		jPluginInfos = aap::queryInstalledPluginsJNI();
+    // FIXME: enable later code once queryInstalledPluginsJNI() is fixed.
+    assert(jPluginInfos != nullptr);
+	//if (jPluginInfos == nullptr)
+	//	jPluginInfos = aap::queryInstalledPluginsJNI();
     aap::initializeKnownPlugins(jPluginInfos);
 }
 
-void Java_org_androidaudioplugin_AudioPluginLocalHost_cleanupNatives(JNIEnv *env, jclass cls)
+void Java_org_androidaudioplugin_AudioPluginNatives_cleanupLocalHostNatives(JNIEnv *env, jclass cls)
 {
 	aap::cleanupKnownPlugins();
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginHost_setApplicationContext(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_AudioPluginNatives_setApplicationContext(JNIEnv *env, jclass clazz,
 																  jobject applicationContext) {
 	env->GetJavaVM(&aap::jvm);
     aap::globalApplicationContext = applicationContext;
     aap::initializeJNIMetadata(env);
 }
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginHost_initialize(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_AudioPluginNatives_initialize(JNIEnv *env, jclass clazz,
                                                        jobjectArray jPluginInfos) {
     assert(aap::getJNIEnv() == env);
     aap::initializeKnownPlugins(jPluginInfos);
