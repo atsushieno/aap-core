@@ -124,8 +124,7 @@ public:
 							 const String &fileOrIdentifier) override;
 
 	inline bool fileMightContainThisPluginType(const String &fileOrIdentifier) override {
-		auto f = File::createFileWithoutCheckingPath(fileOrIdentifier);
-		return f.hasFileExtension(".aap");
+		return true;
 	}
 
 	inline String getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override {
@@ -153,7 +152,7 @@ public:
 		// impossible to change the list of detected plugins.
 		StringArray ret;
 		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++)
-			ret.add(android_host.getPluginDescriptorAt(i)->getIdentifier());
+			ret.add(android_host.getPluginDescriptorAt(i)->getPluginID());
 		return ret;
 	}
 
@@ -165,7 +164,7 @@ public:
 		return ret;
 	}
 
-	inline bool isTrivialToScan() const override { return true; }
+	inline bool isTrivialToScan() const override { return false; }
 
 	inline void createPluginInstance(const PluginDescription &description,
 							  double initialSampleRate,

@@ -124,7 +124,7 @@ public:
 	
 	/* locally identifiable string.
 	 * It is combination of name+unique_id+version, to support plugin debugging. */
-	const std::string getIdentifier() const
+	const std::string getStrictIdentifier() const
 	{
 		return identifier_string;
 	}

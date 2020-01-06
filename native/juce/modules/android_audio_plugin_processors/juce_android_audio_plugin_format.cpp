@@ -25,7 +25,8 @@ static void fillPluginDescriptionFromNative(PluginDescription &description,
 
     description.manufacturerName = src.getManufacturerName();
     description.version = src.getVersion();
-    description.fileOrIdentifier = src.getIdentifier();
+    // JUCE plugin identifier is "PluginID" in AAP (not "identifier_string").
+    description.fileOrIdentifier = src.getPluginID();
     // So far this is as hacky as AudioUnit implementation.
     description.lastFileModTime = Time();
     description.lastInfoUpdateTime = Time(src.getLastInfoUpdateTime());
@@ -167,7 +168,7 @@ void AndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescription
     for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
         auto d = android_host.getPluginDescriptorAt(i);
         if (strcmp(id, d->getName().data()) == 0 ||
-            strcmp(id, d->getIdentifier().data()) == 0) {
+            strcmp(id, d->getPluginID().data()) == 0) {
             auto dst = cached_descs[d];
             if (!dst)
                 // doesn't JUCE handle invalid fileOrIdentifier?
@@ -188,7 +189,7 @@ void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &des
         callback(nullptr, error);
     } else {
         auto androidInstance = android_host.instantiatePlugin(
-                descriptor->getIdentifier().data());
+                descriptor->getPluginID().data());
         std::unique_ptr <AndroidAudioPluginInstance> instance{
                 new AndroidAudioPluginInstance(androidInstance)};
         callback(std::move(instance), error);
