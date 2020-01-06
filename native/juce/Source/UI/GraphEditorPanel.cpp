@@ -28,9 +28,10 @@
 #include "GraphEditorPanel.h"
 #include "../Plugins/InternalPlugins.h"
 #include "MainHostWindow.h"
+#include "../../modules/android_audio_plugin_processors/juce_android_audio_plugin_format.h"
 
 //==============================================================================
-#if JUCE_IOS
+#if JUCE_IOS || JUCE_ANDROID
  class AUScanner
  {
  public:
@@ -45,7 +46,13 @@
 
  private:
      KnownPluginList& knownPluginList;
+#if JUCE_IOS
      AudioUnitPluginFormat formatToScan;
+#else
+#if JUCE_ANDROID
+     juceaap::AndroidAudioPluginFormat formatToScan;
+#endif
+#endif
 
      std::unique_ptr<PluginDirectoryScanner> scanner;
      FileSearchPath paths;
@@ -1097,7 +1104,7 @@ struct GraphDocumentComponent::PluginListBoxModel    : public ListBoxModel,
         knownPlugins.addChangeListener (this);
         owner.addMouseListener (this, true);
 
-       #if JUCE_IOS
+       #if JUCE_IOS || JUCE_ANDROID
         scanner.reset (new AUScanner (knownPlugins));
        #endif
     }
@@ -1146,7 +1153,7 @@ struct GraphDocumentComponent::PluginListBoxModel    : public ListBoxModel,
 
     bool isOverSelectedRow = false;
 
-   #if JUCE_IOS
+   #if JUCE_IOS || JUCE_ANDROID
     std::unique_ptr<AUScanner> scanner;
    #endif
 
