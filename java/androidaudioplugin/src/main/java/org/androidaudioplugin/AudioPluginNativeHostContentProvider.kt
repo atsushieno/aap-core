@@ -36,10 +36,8 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
     }
 
     override fun attachInfo(context: Context?, info: ProviderInfo?) {
-        Class.forName("org.androidaudioplugin.AudioPluginNativeHostContentProvider")
-        Class.forName("org.androidaudioplugin.AudioPluginHostHelper")
-        Class.forName("org.androidaudioplugin.PluginInformation")
         AudioPluginHost.setApplicationContext(context!!)
+        AudioPluginHost.initialize(AudioPluginHostHelper.queryAudioPlugins(context))
     }
 
     override fun update(

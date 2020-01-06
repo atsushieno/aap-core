@@ -51,8 +51,6 @@ open class AudioPluginService : Service()
 
     override fun onUnbind(intent: Intent?): Boolean {
         AudioPluginLocalHost.cleanup()
-        if (native_binder != null)
-            destroyBinder(native_binder!!)
         return true
     }
 

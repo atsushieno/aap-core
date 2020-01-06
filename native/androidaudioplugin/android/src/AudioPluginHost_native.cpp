@@ -145,6 +145,7 @@ JNIEnv *getJNIEnv()
     return env;
 }
 
+// FIXME: I haven't figured out how it results in crashes yet. Plugins must be set in Kotlin layer so far.
 jobjectArray queryInstalledPluginsJNI()
 {
     auto env = getJNIEnv();
