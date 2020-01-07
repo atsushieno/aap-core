@@ -30,7 +30,6 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	aap::PluginInstance *native;
 	int sample_rate;
 	AndroidAudioPluginBuffer buffer;
-	float *dummy_raw_buffer;
 
 	void fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst, AudioBuffer<float> &buffer);
 

@@ -1,5 +1,8 @@
 
 #include "juce_android_audio_plugin_format.h"
+#include <android/sharedmem.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 using namespace aap;
 using namespace juce;
@@ -46,6 +49,7 @@ static void fillPluginDescriptionFromNative(PluginDescription &description,
 
 void AndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst,
                                                         AudioBuffer<float> &buffer) {
+    // FIXME: this won't work. buffers cannot be updated.
     int n = buffer.getNumChannels();
     for (int i = 0; i < n; i++)
         dst->buffers[i] = (void *) buffer.getReadPointer(i);
@@ -53,6 +57,7 @@ void AndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer
 
 void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst,
                                                        MidiBuffer &buffer, int bufferIndex) {
+    // FIXME: this won't work. buffers cannot be updated.
     dst->buffers[bufferIndex] = (void *) buffer.data.getRawDataPointer();
 }
 
@@ -77,13 +82,15 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
 
     // minimum setup, as the pointers are not passed by JUCE framework side.
     int n = native->getPluginDescriptor()->getNumPorts();
+    buffer.shared_memory_fds = new int[n];
     buffer.buffers = new void *[n];
-    // FIXME: get audio channel count and replace "2"
-    dummy_raw_buffer = (float *) calloc(maximumExpectedSamplesPerBlock * sizeof(float) * 2,
-                                        1);
-    for (int i = 0; i < n; i++)
-        buffer.buffers[i] = dummy_raw_buffer;
-
+    buffer.num_frames = maximumExpectedSamplesPerBlock;
+    for (int i = 0; i < n; i++) {
+        int fd = ASharedMemory_create(nullptr, buffer.num_frames * sizeof(float));
+        buffer.shared_memory_fds[i] = fd;
+        buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float),
+                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    }
     native->prepare(sampleRate, maximumExpectedSamplesPerBlock, &buffer);
 
     native->activate();
@@ -93,13 +100,11 @@ void AndroidAudioPluginInstance::releaseResources() {
     native->dispose();
 
     if (buffer.buffers) {
-        delete buffer.buffers;
+        for (int i = 0; buffer.buffers[i] != nullptr; i++) {
+            munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
+            close(buffer.shared_memory_fds[i]);
+        }
         buffer.buffers = NULL;
-    }
-
-    if (dummy_raw_buffer) {
-        free(dummy_raw_buffer);
-        dummy_raw_buffer = NULL;
     }
 }
 

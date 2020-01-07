@@ -17,13 +17,6 @@ public:
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
-
-    binder_status_t aap_binder_on_transact(AIBinder *aiBinder, transaction_code_t code, const AParcel *in, AParcel *out)
-    {
-        __android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_binder_on_transact invoked");
-        return STATUS_OK;
-    }
-
     AIBinder_Class_onTransact on_transact = [](AIBinder *binder,
             transaction_code_t code, const AParcel *in, AParcel *out)
                     { return (binder_status_t) 0; };
@@ -65,7 +58,8 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	while (auto p = buffer->buffers[n]) {
 		::ndk::ScopedFileDescriptor fd;
 		fd.set((int64_t) p);
-		ctx->proxy->prepareMemory(n, fd);
+		auto pmstatus = ctx->proxy->prepareMemory(n, fd);
+		assert (pmstatus.isOk());
 		n++;
 	}
 	auto status = ctx->proxy->prepare(buffer->num_frames, n);

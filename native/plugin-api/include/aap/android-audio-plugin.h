@@ -10,8 +10,10 @@ typedef struct AndroidAudioPluginFactory AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
 typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
-
+// FIXME: At this state I'm not sure if having shared memory FDs as a public member is a good idea.
 typedef struct {
+	/* NULL-terminated list of shared memory FDs */
+	int *shared_memory_fds;
 	/* NULL-terminated list of buffers */
 	void **buffers;
 	int32_t num_frames;
