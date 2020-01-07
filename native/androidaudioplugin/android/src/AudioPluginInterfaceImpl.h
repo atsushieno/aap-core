@@ -34,6 +34,7 @@ public:
         buffer.buffers = nullptr;
         instance = nullptr;
     }
+    ~AudioPluginInterfaceImpl() {}
 
     ::ndk::ScopedAStatus create(const std::string &in_pluginId, int32_t in_sampleRate) override {
         if (instance)
