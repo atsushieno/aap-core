@@ -12,7 +12,6 @@ jobs:
     - name: checkout
       uses: actions/checkout@v1
       with:
-        token:  eb00d5555a1f4984ed73f5077173e95bf81c1508
         submodules: recursive
     - name: apt update
       run: |
