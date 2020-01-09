@@ -31,7 +31,6 @@ android {
     externalNativeBuild {
         cmake {
             path "../../native/androidaudioplugin-lv2/CMakeLists.txt"
-            version "3.10.2"
         }
     }
     ndkVersion = '20.1.5948944'
