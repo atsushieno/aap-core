@@ -18,61 +18,16 @@ import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
-import org.androidaudioplugin.AudioPluginHostHelper
-import org.androidaudioplugin.AudioPluginServiceInformation
-import org.androidaudioplugin.PluginInformation
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.*
 
 class MainActivity : AppCompatActivity() {
 
     inner class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
-        var intent: Intent? = null
-
-        lateinit var target_plugin: String
-
-        fun disconnect() {
-            Log.d("MainActivity", "disconnect invoked")
-            GlobalScope.launch {
-                context.unbindService(conn)
-                intent = null
-            }
-        }
-
-        var conn = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                Log.d("MainActivity", "onServiceConnected is invoked")
-
-                if (binder == null)
-                    throw UnsupportedOperationException ("binder must not be null")
-
-                GlobalScope.launch {
-                    Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
-                    prepareAudioData()
-                    AAPSampleInterop.runClientAAP(binder, host.sampleRate, target_plugin,
-                        host.audioInputs[0],
-                        host.audioInputs[1],
-                        host.audioOutputs[0],
-                        host.audioOutputs[1])
-                    processAudioOutputData()
-
-                    runOnUiThread {
-                        wavePostPlugin.sample = out_raw.map { b -> b.toInt() }.toIntArray()
-                        Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
-                    }
-                    disconnect()
-                }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                Log.d("MainActivity", "onServiceDisconnected is invoked, most likely an unexpected crash?")
-            }
-        }
-
         fun processAudioOutputData()
         {
             var out_rawL = host.audioOutputs[0]
@@ -101,7 +56,7 @@ class MainActivity : AppCompatActivity() {
                 throw UnsupportedOperationException()
             if (item == null)
                 return view
-            view.audio_plugin_service_name.text = item.first.name
+            view.audio_plugin_service_name.text = item.first.label
             view.audio_plugin_name.text = item.second.name
             view.audio_plugin_list_identifier.text = item.second.pluginId
 
@@ -114,17 +69,35 @@ class MainActivity : AppCompatActivity() {
             view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
 
                 var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-                this.intent = intent
                 intent.component = ComponentName(
                     service.packageName,
                     service.className
                 )
                 intent.putExtra("sampleRate", host.sampleRate)
-                intent.putExtra("pluginId", plugin.pluginId)
 
-                target_plugin = plugin.pluginId!!
-                Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
-                context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+                host.pluginInstantiatedListeners.clear()
+                host.pluginInstantiatedListeners.add { instance ->
+                    Log.d("MainActivity", "plugin instantiated listener invoked")
+
+                    GlobalScope.launch {
+                        Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
+                        prepareAudioData()
+                        AAPSampleInterop.runClientAAP(instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
+                            host.audioInputs[0],
+                            host.audioInputs[1],
+                            host.audioOutputs[0],
+                            host.audioOutputs[1])
+                        processAudioOutputData()
+
+                        runOnUiThread {
+                            wavePostPlugin.sample = out_raw.map { b -> b.toInt() }.toIntArray()
+                            Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
+                        }
+                        // FIXME: enable this line?
+                        //host.unbindAudioPluginService("${service.packageName}/${service.className}")
+                    }
+                }
+                host.instantiatePlugin(plugin)
             }
 
             return view

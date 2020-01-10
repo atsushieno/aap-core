@@ -51,9 +51,10 @@ namespace aaplv2 {
 
 extern "C" {
 
-void Java_org_androidaudioplugin_lv2_AudioPluginLV2ServiceExtension_initialize(JNIEnv *env, jobject obj,
-                                                                               jstring lv2PathString,
-                                                                               jobject assets) {
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_lv2_AudioPluginLV2ServiceExtension_initialize(JNIEnv *env, jobject obj,
+                                                                          jstring lv2PathString,
+                                                                          jobject assets) {
     aaplv2::set_io_context(AAssetManager_fromJava(env, assets));
 
     jboolean isCopy = JNI_TRUE;
@@ -62,10 +63,10 @@ void Java_org_androidaudioplugin_lv2_AudioPluginLV2ServiceExtension_initialize(J
     env->ReleaseStringUTFChars(lv2PathString, s);
 }
 
-void Java_org_androidaudioplugin_lv2_AudioPluginLV2ServiceExtension_cleanup(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_lv2_AudioPluginLV2ServiceExtension_cleanup(JNIEnv *env, jobject obj) {
     aaplv2::cleanup();
 }
 
-}
-
+} // extern "C"
 #endif

@@ -27,5 +27,14 @@ class AudioPluginNatives
 
         @JvmStatic
         external fun destroyBinderForService(binder: IBinder)
+
+        @JvmStatic
+        external fun addBinderForHost(binder: IBinder)
+
+        @JvmStatic
+        external fun removeBinderForHost(binder: IBinder)
+
+        @JvmStatic
+        external fun instantiatePlugin(serviceIdentifier: String, pluginId: String)
     }
 }

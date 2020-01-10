@@ -135,6 +135,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 
 JavaVM *jvm{nullptr};
 jobject globalApplicationContext{nullptr};
+std::vector<jobject> binders{};
 
 JNIEnv *getJNIEnv()
 {
@@ -256,6 +257,24 @@ Java_org_androidaudioplugin_AudioPluginNatives_initialize(JNIEnv *env, jclass cl
                                                        jobjectArray jPluginInfos) {
     assert(aap::getJNIEnv() == env);
     aap::initializeKnownPlugins(jPluginInfos);
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jclass clazz,
+                                                                jobject binder) {
+    aap::binders.push_back(binder);
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz,
+                                                                jobject binder) {
+    aap::binders.erase(std::find(aap::binders.begin(), aap::binders.end(), binder));
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_instantiatePlugin(JNIEnv *env, jclass clazz,
+																   jstring serviceIdentifier, jstring pluginId) {
+	__android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "TODO: implement instantiatePlugin");
 }
 
 } // extern "C"

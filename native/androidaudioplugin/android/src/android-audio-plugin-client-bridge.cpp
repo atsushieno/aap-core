@@ -11,9 +11,10 @@
 class AAPClientContext {
 public:
 	const char *unique_id;
-	std::unique_ptr<aap::AudioPluginInterfaceImpl> impl{nullptr};
-	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
-	AndroidAudioPluginBuffer *previous_buffer;
+	std::unique_ptr<aap::AudioPluginInterfaceImpl> dummy{nullptr};
+	ndk::SpAIBinder spAIBinder{nullptr};
+	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
+	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
@@ -24,8 +25,11 @@ public:
     AAPClientContext(int sampleRate, const char *pluginUniqueId)
 		: unique_id(pluginUniqueId)
 	{
-        impl.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
-		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(impl->asBinder());
+        dummy.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
+        auto aibinder = dummy->asBinder().get();
+        auto clazz = AIBinder_getClass(aibinder);
+        spAIBinder.set(AIBinder_new(clazz, nullptr));
+		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
     }
 
     ~AAPClientContext()

@@ -33,8 +33,11 @@ public:
         buffer.num_frames = 0;
         buffer.buffers = nullptr;
         instance = nullptr;
+        sharedMemoryFDs.clear();
     }
-    ~AudioPluginInterfaceImpl() {}
+    virtual ~AudioPluginInterfaceImpl() {
+        delete host;
+    }
 
     ::ndk::ScopedAStatus create(const std::string &in_pluginId, int32_t in_sampleRate) override {
         if (instance)

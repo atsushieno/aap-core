@@ -13,9 +13,9 @@ class AudioPluginHostHelper {
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
         const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService#Extensions"
 
-        private fun parseAapMetadata(isOutProcess: Boolean, name: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
+        private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
             // TODO: this XML parsing is super hacky so far.
-            val aapServiceInfo = AudioPluginServiceInformation(name, packageName, className)
+            val aapServiceInfo = AudioPluginServiceInformation(label, "${packageName}/${className}")
 
             var currentPlugin: PluginInformation? = null
             while (true) {
@@ -96,10 +96,10 @@ class AudioPluginHostHelper {
                     continue
                 }
                 var isOutProcess = ri.serviceInfo.packageName != context.packageName
-                var name = ri.serviceInfo.loadLabel(context.packageManager).toString()
+                var label = ri.serviceInfo.loadLabel(context.packageManager).toString()
                 var packageName = ri.serviceInfo.packageName
                 var className = ri.serviceInfo.name
-                var plugin = parseAapMetadata(isOutProcess, name, packageName, className, xp)
+                var plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
                 var extensions = ri.serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
                 if (extensions != null)
                     plugin.extensions = extensions.toString().split(',').toMutableList()
