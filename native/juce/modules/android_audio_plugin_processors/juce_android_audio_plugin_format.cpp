@@ -49,10 +49,9 @@ static void fillPluginDescriptionFromNative(PluginDescription &description,
 
 void AndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst,
                                                         AudioBuffer<float> &buffer) {
-    // FIXME: this won't work. buffers cannot be updated.
     int n = buffer.getNumChannels();
     for (int i = 0; i < n; i++)
-        dst->buffers[i] = (void *) buffer.getReadPointer(i);
+        memcpy(dst->buffers[i], (void *) buffer.getReadPointer(i), buffer.getNumSamples() * sizeof(float));
 }
 
 void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst,
