@@ -8,7 +8,7 @@ aap::PluginInformation **_local_plugin_infos{nullptr};
 aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
 void setKnownPluginInfos(aap::PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
 
-void aap_parse_plugin_descriptor_into(const char* packageClassName, const char* xmlfile, std::vector<PluginInformation*>& plugins)
+void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
     tinyxml2::XMLDocument doc;
     auto error = doc.LoadFile(xmlfile);
@@ -19,6 +19,7 @@ void aap_parse_plugin_descriptor_into(const char* packageClassName, const char* 
             pluginElement != nullptr;
             pluginElement = pluginElement->NextSiblingElement("plugin")) {
         auto plugin = new PluginInformation(false,
+                serviceIdentifier,
                 pluginElement->Attribute("name"),
                 pluginElement->Attribute("manufacturer"),
                 pluginElement->Attribute("version"),
@@ -43,15 +44,15 @@ void aap_parse_plugin_descriptor_into(const char* packageClassName, const char* 
     }
 }
 
-PluginInformation** PluginInformation::parsePluginDescriptor(const char * packageClassName, const char* xmlfile)
+PluginInformation** PluginInformation::parsePluginDescriptor(const char * serviceIdentifier, const char* xmlfile)
 {
-	return aap_parse_plugin_descriptor(packageClassName, xmlfile);
+	return aap_parse_plugin_descriptor(serviceIdentifier, xmlfile);
 }
 
-PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, const char* xmlfile)
+PluginInformation** aap_parse_plugin_descriptor(const char* serviceIdentifier, const char* xmlfile)
 {
     std::vector<PluginInformation*> plugins;
-    aap_parse_plugin_descriptor_into(packageClassName, xmlfile, plugins);
+    aap_parse_plugin_descriptor_into(serviceIdentifier, xmlfile, plugins);
     PluginInformation** ret = (PluginInformation**) calloc(sizeof(PluginInformation*), plugins.size() + 1);
     for(size_t i = 0; i < plugins.size(); i++)
         ret[i] = plugins[i];

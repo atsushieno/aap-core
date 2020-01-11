@@ -60,7 +60,7 @@ class PluginInformation
 	bool is_out_process;
 
 	// basic information
-	std::string package_class_name{}; // optional for apps, host needs to query it missing and needed.
+	std::string service_identifier{}; // optional for apps, host needs to query it missing and needed.
 	std::string name{};
 	std::string manufacturer_name{};
 	std::string version{};
@@ -80,20 +80,21 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
-	static PluginInformation** parsePluginDescriptor(const char* packageClassName, const char* xmlfile);
+	static PluginInformation** parsePluginDescriptor(const char* serviceIdentifier, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, const char* pluginName, const char* manufacturerName, const char* versionString, const char* pluginID, const char* sharedLibraryFilename, const char *libraryEntrypoint)
+	PluginInformation(bool isOutProcess, std::string serviceIdentifier, std::string pluginName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
 		: is_out_process(isOutProcess),
+		  service_identifier(serviceIdentifier),
 		  name(pluginName),
-		  manufacturer_name(manufacturerName ? manufacturerName : ""),
-		  version(versionString ? versionString : ""),
-		  shared_library_filename(sharedLibraryFilename ? sharedLibraryFilename : ""),
-		  library_entrypoint(libraryEntrypoint ? libraryEntrypoint : ""),
-		  plugin_id(pluginID ? pluginID : ""),
+		  manufacturer_name(manufacturerName),
+		  version(versionString),
+		  shared_library_filename(sharedLibraryFilename),
+		  library_entrypoint(libraryEntrypoint),
+		  plugin_id(pluginID),
 		  last_info_updated_unixtime((long) time(NULL))
 	{
 		char *cp;
@@ -106,7 +107,12 @@ public:
 	~PluginInformation()
 	{
 	}
-	
+
+	const std::string getServiceIdentifier() const
+	{
+		return service_identifier;
+	}
+
 	const std::string getName() const
 	{
 		return name;

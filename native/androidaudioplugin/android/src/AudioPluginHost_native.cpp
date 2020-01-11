@@ -1,6 +1,7 @@
 
 #include <jni.h>
 #include <android/log.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
@@ -11,6 +12,34 @@ std::unique_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder
 
 namespace aap {
 
+class AudioPluginServiceConnection {
+public:
+    AudioPluginServiceConnection(std::string serviceIdentifier, jobject jbinder, AIBinder *aibinder)
+        : serviceIdentifier(serviceIdentifier), aibinder(aibinder) {}
+
+    std::string serviceIdentifier{};
+    jobject jbinder{nullptr};
+    AIBinder *aibinder{nullptr};
+};
+
+std::vector<AudioPluginServiceConnection> serviceConnections{};
+
+AIBinder *getBinderForServiceConnection(std::string serviceIdentifier)
+{
+    for (int i = 0; i < serviceConnections.size(); i++)
+        if(serviceConnections[i].serviceIdentifier == serviceIdentifier)
+            return serviceConnections[i].aibinder;
+    return nullptr;
+}
+
+AIBinder *getBinderForServiceConnectionForPlugin(std::string pluginId)
+{
+    auto pl = getKnownPluginInfos();
+    for (int i = 0; pl[i] != nullptr; i++)
+        if (pl[i]->getPluginID() == pluginId)
+            return getBinderForServiceConnection(pl[i]->getServiceIdentifier());
+    return nullptr;
+}
 
 const char *interface_descriptor = "org.androidaudioplugin.AudioPluginService";
 
@@ -35,7 +64,7 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
 const char *strdup_fromJava(JNIEnv *env, jstring s) {
     jboolean isCopy;
     if (!s)
-        return NULL;
+        return "";
     const char *u8 = env->GetStringUTFChars(s, &isCopy);
     auto ret = strdup(u8);
     env->ReleaseStringUTFChars(s, u8);
@@ -48,6 +77,7 @@ const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginI
 
 static jmethodID
         j_method_is_out_process,
+		j_method_get_service_identifier,
         j_method_get_name,
         j_method_get_manufacturer,
         j_method_get_version,
@@ -69,6 +99,8 @@ void initializeJNIMetadata(JNIEnv *env)
 
     j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
                                                "isOutProcess", "()Z");
+	j_method_get_service_identifier = env->GetMethodID(java_plugin_information_class, "getServiceIdentifier",
+										 "()Ljava/lang/String;");
     j_method_get_name = env->GetMethodID(java_plugin_information_class, "getName",
                                          "()Ljava/lang/String;");
     j_method_get_manufacturer = env->GetMethodID(java_plugin_information_class,
@@ -101,7 +133,9 @@ aap::PluginInformation *
 pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
     auto aapPI = new aap::PluginInformation(
             env->CallBooleanMethod(pluginInformation, j_method_is_out_process),
-            strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_service_identifier)),
+			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
                                                                  j_method_get_name)),
             strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
                                                                  j_method_get_manufacturer)),
@@ -135,7 +169,6 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 
 JavaVM *jvm{nullptr};
 jobject globalApplicationContext{nullptr};
-std::vector<jobject> binders{};
 
 JNIEnv *getJNIEnv()
 {
@@ -261,19 +294,22 @@ Java_org_androidaudioplugin_AudioPluginNatives_initialize(JNIEnv *env, jclass cl
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jclass clazz,
-                                                                jobject binder) {
-    aap::binders.push_back(binder);
+                                                                jstring serviceIdentifier, jobject binder) {
+	const char *serviceIdentifierDup = aap::strdup_fromJava(env, serviceIdentifier);
+	auto binderRef = env->NewGlobalRef(binder);
+	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+    aap::serviceConnections.push_back(aap::AudioPluginServiceConnection(serviceIdentifierDup, binderRef, aiBinder));
 }
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz,
-                                                                jobject binder) {
-    aap::binders.erase(std::find(aap::binders.begin(), aap::binders.end(), binder));
+                                                                   jstring serviceIdentifier) {
+    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "TODO: implement removeBinderFromHost");
 }
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_instantiatePlugin(JNIEnv *env, jclass clazz,
-																   jstring serviceIdentifier, jstring pluginId) {
+                                                                 jstring serviceIdentifier, jstring pluginId) {
 	__android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "TODO: implement instantiatePlugin");
 }
 

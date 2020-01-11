@@ -10,7 +10,7 @@ import java.lang.UnsupportedOperationException
 
 // This class is not to endorse any official API for hosting AAP.
 // Its implementation is hacky and not really with decent API design.
-// It is to provide usable utilities for for developers as a proof of concept.
+// It is to provide usable utilities for plugin developers as a proof of concept.
 class AudioPluginHost(private var applicationContext: Context) {
 
     // Service connection
@@ -36,7 +36,8 @@ class AudioPluginHost(private var applicationContext: Context) {
     }
 
     private fun onBindAudioPluginService(conn: AudioPluginServiceConnection) {
-        AudioPluginNatives.addBinderForHost(conn.binder!!)
+        var serviceIdentifier = "${conn.serviceInfo.packageName}/${conn.serviceInfo.className}"
+        AudioPluginNatives.addBinderForHost(serviceIdentifier, conn.binder!!)
         connectedServices.add(conn)
         serviceConnectedListeners.forEach { f -> f(conn) }
     }
@@ -54,7 +55,7 @@ class AudioPluginHost(private var applicationContext: Context) {
         if (conn == null)
             return
         connectedServices.remove(conn)
-        AudioPluginNatives.removeBinderForHost(conn.binder!!)
+        AudioPluginNatives.removeBinderForHost(serviceIdentifier)
     }
 
     // Plugin instancing

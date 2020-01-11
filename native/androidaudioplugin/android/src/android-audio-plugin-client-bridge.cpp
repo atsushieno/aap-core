@@ -8,27 +8,26 @@
 #include "aap/android-audio-plugin.h"
 #include "AudioPluginInterfaceImpl.h"
 
+namespace aap {
+	extern AIBinder *getBinderForServiceConnectionForPlugin(std::string serviceIdentifier);
+}
+
 class AAPClientContext {
+
 public:
 	const char *unique_id;
-	std::unique_ptr<aap::AudioPluginInterfaceImpl> dummy{nullptr};
 	ndk::SpAIBinder spAIBinder{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state;
 	int state_ashmem_fd;
 
-    AIBinder_Class_onTransact on_transact = [](AIBinder *binder,
-            transaction_code_t code, const AParcel *in, AParcel *out)
-                    { return (binder_status_t) 0; };
-
     AAPClientContext(int sampleRate, const char *pluginUniqueId)
 		: unique_id(pluginUniqueId)
 	{
-        dummy.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
-        auto aibinder = dummy->asBinder().get();
-        auto clazz = AIBinder_getClass(aibinder);
-        spAIBinder.set(AIBinder_new(clazz, nullptr));
+    	auto binder = aap::getBinderForServiceConnectionForPlugin(pluginUniqueId);
+    	assert(binder != nullptr);
+        spAIBinder.set(binder);
 		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
     }
 
@@ -59,10 +58,10 @@ void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 {
 	int n = 0;
-	while (auto p = buffer->buffers[n]) {
-		::ndk::ScopedFileDescriptor fd;
-		fd.set((int64_t) p);
-		auto pmstatus = ctx->proxy->prepareMemory(n, fd);
+	while (buffer->buffers[n] != nullptr) {
+		::ndk::ScopedFileDescriptor sfd;
+		sfd.set((int64_t) buffer->shared_memory_fds[n]);
+		auto pmstatus = ctx->proxy->prepareMemory(n, sfd);
 		assert (pmstatus.isOk());
 		n++;
 	}
