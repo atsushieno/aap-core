@@ -229,12 +229,12 @@ PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, co
 
 class EditorInstance
 {
-	const PluginInstance *owner;
+	//const PluginInstance *owner;
 
 public:
 
 	EditorInstance(const PluginInstance *ownerPlugin)
-		: owner(ownerPlugin)
+	//	: owner(ownerPlugin)
 	{
 		// TODO: FUTURE (v0.4)
 	}
@@ -334,7 +334,7 @@ public:
 	
 	EditorInstance* createEditor(PluginInstance* instance)
 	{
-		return new EditorInstance(instance);
+		return nullptr;//new EditorInstance(instance);
 	}
 };
 

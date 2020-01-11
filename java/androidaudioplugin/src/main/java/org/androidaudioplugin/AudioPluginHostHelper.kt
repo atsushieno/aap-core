@@ -19,7 +19,7 @@ class AudioPluginHostHelper {
 
             var currentPlugin: PluginInformation? = null
             while (true) {
-                var eventType = xp.next()
+                val eventType = xp.next()
                 if (eventType == XmlPullParser.END_DOCUMENT)
                     break
                 if (eventType == XmlPullParser.IGNORABLE_WHITESPACE)
@@ -36,7 +36,6 @@ class AudioPluginHostHelper {
                         val sharedLibraryName = xp.getAttributeValue(null, "library")
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
                         val assets = xp.getAttributeValue(null, "assets")
-                        val isOutProcess = isOutProcess
                         currentPlugin = PluginInformation(
                             "$packageName/$className",
                             name,
@@ -87,7 +86,7 @@ class AudioPluginHostHelper {
             val intent = Intent(AAP_ACTION_NAME)
             val resolveInfos =
                 context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
-            var plugins = mutableListOf<AudioPluginServiceInformation>()
+            val plugins = mutableListOf<AudioPluginServiceInformation>()
             for (ri in resolveInfos) {
                 Log.i("AAP", "Service " + ri.serviceInfo.name)
                 val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
@@ -95,12 +94,12 @@ class AudioPluginHostHelper {
                     Log.w("AAP", "Service " + ri.serviceInfo.name + " has no AAP metadata XML resource.")
                     continue
                 }
-                var isOutProcess = ri.serviceInfo.packageName != context.packageName
-                var label = ri.serviceInfo.loadLabel(context.packageManager).toString()
-                var packageName = ri.serviceInfo.packageName
-                var className = ri.serviceInfo.name
-                var plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
-                var extensions = ri.serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
+                val isOutProcess = ri.serviceInfo.packageName != context.packageName
+                val label = ri.serviceInfo.loadLabel(context.packageManager).toString()
+                val packageName = ri.serviceInfo.packageName
+                val className = ri.serviceInfo.name
+                val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
+                val extensions = ri.serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
                 if (extensions != null)
                     plugin.extensions = extensions.toString().split(',').toMutableList()
                 plugins.add(plugin)

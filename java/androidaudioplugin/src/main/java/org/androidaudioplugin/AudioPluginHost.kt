@@ -65,9 +65,9 @@ class AudioPluginHost(private var applicationContext: Context) {
         var conn = findExistingServiceConnection(pluginInfo.serviceIdentifier)
         if (conn == null) {
             var serviceConnectedListener =
-                { conn: AudioPluginServiceConnection -> instantiatePlugin(pluginInfo, conn) }
-            var pluginInstantiatedListener: (AudioPluginInstance) -> Unit = { plugin -> {} }
-            pluginInstantiatedListener = { plugin ->
+                { c: AudioPluginServiceConnection -> instantiatePlugin(pluginInfo, c) }
+            var pluginInstantiatedListener: (AudioPluginInstance) -> Unit = { }
+            pluginInstantiatedListener = { _ ->
                 pluginInstantiatedListeners.remove(pluginInstantiatedListener)
                 serviceConnectedListeners.remove(serviceConnectedListener)
             }
@@ -92,8 +92,8 @@ class AudioPluginHost(private var applicationContext: Context) {
     var controlInputs = mutableListOf<ByteArray>()
     var audioOutputs = mutableListOf<ByteArray>()
 
-    var isConfigured = false
-    var isActive = false
+    private var isConfigured = false
+    private var isActive = false
 
     var sampleRate = 44100
 
@@ -109,7 +109,7 @@ class AudioPluginHost(private var applicationContext: Context) {
             resetControlBuffer()
         }
 
-    fun throwIfRunning() { if (isActive) throw UnsupportedOperationException("AudioPluginHost is already running") }
+    private fun throwIfRunning() { if (isActive) throw UnsupportedOperationException("AudioPluginHost is already running") }
 
     var inputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
         set(value) {
@@ -117,7 +117,7 @@ class AudioPluginHost(private var applicationContext: Context) {
             field = value
             resetInputBuffer()
         }
-    fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
+    private fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
 
     var inputControlBus = AudioBusPresets.monoral
         set(value) {
@@ -125,7 +125,7 @@ class AudioPluginHost(private var applicationContext: Context) {
             field = value
             resetControlBuffer()
         }
-    fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, controlBufferSizeInBytes)
+    private fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, controlBufferSizeInBytes)
 
     var outputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
         set(value) {
@@ -133,9 +133,9 @@ class AudioPluginHost(private var applicationContext: Context) {
             field = value
             resetOutputBuffer()
         }
-    fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
+    private fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
 
-    fun expandBufferArrays(list : MutableList<ByteArray>, newSize : Int, bufferSize : Int) {
+    private fun expandBufferArrays(list : MutableList<ByteArray>, newSize : Int, bufferSize : Int) {
         if (newSize > list.size)
             (0 until newSize - list.size).forEach {list.add(ByteArray(bufferSize)) }
         while (newSize < list.size)

@@ -11,21 +11,17 @@ class AudioPluginLocalHost {
         @JvmStatic
         fun initialize(context: Context)
         {
-            var si = getLocalAudioPluginService(context)
+            val si = getLocalAudioPluginService(context)
             si.extensions.forEach { e ->
-                if(e == null || e == "")
+                if(e == "")
                     return
-                var c = Class.forName(e)
-                if (c == null) {
-                    Log.d("AAP", "Extension class not found: " + e)
-                    return@forEach
-                }
-                var ext = c.newInstance() as AudioPluginService.Extension
+                val c = Class.forName(e)
+                val ext = c.newInstance() as AudioPluginService.Extension
                 ext.initialize(context)
                 extensions.add(ext)
             }
             AudioPluginNatives.setApplicationContext(context.applicationContext)
-            var pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
+            val pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
             AudioPluginNatives.initializeLocalHost(pluginInfos)
             initialized = true
         }

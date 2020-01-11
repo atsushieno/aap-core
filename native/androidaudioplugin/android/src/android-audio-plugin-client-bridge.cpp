@@ -115,7 +115,7 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 	fd.set((int64_t) &ctx->state.raw_data);
 	auto status2 = ctx->proxy->getState(fd);
     assert (status2.isOk());
-
+    return &ctx->state;
 }
 
 void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
