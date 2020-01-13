@@ -33,7 +33,7 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 
 	void fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst, AudioBuffer<float> &buffer);
 
-	void fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst, MidiBuffer &buffer, int bufferIndex);
+	void fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst, MidiBuffer &buffer);
 
 	int getNumBuffers(AndroidAudioPluginBuffer *buffer);
 

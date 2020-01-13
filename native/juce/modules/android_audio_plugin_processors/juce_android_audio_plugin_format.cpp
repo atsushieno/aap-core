@@ -55,9 +55,13 @@ void AndroidAudioPluginInstance::fillNativeAudioBuffers(AndroidAudioPluginBuffer
 }
 
 void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst,
-                                                       MidiBuffer &buffer, int bufferIndex) {
-    // FIXME: this won't work. buffers cannot be updated.
-    dst->buffers[bufferIndex] = (void *) buffer.data.getRawDataPointer();
+                                                       MidiBuffer &buffer) {
+    auto desc = native->getPluginDescriptor();
+    int numPorts = desc->getNumPorts();
+    for (int i = 0; i < numPorts; i++)
+        if (desc->getPort(i)->getContentType() == AAP_CONTENT_TYPE_MIDI &&
+            desc->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+            memcpy(dst->buffers[i], buffer.data.getRawDataPointer(), buffer.data.size());
 }
 
 int AndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buffer) {
@@ -113,7 +117,7 @@ void AndroidAudioPluginInstance::releaseResources() {
 void AndroidAudioPluginInstance::processBlock(AudioBuffer<float> &audioBuffer,
                                               MidiBuffer &midiMessages) {
     fillNativeAudioBuffers(&buffer, audioBuffer);
-    fillNativeMidiBuffers(&buffer, midiMessages, audioBuffer.getNumChannels());
+    fillNativeMidiBuffers(&buffer, midiMessages);
     native->process(&buffer, 0);
 }
 
