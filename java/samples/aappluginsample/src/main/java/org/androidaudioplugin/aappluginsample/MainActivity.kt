@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
 
-        val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName && p.second.backend == "LV2" }.toTypedArray()
+        val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
     }

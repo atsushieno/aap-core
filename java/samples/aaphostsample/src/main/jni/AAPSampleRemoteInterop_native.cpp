@@ -37,7 +37,8 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     // enter processing...
 
-    auto status = proxy->create(pluginInfo->getPluginID(), sampleRate);
+    int32_t instanceID;
+    auto status = proxy->create(pluginInfo->getPluginID(), sampleRate, &instanceID);
     assert (status.isOk());
 
     auto plugin_buffer = new AndroidAudioPluginBuffer();
@@ -98,15 +99,15 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     for (int i = 0; i < buffer_shm_fds.size(); i++) {
         ::ndk::ScopedFileDescriptor fd;
         fd.set(buffer_shm_fds[i]);
-        auto status2 = proxy->prepareMemory(i, fd);
+        auto status2 = proxy->prepareMemory(instanceID, i, fd);
         assert (status2.isOk());
 		fds.push_back(std::move(fd));
     }
-    auto status2x = proxy->prepare(plugin_buffer->num_frames, nPorts);
+    auto status2x = proxy->prepare(instanceID, plugin_buffer->num_frames, nPorts);
     assert (status2x.isOk());
 
     // activate, run, deactivate
-    auto status3 = proxy->activate();
+    auto status3 = proxy->activate(instanceID);
     assert (status3.isOk());
 
 	// prepare control inputs - dummy
@@ -123,7 +124,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             memcpy(plugin_buffer->buffers[audioInPortL], ((char*) audioInBytesL) + b, size);
         if (audioInPortR >= 0)
             memcpy(plugin_buffer->buffers[audioInPortR], ((char*) audioInBytesR) + b, size);
-        auto status4 = proxy->process(0);
+        auto status4 = proxy->process(instanceID, 0);
         assert (status4.isOk());
         // FIXME: handle more channels
         if (audioOutBytesL != nullptr && audioOutPortL >= 0)
@@ -132,7 +133,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             memcpy(((char*) audioOutBytesR) + b, plugin_buffer->buffers[audioOutPortR], size);
     }
 
-    auto status5 = proxy->deactivate();
+    auto status5 = proxy->deactivate(instanceID);
     assert (status5.isOk());
 
     for (int p = 0; plugin_buffer->buffers[p]; p++)
@@ -141,7 +142,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     free(plugin_buffer->buffers);
     delete plugin_buffer;
 
-    auto status6 = proxy->destroy();
+    auto status6 = proxy->destroy(instanceID);
     assert (status6.isOk());
 
     for (int p = 0; p < nPorts; p++)

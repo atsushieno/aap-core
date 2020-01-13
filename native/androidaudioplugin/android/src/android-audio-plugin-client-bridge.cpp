@@ -16,6 +16,7 @@ class AAPClientContext {
 
 public:
 	const char *unique_id;
+	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
@@ -33,7 +34,7 @@ public:
 
     ~AAPClientContext()
     {
-	    proxy->destroy();
+	    proxy->destroy(instance_id);
     }
 };
 
@@ -61,18 +62,17 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	while (buffer->buffers[n] != nullptr) {
 		::ndk::ScopedFileDescriptor sfd;
 		sfd.set((int64_t) buffer->shared_memory_fds[n]);
-		auto pmstatus = ctx->proxy->prepareMemory(n, sfd);
+		auto pmstatus = ctx->proxy->prepareMemory(ctx->instance_id, n, sfd);
 		assert (pmstatus.isOk());
 		n++;
 	}
-	auto status = ctx->proxy->prepare(buffer->num_frames, n);
+	auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
     assert (status.isOk());
 	ctx->previous_buffer = buffer;
 }
 
 void aap_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
-	__android_log_print(ANDROID_LOG_DEBUG, "!!!AAPDEBUG!!!", "aap_bridge_plugin_prepare invoked");
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	resetBuffers(ctx, buffer);
 }
@@ -80,7 +80,7 @@ void aap_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuf
 void aap_bridge_plugin_activate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-    auto status = ctx->proxy->activate();
+    auto status = ctx->proxy->activate(ctx->instance_id);
     assert (status.isOk());
 }
 
@@ -91,14 +91,14 @@ void aap_bridge_plugin_process(AndroidAudioPlugin *plugin,
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	if (ctx->previous_buffer != buffer)
 		resetBuffers(ctx, buffer);
-	auto status = ctx->proxy->process(timeoutInNanoseconds);
+	auto status = ctx->proxy->process(ctx->instance_id, timeoutInNanoseconds);
     assert (status.isOk());
 }
 
 void aap_bridge_plugin_deactivate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	auto status = ctx->proxy->deactivate();
+	auto status = ctx->proxy->deactivate(ctx->instance_id);
     assert (status.isOk());
 }
 
@@ -106,14 +106,14 @@ const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *p
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	int size;
-	auto status = ctx->proxy->getStateSize(&size);
+	auto status = ctx->proxy->getStateSize(ctx->instance_id, &size);
     assert (status.isOk());
 	ensureStateBuffer(ctx, size);
 	// FIXME: status check
 	// FIXME: Maybe this should be one call for potential state length mismatch.
 	::ndk::ScopedFileDescriptor fd;
 	fd.set((int64_t) &ctx->state.raw_data);
-	auto status2 = ctx->proxy->getState(fd);
+	auto status2 = ctx->proxy->getState(ctx->instance_id, fd);
     assert (status2.isOk());
     return &ctx->state;
 }
@@ -126,7 +126,7 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
 	::ndk::ScopedFileDescriptor fd;
 	fd.set((int64_t) input->raw_data);
-	auto status = ctx->proxy->setState(fd, input->data_size);
+	auto status = ctx->proxy->setState(ctx->instance_id, fd, input->data_size);
     assert (status.isOk());
 }
 
@@ -141,7 +141,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	assert(pluginUniqueId != nullptr);
 
 	auto ctx = new AAPClientContext(aapSampleRate, pluginUniqueId);
-	auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate);
+	auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 	return new AndroidAudioPlugin {
 		ctx,

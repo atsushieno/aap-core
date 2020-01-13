@@ -7,39 +7,40 @@ public interface AudioPluginInterface extends android.os.IInterface
   /** Default implementation for AudioPluginInterface. */
   public static class Default implements org.androidaudioplugin.AudioPluginInterface
   {
-    @Override public void create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException
-    {
-    }
-    @Override public boolean isPluginAlive() throws android.os.RemoteException
-    {
-      return false;
-    }
-    @Override public void prepare(int frameCount, int portCount) throws android.os.RemoteException
-    {
-    }
-    @Override public void prepareMemory(int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
-    {
-    }
-    @Override public void activate() throws android.os.RemoteException
-    {
-    }
-    @Override public void process(int timeoutInNanoseconds) throws android.os.RemoteException
-    {
-    }
-    @Override public void deactivate() throws android.os.RemoteException
-    {
-    }
-    @Override public int getStateSize() throws android.os.RemoteException
+    @Override public int create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException
     {
       return 0;
     }
-    @Override public void getState(android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
+    @Override public boolean isPluginAlive(int instanceID) throws android.os.RemoteException
+    {
+      return false;
+    }
+    @Override public void prepare(int instanceID, int frameCount, int portCount) throws android.os.RemoteException
     {
     }
-    @Override public void setState(android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+    @Override public void prepareMemory(int instanceID, int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
     {
     }
-    @Override public void destroy() throws android.os.RemoteException
+    @Override public void activate(int instanceID) throws android.os.RemoteException
+    {
+    }
+    @Override public void process(int instanceID, int timeoutInNanoseconds) throws android.os.RemoteException
+    {
+    }
+    @Override public void deactivate(int instanceID) throws android.os.RemoteException
+    {
+    }
+    @Override public int getStateSize(int instanceID) throws android.os.RemoteException
+    {
+      return 0;
+    }
+    @Override public void getState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
+    {
+    }
+    @Override public void setState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+    {
+    }
+    @Override public void destroy(int instanceID) throws android.os.RemoteException
     {
     }
     @Override
@@ -92,14 +93,17 @@ public interface AudioPluginInterface extends android.os.IInterface
           _arg0 = data.readString();
           int _arg1;
           _arg1 = data.readInt();
-          this.create(_arg0, _arg1);
+          int _result = this.create(_arg0, _arg1);
           reply.writeNoException();
+          reply.writeInt(_result);
           return true;
         }
         case TRANSACTION_isPluginAlive:
         {
           data.enforceInterface(descriptor);
-          boolean _result = this.isPluginAlive();
+          int _arg0;
+          _arg0 = data.readInt();
+          boolean _result = this.isPluginAlive(_arg0);
           reply.writeNoException();
           reply.writeInt(((_result)?(1):(0)));
           return true;
@@ -111,11 +115,70 @@ public interface AudioPluginInterface extends android.os.IInterface
           _arg0 = data.readInt();
           int _arg1;
           _arg1 = data.readInt();
-          this.prepare(_arg0, _arg1);
+          int _arg2;
+          _arg2 = data.readInt();
+          this.prepare(_arg0, _arg1, _arg2);
           reply.writeNoException();
           return true;
         }
         case TRANSACTION_prepareMemory:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          int _arg1;
+          _arg1 = data.readInt();
+          android.os.ParcelFileDescriptor _arg2;
+          if ((0!=data.readInt())) {
+            _arg2 = android.os.ParcelFileDescriptor.CREATOR.createFromParcel(data);
+          }
+          else {
+            _arg2 = null;
+          }
+          this.prepareMemory(_arg0, _arg1, _arg2);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_activate:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          this.activate(_arg0);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_process:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          int _arg1;
+          _arg1 = data.readInt();
+          this.process(_arg0, _arg1);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_deactivate:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          this.deactivate(_arg0);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_getStateSize:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          int _result = this.getStateSize(_arg0);
+          reply.writeNoException();
+          reply.writeInt(_result);
+          return true;
+        }
+        case TRANSACTION_getState:
         {
           data.enforceInterface(descriptor);
           int _arg0;
@@ -127,75 +190,34 @@ public interface AudioPluginInterface extends android.os.IInterface
           else {
             _arg1 = null;
           }
-          this.prepareMemory(_arg0, _arg1);
-          reply.writeNoException();
-          return true;
-        }
-        case TRANSACTION_activate:
-        {
-          data.enforceInterface(descriptor);
-          this.activate();
-          reply.writeNoException();
-          return true;
-        }
-        case TRANSACTION_process:
-        {
-          data.enforceInterface(descriptor);
-          int _arg0;
-          _arg0 = data.readInt();
-          this.process(_arg0);
-          reply.writeNoException();
-          return true;
-        }
-        case TRANSACTION_deactivate:
-        {
-          data.enforceInterface(descriptor);
-          this.deactivate();
-          reply.writeNoException();
-          return true;
-        }
-        case TRANSACTION_getStateSize:
-        {
-          data.enforceInterface(descriptor);
-          int _result = this.getStateSize();
-          reply.writeNoException();
-          reply.writeInt(_result);
-          return true;
-        }
-        case TRANSACTION_getState:
-        {
-          data.enforceInterface(descriptor);
-          android.os.ParcelFileDescriptor _arg0;
-          if ((0!=data.readInt())) {
-            _arg0 = android.os.ParcelFileDescriptor.CREATOR.createFromParcel(data);
-          }
-          else {
-            _arg0 = null;
-          }
-          this.getState(_arg0);
+          this.getState(_arg0, _arg1);
           reply.writeNoException();
           return true;
         }
         case TRANSACTION_setState:
         {
           data.enforceInterface(descriptor);
-          android.os.ParcelFileDescriptor _arg0;
+          int _arg0;
+          _arg0 = data.readInt();
+          android.os.ParcelFileDescriptor _arg1;
           if ((0!=data.readInt())) {
-            _arg0 = android.os.ParcelFileDescriptor.CREATOR.createFromParcel(data);
+            _arg1 = android.os.ParcelFileDescriptor.CREATOR.createFromParcel(data);
           }
           else {
-            _arg0 = null;
+            _arg1 = null;
           }
-          int _arg1;
-          _arg1 = data.readInt();
-          this.setState(_arg0, _arg1);
+          int _arg2;
+          _arg2 = data.readInt();
+          this.setState(_arg0, _arg1, _arg2);
           reply.writeNoException();
           return true;
         }
         case TRANSACTION_destroy:
         {
           data.enforceInterface(descriptor);
-          this.destroy();
+          int _arg0;
+          _arg0 = data.readInt();
+          this.destroy(_arg0);
           reply.writeNoException();
           return true;
         }
@@ -220,157 +242,18 @@ public interface AudioPluginInterface extends android.os.IInterface
       {
         return DESCRIPTOR;
       }
-      @Override public void create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeString(pluginId);
-          _data.writeInt(sampleRate);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_create, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().create(pluginId, sampleRate);
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public boolean isPluginAlive() throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        boolean _result;
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_isPluginAlive, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            return getDefaultImpl().isPluginAlive();
-          }
-          _reply.readException();
-          _result = (0!=_reply.readInt());
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-        return _result;
-      }
-      @Override public void prepare(int frameCount, int portCount) throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeInt(frameCount);
-          _data.writeInt(portCount);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_prepare, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepare(frameCount, portCount);
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public void prepareMemory(int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeInt(shmFDIndex);
-          if ((sharedMemoryFD!=null)) {
-            _data.writeInt(1);
-            sharedMemoryFD.writeToParcel(_data, 0);
-          }
-          else {
-            _data.writeInt(0);
-          }
-          boolean _status = mRemote.transact(Stub.TRANSACTION_prepareMemory, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepareMemory(shmFDIndex, sharedMemoryFD);
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public void activate() throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_activate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().activate();
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public void process(int timeoutInNanoseconds) throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          _data.writeInt(timeoutInNanoseconds);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_process, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().process(timeoutInNanoseconds);
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public void deactivate() throws android.os.RemoteException
-      {
-        android.os.Parcel _data = android.os.Parcel.obtain();
-        android.os.Parcel _reply = android.os.Parcel.obtain();
-        try {
-          _data.writeInterfaceToken(DESCRIPTOR);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_deactivate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().deactivate();
-            return;
-          }
-          _reply.readException();
-        }
-        finally {
-          _reply.recycle();
-          _data.recycle();
-        }
-      }
-      @Override public int getStateSize() throws android.os.RemoteException
+      @Override public int create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         int _result;
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
-          boolean _status = mRemote.transact(Stub.TRANSACTION_getStateSize, _data, _reply, 0);
+          _data.writeString(pluginId);
+          _data.writeInt(sampleRate);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_create, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            return getDefaultImpl().getStateSize();
+            return getDefaultImpl().create(pluginId, sampleRate);
           }
           _reply.readException();
           _result = _reply.readInt();
@@ -381,22 +264,39 @@ public interface AudioPluginInterface extends android.os.IInterface
         }
         return _result;
       }
-      @Override public void getState(android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
+      @Override public boolean isPluginAlive(int instanceID) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        boolean _result;
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_isPluginAlive, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            return getDefaultImpl().isPluginAlive(instanceID);
+          }
+          _reply.readException();
+          _result = (0!=_reply.readInt());
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+        return _result;
+      }
+      @Override public void prepare(int instanceID, int frameCount, int portCount) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
-          if ((sharedMemoryFD!=null)) {
-            _data.writeInt(1);
-            sharedMemoryFD.writeToParcel(_data, 0);
-          }
-          else {
-            _data.writeInt(0);
-          }
-          boolean _status = mRemote.transact(Stub.TRANSACTION_getState, _data, _reply, 0);
+          _data.writeInt(instanceID);
+          _data.writeInt(frameCount);
+          _data.writeInt(portCount);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_prepare, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().getState(sharedMemoryFD);
+            getDefaultImpl().prepare(instanceID, frameCount, portCount);
             return;
           }
           _reply.readException();
@@ -406,12 +306,145 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.recycle();
         }
       }
-      @Override public void setState(android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+      @Override public void prepareMemory(int instanceID, int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          _data.writeInt(shmFDIndex);
+          if ((sharedMemoryFD!=null)) {
+            _data.writeInt(1);
+            sharedMemoryFD.writeToParcel(_data, 0);
+          }
+          else {
+            _data.writeInt(0);
+          }
+          boolean _status = mRemote.transact(Stub.TRANSACTION_prepareMemory, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().prepareMemory(instanceID, shmFDIndex, sharedMemoryFD);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public void activate(int instanceID) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_activate, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().activate(instanceID);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public void process(int instanceID, int timeoutInNanoseconds) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          _data.writeInt(timeoutInNanoseconds);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_process, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().process(instanceID, timeoutInNanoseconds);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public void deactivate(int instanceID) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_deactivate, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().deactivate(instanceID);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public int getStateSize(int instanceID) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        int _result;
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_getStateSize, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            return getDefaultImpl().getStateSize(instanceID);
+          }
+          _reply.readException();
+          _result = _reply.readInt();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+        return _result;
+      }
+      @Override public void getState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          if ((sharedMemoryFD!=null)) {
+            _data.writeInt(1);
+            sharedMemoryFD.writeToParcel(_data, 0);
+          }
+          else {
+            _data.writeInt(0);
+          }
+          boolean _status = mRemote.transact(Stub.TRANSACTION_getState, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().getState(instanceID, sharedMemoryFD);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public void setState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
           if ((sharedMemoryFD!=null)) {
             _data.writeInt(1);
             sharedMemoryFD.writeToParcel(_data, 0);
@@ -422,7 +455,7 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInt(size);
           boolean _status = mRemote.transact(Stub.TRANSACTION_setState, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().setState(sharedMemoryFD, size);
+            getDefaultImpl().setState(instanceID, sharedMemoryFD, size);
             return;
           }
           _reply.readException();
@@ -432,15 +465,16 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.recycle();
         }
       }
-      @Override public void destroy() throws android.os.RemoteException
+      @Override public void destroy(int instanceID) throws android.os.RemoteException
       {
         android.os.Parcel _data = android.os.Parcel.obtain();
         android.os.Parcel _reply = android.os.Parcel.obtain();
         try {
           _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_destroy, _data, _reply, 0);
           if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().destroy();
+            getDefaultImpl().destroy(instanceID);
             return;
           }
           _reply.readException();
@@ -474,15 +508,15 @@ public interface AudioPluginInterface extends android.os.IInterface
       return Stub.Proxy.sDefaultImpl;
     }
   }
-  public void create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
-  public boolean isPluginAlive() throws android.os.RemoteException;
-  public void prepare(int frameCount, int portCount) throws android.os.RemoteException;
-  public void prepareMemory(int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException;
-  public void activate() throws android.os.RemoteException;
-  public void process(int timeoutInNanoseconds) throws android.os.RemoteException;
-  public void deactivate() throws android.os.RemoteException;
-  public int getStateSize() throws android.os.RemoteException;
-  public void getState(android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException;
-  public void setState(android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException;
-  public void destroy() throws android.os.RemoteException;
+  public int create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
+  public boolean isPluginAlive(int instanceID) throws android.os.RemoteException;
+  public void prepare(int instanceID, int frameCount, int portCount) throws android.os.RemoteException;
+  public void prepareMemory(int instanceID, int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException;
+  public void activate(int instanceID) throws android.os.RemoteException;
+  public void process(int instanceID, int timeoutInNanoseconds) throws android.os.RemoteException;
+  public void deactivate(int instanceID) throws android.os.RemoteException;
+  public int getStateSize(int instanceID) throws android.os.RemoteException;
+  public void getState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException;
+  public void setState(int instanceID, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException;
+  public void destroy(int instanceID) throws android.os.RemoteException;
 }

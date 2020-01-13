@@ -251,7 +251,7 @@ extern "C" {
 
 jobject
 Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz, jint sampleRate) {
-    sp_binder.reset(new aap::AudioPluginInterfaceImpl(sampleRate));
+    sp_binder.reset(new aap::AudioPluginInterfaceImpl());
     auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
     return ret;
 }
