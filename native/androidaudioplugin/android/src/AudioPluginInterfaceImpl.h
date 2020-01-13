@@ -143,6 +143,8 @@ public:
 
     ::ndk::ScopedAStatus destroy() override {
         instance->dispose();
+        delete instance;
+        instance = nullptr;
         freeBuffers();
         return ndk::ScopedAStatus::ok();
     }
