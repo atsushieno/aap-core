@@ -16,6 +16,7 @@ import android.widget.ArrayAdapter
 import android.widget.CompoundButton
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -65,6 +66,11 @@ class MainActivity : AppCompatActivity() {
             if (plugin.pluginId == null)
                 throw UnsupportedOperationException ("Insufficient plugin information was returned; missing pluginId")
 
+            view.setOnClickListener {
+                val portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
+                this@MainActivity.audioPluginParametersListView.adapter = portsAdapter
+            }
+
             view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
 
                 val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
@@ -103,6 +109,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    inner class PortViewAdapter(ctx:Context, layout: Int, array: List<PortInformation>)
+        : ArrayAdapter<PortInformation>(ctx, layout, array)
+    {
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View
+        {
+            val item = getItem(position)
+            var view = convertView
+            if (view == null)
+                view = LayoutInflater.from(context).inflate(R.layout.audio_plugin_parameters_list_item, parent, false)
+            if (view == null)
+                throw UnsupportedOperationException()
+            if (item == null)
+                return view
+
+            view.audio_plugin_parameter_content_type.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
+            view.audio_plugin_parameter_direction.text = if(item.direction == 0) "In" else "Out"
+            view.audio_plugin_parameter_name.text = item.name
+
+            return view
+        }
+    }
+
     private lateinit var host : AudioPluginHost
 
     private lateinit var inBuf : ByteArray
@@ -130,30 +158,33 @@ class MainActivity : AppCompatActivity() {
 
         val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
-        this.audioPluginServiceListView.adapter = adapter
-        /*
-        this.audioPluginServiceListView.setOnItemLongClickListener {parent, view, position, id ->
-            val item = adapter.getItem(position)
+        this.audioPluginListView.adapter = adapter
+        this.audioPluginListView.setOnItemClickListener { parent, view, position, id ->
+            val item = audioPluginListView.selectedItem as Pair<AudioPluginServiceInformation,PluginInformation>
             if (item == null)
                 false
             val service = item!!.first
             val plugin = item!!.second
 
-            var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-            this.intent = intent
-            intent.component = ComponentName(
-                service.packageName,
-                service.className
-            )
-            intent.putExtra("sampleRate", fixed_sample_rate)
-            intent.putExtra("pluginId", plugin.pluginId)
+            val portsAdapter = PortViewAdapter(this, R.layout.audio_plugin_parameters_list_item, plugin.ports)
+            audioPluginParametersListView.adapter = portsAdapter
 
-            target_plugin = plugin.pluginId!!
-            Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
-            bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            /*
+                var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
+                this.intent = intent
+                intent.component = ComponentName(
+                    service.packageName,
+                    service.className
+                )
+                intent.putExtra("sampleRate", fixed_sample_rate)
+                intent.putExtra("pluginId", plugin.pluginId)
+
+                target_plugin = plugin.pluginId!!
+                Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
+                bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            */
             true
         }
-         */
 
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, true) } }

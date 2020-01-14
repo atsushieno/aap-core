@@ -23,24 +23,66 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/pluginsParametersSplitter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="390dp"
+        app:layout_constraintGuide_percent="0.5" />
 
     <ListView
-        android:id="@+id/audioPluginServiceListView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:id="@+id/audioPluginListView"
+        android:layout_width="match_parent"
+        android:layout_height="316dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintBottom_toTopOf="@+id/pluginsParametersSplitter"
+        app:layout_constraintTop_toBottomOf="@+id/pluginServicesLabel"
+        />
+
+    <TextView
+        android:id="@+id/pluginParametersLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#293F51B5"
+        android:text="@string/audio_plugin_parameters"
+        android:textAlignment="viewStart"
+        android:textColor="#3F51B5"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/pluginsParametersSplitter"
+        />
+
+    <ListView
+        android:id="@+id/audioPluginParametersListView"
+        android:layout_width="388dp"
+        android:layout_height="219dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/pluginServicesLabel"></ListView>
+        app:layout_constraintTop_toBottomOf="@+id/pluginParametersLabel"></ListView>
 
-    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                                android:id="@+id/pluginsWaveformSplitter" app:layout_constraintGuide_begin="20dp"
-                                                android:orientation="horizontal"
-                                                app:layout_constraintGuide_percent="0.8"/>
+    <androidx.constraintlayout.widget.Guideline
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/pluginsWaveformSplitter"
+        app:layout_constraintGuide_begin="20dp"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.8"
+        />
 
     <com.masoudss.lib.WaveformSeekBar
         android:id="@+id/wavePrePlugin"
