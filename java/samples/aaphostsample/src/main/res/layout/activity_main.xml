@@ -21,37 +21,38 @@
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/pluginsParametersSplitter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_begin="390dp"
         app:layout_constraintGuide_percent="0.5" />
 
     <ListView
         android:id="@+id/audioPluginListView"
-        android:layout_width="match_parent"
-        android:layout_height="316dp"
+        android:layout_width="391dp"
+        android:layout_height="0dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constrainedHeight="true"
+        app:layout_constraintBottom_toTopOf="@+id/pluginsParametersSplitter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintBottom_toTopOf="@+id/pluginsParametersSplitter"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/pluginServicesLabel"
-        />
+        app:layout_constraintVertical_bias="0.0" />
 
     <TextView
         android:id="@+id/pluginParametersLabel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
         android:background="#293F51B5"
         android:text="@string/audio_plugin_parameters"
         android:textAlignment="viewStart"
@@ -60,29 +61,29 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/pluginsParametersSplitter"
-        />
+        app:layout_constraintTop_toBottomOf="@+id/pluginsParametersSplitter" />
 
     <ListView
         android:id="@+id/audioPluginParametersListView"
-        android:layout_width="388dp"
-        android:layout_height="219dp"
+        android:layout_width="390dp"
+        android:layout_height="0dp"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constrainedHeight="true"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/pluginParametersLabel"></ListView>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/pluginParametersLabel"
+        app:layout_constraintBottom_toTopOf="@+id/pluginsWaveformSplitter"
+        />
 
     <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/pluginsWaveformSplitter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/pluginsWaveformSplitter"
-        app:layout_constraintGuide_begin="20dp"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.8"
-        />
+        app:layout_constraintGuide_percent="0.8" />
 
     <com.masoudss.lib.WaveformSeekBar
         android:id="@+id/wavePrePlugin"
@@ -100,7 +101,9 @@
         app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
-        app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter" />
+        app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
+        />
+
     <com.masoudss.lib.WaveformSeekBar
         android:id="@+id/wavePostPlugin"
         android:layout_width="0dp"
@@ -116,18 +119,24 @@
         app:wave_gravity="center"
         app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
         app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="@+id/twoWaveformsSplitter"/>
-    <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                                android:id="@+id/buttonsWaveformSplitter" app:layout_constraintGuide_begin="20dp"
-                                                android:orientation="vertical"
-                                                app:layout_constraintGuide_percent="0.2"/>
+        app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toTopOf="@+id/twoWaveformsSplitter"
+        />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/buttonsWaveformSplitter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.2" />
+
     <androidx.constraintlayout.widget.Guideline android:layout_width="wrap_content" android:layout_height="wrap_content"
                                                 android:id="@+id/twoWaveformsSplitter"
                                                 android:orientation="horizontal"
                                                 app:layout_constraintGuide_percent="0.9"
                                                 app:layout_constraintBottom_toBottomOf="parent"
                                                 app:layout_constraintTop_toTopOf="parent"
-    />
+        />
+
     <TextView
             android:text="[pre-plugin]"
             android:layout_width="wrap_content"
