@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.ArrayAdapter
 import android.widget.CompoundButton
+import android.widget.SeekBar
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
@@ -68,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                 throw UnsupportedOperationException ("Insufficient plugin information was returned; missing pluginId")
 
             view.setOnClickListener {
-                val portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
+                portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
                 this@MainActivity.audioPluginParametersListView.adapter = portsAdapter
             }
 
@@ -88,11 +89,16 @@ class MainActivity : AppCompatActivity() {
                     GlobalScope.launch {
                         Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                         prepareAudioData()
+                        var parameters = (0 until plugin.ports.count()).map { i -> 0.5f }.toFloatArray()
+                        var a = this@MainActivity.portsAdapter
+                        if (a != null)
+                            parameters = a.parameters
                         AAPSampleInterop.runClientAAP(instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
                             host.audioInputs[0],
                             host.audioInputs[1],
                             host.audioOutputs[0],
-                            host.audioOutputs[1])
+                            host.audioOutputs[1],
+                            parameters)
                         processAudioOutputData()
 
                         runOnUiThread {
@@ -110,8 +116,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    inner class PortViewAdapter(ctx:Context, layout: Int, array: List<PortInformation>)
-        : ArrayAdapter<PortInformation>(ctx, layout, array)
+    inner class PortViewAdapter(ctx:Context, layout: Int, private var ports: List<PortInformation>)
+        : ArrayAdapter<PortInformation>(ctx, layout, ports)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View
         {
@@ -127,15 +133,30 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_parameter_content_type.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
             view.audio_plugin_parameter_direction.text = if(item.direction == 0) "In" else "Out"
             view.audio_plugin_parameter_name.text = item.name
+            view.audio_plugin_seekbar_parameter_value.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    parameters[position] = progress / 100.0f
+                    view.audio_plugin_edit_text_parameter_value.text.clear()
+                    view.audio_plugin_edit_text_parameter_value.text.insert(0, parameters[position].toString())
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                }
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                }
+            })
 
             return view
         }
+
+        val parameters = (0 until count).map { i -> 0.0f }.toFloatArray()
     }
 
     private lateinit var host : AudioPluginHost
 
     private lateinit var inBuf : ByteArray
     private lateinit var outBuf : ByteArray
+    private var portsAdapter : PortViewAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -161,32 +182,6 @@ class MainActivity : AppCompatActivity() {
         val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
         this.audioPluginListView.adapter = adapter
-        this.audioPluginListView.setOnItemClickListener { parent, view, position, id ->
-            val item = audioPluginListView.selectedItem as Pair<AudioPluginServiceInformation,PluginInformation>
-            if (item == null)
-                false
-            val service = item!!.first
-            val plugin = item!!.second
-
-            val portsAdapter = PortViewAdapter(this, R.layout.audio_plugin_parameters_list_item, plugin.ports)
-            audioPluginParametersListView.adapter = portsAdapter
-
-            /*
-                var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-                this.intent = intent
-                intent.component = ComponentName(
-                    service.packageName,
-                    service.className
-                )
-                intent.putExtra("sampleRate", fixed_sample_rate)
-                intent.putExtra("pluginId", plugin.pluginId)
-
-                target_plugin = plugin.pluginId!!
-                Log.d("MainActivity", "binding AudioPluginService: ${service.name} | ${service.packageName} | ${service.className}")
-                bindService(intent, conn, Context.BIND_AUTO_CREATE)
-            */
-            true
-        }
 
         playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, false) } }
         playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, true) } }

@@ -23,7 +23,7 @@ namespace aap {
 
 namespace aapremote {
 
-int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, int wavLength, void *audioInBytesL, void *audioInBytesR, void *audioOutBytesL, void *audioOutBytesR)
+int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, int sampleRate, const aap::PluginInformation *pluginInfo, int wavLength, void *audioInBytesL, void *audioInBytesR, void *audioOutBytesL, void *audioOutBytesR, float* parameters)
 {
     assert(proxy != nullptr);
     assert(pluginInfo != nullptr);
@@ -129,7 +129,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         }
 		else if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
 			for (int i = 0; i < float_count; i++)
-				((float*) plugin_buffer->buffers[p])[i] = 0.5;
+				((float*) plugin_buffer->buffers[p])[i] = parameters[i];
 	}
 
 	for (int b = 0; b < wavLength; b += buffer_size) {
@@ -172,7 +172,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 extern "C" {
 
 
-int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR)
+int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR, jfloatArray jParameters)
 {
 	// NOTE: setting a breakpoint in this method might cause SIGSEGV.
 	// That's of course non-user code issue but you would't like to waste your time on diagnosing it...
@@ -183,6 +183,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(audioInR != nullptr);
     assert(audioOutL != nullptr);
     assert(audioOutR != nullptr);
+    assert(jParameters != nullptr);
 
     int wavLength = env->GetArrayLength(audioInL);
     assert(wavLength == env->GetArrayLength(audioInR));
@@ -199,6 +200,10 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     assert(audioOutBytesL != nullptr);
     void *audioOutBytesR = calloc(wavLength, 1);
     assert(audioOutBytesR != nullptr);
+    int numParameters = env->GetArrayLength(jParameters);
+    float *parameters = (float*) calloc(numParameters, sizeof(float));
+    assert(parameters != nullptr);
+    env->GetFloatArrayRegion(jParameters, 0, numParameters, parameters);
 
     assert(jPluginId != nullptr);
     jboolean dup;
@@ -217,7 +222,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     auto binder = AIBinder_fromJavaBinder(env, jBinder);
     ndk::SpAIBinder spBinder{binder};
     auto proxy = aidl::org::androidaudioplugin::IAudioPluginInterface::fromBinder(spBinder);
-    int ret = aapremote::runClientAAP(proxy.get(), sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR);
+    int ret = aapremote::runClientAAP(proxy.get(), sampleRate, pluginInfo, wavLength, audioInBytesL, audioInBytesR, audioOutBytesL, audioOutBytesR, parameters);
 
     env->SetByteArrayRegion(audioOutL, 0, wavLength, (jbyte*) audioOutBytesL);
     env->SetByteArrayRegion(audioOutR, 0, wavLength, (jbyte*) audioOutBytesR);
@@ -229,6 +234,7 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
     free(audioInBytesR);
     free(audioOutBytesL);
     free(audioOutBytesR);
+    free(parameters);
     return ret;
 }
 
