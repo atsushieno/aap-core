@@ -60,6 +60,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
     int audioInChannelMapped = 0, audioOutChannelMapped = 0;
     int audioInPortL = -1, audioInPortR = -1, audioOutPortL = -1, audioOutPortR = -1;
+    int midiInPort = -1, midiOutPort = -1;
     for (int p = 0; p < nPorts; p++) {
         auto port = desc->getPort(p);
         if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
@@ -80,11 +81,11 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
-            // FIXME: support it
+            midiInPort = p;
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
-            // FIXME: support it
+            midiOutPort = p;
         }
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT) {
             // FIXME: support it
@@ -112,7 +113,21 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 
 	// prepare control inputs - dummy
 	for (int p = 0; p < buffer_shm_fds.size(); p++) {
-		if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
+	    if (p == midiInPort) {
+			auto mb = (char*) plugin_buffer->buffers[p];
+			int length = 9;
+            *(int*) mb = length;
+            mb[4] = 0x0;
+            mb[5] = 0x90;
+            mb[6] = 0x40;
+            mb[7] = 0x70;
+            mb[8] = 0x80;
+            mb[9] = 0x10;
+            mb[10] = 0x80;
+            mb[11] = 0x40;
+            mb[12] = 0x00;
+        }
+		else if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
 			for (int i = 0; i < float_count; i++)
 				((float*) plugin_buffer->buffers[p])[i] = 0.5;
 	}

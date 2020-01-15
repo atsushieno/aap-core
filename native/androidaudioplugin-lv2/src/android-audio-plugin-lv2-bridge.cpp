@@ -193,18 +193,77 @@ int32_t normalize_midi_event_for_lv2(void* dst, int32_t dstCapacity, void* src)
 	//
 	// And AAP MIDI buffer is a length-prepended raw MIDI buffer with no constraint.
 
+	/*
+	 ...
+	mb[8-11] = 0; // int32_t LV2_Atom_Sequence_Body::unit
+	mb[12-15] = 0; // int32_t LV2_Atom_Sequence_Body::pad (unused)
+	mb[16-23] = 0; // int64_t LV2_Atom_Event::time::frames
+	mb[24-27] = 3; // int32_t LV2_Atom::size (of MIDI event, excluding size and type)
+	mb[28-31] = 1; // int32_t LV2_Atom::type
+	mb[32] = 0x90; // MIDI raw message
+	mb[33] = 0x40; // ... of
+	mb[34] = 0x70; // ... note on
+	mb[35-42] = 0; // int64_t LV2_Atom_Event::time::frames
+	mb[43-46] = 3; // int32_t LV2_Atom::size (of MIDI event, excluding size and type)
+	mb[47-50] = 1; // int32_t LV2_Atom::type
+	mb[51] = 0x80; // MIDI raw message
+	mb[52] = 0x40; // ... of
+	mb[53] = 0x00; // ... note off
+	*/
 	// FIXME: implement above.
 
 	assert(src != nullptr);
 	assert(dst != nullptr);
-	int32_t srcSize = ((int*) src)[0];
-	int32_t copiedSize = srcSize - dstCapacity < 0 ? srcSize : dstCapacity;
-	memcpy(dst, (int*) src + 1, copiedSize);
-	return copiedSize;
+
+	int srcN = 4, dstN = 0;
+
+	auto csrc = (unsigned char*) src;
+	auto cdst = (unsigned char*) dst;
+	int32_t srcSize = *((int*) src);
+
+	srcN += 4;
+	dstN += 4; // URID for time unit specification, dummy so far.
+
+	unsigned char running_status = 0;
+
+	// This is far from precise. No support for sysex and meta, no run length.
+	while (srcN < srcSize) {
+		// MIDI Event message
+		// Atom Event header
+		long timeFrame = 0;
+		while (csrc[srcN] >= 0x80) // variable length
+			timeFrame = (timeFrame << 7) + csrc[srcN++];
+		timeFrame += csrc[srcN++];
+		*(long*) (cdst + dstN) = timeFrame;
+		dstN += 8;
+		unsigned char statusByte = csrc[srcN] >= 0x80 ? csrc[srcN] : running_status;
+		running_status = statusByte;
+		unsigned char eventType = statusByte & 0xF0;
+		unsigned char midiEventSize = (eventType != 0xC0 && eventType != 0xD0) ? 3 : 2;
+
+		*(int*) (cdst + dstN) = midiEventSize;
+		dstN += 4;
+
+		*(int*) (cdst + dstN) = urid_midi_event_type;
+		dstN += 4;
+
+		// MidiEvent
+		// FIXME: sysex must be handled
+		cdst[dstN++] = csrc[srcN++]; // midi message 1st byte
+		cdst[dstN++] = csrc[srcN++]; // midi message 2nd byte
+		if (eventType != 0xC0 && eventType != 0xD0) // ! ProgChg && !CAf
+			cdst[dstN++] = csrc[srcN++]; // midi message 3rd byte
+	}
+	return dstN;
 }
 
 void convert_aap_midi_to_lv2_midi(LV2_Atom_Sequence* dst, int32_t dstCapacity, void* src)
 {
+	/*
+	mb[0-3] = 46; // int32_t LV2_Atom::size (excluding size and type)
+	mb[4-7] = 0; // int32_t LV2_Atom::type = urid_atom_sequence_type
+	 ...
+	*/
 
 	LV2_Atom* atom = (LV2_Atom*) (void*) dst;
 	atom->type = urid_atom_sequence_type;
