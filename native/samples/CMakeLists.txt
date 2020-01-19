@@ -15,8 +15,11 @@ pkg_check_modules ( SRATOM REQUIRED IMPORTED_TARGET sratom-0>=0.6.0 )
 pkg_check_modules ( LILV REQUIRED IMPORTED_TARGET lilv-0>=0.24.0 )
 
 link_directories(
-        "../build/${CMAKE_ANDROID_ARCH_ABI}/"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../build/native/androidaudioplugin/"
 )
+
+set (aaphostsample_LIBS ${aaphostsample_LIBS})
+
 
 # Specifies a library name, specifies whether the library is STATIC or
 # SHARED, and provides relative paths to the source code. You can
@@ -42,6 +45,6 @@ target_compile_options(aaphostsample
         -Wshadow
         )
 
-target_link_libraries(aaphostsample androidaudioplugin PkgConfig::LILV)
+target_link_libraries(aaphostsample ${aaphostsample-LIBS} androidaudioplugin)
 
 

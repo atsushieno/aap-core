@@ -4,6 +4,4 @@ project(AndroidAudioPluginFramework)
 
 add_subdirectory("dependencies/googletest")
 add_subdirectory("dependencies/tinyxml2")
-
 add_subdirectory("native")
-
