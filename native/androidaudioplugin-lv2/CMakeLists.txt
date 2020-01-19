@@ -9,20 +9,29 @@ set (androidaudioplugin-lv2_SOURCES
 	"src/android-audio-plugin-lv2-bridge.cpp"
 	)
 
+if (ANDROID)
+
 set (androidaudioplugin-lv2_INCLUDES
-	"../plugin-api/include"
-	"../androidaudioplugin/core/include"
+	"../../native/plugin-api/include"
+	"../../native/androidaudioplugin/core/include"
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include"
 	)
-
-if (ANDROID)
 
 set (ENV{PKG_CONFIG_PATH} "../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
 
 set (androidaudioplugin-lv2_LIBS ${androidaudioplugin_LIBS} android log)
 
 else (ANDROID)
+
+set (androidaudioplugin-lv2_INCLUDES
+	"../plugin-api/include"
+	"../androidaudioplugin/core/include"
+	"../../dependencies/lv2-desktop/dist/include/lilv-0"
+	"../../dependencies/lv2-desktop/dist/include"
+	)
+
+set (ENV{PKG_CONFIG_PATH} "../../dependencies/lv2-desktop/dist/lib/pkgconfig/")
 
 # it is not usable until cmake 3.14...
 #target_link_directories (androidaudioplugin-lv2 ...)
