@@ -4,6 +4,16 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
+set (ENV{PKG_CONFIG_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../dependencies/lv2-desktop/dist/lib/pkgconfig/")
+
+find_package ( PkgConfig REQUIRED )
+
+# Mandatory libraries: serd, sord, lilv
+pkg_check_modules ( SERD REQUIRED IMPORTED_TARGET serd-0>=0.28.0 )
+pkg_check_modules ( SORD REQUIRED IMPORTED_TARGET sord-0>=0.16.0 )
+pkg_check_modules ( SRATOM REQUIRED IMPORTED_TARGET sratom-0>=0.6.0 )
+pkg_check_modules ( LILV REQUIRED IMPORTED_TARGET lilv-0>=0.24.0 )
+
 link_directories(
         "../build/${CMAKE_ANDROID_ARCH_ABI}/"
 )
@@ -32,6 +42,6 @@ target_compile_options(aaphostsample
         -Wshadow
         )
 
-target_link_libraries(aaphostsample lilv-0 androidaudioplugin)
+target_link_libraries(aaphostsample androidaudioplugin PkgConfig::LILV)
 
 

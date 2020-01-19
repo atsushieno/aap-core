@@ -11,6 +11,8 @@ set (androidaudioplugin-lv2_SOURCES
 
 if (ANDROID)
 
+set (ENV{PKG_CONFIG_PATH} "../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
+
 set (androidaudioplugin-lv2_INCLUDES
 	"../../native/plugin-api/include"
 	"../../native/androidaudioplugin/core/include"
@@ -18,11 +20,11 @@ set (androidaudioplugin-lv2_INCLUDES
 	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include"
 	)
 
-set (ENV{PKG_CONFIG_PATH} "../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
-
 set (androidaudioplugin-lv2_LIBS ${androidaudioplugin_LIBS} android log)
 
 else (ANDROID)
+
+set (ENV{PKG_CONFIG_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../dependencies/lv2-desktop/dist/lib/pkgconfig/")
 
 set (androidaudioplugin-lv2_INCLUDES
 	"../plugin-api/include"
@@ -31,7 +33,20 @@ set (androidaudioplugin-lv2_INCLUDES
 	"../../dependencies/lv2-desktop/dist/include"
 	)
 
-set (ENV{PKG_CONFIG_PATH} "../../dependencies/lv2-desktop/dist/lib/pkgconfig/")
+set (androidaudioplugin-lv2_LIBS ${androidaudioplugin_LIBS})
+
+endif (ANDROID)
+
+if (ANDROID)
+
+# it is not usable until cmake 3.14...
+#target_link_directories (androidaudioplugin-lv2 ...)
+link_directories (
+		"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
+		"../../java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
+	)
+
+else (ANDROID)
 
 # it is not usable until cmake 3.14...
 #target_link_directories (androidaudioplugin-lv2 ...)
@@ -41,20 +56,6 @@ link_directories (
 
 endif (ANDROID)
 
-if (ANDROID)
-
-	# it is not usable until cmake 3.14...
-	#target_link_directories (androidaudioplugin-lv2 ...)
-	link_directories (
-			"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/"
-			"../../java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
-	)
-
-else (ANDROID)
-
-	set (ENV{PKG_CONFIG_PATH} "../../dependencies/lv2-desktop/dist/lib/pkgconfig/")
-
-endif (ANDROID)
 
 find_package ( PkgConfig REQUIRED )
 

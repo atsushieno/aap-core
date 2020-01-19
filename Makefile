@@ -43,7 +43,7 @@ build-desktop:
 		cd lilv && ./waf --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd mda-lv2 && ./waf   --prefix=../lv2-desktop/dist configure build install && cd .. && \
 	cd ..
-	mkdir -p build && cd build && PKG_CONFIG_PATH=`pwd`/../dependencies/lv2-desktop/dist/lib/pkgconfig/ cmake -DCMAKE_BUILD_TYPE=Debug .. && make
+	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-android:
 	for abi in $(ABIS_SIMPLE) ; do \
