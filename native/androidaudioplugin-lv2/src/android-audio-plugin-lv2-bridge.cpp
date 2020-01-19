@@ -292,7 +292,7 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 	assert(src != nullptr);
 	assert(forge != nullptr);
 
-	int srcN = 4, dstN = 0;
+	int srcN = 4;
 
 	auto csrc = (unsigned char *) src;
 	int32_t srcEnd = *((int *) src) + 4; // offset
@@ -360,11 +360,12 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 		auto seq = (LV2_Atom_Sequence*) lv2_atom_forge_deref(forge, seqRef);
 		lv2_atom_forge_pop(forge, &frame);
 		normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
+		//seq->atom.size += forge->offset - sizeof(LV2_Atom) * 2;
 #endif
 		uint8_t *result = (uint8_t*) (dst);
 		for (int i = 0; i < 16; i++)
 			aprintf("SRC[%d] %d ", i, *((uint8_t*) src + i));
-		for (int i = 0; i < 64; i++)
+		for (int i = 0; i < 88; i++)
 			aprintf("DST[%d] %d ", i, *(result + i));
 	}
 

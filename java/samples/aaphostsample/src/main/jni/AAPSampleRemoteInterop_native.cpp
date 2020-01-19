@@ -115,17 +115,20 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 	for (int p = 0; p < buffer_shm_fds.size(); p++) {
 	    if (p == midiInPort) {
 			auto mb = (char*) plugin_buffer->buffers[p];
-			int length = 9;
+			int length = 12;
             *(int*) mb = length;
-            mb[4] = 0;
-            mb[5] = 0x90;
-            mb[6] = 0x45;
-            mb[7] = 0x70;
-            mb[8] = 0x80;
-            mb[9] = 0x10;
-            mb[10] = 0x80;
-            mb[11] = 0x45;
-            mb[12] = 0x00;
+			mb[4] = 0; // program change
+			mb[5] = 0xC0;
+			mb[6] = 0; // note on
+            mb[7] = 0;
+            mb[8] = 0x90;
+            mb[9] = 0x45;
+            mb[10] = 0x70;
+            mb[11] = 0x8C; // note off
+            mb[12] = 0x10;
+            mb[13] = 0x80;
+            mb[14] = 0x45;
+            mb[15] = 0x00;
         }
 		else if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
 			for (int i = 0; i < float_count; i++)
