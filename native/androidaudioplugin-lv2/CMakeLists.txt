@@ -15,7 +15,7 @@ set (LV2_DEP_DIST "${CMAKE_CURRENT_SOURCE_DIR}/../../dependencies/dist/${CMAKE_A
 
 else (ANDROID)
 
-set (LV2_DEP_DIST "../../dependencies/lv2-desktop/dist")
+set (LV2_DEP_DIST "${CMAKE_CURRENT_SOURCE_DIR}/../../dependencies/lv2-desktop/dist")
 
 endif (ANDROID)
 
@@ -31,7 +31,7 @@ if (ANDROID)
 # it is not usable until cmake 3.14...
 #target_link_directories (androidaudioplugin-lv2 ...)
 link_directories (
-	"${AAP_DIST}/lib/"
+	"${LV2_DEP_DIST}/lib/"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../../java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 )
 
