@@ -1,5 +1,7 @@
 # AAP: Android Audio Plugin Framework
 
+Build Status: ![birtise build status](https://app.bitrise.io/app/0be7191009d7687f/status.svg?token=vcbDT8zcXDpz7cSf1J0R5A&branch=master)
+
 ## What is AAP?
 
 Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used, to some extent.
