@@ -167,7 +167,7 @@ void resetPorts(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 	if (ctx->midi_buffer_size < buffer->num_frames) {
 		for (auto p : ctx->midi_atom_buffers) {
 			free(p.second);
-			ctx->midi_atom_buffers.insert_or_assign(p.first, (LV2_Atom_Sequence*) calloc(buffer->num_frames, 1));
+			ctx->midi_atom_buffers[p.first] = (LV2_Atom_Sequence*) calloc(buffer->num_frames, 1);
 		}
 	}
 
