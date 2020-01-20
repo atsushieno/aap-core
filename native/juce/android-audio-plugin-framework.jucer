@@ -31,10 +31,12 @@
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
-    <LINUX_MAKE targetFolder="Builds/LinuxMakefile">
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" extraLinkerFlags="-landroidaudioplugin -landroidaudioplugin-lv2">
       <CONFIGURATIONS>
-        <CONFIGURATION isDebug="1" name="Debug" headerPath="../plugin-api/include&#10;../androidaudioplugin/core/include"/>
-        <CONFIGURATION isDebug="0" name="Release" headerPath="../plugin-api/include&#10;../androidaudioplugin/core/include"/>
+        <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../plugin-api/include;../../../androidaudioplugin/core/include;${CMAKE_CURRENT_SOURCE_DIR}/../../../plugin-api/include;${CMAKE_CURRENT_SOURCE_DIR}/../../../androidaudioplugin/core/include"
+                       libraryPath="../../../../build/native/androidaudioplugin;../../../../build/native/androidaudioplugin-lv2;${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/native/androidaudioplugin;${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/native/androidaudioplugin-lv2"/>
+        <CONFIGURATION isDebug="0" name="Release" headerPath="../../../plugin-api/include;../../../androidaudioplugin/core/include;${CMAKE_CURRENT_SOURCE_DIR}/../../../plugin-api/include;${CMAKE_CURRENT_SOURCE_DIR}/../../../androidaudioplugin/core/include"
+                       libraryPath="../../../../build/native/androidaudioplugin;../../../../build/native/androidaudioplugin-lv2;${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/native/androidaudioplugin;${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/native/androidaudioplugin-lv2"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path=""/>

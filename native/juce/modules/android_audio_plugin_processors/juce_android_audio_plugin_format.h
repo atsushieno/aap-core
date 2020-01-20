@@ -37,6 +37,8 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 
 	int getNumBuffers(AndroidAudioPluginBuffer *buffer);
 
+    void allocateSharedMemory(int bufferIndex, int32_t size);
+
 public:
 
 	AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin);

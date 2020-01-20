@@ -1,8 +1,11 @@
 
 #include "juce_android_audio_plugin_format.h"
-#include <android/sharedmem.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#if ANDROID
+#include <android/sharedmem.h>
+#else
+#endif
 
 using namespace aap;
 using namespace juce;
@@ -79,6 +82,19 @@ AndroidAudioPluginInstance::AndroidAudioPluginInstance(aap::PluginInstance *nati
           sample_rate(-1) {
 }
 
+void AndroidAudioPluginInstance::allocateSharedMemory(int bufferIndex, int32_t size)
+{
+#if ANDROID
+    int fd = ASharedMemory_create(nullptr, size);
+        buffer.shared_memory_fds[bufferIndex] = fd;
+        buffer.buffers[bufferIndex] = mmap(nullptr, buffer.num_frames * sizeof(float),
+                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+#else
+    buffer.buffers[bufferIndex] = mmap(nullptr, size,
+                             PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+#endif
+}
+
 void
 AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) {
     sample_rate = sampleRate;
@@ -88,12 +104,8 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
     buffer.shared_memory_fds = new int[n + 1];
     buffer.buffers = new void *[n + 1];
     buffer.num_frames = maximumExpectedSamplesPerBlock;
-    for (int i = 0; i < n; i++) {
-        int fd = ASharedMemory_create(nullptr, buffer.num_frames * sizeof(float));
-        buffer.shared_memory_fds[i] = fd;
-        buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float),
-                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    }
+    for (int i = 0; i < n; i++)
+        allocateSharedMemory(i, buffer.num_frames * sizeof(float));
     buffer.shared_memory_fds[n] = 0;
     buffer.buffers[n] = nullptr;
 
