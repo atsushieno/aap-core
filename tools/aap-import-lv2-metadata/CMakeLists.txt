@@ -19,4 +19,9 @@ pkg_check_modules ( LILV REQUIRED IMPORTED_TARGET lilv-0>=0.24.0 )
 
 target_link_libraries(aap-import-lv2-metadata PkgConfig::SERD PkgConfig::LILV)
 target_include_directories(aap-import-lv2-metadata PUBLIC ${SERD_INCLUDE_DIRS} ${SORD_INCLUDE_DIRS} ${LILV_INCLUDE_DIRS})
-target_compile_options(aap-import-lv2-metadata PUBLIC ${SERD_CFLAGS_OTHER})
+target_compile_options(aap-import-lv2-metadata PUBLIC ${SERD_CFLAGS_OTHER}
+        PRIVATE
+        -std=c++17
+        -Wall
+        -Wshadow
+        )
