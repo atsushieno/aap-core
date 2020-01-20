@@ -446,7 +446,7 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 	int nPorts = lilv_plugin_get_num_ports(plugin);
 	for (int i = 0; i < nPorts; i++) {
 		if (IS_ATOM_PORT(ctx, plugin, lilv_plugin_get_port_by_index(plugin, i))) {
-			ctx->midi_atom_buffers.insert_or_assign(i, (LV2_Atom_Sequence*) calloc(ctx->midi_buffer_size, 1));
+			ctx->midi_atom_buffers[i] = (LV2_Atom_Sequence*) calloc(ctx->midi_buffer_size, 1);
 		}
 	}
 
