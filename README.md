@@ -1,6 +1,6 @@
 # AAP: Android Audio Plugin Framework
 
-Build Status: ![birtise build status](https://app.bitrise.io/app/0be7191009d7687f/status.svg?token=vcbDT8zcXDpz7cSf1J0R5A&branch=master)
+Build Status: ![birtise build status](https://app.bitrise.io/app/d9d69ce50556d890/status.svg?token=e_wmxFsLRDnqgNfuYa6cfg)
 
 ## What is AAP?
 
