@@ -2,6 +2,8 @@
 
 Build Status: ![birtise build status](https://app.bitrise.io/app/d9d69ce50556d890/status.svg?token=e_wmxFsLRDnqgNfuYa6cfg)
 
+disclaimer: the README is either up to date, partially obsoleted, or sometimes ahead of implementation (to describe the ideal state). Do not trust it too much.
+
 ## What is AAP?
 
 Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used, to some extent.
@@ -441,6 +443,20 @@ interface AudioPluginInterface {
 ```
 
 Due to [AIDL tool limitation or framework limitation](https://issuetracker.google.com/issues/144204660), we cannot use `List<ParcelFileDescriptor>`, therefore `prepareMemory()` is added apart from `prepare()` to workaround this issue.
+
+
+## Desktop support
+
+AAP is a framework which is also intended to be cross platform on Unix and optionally other OSes. Although there is no Android service and binder on those OSes and therefore we need alternatives.
+
+It is up to hosting application, but there is a normative way to look up AAPs on the system. Unlike Android, they don't have to exist as services. Although the AAP manifest takes place to provide plugin listing. It contains `library` and `entrypoint` that can be simply reused on other platforms.
+
+For a normative AAP host, `AAP_SEARCH_PATH` environment variable is used to look up AAPs on the specified paths. The environment variable contains the list of paths which are joined by platform-specific separator. Here is the list of well-known `AAP_SEARCH_PATH` values per platform:
+
+- Linux and other Unix variants: `$HOME/.aap:/usr/local/lib/aap:/usr/lib/aap`
+- MacOS (not sure if it will be supported): `$HOME/Library/Audio/Plug-ins/AAP:/Library/Audio/Plug-ins/AAP`
+- Windows (not sure if it will be supported): `c:\AAP Plugins;c:\Program Files[\AAP Plugins`
+  - There is no plan to support 32bit builds on 64-bit OS. Unlike VSTs we have no 32bit legacy.
 
 
 ## JUCE integration
