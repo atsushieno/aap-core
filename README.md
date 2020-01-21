@@ -126,6 +126,14 @@ We are still unsure if this really helps performance (especially how to deal wit
 
 (A related annoyance is that when targeting API Level 29 direct access to `/dev/ashmem` is prohibited and use of `ASharedMemory` API is required, meaning that it's going to be Android-only codebase. Making it common to desktop require code abstraction for ashmem access, which sounds absurd.)
 
+### MIDI input support
+
+MIDI ports are different from audio ports and control ports in some ways. Audio and control data ports receive contiguous "raw" data which are direct output values to the destination or input values from the source, but MIDI inputs are from events with specific duration per event, or immediate direct input. On the other hand, they usually have to be processed in sync with audio inputs because (1) those MIDI inputs can be controllers (think about audio effects) and (2) audio processing should be highly efficient so that the number of processing requests must be kept as minimum as possible. Therefore usually audio plugin frameworks process audio and MIDI data at a time, and we follow that.
+
+The approach to process MIDI data is similar between audio plugin frameworks, but the actual content format is different for each framework. Usually they come up with structured message format (VST/AU/LV2 Atom), but AAP so far expects a "length-prepended" SMF track-like inputs which are just sequence of pairs of delta time and MIDI event for "MIDI" channel. AAP does not limit the format to audio and MIDI - the port content can be anything. It is up to agreement between plugins and hosts. The MIDI data length is provided as size in bytes in 32-bit signed integer.
+
+(A related note: to make direct inputs from MIDI devices not laggy, the audio processing buffer should be kept as minimum as possible when dealing with MIDI inputs. That in general results in high CPU (and thus power) usage, which is usually problematic to mobile devices. There should be some consideration on power usage on each application.)
+
 
 ## AAP package bundle
 
@@ -437,9 +445,13 @@ Due to [AIDL tool limitation or framework limitation](https://issuetracker.googl
 
 ## JUCE integration
 
-`native/juce/Source/juce_android_audio_plugin_format.cpp` implements juce:AudioPluginFormat and related stuff.
+JUCE is designed to be extensible to include other audio plugin formats. So far, we have created AAP JUCE audio processor so that apps that host audio plugins can also host AAPs.
 
-We are quite unsure if JUCE audio processors builds for Android.
+`native/juce/` directory contains juce:AudioPluginFormat implementation and related stuff for AAP. It is part of `AAPAudioPluginHost` application which is some patched AudioPluginHost extra application in JUCE SDK.
+
+For details, follow another `README.md` in that directory.
+
+It builds on Android and it can launch, enumerate the installed audio plugins on the system, and instantiate each plugin (only one can be instantiated), but audio inputs are not verified to work and MIDI integration does not work yet. But we verified only with existing LV2 port samples so far, so they might actually work. (Our objective here is to bring in existing audio plugins so it will be revisited once we have achived some interoperability.)
 
 ### Licensing notice
 
