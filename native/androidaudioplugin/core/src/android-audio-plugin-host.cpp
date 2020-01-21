@@ -57,7 +57,7 @@ std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const c
 PluginHost::PluginHost()
 {
 	auto pal = getPluginHostPAL();
-	updateKnownPlugins(pal->getKnownPluginInfos());
+	updateKnownPlugins(pal->getPluginListCache());
 }
 
 void PluginHost::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
@@ -132,7 +132,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
-std::vector<PluginInformation *> PluginHostPAL::getKnownPluginInfos() { return _local_plugin_infos; }
+std::vector<PluginInformation*> PluginHostPAL::getPluginListCache() { return _local_plugin_infos; }
 
-void PluginHostPAL::setKnownPluginInfos(std::vector<PluginInformation *> pluginInfos) { _local_plugin_infos = pluginInfos; }
+void PluginHostPAL::setPluginListCache(std::vector<PluginInformation *> pluginInfos) { _local_plugin_infos = pluginInfos; }
 } // namespace

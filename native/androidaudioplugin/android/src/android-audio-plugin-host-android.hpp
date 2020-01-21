@@ -34,6 +34,10 @@ public:
 		return queryInstalledPlugins();
 	}
 
+	std::vector<PluginInformation*> loadPluginListCache() override {	
+		assert(false); // FIXME: implement
+	}
+
 	// FIXME: move them back to private
 	jobject globalApplicationContext{nullptr};
 	std::vector<AudioPluginServiceConnection> serviceConnections{};

@@ -24,7 +24,7 @@ AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string servic
 
 AIBinder* AndroidPluginHostPAL::getBinderForServiceConnectionForPlugin(std::string pluginId)
 {
-    auto pl = getKnownPluginInfos();
+    auto pl = getPluginListCache();
     for (int i = 0; pl[i] != nullptr; i++)
         if (pl[i]->getPluginID() == pluginId)
             return getBinderForServiceConnection(pl[i]->getServiceIdentifier());
@@ -54,7 +54,7 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
 
 void AndroidPluginHostPAL::cleanupKnownPlugins()
 {
-    auto localPlugins = getKnownPluginInfos();
+    auto localPlugins = getPluginListCache();
     int n = 0;
     while (localPlugins[n])
         n++;
@@ -69,7 +69,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation); // in AudioP
 std::vector<PluginInformation*> AndroidPluginHostPAL::convertPluginList(jobjectArray jPluginInfos)
 {
     assert(jPluginInfos != nullptr);
-    auto localPlugins = getKnownPluginInfos();
+    auto localPlugins = getPluginListCache();
     localPlugins.clear();
     auto env = getJNIEnv();
     jsize infoSize = env->GetArrayLength(jPluginInfos);
@@ -86,7 +86,7 @@ extern "C" jobjectArray queryInstalledPluginsJNI(); // in AudioPluginHost_native
 void AndroidPluginHostPAL::initializeKnownPlugins(jobjectArray jPluginInfos)
 {
     jPluginInfos = jPluginInfos != nullptr ? jPluginInfos : queryInstalledPluginsJNI();
-    setKnownPluginInfos(convertPluginList(jPluginInfos));
+    setPluginListCache(convertPluginList(jPluginInfos));
 }
 
 std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins()

@@ -261,13 +261,12 @@ class PluginHostPAL
 	std::vector<PluginInformation*> _local_plugin_infos{};
 
 public:
-	// FIXME: rewrite to safer function signature
-    //virtual std::unique_ptr<std::vector<std::unique_ptr<PluginInformation>>> getInstalledPlugins() = 0;
 	virtual std::vector<PluginInformation*> getInstalledPlugins() = 0;
+	virtual std::vector<PluginInformation*> loadPluginListCache() = 0;
 
 	// FIXME: move to PluginHost
-	std::vector<PluginInformation*> getKnownPluginInfos();
-    void setKnownPluginInfos(std::vector<PluginInformation*> pluginInfos);
+	std::vector<PluginInformation*> getPluginListCache();
+    void setPluginListCache(std::vector<PluginInformation*> pluginInfos);
 };
 
 PluginHostPAL* getPluginHostPAL();

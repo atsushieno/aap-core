@@ -9,10 +9,12 @@ namespace aaplv2sample {
 
 int main(int argc, char** argv)
 {
+    aap::getPluginHostPAL()->setPluginListCache(aap::getPluginHostPAL()->getInstalledPlugins());
+
 	int sampleRate = 44100;
 	const char* pluginID = argv[1];
 	auto pal = aap::getPluginHostPAL();
-	pal->setKnownPluginInfos(aap::PluginInformation::parsePluginDescriptor("", argv[2]));
+    pal->setPluginListCache(aap::PluginInformation::parsePluginDescriptor("", argv[2]));
 	int size = 1;
 	int wavLength = 1000000;
 	void* inWavBytesL = calloc(wavLength, 1);

@@ -28,7 +28,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     assert(proxy != nullptr);
 
     aap::PluginInformation *pluginInfo{nullptr};
-    auto plugins = aap::getPluginHostPAL()->getKnownPluginInfos();
+    auto plugins = aap::getPluginHostPAL()->getPluginListCache();
     for (int p = 0; plugins[p] != nullptr; p++) {
         if (strcmp(plugins[p]->getPluginID().data(), pluginId) == 0) {
             pluginInfo = plugins[p];
