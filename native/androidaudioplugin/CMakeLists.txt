@@ -31,6 +31,7 @@ set (androidaudioplugin_SOURCES
 	"android/src/android-audio-plugin-client-bridge.cpp"
 	"android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
 	"android/src/AudioPluginHost_native.cpp"
+	"android/src/audio-plugin-host-android.cpp"
 	)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)
@@ -39,8 +40,7 @@ else (ANDROID)
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
-	"desktop/src/audio-plugin-host-desktop.cpp"
-        )
+	"desktop/src/audio-plugin-host-desktop.cpp" android/src/android-audio-plugin-host-android.hpp)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} dl)
 endif (ANDROID)

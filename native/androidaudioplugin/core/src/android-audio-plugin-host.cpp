@@ -2,11 +2,14 @@
 #include <vector>
 #include <tinyxml2.h>
 
+#if ANDROID
+#include <jni.h>
+#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
+#include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
+#endif
+
 namespace aap
 {
-aap::PluginInformation **_local_plugin_infos{nullptr};
-aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
-void setKnownPluginInfos(aap::PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
 
 void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
@@ -67,7 +70,8 @@ PluginHost::PluginHost()
 
 void PluginHost::updateKnownPlugins(PluginInformation** plugins)
 {
-	auto pluginDescriptors = plugins != nullptr ? plugins : getKnownPluginInfos();
+	auto pal = getPluginHostPAL();
+	auto pluginDescriptors = plugins != nullptr ? plugins : pal->getKnownPluginInfos();
 	pluginDescriptors = pluginDescriptors != nullptr ? pluginDescriptors : aap::getPluginHostPAL()->getInstalledPlugins();
 	assert(pluginDescriptors != nullptr);
 	int n = 0;

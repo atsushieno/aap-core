@@ -11,6 +11,6 @@ public class AAPSampleInterop {
         }
 
         @JvmStatic
-        external fun runClientAAP(binder: IBinder, sampleRate: Int, pluginId: String, audioInL: ByteArray, audioInR: ByteArray, audioOutL: ByteArray, audioOutR: ByteArray, parameters: FloatArray)
+        external fun runClientAAP(binder: IBinder, sampleRate: Int, pluginId: String, audioInL: ByteArray, audioInR: ByteArray, audioOutL: ByteArray, audioOutR: ByteArray, parameters: FloatArray) : Integer
     }
 }

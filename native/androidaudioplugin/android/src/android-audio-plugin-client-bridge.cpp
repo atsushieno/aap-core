@@ -6,11 +6,8 @@
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
+#include "android-audio-plugin-host-android.hpp"
 #include "AudioPluginInterfaceImpl.h"
-
-namespace aap {
-	extern AIBinder *getBinderForServiceConnectionForPlugin(std::string serviceIdentifier);
-}
 
 class AAPClientContext {
 
@@ -26,7 +23,8 @@ public:
     AAPClientContext(int sampleRate, const char *pluginUniqueId)
 		: unique_id(pluginUniqueId)
 	{
-    	auto binder = aap::getBinderForServiceConnectionForPlugin(pluginUniqueId);
+    	auto pal = dynamic_cast<aap::AndroidPluginHostPAL*> (aap::getPluginHostPAL());
+    	auto binder = pal->getBinderForServiceConnectionForPlugin(pluginUniqueId);
     	assert(binder != nullptr);
         spAIBinder.set(binder);
 		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);

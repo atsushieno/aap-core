@@ -13,7 +13,6 @@
 #include <string>
 #include "aap/android-audio-plugin.h"
 
-
 namespace aap
 {
 
@@ -260,10 +259,17 @@ class PluginHostBackendVST3 : public PluginHostBackend
 
 class PluginHostPAL
 {
+	// FIXME: move to PluginHost
+	aap::PluginInformation **_local_plugin_infos{nullptr};
+
 public:
 	// FIXME: rewrite to safer function signature
     //virtual std::unique_ptr<std::vector<std::unique_ptr<PluginInformation>>> getInstalledPlugins() = 0;
 	virtual PluginInformation** getInstalledPlugins() = 0;
+
+	// FIXME: move to PluginHost
+	inline aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
+    inline void setKnownPluginInfos(PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
 };
 
 PluginHostPAL* getPluginHostPAL();
@@ -469,9 +475,6 @@ public:
 		return 0;
 	}
 };
-
-aap::PluginInformation** getKnownPluginInfos();
-void setKnownPluginInfos(aap::PluginInformation **pluginInfos);
 
 } // namespace
 
