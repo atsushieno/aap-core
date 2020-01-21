@@ -47,33 +47,21 @@ void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char*
     }
 }
 
-PluginInformation** PluginInformation::parsePluginDescriptor(const char * serviceIdentifier, const char* xmlfile)
+std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const char * serviceIdentifier, const char* xmlfile)
 {
-	return aap_parse_plugin_descriptor(serviceIdentifier, xmlfile);
-}
-
-PluginInformation** aap_parse_plugin_descriptor(const char* serviceIdentifier, const char* xmlfile)
-{
-    std::vector<PluginInformation*> plugins;
-    aap_parse_plugin_descriptor_into(serviceIdentifier, xmlfile, plugins);
-    PluginInformation** ret = (PluginInformation**) calloc(sizeof(PluginInformation*), plugins.size() + 1);
-    for(size_t i = 0; i < plugins.size(); i++)
-        ret[i] = plugins[i];
-    ret[plugins.size()] = nullptr;
-    return ret;
+	std::vector<PluginInformation*> plugins{};
+	aap_parse_plugin_descriptor_into(serviceIdentifier, xmlfile, plugins);
+	return plugins;
 }
 
 PluginHost::PluginHost()
 {
-    updateKnownPlugins();
+	auto pal = getPluginHostPAL();
+	updateKnownPlugins(pal->getKnownPluginInfos());
 }
 
-void PluginHost::updateKnownPlugins(PluginInformation** plugins)
+void PluginHost::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
 {
-	auto pal = getPluginHostPAL();
-	auto pluginDescriptors = plugins != nullptr ? plugins : pal->getKnownPluginInfos();
-	pluginDescriptors = pluginDescriptors != nullptr ? pluginDescriptors : aap::getPluginHostPAL()->getInstalledPlugins();
-	assert(pluginDescriptors != nullptr);
 	int n = 0;
 	while (pluginDescriptors[n])
 		n++;
@@ -144,4 +132,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
+std::vector<PluginInformation *> PluginHostPAL::getKnownPluginInfos() { return _local_plugin_infos; }
+
+void PluginHostPAL::setKnownPluginInfos(std::vector<PluginInformation *> pluginInfos) { _local_plugin_infos = pluginInfos; }
 } // namespace

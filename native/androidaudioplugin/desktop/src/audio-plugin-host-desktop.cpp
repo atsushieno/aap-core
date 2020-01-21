@@ -7,7 +7,7 @@ namespace aap
 class LinuxPluginHostPAL : public PluginHostPAL
 {
 public:
-    PluginInformation** getInstalledPlugins() override {
+    std::vector<PluginInformation*> getInstalledPlugins() override {
 	    assert(false); // FIXME: implement
     }
 };

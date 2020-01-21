@@ -79,7 +79,7 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
-	static PluginInformation** parsePluginDescriptor(const char* serviceIdentifier, const char* xmlfile);
+	static std::vector<PluginInformation*> parsePluginDescriptor(const char* serviceIdentifier, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
@@ -224,8 +224,6 @@ public:
 	}
 };
 
-PluginInformation** aap_parse_plugin_descriptor(const char* packageClassName, const char* xmlfile);
-
 class EditorInstance
 {
 	//const PluginInstance *owner;
@@ -260,16 +258,16 @@ class PluginHostBackendVST3 : public PluginHostBackend
 class PluginHostPAL
 {
 	// FIXME: move to PluginHost
-	aap::PluginInformation **_local_plugin_infos{nullptr};
+	std::vector<PluginInformation*> _local_plugin_infos{};
 
 public:
 	// FIXME: rewrite to safer function signature
     //virtual std::unique_ptr<std::vector<std::unique_ptr<PluginInformation>>> getInstalledPlugins() = 0;
-	virtual PluginInformation** getInstalledPlugins() = 0;
+	virtual std::vector<PluginInformation*> getInstalledPlugins() = 0;
 
 	// FIXME: move to PluginHost
-	inline aap::PluginInformation** getKnownPluginInfos() { return _local_plugin_infos; }
-    inline void setKnownPluginInfos(PluginInformation ** pluginInfos) { _local_plugin_infos = pluginInfos; }
+	std::vector<PluginInformation*> getKnownPluginInfos();
+    void setKnownPluginInfos(std::vector<PluginInformation*> pluginInfos);
 };
 
 PluginHostPAL* getPluginHostPAL();
@@ -292,7 +290,7 @@ public:
 	{
 	}
 
-	void updateKnownPlugins(PluginInformation** plugins = nullptr);
+	void updateKnownPlugins(std::vector<PluginInformation*> plugins);
 	
 	bool isPluginAlive (const char *identifier);
 	

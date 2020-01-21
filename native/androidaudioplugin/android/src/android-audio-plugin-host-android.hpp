@@ -26,11 +26,11 @@ class AndroidPluginHostPAL : public PluginHostPAL
 {
 	JavaVM *jvm{nullptr};
 
-	aap::PluginInformation** convertPluginList(jobjectArray jPluginInfos);
-	aap::PluginInformation** queryInstalledPlugins();
+	std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos);
+	std::vector<PluginInformation*> queryInstalledPlugins();
 
 public:
-	PluginInformation** getInstalledPlugins() override {
+	std::vector<PluginInformation*> getInstalledPlugins() override {
 		return queryInstalledPlugins();
 	}
 

@@ -55,30 +55,27 @@ binder_status_t aap_ontransact(AIBinder *binder, transaction_code_t code, const 
 void AndroidPluginHostPAL::cleanupKnownPlugins()
 {
     auto localPlugins = getKnownPluginInfos();
-    assert(localPlugins != nullptr);
     int n = 0;
     while (localPlugins[n])
         n++;
     for(int i = 0; i < n; i++)
         delete localPlugins[i];
-    localPlugins = nullptr;
+    localPlugins.clear();
 }
 
 extern "C" aap::PluginInformation *
 pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation); // in AudioPluginHost_native.cpp
 
-aap::PluginInformation** AndroidPluginHostPAL::convertPluginList(jobjectArray jPluginInfos)
+std::vector<PluginInformation*> AndroidPluginHostPAL::convertPluginList(jobjectArray jPluginInfos)
 {
     assert(jPluginInfos != nullptr);
     auto localPlugins = getKnownPluginInfos();
-    if(localPlugins)
-        cleanupKnownPlugins();
+    localPlugins.clear();
     auto env = getJNIEnv();
     jsize infoSize = env->GetArrayLength(jPluginInfos);
-    localPlugins = (aap::PluginInformation **) calloc(sizeof(aap::PluginInformation *), infoSize + 1);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        localPlugins[i] = pluginInformation_fromJava(env, jPluginInfo);
+        localPlugins.push_back(pluginInformation_fromJava(env, jPluginInfo));
     }
     localPlugins[infoSize] = nullptr;
     return localPlugins;
@@ -92,7 +89,7 @@ void AndroidPluginHostPAL::initializeKnownPlugins(jobjectArray jPluginInfos)
     setKnownPluginInfos(convertPluginList(jPluginInfos));
 }
 
-aap::PluginInformation** AndroidPluginHostPAL::queryInstalledPlugins()
+std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins()
 {
     return convertPluginList(queryInstalledPluginsJNI());
 }
