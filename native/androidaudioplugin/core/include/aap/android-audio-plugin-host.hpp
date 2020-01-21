@@ -326,8 +326,7 @@ public:
 		int n = getNumPluginDescriptors();
 		for(int i = 0; i < n; i++) {
 			auto d = getPluginDescriptorAt(i);
-			auto id = d->getPluginID().data();
-			if (strcmp(id, identifier) == 0)
+			if (d->getPluginID().compare(identifier) == 0)
 				return d;
 		}
 		return NULL;

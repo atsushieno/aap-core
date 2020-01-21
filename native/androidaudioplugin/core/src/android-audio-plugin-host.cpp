@@ -21,14 +21,20 @@ void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char*
     for (auto pluginElement = pluginsElement->FirstChildElement("plugin");
             pluginElement != nullptr;
             pluginElement = pluginElement->NextSiblingElement("plugin")) {
+        auto name = pluginElement->Attribute("name");
+        auto manufacturer = pluginElement->Attribute("manufacturer");
+        auto version = pluginElement->Attribute("version");
+        auto uid = pluginElement->Attribute("unique-id");
+        auto library = pluginElement->Attribute("library");
+        auto entrypoint = pluginElement->Attribute("entrypoint");
         auto plugin = new PluginInformation(false,
-                serviceIdentifier,
-                pluginElement->Attribute("name"),
-                pluginElement->Attribute("manufacturer"),
-                pluginElement->Attribute("version"),
-                pluginElement->Attribute("unique-id"),
-                pluginElement->Attribute("library"),
-                pluginElement->Attribute("entrypoint"));
+                serviceIdentifier ? serviceIdentifier : "",
+                name ? name : "",
+                manufacturer ? manufacturer : "",
+                version ? version : "",
+                uid ? uid : "",
+                library ? library : "",
+                entrypoint ? entrypoint : "");
         auto portsElement = pluginElement->FirstChildElement("ports");
         for (auto portElement = portsElement->FirstChildElement("port");
                 portElement != nullptr;
@@ -62,11 +68,8 @@ PluginHost::PluginHost()
 
 void PluginHost::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
 {
-	int n = 0;
-	while (pluginDescriptors[n])
-		n++;
-	for (int i = 0; i < n; i++)
-		plugin_descriptors.push_back(pluginDescriptors[i]);
+	for (auto entry : pluginDescriptors)
+		plugin_descriptors.emplace_back(entry);
 }
 
 bool PluginHost::isPluginAlive (const char *identifier) 
@@ -110,9 +113,9 @@ PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
 {
-	const char *file = descriptor->getLocalPluginSharedLibrary().data();
+	auto file = descriptor->getLocalPluginSharedLibrary();
 	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint().data();
-	auto dl = dlopen(file && file[0] ? file : "libandroidaudioplugin.so", RTLD_LAZY);
+	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
 	assert (dl != nullptr);
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint && entrypoint[0] ? entrypoint : "GetAndroidAudioPluginFactory");
 	assert (factoryGetter != nullptr);

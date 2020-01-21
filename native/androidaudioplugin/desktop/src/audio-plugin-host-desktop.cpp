@@ -1,6 +1,7 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 #include <sys/utsname.h>
 #include "../include/aap/android-audio-plugin-host.hpp"
 
@@ -22,7 +23,22 @@ public:
     }
 
     std::vector<PluginInformation*> getInstalledPlugins() override {
-	    assert(false); // FIXME: implement
+        std::vector<PluginInformation *> ret{};
+        for (auto p : getPluginPaths())
+            iterateDirectory(p, ret);
+        return ret;
+    }
+
+    void iterateDirectory(std::filesystem::path path, std::vector<PluginInformation *> &ret)
+    {
+        for(const auto &entry : std::filesystem::directory_iterator(path)) {
+            if (!entry.is_directory() && entry.path().filename() == "aap_metadata.xml") {
+                for (auto x : PluginInformation::parsePluginDescriptor("", entry.path().c_str()))
+                    ret.emplace_back(x);
+            }
+            else if (entry.is_directory())
+                iterateDirectory(entry, ret);
+        }
     }
 
     std::vector<std::string> getPluginPaths() {
@@ -35,8 +51,11 @@ public:
             int idx = 0;
             while (true) {
                 int si = ap.find_first_of(sep, idx);
-                if (si < 0)
+                if (si < 0) {
+                    if (idx < ap.size())
+                        ret.emplace_back(std::string(ap.substr(idx, ap.size())));
                     break;
+                }
                 ret.emplace_back(std::string(ap.substr(idx, si)));
                 idx = si + 1;
             }
