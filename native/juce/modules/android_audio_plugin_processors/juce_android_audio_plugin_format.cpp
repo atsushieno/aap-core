@@ -64,6 +64,7 @@ void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer 
     int di = 4; // fill length later
     MidiMessage msg{};
     int pos{0};
+    // FIXME: time unit must be configurable.
     double oneTick = 1 / 480.0; // sec
     double secondsPerFrame = 1.0 / sample_rate; // sec
     for (int i = 0; i < numPorts; i++) {

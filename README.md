@@ -136,6 +136,8 @@ The approach to process MIDI data is similar between audio plugin frameworks, bu
 
 (A related note: to make direct inputs from MIDI devices not laggy, the audio processing buffer should be kept as minimum as possible when dealing with MIDI inputs. That in general results in high CPU (and thus power) usage, which is usually problematic to mobile devices. There should be some consideration on power usage on each application.)
 
+TODO: we need certain semantics on timestamps. For example, JUCE sends timestamp values as application-dependent, meaning that something must be externally spdcifyable to host and they have to be accessible from each audio plugin i.e. through some API.
+
 
 ## AAP package bundle
 
