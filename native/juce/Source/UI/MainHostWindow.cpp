@@ -81,6 +81,7 @@ MainHostWindow::MainHostWindow()
 {
     formatManager.addDefaultFormats();
     formatManager.addFormat (new InternalPluginFormat());
+    aap::getPluginHostPAL()->setPluginListCache(aap::getPluginHostPAL()->getInstalledPlugins());
     formatManager.addFormat (new juceaap::AndroidAudioPluginFormat());
 
     auto safeThis = SafePointer<MainHostWindow> (this);
