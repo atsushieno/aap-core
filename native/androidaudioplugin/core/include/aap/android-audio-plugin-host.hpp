@@ -101,6 +101,7 @@ public:
 		cp = (char*) calloc(len, 1);
 		snprintf(cp, len, "%s+%s+%s", name.data(), plugin_id.data(), version.data());
 		identifier_string = cp;
+        free(cp);
 	}
 	
 	~PluginInformation()
@@ -261,6 +262,11 @@ class PluginHostPAL
 	std::vector<PluginInformation*> _local_plugin_infos{};
 
 public:
+	~PluginHostPAL() {
+		for (auto plugin : _local_plugin_infos)
+			delete plugin;
+	}
+
 	virtual std::vector<PluginInformation*> getInstalledPlugins() = 0;
 	virtual std::vector<PluginInformation*> loadPluginListCache() = 0;
 
