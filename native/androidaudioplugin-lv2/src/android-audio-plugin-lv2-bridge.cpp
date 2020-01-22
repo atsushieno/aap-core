@@ -364,9 +364,11 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 #endif
 		uint8_t *result = (uint8_t*) (dst);
 		for (int i = 0; i < 16; i++)
-			aprintf("SRC[%d] %d ", i, *((uint8_t*) src + i));
+			if (*((uint8_t*) src + i) != 0)
+				aprintf("SRC[%d] %d ", i, *((uint8_t*) src + i));
 		for (int i = 0; i < 88; i++)
-			aprintf("DST[%d] %d ", i, *(result + i));
+			if (*((uint8_t*) result + i) != 0)
+				aprintf("DST[%d] %d ", i, *(result + i));
 	}
 
 	lilv_instance_run(ctx->instance, buffer->num_frames);

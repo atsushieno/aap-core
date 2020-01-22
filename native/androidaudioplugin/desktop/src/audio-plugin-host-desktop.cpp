@@ -31,6 +31,8 @@ public:
 
     void iterateDirectory(std::filesystem::path path, std::vector<PluginInformation *> &ret)
     {
+        if (!std::filesystem::exists(path))
+            return;
         for(const auto &entry : std::filesystem::directory_iterator(path)) {
             if (!entry.is_directory() && entry.path().filename() == "aap_metadata.xml") {
                 for (auto x : PluginInformation::parsePluginDescriptor("", entry.path().c_str()))
