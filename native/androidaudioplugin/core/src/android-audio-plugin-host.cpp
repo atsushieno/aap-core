@@ -113,11 +113,12 @@ PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
 {
+	dlerror(); // clean up any previous error state
 	auto file = descriptor->getLocalPluginSharedLibrary();
-	const char *entrypoint = descriptor->getLocalPluginLibraryEntryPoint().data();
+	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
 	assert (dl != nullptr);
-	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint && entrypoint[0] ? entrypoint : "GetAndroidAudioPluginFactory");
+	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
@@ -126,6 +127,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor)
 {
+	dlerror(); // clean up any previous error state
 	auto dl = dlopen("libandroidaudioplugin.so", RTLD_LAZY);
 	assert (dl != nullptr);
 	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactoryClientBridge");
