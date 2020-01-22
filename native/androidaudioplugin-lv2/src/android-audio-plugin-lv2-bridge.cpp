@@ -288,7 +288,8 @@ void convert_aap_midi_to_lv2_midi(LV2_Atom_Sequence* dst, int32_t dstCapacity, v
 	atom->size = normalize_midi_event_for_lv2(dst + sizeof(dst->atom), dstCapacity - sizeof(dst->atom), src);
 }
 
-void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, void* src) {
+// returns true if there was at least one MIDI message in src.
+bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, void* src) {
 	assert(src != nullptr);
 	assert(forge != nullptr);
 
@@ -329,6 +330,7 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 		lv2_atom_forge_pad(forge, midiEventSize);
 		srcN += midiEventSize;
 	}
+	return srcN != srcEnd;
 }
 
 void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
@@ -359,16 +361,19 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 		auto seqRef = lv2_atom_forge_sequence_head(forge, &frame, urid_time_frame);
 		auto seq = (LV2_Atom_Sequence*) lv2_atom_forge_deref(forge, seqRef);
 		lv2_atom_forge_pop(forge, &frame);
-		normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
+		bool hadMessage = normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
 		//seq->atom.size += forge->offset - sizeof(LV2_Atom) * 2;
 #endif
-		uint8_t *result = (uint8_t*) (dst);
-		for (int i = 0; i < 16; i++)
-			if (*((uint8_t*) src + i) != 0)
-				aprintf("SRC[%d] %d ", i, *((uint8_t*) src + i));
-		for (int i = 0; i < 88; i++)
-			if (*((uint8_t*) result + i) != 0)
-				aprintf("DST[%d] %d ", i, *(result + i));
+        if (hadMessage) {
+            uint8_t *result = (uint8_t *) (dst);
+            for (int i = 0; i < 16; i++)
+                if (*((uint8_t *) src + i) != 0)
+                    aprintf("SRC[%d] %d ", i, *((uint8_t *) src + i));
+            for (int i = 0; i < 88; i++)
+                if (*((uint8_t *) result + i) != 0)
+                    aprintf("DST[%d] %d ", i, *(result + i));
+            aprintf("\n");
+        }
 	}
 
 	lilv_instance_run(ctx->instance, buffer->num_frames);

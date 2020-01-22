@@ -61,10 +61,31 @@ void AndroidAudioPluginInstance::fillNativeMidiBuffers(AndroidAudioPluginBuffer 
                                                        MidiBuffer &buffer) {
     auto desc = native->getPluginDescriptor();
     int numPorts = desc->getNumPorts();
-    for (int i = 0; i < numPorts; i++)
+    int di = 4; // fill length later
+    MidiMessage msg{};
+    int pos{0};
+    double oneTick = 1 / 480.0; // sec
+    double secondsPerFrame = 1.0 / sample_rate; // sec
+    for (int i = 0; i < numPorts; i++) {
         if (desc->getPort(i)->getContentType() == AAP_CONTENT_TYPE_MIDI &&
-            desc->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
-            memcpy(dst->buffers[i], buffer.data.getRawDataPointer(), buffer.data.size());
+            desc->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
+            MidiBuffer::Iterator iter{buffer};
+            *((int32_t*) dst->buffers[i]) = 0; // reset to ensure that there is no message by default
+            while (iter.getNextEvent(msg, pos)) {
+                double timestamp = msg.getTimeStamp();
+                double timestampSeconds = timestamp * secondsPerFrame;
+                int32_t timestampTicks = (int32_t) (timestampSeconds / oneTick);
+                do {
+                    *((uint8_t*) dst->buffers[i] + di++) = (uint8_t) timestampTicks % 0x80;
+                    timestampTicks /= 0x80;
+                } while (timestampTicks > 0x80);
+                memcpy(((uint8_t*)dst->buffers[i]) + di, msg.getRawData(), msg.getRawDataSize());
+                di += msg.getRawDataSize();
+            }
+            // AAP MIDI buffer is length-prefixed raw MIDI data.
+            *((int32_t*) dst->buffers[i]) = di - 4;
+        }
+    }
 }
 
 int AndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buffer) {
