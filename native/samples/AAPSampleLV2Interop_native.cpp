@@ -71,6 +71,24 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     // prepare inputs - dummy
     for (int i = 0; i < float_count; i++)
         controlIn[i] = 0.5;
+	// set up midi input buffer
+	{
+		auto mb = (char *) (void *) midiIn;
+		int length = 12;
+		*(int *) mb = length;
+		mb[4] = 0; // program change
+		mb[5] = 0xC0;
+		mb[6] = 0; // note on
+		mb[7] = 0;
+		mb[8] = 0x90;
+		mb[9] = 0x45;
+		mb[10] = 0x70;
+		mb[11] = 0x8C; // note off
+		mb[12] = 0x10;
+		mb[13] = 0x80;
+		mb[14] = 0x45;
+		mb[15] = 0x00;
+	}
 
     // activate, run, deactivate
     instance->activate();
@@ -85,6 +103,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
         memcpy(((char*) outWavL) + b, currentAudioOutL, b + buffer_size < wavLength ? buffer_size : wavLength - b);
         memcpy(((char*) outWavR) + b, currentAudioOutR, b + buffer_size < wavLength ? buffer_size : wavLength - b);
     }
+
     instance->deactivate();
 
     for (int p = 0; iu->plugin_buffer->buffers[p]; p++) {

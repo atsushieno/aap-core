@@ -2,8 +2,6 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "aap/android-audio-plugin-host.hpp"
 
-//using namespace juce;
-
 namespace juceaap {
 
 class AndroidAudioPluginEditor : public juce::AudioProcessorEditor {

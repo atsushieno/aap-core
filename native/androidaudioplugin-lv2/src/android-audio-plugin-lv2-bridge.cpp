@@ -306,6 +306,7 @@ bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 	} MidiEventPadded;
 
 	MidiEventPadded ev;
+	bool hadEvent{false};
 
 	// This is far from precise. No support for sysex and meta, no run length.
 	while (srcN < srcEnd) {
@@ -329,8 +330,10 @@ bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 		lv2_atom_forge_raw(forge, csrc + srcN, midiEventSize);
 		lv2_atom_forge_pad(forge, midiEventSize);
 		srcN += midiEventSize;
+		if (!hadEvent)
+			hadEvent = true;
 	}
-	return srcN != srcEnd;
+	return hadEvent;
 }
 
 void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
