@@ -365,7 +365,7 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 		auto seq = (LV2_Atom_Sequence*) lv2_atom_forge_deref(forge, seqRef);
 		lv2_atom_forge_pop(forge, &frame);
 		bool hadMessage = normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
-		//seq->atom.size += forge->offset - sizeof(LV2_Atom) * 2;
+		seq->atom.size = forge->offset - sizeof(LV2_Atom);
 #endif
         if (hadMessage) {
             uint8_t *result = (uint8_t *) (dst);
