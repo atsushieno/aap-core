@@ -102,6 +102,13 @@ int AndroidAudioPluginInstance::getNumBuffers(AndroidAudioPluginBuffer *buffer) 
 AndroidAudioPluginInstance::AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin)
         : native(nativePlugin),
           sample_rate(-1) {
+    // It is super awkward, but plugin parameter definition does not exist in juce::PluginInformation
+    // but only AudioProcessor.addParameter() does the work. So we handle them here.
+    auto desc = nativePlugin->getPluginDescriptor();
+    for (int i = 0; i < desc->getNumPorts(); i++) {
+        auto para = new AndroidAudioPluginParameter(desc->getPort(i));
+        addParameter(para);
+    }
 }
 
 void AndroidAudioPluginInstance::allocateSharedMemory(int bufferIndex, int32_t size)

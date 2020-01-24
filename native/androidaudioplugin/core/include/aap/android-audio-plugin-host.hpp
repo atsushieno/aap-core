@@ -145,7 +145,7 @@ public:
 		return ports.size();
 	}
 	
-	const PortInformation *getPort(int32_t index) const
+	const PortInformation* getPort(int32_t index) const
 	{
 		return ports[index];
 	}

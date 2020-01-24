@@ -2,8 +2,7 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "aap/android-audio-plugin-host.hpp"
 
-using namespace aap;
-using namespace juce;
+//using namespace juce;
 
 namespace juceaap {
 
@@ -24,6 +23,34 @@ public:
     {
     }
     */
+};
+
+class AndroidAudioPluginParameter : public juce::AudioProcessorParameter {
+    friend class AndroidAudioPluginInstance;
+
+    const aap::PortInformation *impl;
+
+    AndroidAudioPluginParameter(const aap::PortInformation *portInfo) : impl(portInfo) {}
+
+    float value{0.0f};
+
+public:
+    float getValue() const override { return value; }
+
+    void setValue(float newValue) override { value = newValue; }
+
+    float getDefaultValue() const override {
+        return 0;
+    }
+
+    String getName(int maximumStringLength) const override {
+        String name{impl->getName()};
+        return (name.length() <= maximumStringLength) ? name : name.substring(0, maximumStringLength);
+    }
+
+    String getLabel() const override { return impl->getName(); }
+
+    float getValueForText(const String &text) const override { return atof(text.toRawUTF8()); }
 };
 
 class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
