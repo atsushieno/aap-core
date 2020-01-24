@@ -47,7 +47,14 @@ void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char*
                     ContentType::AAP_CONTENT_TYPE_UNDEFINED;
             auto directionString = portElement->Attribute("direction");
             PortDirection  direction = !strcmp(directionString, "input") ? PortDirection::AAP_PORT_DIRECTION_INPUT : PortDirection::AAP_PORT_DIRECTION_OUTPUT;
-            plugin->addPort(new PortInformation(portName, content, direction));
+            auto defaultValue = portElement->Attribute("default");
+			auto minimumValue = portElement->Attribute("minimum");
+			auto maximumValue = portElement->Attribute("maximum");
+            if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr)
+				plugin->addPort(new PortInformation(portName, content, direction,
+						atof(defaultValue), atof(minimumValue), atof(maximumValue)));
+            else
+            	plugin->addPort(new PortInformation(portName, content, direction));
         }
         plugins.push_back(plugin);
     }

@@ -56,11 +56,20 @@ class AudioPluginHostHelper {
                             val name = xp.getAttributeValue(null, "name")
                             val direction = xp.getAttributeValue(null, "direction")
                             val content = xp.getAttributeValue(null, "content")
+                            val default = xp.getAttributeValue(null, "default")
+                            val minimum = xp.getAttributeValue(null, "minimum")
+                            val maximum = xp.getAttributeValue(null, "maximum")
                             val port = PortInformation(
                                 name,
                                 if (direction == "input") PortInformation.PORT_DIRECTION_INPUT else PortInformation.PORT_DIRECTION_OUTPUT,
                                 if (content == "midi") PortInformation.PORT_CONTENT_TYPE_MIDI else if (content == "audio") PortInformation.PORT_CONTENT_TYPE_AUDIO else PortInformation.PORT_CONTENT_TYPE_GENERAL
                             )
+                            if (default != null)
+                                port.default = default.toFloat()
+                            if (minimum != null)
+                                port.minimum = minimum.toFloat()
+                            if (maximum != null)
+                                port.maximum = maximum.toFloat()
                             currentPlugin.ports.add(port)
                         }
                     }

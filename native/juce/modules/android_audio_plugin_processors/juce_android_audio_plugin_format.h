@@ -30,17 +30,22 @@ class AndroidAudioPluginParameter : public juce::AudioProcessorParameter {
 
     const aap::PortInformation *impl;
 
-    AndroidAudioPluginParameter(const aap::PortInformation *portInfo) : impl(portInfo) {}
+    AndroidAudioPluginParameter(const aap::PortInformation *portInfo) : impl(portInfo) {
+    	if (portInfo->hasValueRange())
+    		setValue(portInfo->getDefaultValue());
+    }
 
     float value{0.0f};
 
 public:
     float getValue() const override { return value; }
 
-    void setValue(float newValue) override { value = newValue; }
+    void setValue(float newValue) override {
+    	value = newValue;
+    }
 
     float getDefaultValue() const override {
-        return 0;
+        return impl->getDefaultValue();
     }
 
     String getName(int maximumStringLength) const override {

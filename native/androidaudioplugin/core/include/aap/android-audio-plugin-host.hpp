@@ -41,16 +41,34 @@ class PortInformation
 	std::string name{};
 	ContentType content_type;
 	PortDirection direction;
+	bool has_value_range{false};
+	float default_value{0.0f};
+	float minimum_value{0.0f};
+	float maximum_value{1.0f};
 	
 public:
 	PortInformation(const char *portName, ContentType content, PortDirection portDirection)
-		: name(portName), content_type(content), direction(portDirection)
+			: name(portName), content_type(content), direction(portDirection)
 	{
+	}
+
+	PortInformation(const char *portName, ContentType content, PortDirection portDirection,
+			float defaultValue, float minimumValue, float maximumValue)
+		: PortInformation(portName, content, portDirection)
+	{
+		has_value_range = true;
+		default_value = defaultValue;
+		minimum_value = minimumValue;
+		maximum_value = maximumValue;
 	}
 
 	const char* getName() const { return name.data(); }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
+	bool hasValueRange() const { return has_value_range; }
+	float getDefaultValue() const { return default_value; }
+	float getMinimumValue() const { return minimum_value; }
+	float getMaximumValue() const { return maximum_value; }
 };
 
 class PluginInformation

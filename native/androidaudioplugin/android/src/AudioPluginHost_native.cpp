@@ -39,6 +39,10 @@ static jmethodID
 		j_method_port_get_name,
 		j_method_port_get_direction,
 		j_method_port_get_content,
+		j_method_port_has_value_range,
+		j_method_port_get_default,
+		j_method_port_get_minimum,
+		j_method_port_get_maximum,
 		j_method_query_audio_plugins;
 
 void initializeJNIMetadata(JNIEnv *env)
@@ -75,6 +79,14 @@ void initializeJNIMetadata(JNIEnv *env)
 												   "getDirection", "()I");
 	j_method_port_get_content = env->GetMethodID(java_port_information_class, "getContent",
 												 "()I");
+	j_method_port_has_value_range = env->GetMethodID(java_port_information_class, "getHasValueRange",
+												 "()Z");
+	j_method_port_get_default = env->GetMethodID(java_port_information_class, "getDefault",
+													 "()F");
+	j_method_port_get_minimum = env->GetMethodID(java_port_information_class, "getMinimum",
+												 "()F");
+	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
+												 "()F");
 	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
 }
@@ -102,15 +114,16 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_port_count);
 	for (int i = 0; i < nPorts; i++) {
 		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_port, i);
-		auto aapPort = new aap::PortInformation(strdup_fromJava(env,
-																(jstring) env->CallObjectMethod(
-																		port,
-																		j_method_port_get_name)),
-												(aap::ContentType) (int) env->CallIntMethod(
-														port, j_method_port_get_content),
-												(aap::PortDirection) (int) env->CallIntMethod(
-														port, j_method_port_get_direction));
-		aapPI->addPort(aapPort);
+		auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(port, j_method_port_get_name));
+		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
+		auto direction = (aap::PortDirection) (int) env->CallIntMethod(port, j_method_port_get_direction);
+		aapPI->addPort(
+			env->CallBooleanMethod(port, j_method_port_has_value_range) ?
+			new aap::PortInformation(name, content, direction,
+					env->CallFloatMethod(port, j_method_port_get_default),
+					env->CallFloatMethod(port, j_method_port_get_minimum),
+					env->CallFloatMethod(port, j_method_port_get_maximum)) :
+			new aap::PortInformation(name, content, direction));
 	}
 
 	return aapPI;

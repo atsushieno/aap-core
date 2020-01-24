@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                     GlobalScope.launch {
                         Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
                         prepareAudioData()
-                        var parameters = (0 until plugin.ports.count()).map { i -> 0.5f }.toFloatArray()
+                        var parameters = (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
                         var a = this@MainActivity.portsAdapter
                         if (a != null)
                             parameters = a.parameters
@@ -133,6 +133,7 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_parameter_content_type.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
             view.audio_plugin_parameter_direction.text = if(item.direction == 0) "In" else "Out"
             view.audio_plugin_parameter_name.text = item.name
+            view.audio_plugin_seekbar_parameter_value.progress = (100.0 * (if (item.hasValueRange) item.default else 0.5f)).toInt()
             view.audio_plugin_seekbar_parameter_value.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     parameters[position] = progress / 100.0f

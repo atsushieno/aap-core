@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string>
 #include <serd/serd.h>
 #include <sord/sord.h>
 #include <lilv/lilv.h>
@@ -180,10 +181,21 @@ int main(int argc, const char **argv)
 		for (int p = 0; p < lilv_plugin_get_num_ports(plugin); p++) {
 			auto port = lilv_plugin_get_port_by_index(plugin, p);
 			
-			fprintf(xmlFP, "      <port direction=\"%s\" content=\"%s\" name=\"%s\" />\n",
+			LilvNode *defNode, *minNode, *maxNode;
+			lilv_port_get_range(plugin, port, &defNode, &minNode, &maxNode);
+			char def[1024], min[1024], max[1024];
+			if (defNode != nullptr) std::snprintf(def, 1024, "default=\"%f\"", lilv_node_as_float(defNode));
+			if (minNode != nullptr) std::snprintf(min, 1024, "minimum=\"%f\"", lilv_node_as_float(minNode));
+			if (maxNode != nullptr) std::snprintf(max, 1024, "maximum=\"%f\"", lilv_node_as_float(maxNode));
+			
+			fprintf(xmlFP, "      <port direction=\"%s\" %s %s %s content=\"%s\" name=\"%s\" />\n",
 				IS_INPUT_PORT(plugin, port) ? "input" : IS_OUTPUT_PORT(plugin, port) ? "output" : "",
+				def, min, max,
 				lilv_port_supports_event(plugin, port, midi_event_uri_node) ? "midi" : IS_AUDIO_PORT(plugin, port) ? "audio" : "other",
 				escape_xml(lilv_node_as_string(lilv_port_get_name(plugin, port))));
+			if(defNode) lilv_node_free(defNode);
+			if(minNode) lilv_node_free(minNode);
+			if(maxNode) lilv_node_free(maxNode);
 		}
 		fprintf(xmlFP, "    </ports>\n  </plugin>\n");	
 

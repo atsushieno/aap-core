@@ -205,7 +205,7 @@ The other one with `org.androidaudioplugin.AudioPluginService#Plugins` is to spe
           name="BareBoneSamplePlugin">
     <ports>
 	  <port direction="input" content="midi" name="MidiIn" />
-	  <port direction="input" content="other" name="ControlIn" />
+	  <port direction="input" default="0.5" minimum="0.0" maximum="1.0" content="other" name="ControlIn" />
 	  <port direction="input" content="audio" name="AudioIn" />
 	  <port direction="output" content="audio" name="AudioOut" />
     </ports>
