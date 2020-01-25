@@ -196,101 +196,10 @@ void aap_lv2_plugin_activate(AndroidAudioPlugin *plugin)
 
 std::map<std::string,LV2_URID,uricomp> urid_map{};
 LV2_URID_Map urid_map_feature_data{ &urid_map, urid_map_func };
-LV2_URID urid_atom_sequence_type{0}, urid_midi_event_type{0}, urid_time_frame{0}, urid_midi_noteon{0}, urid_midi_noteoff{0};
-
-int32_t normalize_midi_event_for_lv2(void* dst, int32_t dstCapacity, void* src)
-{
-	// converts AAP MIDI buffers into LV2 MIDI buffer, where both are both MIDI buffers
-	// but LV2 MIDI needs to meet these constraints:
-	//
-	// - Running status is not allowed, every message must have its own status byte.
-	// - Note On messages with velocity 0 are not allowed. These messages are equivalent to Note Off in standard MIDI streams, but here only proper Note Off messages are allowed.
-	// - "Realtime messages" (status bytes 0xF8 to 0xFF) are allowed, but may not occur inside other messages like they can in standard MIDI streams.
-	// - All messages are complete valid MIDI messages. This means, for example, that only the first byte in each event (the status byte) may have the eighth bit set, that Note On and Note Off events are always 3 bytes long, etc. Where messages are communicated, the writer is responsible for writing valid messages, and the reader may assume that all events are valid.
-	//
-	// And AAP MIDI buffer is a length-prepended raw MIDI buffer with no constraint.
-
-	/*
-	 ...
-	mb[8-11] = 4; // int32_t LV2_Atom_Sequence_Body::unit
-	mb[12-15] = 0; // int32_t LV2_Atom_Sequence_Body::pad (unused)
-	mb[16-23] = 0; // int64_t LV2_Atom_Event::time::frames
-	mb[24-27] = 3; // int32_t LV2_Atom::size (of MIDI event, excluding size and type)
-	mb[28-31] = 1; // int32_t LV2_Atom::type
-	mb[32] = 0x90; // MIDI raw message
-	mb[33] = 0x45; // ... of
-	mb[34] = 0x70; // ... note on
-	mb[35-39] = x; // pad (unused, per 64 bits)
-	mb[35-42] = 0; // int64_t LV2_Atom_Event::time::frames
-	mb[43-46] = 3; // int32_t LV2_Atom::size (of MIDI event, excluding size and type)
-	mb[47-50] = 1; // int32_t LV2_Atom::type
-	mb[51] = 0x80; // MIDI raw message
-	mb[52] = 0x45; // ... of
-	mb[53] = 0x00; // ... note off
-	*/
-	// FIXME: implement above.
-
-	assert(src != nullptr);
-	assert(dst != nullptr);
-
-	int srcN = 4, dstN = 0;
-
-	auto csrc = (unsigned char*) src;
-	auto cdst = (unsigned char*) dst;
-	int32_t srcSize = *((int*) src);
-
-	srcN += 4;
-	dstN += 4; // URID for time unit specification, dummy so far.
-
-	unsigned char running_status = 0;
-
-	// This is far from precise. No support for sysex and meta, no run length.
-	while (srcN < srcSize) {
-		// MIDI Event message
-		// Atom Event header
-		long timeFrame = 0;
-		while (csrc[srcN] >= 0x80) // variable length
-			timeFrame = (timeFrame << 7) + csrc[srcN++];
-		timeFrame += csrc[srcN++];
-		*(long*) (cdst + dstN) = timeFrame;
-		dstN += 8;
-		unsigned char statusByte = csrc[srcN] >= 0x80 ? csrc[srcN] : running_status;
-		srcN++;
-		running_status = statusByte;
-		unsigned char eventType = statusByte & 0xF0;
-		unsigned char midiEventSize = (eventType != 0xC0 && eventType != 0xD0) ? 3 : 2;
-
-		*(int*) (cdst + dstN) = midiEventSize;
-		dstN += 4;
-
-		*(int*) (cdst + dstN) = urid_midi_event_type;
-		dstN += 4;
-
-		// MidiEvent
-		// FIXME: sysex must be handled
-		cdst[dstN++] = csrc[srcN++]; // midi message 1st byte
-		cdst[dstN++] = csrc[srcN++]; // midi message 2nd byte
-		if (eventType != 0xC0 && eventType != 0xD0) // ! ProgChg && !CAf
-			cdst[dstN++] = csrc[srcN++]; // midi message 3rd byte
-	}
-	return dstN;
-}
-
-void convert_aap_midi_to_lv2_midi(LV2_Atom_Sequence* dst, int32_t dstCapacity, void* src)
-{
-	/*
-	mb[0-3] = 46; // int32_t LV2_Atom::size (excluding size and type)
-	mb[4-7] = 0; // int32_t LV2_Atom::type = urid_atom_sequence_type
-	 ...
-	*/
-
-	LV2_Atom* atom = (LV2_Atom*) (void*) dst;
-	atom->type = urid_atom_sequence_type;
-	atom->size = normalize_midi_event_for_lv2(dst + sizeof(dst->atom), dstCapacity - sizeof(dst->atom), src);
-}
+LV2_URID urid_atom_sequence_type{0}, urid_midi_event_type{0}, urid_time_frame{0};
 
 // returns true if there was at least one MIDI message in src.
-bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, void* src) {
+void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, void* src) {
 	assert(src != nullptr);
 	assert(forge != nullptr);
 
@@ -300,14 +209,6 @@ bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 	int32_t srcEnd = *((int *) src) + 4; // offset
 
 	unsigned char running_status = 0;
-
-	typedef struct {
-		LV2_Atom_Event event;
-		uint8_t        msg[8];
-	} MidiEventPadded;
-
-	MidiEventPadded ev;
-	bool hadEvent{false};
 
 	// This is far from precise. No support for sysex and meta, no run length.
 	while (srcN < srcEnd) {
@@ -331,10 +232,7 @@ bool normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 		lv2_atom_forge_raw(forge, csrc + srcN, midiEventSize);
 		lv2_atom_forge_pad(forge, midiEventSize);
 		srcN += midiEventSize;
-		if (!hadEvent)
-			hadEvent = true;
 	}
-	return hadEvent;
 }
 
 void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
@@ -348,14 +246,9 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 	if (buffer != ctx->cached_buffer)
 		resetPorts(plugin, buffer);
 
-
 	// convert AAP MIDI messages into Atom Sequence of MidiEvent.
 	for (auto p : ctx->midi_atom_buffers) {
 		void *src = buffer->buffers[p.first];
-		LV2_Atom_Sequence *dst = p.second;
-#if 0
-		convert_aap_midi_to_lv2_midi (dst, buffer->num_frames, src);
-#else
 		auto uridMap = &urid_map_feature_data;
 		auto forge = ctx->midi_atom_forge;
 		lv2_atom_forge_init(forge, uridMap);
@@ -365,19 +258,8 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 		auto seqRef = lv2_atom_forge_sequence_head(forge, &frame, urid_time_frame);
 		auto seq = (LV2_Atom_Sequence*) lv2_atom_forge_deref(forge, seqRef);
 		lv2_atom_forge_pop(forge, &frame);
-		bool hadMessage = normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
+		normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
 		seq->atom.size = forge->offset - sizeof(LV2_Atom);
-#endif
-        if (hadMessage) {
-            uint8_t *result = (uint8_t *) (dst);
-            for (int i = 0; i < 16; i++)
-                if (*((uint8_t *) src + i) != 0)
-                    aprintf("SRC[%d] %d ", i, *((uint8_t *) src + i));
-            for (int i = 0; i < 88; i++)
-                if (*((uint8_t *) result + i) != 0)
-                    aprintf("DST[%d] %d ", i, *(result + i));
-            aprintf("\n");
-        }
 	}
 
 	lilv_instance_run(ctx->instance, buffer->num_frames);
@@ -449,8 +331,6 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 		urid_atom_sequence_type = map->map(map->handle, LV2_ATOM__Sequence);
 		urid_midi_event_type = map->map(map->handle, LV2_MIDI__MidiEvent);
 		urid_time_frame = map->map(map->handle, LV2_TIME__frame);
-		urid_midi_noteon = map->map(map->handle, LV2_MIDI__NoteOn);
-		urid_midi_noteoff = map->map(map->handle, LV2_MIDI__NoteOff);
 	}
 
     auto ctx = new AAPLV2PluginContext(statics, world, plugin, instance);
