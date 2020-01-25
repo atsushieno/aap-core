@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <string>
 #if ANDROID
 #include <android/log.h>
 #endif
@@ -28,7 +29,7 @@
 namespace aaplv2bridge {
 
 typedef struct {
-    bool operator() (const char* p1, const char* p2) const { return strcmp (p1, p2) == 0; }
+    bool operator() (std::string p1, std::string p2) const { return p1 == p2; }
 } uricomp;
 
 // WARNING: NEVER EVER use this function and URID feature variable for loading and saving state.
@@ -36,12 +37,12 @@ typedef struct {
 // stable. The value of the mapped integers change every time we make changes to this code.
 LV2_URID urid_map_func (LV2_URID_Map_Handle handle, const char *uri)
 {
-    auto map = static_cast<std::map<const char*,LV2_URID>*> (handle);
-    auto it = map->find (uri);
+	auto map = static_cast<std::map<std::string,LV2_URID>*> (handle);
+    std::string s{uri};
+    auto it = map->find (s);
     if (it == map->end())
-        map->emplace (uri, map->size() + 1);
-    auto ret = map->find (uri)->second;
-    return ret;
+        map->emplace (s, map->size() + 1000);
+    return map->find(s)->second;
 }
 
 int avprintf(const char *fmt, va_list ap)
@@ -193,7 +194,7 @@ void aap_lv2_plugin_activate(AndroidAudioPlugin *plugin)
 	lilv_instance_activate(l->instance);
 }
 
-std::map<const char*,LV2_URID,uricomp> urid_map{};
+std::map<std::string,LV2_URID,uricomp> urid_map{};
 LV2_URID_Map urid_map_feature_data{ &urid_map, urid_map_func };
 LV2_URID urid_atom_sequence_type{0}, urid_midi_event_type{0}, urid_time_frame{0}, urid_midi_noteon{0}, urid_midi_noteoff{0};
 
@@ -355,7 +356,7 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 #if 0
 		convert_aap_midi_to_lv2_midi (dst, buffer->num_frames, src);
 #else
-		auto uridMap = &urid_map_feature_data; // (LV2_URID_Map*) lilv_instance_get_extension_data(ctx->instance, LV2_URID__map);
+		auto uridMap = &urid_map_feature_data;
 		auto forge = ctx->midi_atom_forge;
 		lv2_atom_forge_init(forge, uridMap);
 		lv2_atom_forge_set_buffer(forge, (uint8_t*) p.second, buffer->num_frames * sizeof(float));
@@ -399,6 +400,14 @@ void aap_lv2_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginStat
     /* apply argument input */
 }
 
+LV2_Feature* features [6];
+LV2_Log_Log logData { NULL, log_printf, log_vprintf };
+LV2_Feature uridFeature { LV2_URID__map, &urid_map_feature_data };
+LV2_Feature logFeature { LV2_LOG_URI, &logData };
+LV2_Feature bufSizeFeature { LV2_BUF_SIZE_URI, NULL };
+LV2_Feature atomFeature { LV2_ATOM_URI, NULL };
+LV2_Feature timeFeature { LV2_TIME_URI, NULL };
+
 AndroidAudioPlugin* aap_lv2_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char* pluginUniqueID,
@@ -417,13 +426,6 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 	statics->atom_port_uri_node = lilv_new_uri (world, LV2_ATOM__AtomPort);
 
     auto allPlugins = lilv_world_get_all_plugins (world);
-    LV2_Feature* features [6];
-    LV2_Log_Log logData { NULL, log_printf, log_vprintf };
-    LV2_Feature uridFeature = { LV2_URID__map, &urid_map_feature_data };
-    LV2_Feature logFeature = { LV2_LOG_URI, &logData };
-    LV2_Feature bufSizeFeature = { LV2_BUF_SIZE_URI, NULL };
-    LV2_Feature atomFeature = { LV2_ATOM_URI, NULL };
-	LV2_Feature timeFeature = { LV2_TIME_URI, NULL };
     // FIXME: convert those AAP extensions to LV2 features
     features [0] = &uridFeature;
     features [1] = &logFeature;
