@@ -1,7 +1,8 @@
 
 #include <string>
 #include <vector>
-#include <filesystem>
+#include <dirent.h>
+#include <libgen.h>
 #include <sys/utsname.h>
 #include "../include/aap/android-audio-plugin-host.hpp"
 
@@ -10,7 +11,7 @@ namespace aap
 
 class GenericDesktopPluginHostPAL : public PluginHostPAL
 {
-    std::vector<std::string> ret{};
+    std::vector<std::string> cached_search_paths{};
 #ifdef WINDOWS
     char sep = ';';
 #else
@@ -18,34 +19,41 @@ class GenericDesktopPluginHostPAL : public PluginHostPAL
 #endif
 
 public:
-    std::vector<PluginInformation*> loadPluginListCache() override {
-        assert(false); // FIXME: implement
-    }
+	std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override {
+		std::vector<PluginInformation *> ret{};
+		for (auto p : aapMetadataPaths) {
+			char* pc = strdup(p.c_str());
+			for (auto x : PluginInformation::parsePluginDescriptor(pc, pc))
+				ret.emplace_back(x);
+			free(pc);
+		}
+		return ret;
+	}
 
-    std::vector<PluginInformation*> getInstalledPlugins() override {
-        std::vector<PluginInformation *> ret{};
-        for (auto p : getPluginPaths())
-            iterateDirectory(p, ret);
-        return ret;
-    }
+	std::string getFullPath(std::string path, dirent* entry) {
+		return path + (path[path.length() - 1] == '/' ? "" : "/") + entry->d_name;
+	}
 
-    void iterateDirectory(std::filesystem::path path, std::vector<PluginInformation *> &ret)
-    {
-        if (!std::filesystem::exists(path))
-            return;
-        for(const auto &entry : std::filesystem::directory_iterator(path)) {
-            if (!entry.is_directory() && entry.path().filename() == "aap_metadata.xml") {
-                for (auto x : PluginInformation::parsePluginDescriptor("", entry.path().c_str()))
-                    ret.emplace_back(x);
-            }
-            else if (entry.is_directory())
-                iterateDirectory(entry, ret);
-        }
-    }
+	void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override
+	{
+		auto cpath = strdup(path.c_str());
+    	DIR* dir = opendir(cpath);
+    	if(dir != nullptr) {
+			while (auto entry = readdir(dir)) {
+				if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+					continue;
+				if (strcasecmp(entry->d_name, "aap_metadata.xml") == 0)
+					results.emplace_back(getFullPath(path, entry));
+				else if (entry->d_type == DT_DIR)
+					getAAPMetadataPaths(getFullPath(path, entry).c_str(), results);
+			}
+		}
+		free(cpath);
+	}
 
-    std::vector<std::string> getPluginPaths() {
-        if (ret.size() > 0)
-            return ret;
+    std::vector<std::string> getPluginPaths() override {
+        if (cached_search_paths.size() > 0)
+            return cached_search_paths;
 
         auto aappath = getenv("AAP_PLUGIN_PATH");
         if (aappath != nullptr) {
@@ -55,32 +63,32 @@ public:
                 int si = ap.find_first_of(sep, idx);
                 if (si < 0) {
                     if (idx < ap.size())
-                        ret.emplace_back(std::string(ap.substr(idx, ap.size())));
+						cached_search_paths.emplace_back(std::string(ap.substr(idx, ap.size())));
                     break;
                 }
-                ret.emplace_back(std::string(ap.substr(idx, si)));
+				cached_search_paths.emplace_back(std::string(ap.substr(idx, si)));
                 idx = si + 1;
             }
-            return ret;
+            return cached_search_paths;
         }
 
         struct utsname un{};
         uname(&un);
 #ifdef WINDOWS
-        ret.emplace_back("c:\\AAP Plugins");
-        ret.emplace_back("c:\\Program Files[\\AAP Plugins");
+		cached_search_paths.emplace_back("c:\\AAP Plugins");
+        cached_search_paths.emplace_back("c:\\Program Files[\\AAP Plugins");
 #else
         if (strcmp(un.sysname, "Darwin") == 0) {
-            ret.emplace_back(std::string(getenv("HOME")) + "/Library/Audio/Plug-ins/AAP");
-            ret.emplace_back("/Library/Audio/Plug-ins/AAP");
+			cached_search_paths.emplace_back(std::string(getenv("HOME")) + "/Library/Audio/Plug-ins/AAP");
+			cached_search_paths.emplace_back("/Library/Audio/Plug-ins/AAP");
         } else {
-            ret.emplace_back(std::string(getenv("HOME")) + "/.aap");
-            ret.emplace_back("/usr/local/lib/aap");
-            ret.emplace_back("/usr/lib/aap");
+			cached_search_paths.emplace_back(std::string(getenv("HOME")) + "/.aap");
+			cached_search_paths.emplace_back("/usr/local/lib/aap");
+			cached_search_paths.emplace_back("/usr/lib/aap");
         }
 #endif
 
-        return ret;
+        return cached_search_paths;
     }
 };
 

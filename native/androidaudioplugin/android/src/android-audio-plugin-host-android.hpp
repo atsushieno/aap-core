@@ -30,13 +30,26 @@ class AndroidPluginHostPAL : public PluginHostPAL
 	std::vector<PluginInformation*> queryInstalledPlugins();
 
 public:
-	std::vector<PluginInformation*> getInstalledPlugins() override {
-		return queryInstalledPlugins();
-	}
+    std::vector<std::string> getPluginPaths() override {
+        std::vector<std::string> ret{};
+        for (auto c : serviceConnections)
+            ret.emplace_back(c.serviceIdentifier);
+        return ret;
+    }
 
-	std::vector<PluginInformation*> loadPluginListCache() override {	
-		assert(false); // FIXME: implement
-	}
+    void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override {
+        // On Android there is no access to directories for each service. Only service identifier is passed.
+        // Therefore, we simply add "path" which actually is a service identifier, to the results.
+        results.emplace_back(path);
+    }
+
+    std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override {
+        std::vector<PluginInformation*> results{};
+        for (auto p : plugin_list_cache)
+            if (std::find(aapMetadataPaths.begin(), aapMetadataPaths.end(), p->getContainerIdentifier()) != aapMetadataPaths.end())
+                results.emplace_back(p);
+        return results;
+    }
 
 	// FIXME: move them back to private
 	jobject globalApplicationContext{nullptr};
@@ -51,7 +64,6 @@ public:
 	}
 
 	void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
-	void cleanupKnownPlugins();
 
 	AIBinder *getBinderForServiceConnection(std::string serviceIdentifier);
 	AIBinder *getBinderForServiceConnectionForPlugin(std::string pluginId);

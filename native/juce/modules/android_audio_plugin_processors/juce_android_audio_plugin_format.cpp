@@ -1,6 +1,7 @@
 
 #include "juce_android_audio_plugin_format.h"
 #include <sys/mman.h>
+#include <libgen.h>
 #include <unistd.h>
 #if ANDROID
 #include <android/sharedmem.h>
@@ -187,21 +188,22 @@ void AndroidAudioPluginInstance::fillInPluginDescription(PluginDescription &desc
 
 const aap::PluginInformation *
 AndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) {
-    auto it = cached_descs.begin();
-    while (it.next())
-        if (it.getValue()->uid == desc.uid)
-            return it.getKey();
-    return NULL;
+	for (auto p : getPluginHostPAL()->getInstalledPlugins())
+		if (strcmp(p->getPluginID().c_str(), desc.fileOrIdentifier.toRawUTF8()) == 0)
+			return p;
+	return nullptr;
 }
 
 AndroidAudioPluginFormat::AndroidAudioPluginFormat()
         : android_host(aap::PluginHost()) {
+#if ANDROID
     for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
         auto d = android_host.getPluginDescriptorAt(i);
         auto dst = new PluginDescription();
         fillPluginDescriptionFromNative(*dst, *d);
         cached_descs.set(d, dst);
     }
+#endif
 }
 
 AndroidAudioPluginFormat::~AndroidAudioPluginFormat() {
@@ -212,19 +214,27 @@ AndroidAudioPluginFormat::~AndroidAudioPluginFormat() {
 
 void AndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescription> &results,
                                                    const String &fileOrIdentifier) {
+	// For Android `fileOrIdentifier` is a service name, and for desktop it is a specific `aap_metadata.xml` file.
+#if ANDROID
     auto id = fileOrIdentifier.toRawUTF8();
-    // FIXME: everything is already cached, so this can be simplified.
-    for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
-        auto d = android_host.getPluginDescriptorAt(i);
-        if (strcmp(id, d->getName().data()) == 0 ||
-            strcmp(id, d->getPluginID().data()) == 0) {
-            auto dst = cached_descs[d];
-            if (!dst)
-                // doesn't JUCE handle invalid fileOrIdentifier?
-                return;
-            results.add(dst);
+    // So far there is no way to perform query (without Java help) it is retrieved from cached list.
+    for (aap::PluginInformation* p : getPluginHostPAL()->getPluginListCache()) {
+        if (strcmp(p->getContainerIdentifier().c_str(), id) == 0) {
+            auto d = new PluginDescription();
+            fillPluginDescriptionFromNative(*d, *p);
+            results.add(d);
         }
     }
+#else
+	auto metadataPath = fileOrIdentifier.toRawUTF8();
+	for (auto d : PluginInformation::parsePluginDescriptor(metadataPath, metadataPath)) {
+		auto dst = new PluginDescription();
+		fillPluginDescriptionFromNative(*dst, *d);
+		results.add(dst);
+		// FIXME: not sure if we should add it here. There is no ther timing to do this at desktop.
+		cached_descs.set(d, dst);
+	}
+#endif
 }
 
 void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &description,
@@ -244,4 +254,30 @@ void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &des
         callback(std::move(instance), error);
     }
 }
+
+StringArray AndroidAudioPluginFormat::searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
+								  bool recursive,
+								  bool allowPluginsWhichRequireAsynchronousInstantiation) {
+	std::vector<std::string> paths{};
+	for (int i = 0; i < directoriesToSearch.getNumPaths(); i++)
+		getPluginHostPAL()->getAAPMetadataPaths(directoriesToSearch[i].getFullPathName().toRawUTF8(), paths);
+	StringArray ret{};
+	for (auto p : paths)
+		ret.add(p);
+	return ret;
+}
+
+// Unlike desktop system, it is not practical to either look into file systems
+// on Android. And it is simply impossible to "enumerate" asset directories.
+// Therefore we simply return empty list.
+FileSearchPath AndroidAudioPluginFormat::getDefaultLocationsToSearch() {
+	FileSearchPath ret{};
+	for (auto path : getPluginHostPAL()->getPluginPaths()) {
+		File dir{path};
+		if (dir.exists())
+			ret.add(dir);
+	}
+	return ret;
+}
+
 } // namespace

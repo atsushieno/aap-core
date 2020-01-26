@@ -77,7 +77,7 @@ class PluginInformation
 	bool is_out_process;
 
 	// basic information
-	std::string service_identifier{}; // optional for apps, host needs to query it missing and needed.
+	std::string container_identifier{}; // serviceName for Android, aap_metadata path for desktop. Optional for apps, host needs to query it missing and needed.
 	std::string name{};
 	std::string manufacturer_name{};
 	std::string version{};
@@ -97,15 +97,15 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
-	static std::vector<PluginInformation*> parsePluginDescriptor(const char* serviceIdentifier, const char* xmlfile);
+	static std::vector<PluginInformation*> parsePluginDescriptor(const char* containerIdentifier, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, std::string serviceIdentifier, std::string pluginName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
+	PluginInformation(bool isOutProcess, std::string containerIdentifier, std::string pluginName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
 		: is_out_process(isOutProcess),
-		  service_identifier(serviceIdentifier),
+		  container_identifier(containerIdentifier),
 		  name(pluginName),
 		  manufacturer_name(manufacturerName),
 		  version(versionString),
@@ -126,9 +126,9 @@ public:
 	{
 	}
 
-	const std::string getServiceIdentifier() const
+	const std::string getContainerIdentifier() const
 	{
-		return service_identifier;
+		return container_identifier;
 	}
 
 	const std::string getName() const
@@ -276,21 +276,40 @@ class PluginHostBackendVST3 : public PluginHostBackend
 
 class PluginHostPAL
 {
+protected:
 	// FIXME: move to PluginHost
-	std::vector<PluginInformation*> _local_plugin_infos{};
+	std::vector<PluginInformation*> plugin_list_cache{};
 
 public:
 	~PluginHostPAL() {
-		for (auto plugin : _local_plugin_infos)
+		for (auto plugin : plugin_list_cache)
 			delete plugin;
 	}
 
-	virtual std::vector<PluginInformation*> getInstalledPlugins() = 0;
-	virtual std::vector<PluginInformation*> loadPluginListCache() = 0;
+	virtual std::vector<std::string> getPluginPaths() = 0;
+	virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
+	virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
 
 	// FIXME: move to PluginHost
-	std::vector<PluginInformation*> getPluginListCache();
-    void setPluginListCache(std::vector<PluginInformation*> pluginInfos);
+	std::vector<PluginInformation*> getPluginListCache() { return plugin_list_cache; }
+
+	// FIXME: move to PluginHost
+    void setPluginListCache(std::vector<PluginInformation*> pluginInfos) {
+    	plugin_list_cache.clear();
+    	for (auto p : pluginInfos)
+    		plugin_list_cache.emplace_back(p);
+    }
+
+	std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr) {
+		auto ret = plugin_list_cache;
+		if (ret.size() > 0)
+			return ret;
+		std::vector<std::string> aapPaths{};
+		for (auto path : getPluginPaths())
+			getAAPMetadataPaths(path, aapPaths);
+		ret = getPluginsFromMetadataPaths(aapPaths);
+		return ret;
+	}
 };
 
 PluginHostPAL* getPluginHostPAL();

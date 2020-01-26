@@ -176,24 +176,14 @@ public:
 		return true;
 	}
 
-	inline StringArray searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
+	StringArray searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
 									  bool recursive,
-									  bool allowPluginsWhichRequireAsynchronousInstantiation = false) override {
-		// regardless of whatever parameters this function is passed, it is
-		// impossible to change the list of detected plugins.
-		StringArray ret;
-		for (int i = 0; i < android_host.getNumPluginDescriptors(); i++)
-			ret.add(android_host.getPluginDescriptorAt(i)->getPluginID());
-		return ret;
-	}
+									  bool allowPluginsWhichRequireAsynchronousInstantiation = false) override;
 
 	// Unlike desktop system, it is not practical to either look into file systems
 	// on Android. And it is simply impossible to "enumerate" asset directories.
 	// Therefore we simply return empty list.
-	inline FileSearchPath getDefaultLocationsToSearch() override {
-		FileSearchPath ret("");
-		return ret;
-	}
+	FileSearchPath getDefaultLocationsToSearch() override;
 
 	inline bool isTrivialToScan() const override { return false; }
 

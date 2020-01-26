@@ -11,7 +11,7 @@
 namespace aap
 {
 
-void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
+void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
     tinyxml2::XMLDocument doc;
     auto error = doc.LoadFile(xmlfile);
@@ -28,7 +28,7 @@ void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char*
         auto library = pluginElement->Attribute("library");
         auto entrypoint = pluginElement->Attribute("entrypoint");
         auto plugin = new PluginInformation(false,
-                serviceIdentifier ? serviceIdentifier : "",
+                containerIdentifier ? containerIdentifier : "",
                 name ? name : "",
                 manufacturer ? manufacturer : "",
                 version ? version : "",
@@ -60,17 +60,17 @@ void aap_parse_plugin_descriptor_into(const char* serviceIdentifier, const char*
     }
 }
 
-std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const char * serviceIdentifier, const char* xmlfile)
+std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const char * containerIdentifier, const char* xmlfile)
 {
 	std::vector<PluginInformation*> plugins{};
-	aap_parse_plugin_descriptor_into(serviceIdentifier, xmlfile, plugins);
+	aap_parse_plugin_descriptor_into(containerIdentifier, xmlfile, plugins);
 	return plugins;
 }
 
 PluginHost::PluginHost()
 {
 	auto pal = getPluginHostPAL();
-	updateKnownPlugins(pal->getPluginListCache());
+	updateKnownPlugins(pal->getInstalledPlugins());
 }
 
 void PluginHost::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
@@ -144,7 +144,4 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 
-std::vector<PluginInformation*> PluginHostPAL::getPluginListCache() { return _local_plugin_infos; }
-
-void PluginHostPAL::setPluginListCache(std::vector<PluginInformation *> pluginInfos) { _local_plugin_infos = pluginInfos; }
 } // namespace

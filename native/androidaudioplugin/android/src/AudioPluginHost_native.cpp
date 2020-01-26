@@ -171,8 +171,6 @@ void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHost(JNIEnv *
 
 void Java_org_androidaudioplugin_AudioPluginNatives_cleanupLocalHostNatives(JNIEnv *env, jclass cls)
 {
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	apal->cleanupKnownPlugins();
 }
 
 JNIEXPORT void JNICALL
