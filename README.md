@@ -453,7 +453,7 @@ AAP is a framework which is also intended to be cross platform on Unix and optio
 
 It is up to hosting application, but there is a normative way to look up AAPs on the system. Unlike Android, they don't have to exist as services. Although the AAP manifest takes place to provide plugin listing. It contains `library` and `entrypoint` that can be simply reused on other platforms.
 
-For a normative AAP host, `AAP_SEARCH_PATH` environment variable is used to look up AAPs on the specified paths. The environment variable contains the list of paths which are joined by platform-specific separator. Here is the list of well-known `AAP_SEARCH_PATH` values per platform:
+For a normative AAP host, `AAP_PLUGIN_PATH` environment variable is used to look up AAPs on the specified paths. The environment variable contains the list of paths which are joined by platform-specific separator. Here is the list of well-known `AAP_PLUGIN_PATH` values per platform:
 
 - Linux and other Unix variants: `$HOME/.aap:/usr/local/lib/aap:/usr/lib/aap`
 - MacOS (not sure if it will be supported): `$HOME/Library/Audio/Plug-ins/AAP:/Library/Audio/Plug-ins/AAP`
@@ -465,11 +465,11 @@ For a normative AAP host, `AAP_SEARCH_PATH` environment variable is used to look
 
 JUCE is designed to be extensible to include other audio plugin formats. So far, we have created AAP JUCE audio processor so that apps that host audio plugins can also host AAPs.
 
-`native/juce/` directory contains juce:AudioPluginFormat implementation and related stuff for AAP. It is part of `AAPAudioPluginHost` application which is some patched AudioPluginHost extra application in JUCE SDK.
+`native/juce/` directory contains juce:AudioPluginFormat implementation and related stuff for AAP. It is part of `JuceAAPAudioPluginHost` application which is some patched version of `AudioPluginHost` extra application in JUCE SDK.
 
 For details, follow another `README.md` in that directory.
 
-It builds on Android and it can launch, enumerate the installed audio plugins on the system, and instantiate each plugin (only one can be instantiated), but audio inputs are not verified to work and MIDI integration does not work yet. But we verified only with existing LV2 port samples so far, so they might actually work. (Our objective here is to bring in existing audio plugins so it will be revisited once we have achived some interoperability.)
+It builds on Android and desktop (confirmed only on Linux so far). It can launch, enumerate the installed audio plugins on the system, and instantiate each plugin (only one can be instantiated), but audio inputs are not verified to work. There are couple of github issues that are tagged as `JUCE`.
 
 ### Licensing notice
 
@@ -503,7 +503,7 @@ CMake is used as **part of** the entire builds, for building native part of the 
 
 gradle is used as **part of** the entire builds, for Android application samples and libraries.
 
-Once native dependencies is set up, Android Studio can be used for development by opening `java` directory.
+Once native dependencies are set up, Android Studio can be used for development by opening `java` directory.
 
 
 ## Build Dependencies
