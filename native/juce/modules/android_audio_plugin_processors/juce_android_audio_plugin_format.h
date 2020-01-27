@@ -59,19 +59,21 @@ public:
 class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	aap::PluginInstance *native;
 	int sample_rate;
-	AndroidAudioPluginBuffer buffer;
+	std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
+	std::map<int32_t,int32_t> portMapAapToJuce{};
 
-	void fillNativeAudioBuffers(AndroidAudioPluginBuffer *dst, AudioBuffer<float> &buffer);
-
-	void fillNativeMidiBuffers(AndroidAudioPluginBuffer *dst, MidiBuffer &buffer);
-
-	int getNumBuffers(AndroidAudioPluginBuffer *buffer);
+	void fillNativeInputBuffers(AudioBuffer<float> &audioBuffer, MidiBuffer &midiBuffer);
+	void fillNativeOutputBuffers(AudioBuffer<float> &buffer);
 
     void allocateSharedMemory(int bufferIndex, int32_t size);
 
 public:
 
 	AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin);
+	~AndroidAudioPluginInstance() {
+		delete buffer->shared_memory_fds;
+		delete buffer->buffers;
+	}
 
 	inline const String getName() const override {
 		return native->getPluginDescriptor()->getName();
@@ -136,6 +138,7 @@ public:
 
 class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
 	aap::PluginHost android_host;
+	OwnedArray<PluginDescription> juce_plugin_descs;
 	HashMap<const aap::PluginInformation *, PluginDescription *> cached_descs;
 
 	const aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc);

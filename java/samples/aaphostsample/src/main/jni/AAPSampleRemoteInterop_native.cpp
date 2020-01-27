@@ -128,13 +128,13 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
             *(int*) mb = length;
 			mb[4] = 0; // program change
 			mb[5] = 0xC0;
-			mb[6] = 0; // note on
-            mb[7] = 0;
+			mb[6] = 0;
+            mb[7] = 0; // note on
             mb[8] = 0x90;
             mb[9] = 0x45;
             mb[10] = 0x70;
             mb[11] = 0x8C; // note off
-            mb[12] = 0x10;
+            mb[12] = 0x08;
             mb[13] = 0x80;
             mb[14] = 0x45;
             mb[15] = 0x00;

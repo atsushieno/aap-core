@@ -102,6 +102,7 @@ public:
 	~AAPLV2PluginContext() {
 		for (auto p : midi_atom_buffers)
 			free(p.second);
+		free(midi_atom_forge);
 	}
 
     AAPLV2PluginContextStatics *statics;

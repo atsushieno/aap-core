@@ -417,7 +417,7 @@ public:
 	{
 		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 		
-		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().data(), sampleRate, extensions);
+		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions);
 		plugin->prepare(plugin, preparedBuffer);
 		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
