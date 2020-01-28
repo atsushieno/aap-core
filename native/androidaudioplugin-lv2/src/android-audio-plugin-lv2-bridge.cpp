@@ -197,17 +197,17 @@ void aap_lv2_plugin_activate(AndroidAudioPlugin *plugin)
 
 std::map<std::string,LV2_URID,uricomp> urid_map{};
 LV2_URID_Map urid_map_feature_data{ &urid_map, urid_map_func };
-LV2_URID urid_atom_sequence_type{0}, urid_midi_event_type{0}, urid_time_frame{0};
+LV2_URID urid_atom_sequence_type{0}, urid_midi_event_type{0}, urid_time_frame{0}, urid_time_beats{0};
 
 // returns true if there was at least one MIDI message in src.
-void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, void* src) {
+void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence* seq, int32_t dstCapacity, int timeDivision, void* src) {
 	assert(src != nullptr);
 	assert(forge != nullptr);
 
-	int srcN = 4;
+	int srcN = 8;
 
-	auto csrc = (unsigned char *) src;
-	int32_t srcEnd = *((int *) src) + 4; // offset
+	auto csrc = (uint8_t*) src;
+	int32_t srcEnd = *((int*) src + 1) + 4; // offset
 
 	unsigned char running_status = 0;
 
@@ -215,19 +215,26 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 	while (srcN < srcEnd) {
 		// MIDI Event message
 		// Atom Event header
-		long timeFrame = 0;
+		long timecode = 0;
+		int digits = 0;
 		while (csrc[srcN] >= 0x80) // variable length
-			timeFrame = (timeFrame << 7) + csrc[srcN++];
-		timeFrame += csrc[srcN++];
-		// FIXME: get the right time frame value.
+			timecode += ((csrc[srcN++] - 0x80) << (7 * digits++));
+		timecode += (csrc[srcN++] << (7 * digits));
 
 		uint8_t statusByte = csrc[srcN] >= 0x80 ? csrc[srcN] : running_status;
 		running_status = statusByte;
 		uint8_t eventType = statusByte & 0xF0;
 		uint32_t midiEventSize = (eventType != 0xC0 && eventType != 0xD0) ? 3 : 2;
 
+		if(timeDivision > 0x7FFF) {
+			// should be "fps" part take into consideration here? framesPerSecond is already specified as numFrames.
+			uint8_t ticksPerFrame = timeDivision & 0xFF;
+			lv2_atom_forge_frame_time(forge, timecode / ticksPerFrame);
+		} else {
+			// FIXME: find what kind of semantics LV2 timecode assumes.
+			lv2_atom_forge_beat_time(forge, timecode / timeDivision * 120 / 60);
+		}
 		// FIXME: support Fn messages.
-		lv2_atom_forge_frame_time(forge, timeFrame);
 		lv2_atom_forge_raw(forge, &midiEventSize, sizeof(int));
 		lv2_atom_forge_raw(forge, &urid_midi_event_type, sizeof(int));
 		lv2_atom_forge_raw(forge, csrc + srcN, midiEventSize);
@@ -256,10 +263,11 @@ void aap_lv2_plugin_process(AndroidAudioPlugin *plugin,
 		lv2_atom_forge_set_buffer(forge, (uint8_t*) p.second, buffer->num_frames * sizeof(float));
 		LV2_Atom_Forge_Frame frame;
 		lv2_atom_sequence_clear(p.second);
-		auto seqRef = lv2_atom_forge_sequence_head(forge, &frame, urid_time_frame);
+		int32_t timeDivision = *((int*) src) & 0xFFFF;
+		auto seqRef = lv2_atom_forge_sequence_head(forge, &frame, timeDivision > 0x7FFF ? urid_time_frame : urid_time_beats);
 		auto seq = (LV2_Atom_Sequence*) lv2_atom_forge_deref(forge, seqRef);
 		lv2_atom_forge_pop(forge, &frame);
-		normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, src);
+		normalize_midi_event_for_lv2_forge(forge, seq, buffer->num_frames, timeDivision, src);
 		seq->atom.size = forge->offset - sizeof(LV2_Atom);
 	}
 
@@ -331,7 +339,8 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
 		auto map = (LV2_URID_Map*) uridFeature.data;
 		urid_atom_sequence_type = map->map(map->handle, LV2_ATOM__Sequence);
 		urid_midi_event_type = map->map(map->handle, LV2_MIDI__MidiEvent);
-		urid_time_frame = map->map(map->handle, LV2_TIME__frame);
+		urid_time_beats = map->map(map->handle, LV2_ATOM__beatTime);
+		urid_time_frame = map->map(map->handle, LV2_ATOM__frameTime);
 	}
 
     auto ctx = new AAPLV2PluginContext(statics, world, plugin, instance);

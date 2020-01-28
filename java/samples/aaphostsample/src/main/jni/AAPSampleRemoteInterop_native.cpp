@@ -123,21 +123,33 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 	// prepare control inputs - dummy
 	for (int p = 0; p < buffer_shm_fds.size(); p++) {
 	    if (p == midiInPort) {
-			auto mb = (char*) plugin_buffer->buffers[p];
-			int length = 12;
-            *(int*) mb = length;
-			mb[4] = 0; // program change
-			mb[5] = 0xC0;
-			mb[6] = 0;
-            mb[7] = 0; // note on
-            mb[8] = 0x90;
-            mb[9] = 0x45;
-            mb[10] = 0x70;
-            mb[11] = 0x8C; // note off
-            mb[12] = 0x08;
-            mb[13] = 0x80;
-            mb[14] = 0x45;
-            mb[15] = 0x00;
+            auto mb = (uint8_t*) plugin_buffer->buffers[p];
+            int length = 20;
+            int16_t fps = -30;
+            int16_t ticksPerFrame = 100;
+            *((int*) mb) = 0xF000 | ticksPerFrame | (fps << 8); // 30fps, 100 ticks per frame
+            //*(int*) mb = 480;
+            *((int*) mb + 1) = length;
+            mb[8] = 0; // program change
+            mb[9] = 0xC0;
+            mb[10] = 0;
+            mb[11] = 0; // note on
+            mb[12] = 0x90;
+            mb[13] = 0x39;
+            mb[14] = 0x70;
+            mb[15] = 0; // note on
+            mb[16] = 0x90;
+            mb[17] = 0x3D;
+            mb[18] = 0x70;
+            mb[19] = 0; // note on
+            mb[20] = 0x90;
+            mb[21] = 0x40;
+            mb[22] = 0x70;
+            mb[23] = 0x80; // note off
+            mb[24] = 0x70;
+            mb[25] = 0x80;
+            mb[26] = 0x45;
+            mb[27] = 0x00;
         }
 		else if (pluginInfo->getPort(p)->getContentType() == aap::AAP_CONTENT_TYPE_UNDEFINED)
 			for (int i = 0; i < float_count; i++)
