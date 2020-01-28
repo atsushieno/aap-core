@@ -217,14 +217,30 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 		// Atom Event header
 		long timecode = 0;
 		int digits = 0;
-		while (csrc[srcN] >= 0x80) // variable length
+		while (csrc[srcN] >= 0x80 && srcN < srcEnd) // variable length
 			timecode += ((csrc[srcN++] - 0x80) << (7 * digits++));
+		if (srcN == srcEnd)
+			break; // invalid data
 		timecode += (csrc[srcN++] << (7 * digits));
 
 		uint8_t statusByte = csrc[srcN] >= 0x80 ? csrc[srcN] : running_status;
 		running_status = statusByte;
 		uint8_t eventType = statusByte & 0xF0;
-		uint32_t midiEventSize = (eventType != 0xC0 && eventType != 0xD0) ? 3 : 2;
+		uint32_t midiEventSize = 3;
+		int sysexPos = srcN;
+		switch (eventType) {
+		case 0xF0:
+			midiEventSize = 2; // F0 + F7
+			while (csrc[sysexPos++] != 0xF7 && sysexPos < srcEnd)
+				midiEventSize++;
+			break;
+		case 0xC0: case 0xD0: case 0xF1: case 0xF3: case 0xF9: midiEventSize = 2; break;
+		case 0xF6: case 0xF7: midiEventSize = 1; break;
+		default:
+			if (eventType > 0xF8)
+				midiEventSize = 1;
+			break;
+		}
 
 		if(timeDivision > 0x7FFF) {
 			// should be "fps" part take into consideration here? framesPerSecond is already specified as numFrames.
@@ -234,7 +250,6 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 			// FIXME: find what kind of semantics LV2 timecode assumes.
 			lv2_atom_forge_beat_time(forge, timecode / timeDivision * 120 / 60);
 		}
-		// FIXME: support Fn messages.
 		lv2_atom_forge_raw(forge, &midiEventSize, sizeof(int));
 		lv2_atom_forge_raw(forge, &urid_midi_event_type, sizeof(int));
 		lv2_atom_forge_raw(forge, csrc + srcN, midiEventSize);
