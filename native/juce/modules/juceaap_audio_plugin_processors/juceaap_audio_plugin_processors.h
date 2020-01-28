@@ -1,7 +1,7 @@
 /*
 BEGIN_JUCE_MODULE_DECLARATION
 
-ID: android_audio_plugin_processors
+ID: juceaap_audio_plugin_processors
 vendor: atsushieno
 version: 0.1.0
 name: AAP JUCE hosting support
