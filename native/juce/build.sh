@@ -1,5 +1,10 @@
 #!/bin/sh
 
+CURDIR="$( cd `dirname $0` >/dev/null 2>&1 && pwd )"
+
+echo "Entering $CURDIR ..."
+cd $CURDIR
+
 $JUCE_DIR/Projucer --resave android-audio-plugin-framework.jucer
 
 # There is no way to generate those files in Projucer.
