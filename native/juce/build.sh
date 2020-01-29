@@ -2,6 +2,8 @@
 
 CURDIR="$( cd `dirname $0` >/dev/null 2>&1 && pwd )"
 
+ANDROID_SDK_OVERRIDE=$HOME/Android/Sdk
+
 echo "Entering $CURDIR ..."
 cd $CURDIR
 
@@ -16,6 +18,8 @@ mv Builds/CLion/CMakeLists.txt.patched Builds/CLion/CMakeLists.txt
 
 # This does not work on bitrise (Ubuntu 16.04) because libfreetype6-dev is somehow too old and lacks some features that is uncaught. Disabled.
 # cd Builds/LinuxMakefile && make && cd ../..
+
+echo "ndk.dir=$ANDROID_SDK_OVERRIDE/ndk/20.0.5594570\nsdk.dir=$ANDROID_SDK_OVERRIDE" > Builds/Android/local.properties
 
 cd Builds/Android && ./gradlew -d build && cd ../..
 
