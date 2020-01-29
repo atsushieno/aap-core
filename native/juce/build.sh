@@ -14,7 +14,8 @@ cp copy-into-generated-project.gradle.properties Builds/Android/gradle.propertie
 sed -e "s/project (\"JuceAAPAudioPluginHost\" C CXX)/project (\"JuceAAPAudioPluginHost\" C CXX)\n\nlink_directories (\n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/build\/native\/androidaudioplugin \n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/build\/native\/androidaudioplugin-lv2) \n\n/" Builds/CLion/CMakeLists.txt  > Builds/CLion/CMakeLists.txt.patched
 mv Builds/CLion/CMakeLists.txt.patched Builds/CLion/CMakeLists.txt
 
-cd Builds/LinuxMakefile && make && cd ../..
+# This does not work on bitrise (Ubuntu 16.04) because libfreetype6-dev is somehow too old and lacks some features that is uncaught. Disabled.
+# cd Builds/LinuxMakefile && make && cd ../..
 
 cd Builds/Android && ./gradlew -d build && cd ../..
 
