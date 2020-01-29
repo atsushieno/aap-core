@@ -124,7 +124,7 @@ AndroidAudioPluginInstance::AndroidAudioPluginInstance(aap::PluginInstance *nati
     	if (port->getPortDirection() != AAP_PORT_DIRECTION_INPUT || port->getContentType() != AAP_CONTENT_TYPE_UNDEFINED)
     		continue;
 		portMapAapToJuce[i] = getNumParameters();
-        addParameter(new AndroidAudioPluginParameter(port));
+        addParameter(new AndroidAudioPluginParameter(i, this, port));
 	}
 }
 
@@ -141,6 +141,21 @@ void AndroidAudioPluginInstance::allocateSharedMemory(int bufferIndex, int32_t s
 	//buffer->buffers[bufferIndex] = calloc(size, 1);
     assert(buffer->buffers[bufferIndex]);
 #endif
+}
+
+void AndroidAudioPluginInstance::updateParameterValue(AndroidAudioPluginParameter* parameter)
+{
+    int i = parameter->getAAPParameterIndex();
+
+    if(getNumParameters() <= i) return; // too early to reach here.
+
+    // In JUCE, control parameters are passed as a single value, while LV2 (in general?) takes values as a buffer.
+    // It is inefficient to fill buffer every time, so we juse set a value here.
+    // FIXME: it is actually argurable which is more efficient, as it is possible that JUCE control parameters are
+    //  more often assigned. Maybe we should have something like port properties that describes more characteristics
+    //  like LV2 "expensive" port property (if that really is for it), and make use of them.
+    float v = this->getParameters()[portMapAapToJuce[i]]->getValue();
+    std::fill_n((float *) buffer->buffers[i], buffer->num_frames, v);
 }
 
 void
@@ -161,10 +176,8 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
 
 	for (int i = 0; i < n; i++) {
 		auto port = native->getPluginDescriptor()->getPort(i);
-		if (port->getContentType() == AAP_CONTENT_TYPE_UNDEFINED && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
-			float v = this->getParameters()[portMapAapToJuce[i]]->getValue();
-			std::fill_n((float *) buffer->buffers[i], buffer->num_frames, v);
-		}
+		if (port->getContentType() == AAP_CONTENT_TYPE_UNDEFINED && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+		    updateParameterValue(dynamic_cast<AndroidAudioPluginParameter*>(getParameters()[portMapAapToJuce[i]]));
 	}
     native->activate();
 }

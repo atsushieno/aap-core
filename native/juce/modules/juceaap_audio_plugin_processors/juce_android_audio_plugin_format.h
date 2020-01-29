@@ -23,40 +23,11 @@ public:
     */
 };
 
-class AndroidAudioPluginParameter : public juce::AudioProcessorParameter {
-    friend class AndroidAudioPluginInstance;
-
-    const aap::PortInformation *impl;
-
-    AndroidAudioPluginParameter(const aap::PortInformation *portInfo) : impl(portInfo) {
-    	if (portInfo->hasValueRange())
-    		setValue(portInfo->getDefaultValue());
-    }
-
-    float value{0.0f};
-
-public:
-    float getValue() const override { return value; }
-
-    void setValue(float newValue) override {
-    	value = newValue;
-    }
-
-    float getDefaultValue() const override {
-        return impl->getDefaultValue();
-    }
-
-    String getName(int maximumStringLength) const override {
-        String name{impl->getName()};
-        return (name.length() <= maximumStringLength) ? name : name.substring(0, maximumStringLength);
-    }
-
-    String getLabel() const override { return impl->getName(); }
-
-    float getValueForText(const String &text) const override { return atof(text.toRawUTF8()); }
-};
+class AndroidAudioPluginParameter;
 
 class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
+    friend class AndroidAudioPluginParameter;
+
 	aap::PluginInstance *native;
 	int sample_rate;
 	std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
@@ -66,6 +37,8 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	void fillNativeOutputBuffers(AudioBuffer<float> &buffer);
 
     void allocateSharedMemory(int bufferIndex, int32_t size);
+
+    void updateParameterValue(AndroidAudioPluginParameter* paramter);
 
 public:
 
@@ -134,6 +107,46 @@ public:
 	}
 
 	void fillInPluginDescription(PluginDescription &description) const override;
+};
+
+class AndroidAudioPluginParameter : public juce::AudioProcessorParameter {
+    friend class AndroidAudioPluginInstance;
+
+    int aap_parameter_index;
+    AndroidAudioPluginInstance *instance;
+    const aap::PortInformation *impl;
+
+    AndroidAudioPluginParameter(int aapParameterIndex, AndroidAudioPluginInstance* instance, const aap::PortInformation* portInfo)
+            : aap_parameter_index(aapParameterIndex), instance(instance), impl(portInfo)
+    {
+        if (portInfo->hasValueRange())
+            setValue(portInfo->getDefaultValue());
+    }
+
+    float value{0.0f};
+
+public:
+    int getAAPParameterIndex() { return aap_parameter_index; }
+
+    float getValue() const override { return value; }
+
+    void setValue(float newValue) override {
+        value = newValue;
+        instance->updateParameterValue(this);
+    }
+
+    float getDefaultValue() const override {
+        return impl->getDefaultValue();
+    }
+
+    String getName(int maximumStringLength) const override {
+        String name{impl->getName()};
+        return (name.length() <= maximumStringLength) ? name : name.substring(0, maximumStringLength);
+    }
+
+    String getLabel() const override { return impl->getName(); }
+
+    float getValueForText(const String &text) const override { return atof(text.toRawUTF8()); }
 };
 
 class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
