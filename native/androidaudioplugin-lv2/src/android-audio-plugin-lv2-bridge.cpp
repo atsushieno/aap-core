@@ -207,7 +207,7 @@ void normalize_midi_event_for_lv2_forge(LV2_Atom_Forge *forge, LV2_Atom_Sequence
 	int srcN = 8;
 
 	auto csrc = (uint8_t*) src;
-	int32_t srcEnd = *((int*) src + 1) + 4; // offset
+	int32_t srcEnd = *((int*) src + 1) + 8; // offset
 
 	unsigned char running_status = 0;
 

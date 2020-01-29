@@ -599,11 +599,27 @@ There is another sample `localpluginsample` which does not really demonstrate in
 
 On Android Studio, you can switch which app to launch.
 
+
 ### Debugging Audio Plugins (Services)
 
 When you would like to debug your AudioPluginServices, an important thing to note is that services (plugins) are not debuggable until you invoke `android.os.Debug.waitForDebugger()`, and you cannot invoke this method when you are NOT debugging (it will wait forever!) as long as the host and client are different apps. This also applies to native debugging via lldb (to my understanding).
 
 `aappluginsample` therefore invokes this method only at `MainAcivity.onCreate()` i,e. it is kind of obvious that it is being debugged.
+
+
+### Hacking on desktop
+
+android-audio-plugin-framework is (against the name) designed to be kind of cross-platform so that it is hackable on desktop too. It is often much easier if we can diagnose the issues on desktop natively, without resorting to remote debugging on Android targets.
+
+In `Makefile`, those LV2 dependencies on desktop are built with debugging symbols by default (`waf -d`).
+
+JUCE integration on desktop is especially much easier as JUCE is primarily developed for desktop. JUCE exporter for CLion may be useful for debugging. On CLion (verified with 2019.3) setting the project root with `Tools` -> `CMake` -> `Change Project Root` command would make it possible to diagnose issues with breakpoints on the sources from AAP itself, LV2 dependencies and prebuilt LV2 plugins (e.g. mda-lv2).
+
+Debugging will become easier by setting the following environment variables (replace `{.../android-audio-plugin-framework}` part to match your repo checkout), as the local checkouts including submodules would become the debuggee sources:
+
+- `AAP_PLUGIN_PATH={.../android-audio-plugin-framework}/java/samples/aaplv2plugins/src/main/res/xml`
+- `LD_LIBRARY_PATH={.../android-audio-plugin-framework}/build/native/androidaudioplugin-lv2/:{.../android-audio-plugin-framework}/dependencies/lv2-desktop/dist/lib/:$LD_LIBRARY_PATH`
+- `LV2_PATH={.../android-audio-plugin-framework}/dependencies/lv2-desktop/dist/lib/lv2/`
 
 
 ### Build with AddressSanitizer

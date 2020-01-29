@@ -65,14 +65,15 @@ void AndroidAudioPluginInstance::fillNativeInputBuffers(AudioBuffer<float> &audi
     	if (port->getContentType() == AAP_CONTENT_TYPE_AUDIO && juceInputsAssigned < audioBuffer.getNumChannels())
 	        memcpy(buffer->buffers[i], (void *) audioBuffer.getReadPointer(juceInputsAssigned++), audioBuffer.getNumSamples() * sizeof(float));
 		else if (port->getContentType() == AAP_CONTENT_TYPE_MIDI) {
-			int di = 4; // fill length later
+			int di = 8; // fill length later
 			MidiMessage msg{};
 			int pos{0};
 			// FIXME: time unit must be configurable.
 			double oneTick = 1 / 480.0; // sec
 			double secondsPerFrame = 1.0 / sample_rate; // sec
 			MidiBuffer::Iterator iter{midiBuffer};
-			*((int32_t*) buffer->buffers[i]) = 0; // reset to ensure that there is no message by default
+            *((int32_t*) buffer->buffers[i]) = 480; // time division
+			*((int32_t*) buffer->buffers[i] + 2) = 0; // reset to ensure that there is no message by default
 			while (iter.getNextEvent(msg, pos)) {
 				double timestamp = msg.getTimeStamp();
 				double timestampSeconds = timestamp * secondsPerFrame;
@@ -85,7 +86,7 @@ void AndroidAudioPluginInstance::fillNativeInputBuffers(AudioBuffer<float> &audi
 				di += msg.getRawDataSize();
 			}
 			// AAP MIDI buffer is length-prefixed raw MIDI data.
-			*((int32_t*) buffer->buffers[i]) = di - 4;
+			*((int32_t*) buffer->buffers[i] + 1) = di - 8;
 		} else {
 			// control parameters should assigned when parameter is assigned.
 			// FIXME: at this state there is no callbacks for parameter changes, so
@@ -278,7 +279,7 @@ void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &des
         callback(nullptr, error);
     } else {
         auto androidInstance = android_host.instantiatePlugin(
-                descriptor->getPluginID().data());
+                descriptor->getPluginID().c_str());
         std::unique_ptr <AndroidAudioPluginInstance> instance{
                 new AndroidAudioPluginInstance(androidInstance)};
         callback(std::move(instance), error);
@@ -303,6 +304,8 @@ StringArray AndroidAudioPluginFormat::searchPathsForPlugins(const FileSearchPath
 FileSearchPath AndroidAudioPluginFormat::getDefaultLocationsToSearch() {
 	FileSearchPath ret{};
 	for (auto path : getPluginHostPAL()->getPluginPaths()) {
+	    if(!File::isAbsolutePath(path)) // invalid path
+	        continue;
 		File dir{path};
 		if (dir.exists())
 			ret.add(dir);

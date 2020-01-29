@@ -45,6 +45,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     int nPorts = desc->getNumPorts();
     iu->plugin_buffer->buffers = (void **) calloc(nPorts + 1, sizeof(void *));
     int numAudioIn = 0, numAudioOut = 0;
+    int midiInPort = -1;
     for (int p = 0; p < nPorts; p++) {
         auto port = desc->getPort(p);
         if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
@@ -54,9 +55,10 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
                  port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO)
             iu->plugin_buffer->buffers[p] = (numAudioOut++ > 0 ? currentAudioOutR : currentAudioOutL) = (float *) calloc(buffer_size, 1);
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT &&
-                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
-            iu->plugin_buffer->buffers[p] = currentMidiIn;
-        else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
+                 port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI) {
+			iu->plugin_buffer->buffers[p] = currentMidiIn;
+			midiInPort = p;
+		} else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT &&
                  port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI)
             iu->plugin_buffer->buffers[p] = currentMidiOut = (float *) calloc(buffer_size, 1);
         else if (port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
@@ -69,27 +71,40 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     instance->prepare(sampleRate, false, iu->plugin_buffer);
 
     // prepare inputs - dummy
-    for (int i = 0; i < float_count; i++)
-        controlIn[i] = 0.5;
-	// set up midi input buffer
-	{
-		auto mb = (char *) (void *) midiIn;
-		int length = 12;
-		*(int *) mb = length;
-		mb[4] = 0; // program change
-		mb[5] = 0xC0;
-		mb[6] = 0; // note on
-		mb[7] = 0;
-		mb[8] = 0x90;
-		mb[9] = 0x45;
-		mb[10] = 0x70;
-		mb[11] = 0x8C; // note off
-		mb[12] = 0x10;
-		mb[13] = 0x80;
-		mb[14] = 0x45;
-		mb[15] = 0x00;
+    for (int i = 0; i < float_count; i++) {
+		if (i == midiInPort) {
+            auto mb = (uint8_t*) currentMidiIn;
+            int length = 20;
+            int16_t fps = -30;
+            int16_t ticksPerFrame = 100;
+            *((int*) mb) = 0xF000 | ticksPerFrame | (fps << 8); // 30fps, 100 ticks per frame
+            //*(int*) mb = 480;
+            *((int*) mb + 1) = length;
+            mb[8] = 0; // program change
+            mb[9] = 0xC0;
+            mb[10] = 0;
+            mb[11] = 0; // note on
+            mb[12] = 0x90;
+            mb[13] = 0x39;
+            mb[14] = 0x70;
+            mb[15] = 0; // note on
+            mb[16] = 0x90;
+            mb[17] = 0x3D;
+            mb[18] = 0x70;
+            mb[19] = 0; // note on
+            mb[20] = 0x90;
+            mb[21] = 0x40;
+            mb[22] = 0x70;
+            mb[23] = 0x80; // note off
+            mb[24] = 0x70;
+            mb[25] = 0x80;
+            mb[26] = 0x45;
+            mb[27] = 0x00;
+		}
+		else
+				for (int b = 0; b < float_count; b++)
+						controlIn[b] = instance->getPluginDescriptor()->getPort(i)->getDefaultValue();
 	}
-
     // activate, run, deactivate
     instance->activate();
 
