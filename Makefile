@@ -29,9 +29,6 @@ dependencies/dist/stamp: android-lv2-binaries.zip
 android-lv2-binaries.zip:
 	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs/heads/$(NATIVE_BINARIES_TAG)/android-lv2-binaries.zip
 
-build-cerbero-artifacts:
-	cd dependencies && make
-
 build-desktop:
 	echo TODO: covers core and lv2 so far. Need to build for testing on desktop
 	export PKG_CONFIG_PATH=../lv2-desktop/dist/lib/pkgconfig && \
