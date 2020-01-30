@@ -311,9 +311,6 @@ StringArray AndroidAudioPluginFormat::searchPathsForPlugins(const FileSearchPath
 	return ret;
 }
 
-// Unlike desktop system, it is not practical to either look into file systems
-// on Android. And it is simply impossible to "enumerate" asset directories.
-// Therefore we simply return empty list.
 FileSearchPath AndroidAudioPluginFormat::getDefaultLocationsToSearch() {
 	FileSearchPath ret{};
 	for (auto path : getPluginHostPAL()->getPluginPaths()) {
