@@ -156,8 +156,6 @@ class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
 
 	const aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc);
 
-	const char *default_plugin_search_paths[1];
-
 public:
 	AndroidAudioPluginFormat();
 
@@ -196,6 +194,7 @@ public:
 									  bool recursive,
 									  bool allowPluginsWhichRequireAsynchronousInstantiation = false) override;
 
+	// Note:
 	// Unlike desktop system, it is not practical to either look into file systems
 	// on Android. And it is simply impossible to "enumerate" asset directories.
 	// Therefore we simply return empty list.

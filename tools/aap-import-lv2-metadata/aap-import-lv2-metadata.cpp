@@ -66,7 +66,7 @@ int stringpool_entry = 0;
 int main(int argc, const char **argv)
 {
 	if (argc < 1) {
-		fprintf (stderr, "Usage: %s [input-lv2dir]\n", argv[0]);
+		fprintf (stderr, "Usage: %s [lv2-dir] [res-xml-dir]\n", argv[0]);
 		return 1;
 	}
 	
@@ -184,9 +184,9 @@ int main(int argc, const char **argv)
 			LilvNode *defNode, *minNode, *maxNode;
 			lilv_port_get_range(plugin, port, &defNode, &minNode, &maxNode);
 			char def[1024], min[1024], max[1024];
-			if (defNode != nullptr) std::snprintf(def, 1024, "default=\"%f\"", lilv_node_as_float(defNode));
-			if (minNode != nullptr) std::snprintf(min, 1024, "minimum=\"%f\"", lilv_node_as_float(minNode));
-			if (maxNode != nullptr) std::snprintf(max, 1024, "maximum=\"%f\"", lilv_node_as_float(maxNode));
+			if (defNode != nullptr) std::snprintf(def, 1024, "default=\"%f\"", lilv_node_as_float(defNode)); else def[0] = 0;
+			if (minNode != nullptr) std::snprintf(min, 1024, "minimum=\"%f\"", lilv_node_as_float(minNode)); else min[0] = 0;
+			if (maxNode != nullptr) std::snprintf(max, 1024, "maximum=\"%f\"", lilv_node_as_float(maxNode)); else max[0] = 0;
 			
 			fprintf(xmlFP, "      <port direction=\"%s\" %s %s %s content=\"%s\" name=\"%s\" />\n",
 				IS_INPUT_PORT(plugin, port) ? "input" : IS_OUTPUT_PORT(plugin, port) ? "output" : "",
