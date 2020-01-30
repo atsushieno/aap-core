@@ -207,14 +207,14 @@ public:
 	
 	bool hasSharedContainer() const
 	{
-		// TODO: FUTURE (v0.6) It may be something AAP should support because
+		// TODO: FUTURE (v0.8) It may be something AAP should support because
 		// context switching over outprocess plugins can be quite annoying...
 		return false;
 	}
 	
 	bool hasEditor() const
 	{
-		// TODO: FUTURE (v0.4)
+		// TODO: FUTURE (v0.7)
 		return false;
 	}
 
@@ -261,18 +261,6 @@ public:
 	}
 };
 
-class PluginHostBackend
-{
-};
-
-class PluginHostBackendLV2 : public PluginHostBackend
-{
-};
-
-class PluginHostBackendVST3 : public PluginHostBackend
-{
-};
-
 
 class PluginHostPAL
 {
@@ -317,8 +305,6 @@ PluginHostPAL* getPluginHostPAL();
 
 class PluginHost
 {
-	std::vector<const PluginHostBackend*> backends;
-	
 	std::vector<const PluginInformation*> plugin_descriptors;
 	
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor);
@@ -337,23 +323,7 @@ public:
 	bool isPluginAlive (const char *identifier);
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
-	
-	void addHostBackend(const PluginHostBackend *backend)
-	{
-		assert(backend != NULL);
-		backends.push_back(backend);
-	}
-	
-	int32_t getNumHostBackends()
-	{
-		return backends.size();
-	}
 
-	const PluginHostBackend* getHostBackend(int index)
-	{
-		return backends[index];
-	}
-	
 	int32_t getNumPluginDescriptors()
 	{
 		return plugin_descriptors.size();
