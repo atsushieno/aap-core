@@ -1,6 +1,6 @@
 # AAP: Android Audio Plugin Framework
 
-Build Status: ![birtise build status](https://app.bitrise.io/app/d9d69ce50556d890/status.svg?token=e_wmxFsLRDnqgNfuYa6cfg)
+Build Status: [![Build Status](https://app.bitrise.io/app/d9d69ce50556d890/status.svg?token=e_wmxFsLRDnqgNfuYa6cfg)](https://app.bitrise.io/app/d9d69ce50556d890)
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes ahead of implementation (to describe the ideal state). Do not trust it too much.
 
