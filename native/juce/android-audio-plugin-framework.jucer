@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="KpzU0f" name="JuceAAPAudioPluginHost" projectType="guiapp"
-              jucerVersion="5.4.5" cppLanguageStandard="17">
+              jucerVersion="5.4.6" cppLanguageStandard="17">
   <MAINGROUP id="us0ZrI" name="JuceAAPAudioPluginHost">
     <GROUP id="{6C6D8808-213F-617C-8646-22C828D841CA}" name="Source">
       <GROUP id="{8455AB25-C22F-FB26-6542-D8AC10E808A1}" name="Plugins">
@@ -58,12 +58,13 @@
     <ANDROIDSTUDIO targetFolder="Builds/Android" extraCompilerFlags="-I../../../../androidaudioplugin/core/include"
                    externalLibraries="androidaudioplugin" microphonePermissionNeeded="1"
                    androidExternalWriteNeeded="0" androidExternalReadNeeded="0"
-                   androidBluetoothNeeded="0" androidDependencies="implementation project(':androidaudioplugin')&#10;implementation project(':androidaudioplugin-lv2')&#10;implementation project(':aaplv2plugins')"
+                   androidDependencies="implementation project(':androidaudioplugin')&#10;implementation project(':androidaudioplugin-lv2')&#10;implementation project(':aaplv2plugins')"
                    androidGradleSettingsContent="include ':androidaudioplugin', ':androidaudioplugin-lv2', ':aaplv2plugins'&#10;&#10;project(':androidaudioplugin').projectDir = new File('../../../../java/androidaudioplugin/')&#10;project(':androidaudioplugin-lv2').projectDir = new File('../../../../java/androidaudioplugin-lv2/')&#10;project(':aaplv2plugins').projectDir = new File('../../../../java/samples/aaplv2plugins/')"
                    androidProjectRepositories="google()&#10;jcenter()&#10;maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }"
                    androidMinimumSDK="29" androidTargetSDK="29" gradleVersion="6.1-rc-1"
                    androidManifestCustomXmlElements="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&#10;&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot; android:versionCode=&quot;1&quot; android:versionName=&quot;1.0.0&quot;&#10;          package=&quot;com.yourcompany.JuceAAPAudioPluginHost&quot;&gt;&#10;  &lt;application android:label=&quot;@string/app_name&quot; android:name=&quot;com.roli.juce.JuceApp&quot; android:hardwareAccelerated=&quot;true&quot;&gt;&#10;    &lt;provider&#10;        android:authorities=&quot;org.androidaudioplugin.AudioPluginNativeHostContentProvider&quot;&#10;        android:name=&quot;org.androidaudioplugin.AudioPluginNativeHostContentProvider&quot; /&gt;&#10;  &lt;/application&gt;&#10;&lt;/manifest&gt;&#10;"
-                   androidCustomAppBuildGradleContent="ndkVersion = '20.0.5594570'">
+                   androidCustomAppBuildGradleContent="ndkVersion = '20.0.5594570'"
+                   androidPushNotifications="0">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../androidaudioplugin/core/include;../../../plugin-api/include;../../../../dependencies/tinyxml2"
                        libraryPath="../../../../java/androidaudioplugin/build/intermediates/cmake/debug/obj/${ANDROID_ABI}"/>
