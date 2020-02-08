@@ -21,5 +21,5 @@ mv Builds/CLion/CMakeLists.txt.patched Builds/CLion/CMakeLists.txt
 
 echo "ndk.dir=$ANDROID_SDK_OVERRIDE/ndk/20.0.5594570\nsdk.dir=$ANDROID_SDK_OVERRIDE" > Builds/Android/local.properties
 
-cd Builds/Android && ./gradlew -d build && cd ../..
+cd Builds/Android && ./gradlew build && cd ../..
 
