@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.net.Uri
-import dalvik.system.DexClassLoader
 import java.lang.RuntimeException
 
 // This class can be used to initialize AudioPluginHost by specifying the class as a <provider>
@@ -33,8 +32,18 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
         var host = AudioPluginHost(context)
         // FIXME: it is brutal, but is the only way for fully-native JUCE apps to prepare
         // audio plugin service connections beforehand so far.
-        for (service in AudioPluginHostHelper.queryAudioPluginServices(context))
-            host.bindAudioPluginService(AudioPluginServiceInformation(service.label, service.packageName, service.className))
+        var services = AudioPluginHostHelper.queryAudioPluginServices(context)
+        for (service in services) {
+            host.bindAudioPluginService(
+                AudioPluginServiceInformation(
+                    service.label,
+                    service.packageName,
+                    service.className
+                )
+            )
+        }
+        // FIXME: it should add callback to wait for bindService() result otherwise app don't
+        //  actually get those services in the end.
     }
 
     override fun update(

@@ -303,16 +303,27 @@ StringArray AndroidAudioPluginFormat::searchPathsForPlugins(const FileSearchPath
 								  bool recursive,
 								  bool allowPluginsWhichRequireAsynchronousInstantiation) {
 	std::vector<std::string> paths{};
+    StringArray ret{};
+#if ANDROID
+    for (auto path : getPluginHostPAL()->getPluginPaths())
+        ret.add(path);
+#else
 	for (int i = 0; i < directoriesToSearch.getNumPaths(); i++)
 		getPluginHostPAL()->getAAPMetadataPaths(directoriesToSearch[i].getFullPathName().toRawUTF8(), paths);
-	StringArray ret{};
 	for (auto p : paths)
 		ret.add(p);
+#endif
 	return ret;
 }
 
 FileSearchPath AndroidAudioPluginFormat::getDefaultLocationsToSearch() {
 	FileSearchPath ret{};
+#if ANDROID
+    // JUCE crashes if invalid path is returned here, so we have to resort to dummy path.
+    //  JUCE design is lame on file systems in general.
+    File dir{"/"};
+    ret.add(dir);
+#else
 	for (auto path : getPluginHostPAL()->getPluginPaths()) {
 	    if(!File::isAbsolutePath(path)) // invalid path
 	        continue;
@@ -320,6 +331,7 @@ FileSearchPath AndroidAudioPluginFormat::getDefaultLocationsToSearch() {
 		if (dir.exists())
 			ret.add(dir);
 	}
+#endif
 	return ret;
 }
 

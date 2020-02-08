@@ -135,6 +135,7 @@ jobjectArray queryInstalledPluginsJNI()
 {
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
 	auto env = apal->getJNIEnv();
+
 	jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
 	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");

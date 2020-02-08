@@ -31,10 +31,20 @@ class AndroidPluginHostPAL : public PluginHostPAL
 
 public:
     std::vector<std::string> getPluginPaths() override {
-        std::vector<std::string> ret{};
+		std::vector<std::string> ret{};
+		// FIXME: ideally serviceConnections should have a valid list by the time this function is called.
+		//  Unfortunately to get it working, bindService() needs to come up with results synchronously,
+		//  which is not the case. Therefore we simply accumulate query results and return unique values/
+#if true
+    	for (auto p : getInstalledPlugins()) {
+			if (std::find(ret.begin(), ret.end(), p->getContainerIdentifier()) == ret.end())
+				ret.emplace_back(p->getContainerIdentifier());
+    	}
+#else
         for (auto c : serviceConnections)
             ret.emplace_back(c.serviceIdentifier);
-        return ret;
+#endif
+		return ret;
     }
 
     void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override {

@@ -7,7 +7,6 @@ cmake_minimum_required(VERSION 3.5.1)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
 	"core/src/android-audio-plugin-host.cpp"
-	"core/src/android-audio-plugin-local-bridge.cpp"
 	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 
@@ -76,3 +75,13 @@ target_compile_options (androidaudioplugin
 target_link_libraries (androidaudioplugin ${androidaudioplugin_LIBS})
 
 
+if ( ANDROID )
+else ()
+find_package( Doxygen )
+endif ()
+
+if ( DOXYGEN_FOUND )
+
+doxygen_add_docs ( doxygen ${PROJECT_SOURCE_DIR})
+
+endif ()

@@ -169,6 +169,7 @@ public:
 							 const String &fileOrIdentifier) override;
 
 	inline bool fileMightContainThisPluginType(const String &fileOrIdentifier) override {
+	    // FIXME: limit to aap_metadata.xml ?
 		return true;
 	}
 

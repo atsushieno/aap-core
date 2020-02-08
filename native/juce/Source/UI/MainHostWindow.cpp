@@ -220,6 +220,7 @@ void MainHostWindow::changeListenerCallback (ChangeBroadcaster* changed)
     {
         menuItemsChanged();
 
+#if !ANDROID // FIXME: this premises that plugin query results can be manually updated, which does not apply to Android app.
         // save the plugin list every time it gets changed, so that if we're scanning
         // and it crashes, we've still saved the previous ones
         if (auto savedPluginList = std::unique_ptr<XmlElement> (knownPluginList.createXml()))
@@ -227,6 +228,7 @@ void MainHostWindow::changeListenerCallback (ChangeBroadcaster* changed)
             getAppProperties().getUserSettings()->setValue ("pluginList", savedPluginList.get());
             getAppProperties().saveIfNeeded();
         }
+#endif
     }
     else if (graphHolder != nullptr && changed == graphHolder->graph.get())
     {
