@@ -28,7 +28,7 @@
 #include "GraphEditorPanel.h"
 #include "../Plugins/InternalPlugins.h"
 #include "MainHostWindow.h"
-#include "../../modules/juceaap_audio_plugin_processors/juce_android_audio_plugin_format.h"
+#include "../../../../modules/juceaap_audio_plugin_processors/juce_android_audio_plugin_format.h"
 
 //==============================================================================
 #if JUCE_IOS || JUCE_ANDROID

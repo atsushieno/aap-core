@@ -27,7 +27,7 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "MainHostWindow.h"
 #include "../Plugins/InternalPlugins.h"
-#include "../../modules/juceaap_audio_plugin_processors/juce_android_audio_plugin_format.h"
+#include "../../../../modules/juceaap_audio_plugin_processors/juce_android_audio_plugin_format.h"
 
 
 //==============================================================================
@@ -110,8 +110,6 @@ MainHostWindow::MainHostWindow()
 
     InternalPluginFormat internalFormat;
     internalFormat.getAllTypes (internalTypes);
-    // FIXME: AAP plugins should be added here (but looks like it is not necessary...?)
-    //juceaap::AndroidAudioPluginFormat androidFormat;
 
     if (auto savedPluginList = getAppProperties().getUserSettings()->getXmlValue ("pluginList"))
         knownPluginList.recreateFromXml (*savedPluginList);
