@@ -1,4 +1,6 @@
 
+#include "../JuceLibraryCode/JuceHeader.h"
+#include "../../plugin-api/include/aap/android-audio-plugin.h"
 
 typedef class JuceAAPWrapper : public juce::AudioPluginInstance {
 	AndroidAudioPluginFactory *factory;
