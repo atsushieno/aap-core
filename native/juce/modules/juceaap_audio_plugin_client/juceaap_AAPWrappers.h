@@ -4,7 +4,7 @@
 
 typedef class JuceAAPWrapper : public juce::AudioPluginInstance {
 	AndroidAudioPluginFactory *factory;
-	const char* pluginuniqueId;
+	const char* pluginUniqueId;
 	int sampleRate;
 	const AndroidAudioPluginExtension * const *extensions;
 	AndroidAudioPluginBuffer *buffer;
@@ -13,6 +13,12 @@ public:
 	JuceAAPWrapper(AndroidAudioPluginFactory *factory, const char* pluginuniqueId, int sampleRate, const AndroidAudioPluginExtension * const *extensions)
 		: factory(factory), pluginUniqueId(pluginUniqueId == nullptr ? nullptr : strdup(pluginUniqueId)), sampleRate(sampleRate), extensions(extensions)
 	{
+	}
+
+	virtual ~JuceAAPWrapper()
+	{
+		if (pluginUniqueId != nullptr)
+			free((void*) pluginUniqueId);
 	}
 
 	void prepare(AndroidAudioPluginBuffer* buffer)
@@ -39,11 +45,11 @@ public:
 	void setState(AndroidAudioPluginState* input)
 	{
 	}
-}
+};
 
 JuceAAPWrapper* getWrapper(AndroidAudioPlugin* plugin)
 {
-	return (JuceAAPWrapper*) plugin->pluginSpecific;
+	return (JuceAAPWrapper*) plugin->plugin_specific;
 }
 
 void juceaap_prepare(
@@ -71,7 +77,7 @@ void juceaap_process(
 	getWrapper(plugin)->process(audioBuffer, timeoutInNanoseconds);
 }
 
-AndroidAudioPluginState* juceaap_get_state(AndroidAudioPlugin *plugin)
+const AndroidAudioPluginState* juceaap_get_state(AndroidAudioPlugin *plugin)
 {
 	return getWrapper(plugin)->getState();
 }
@@ -106,17 +112,15 @@ void juceaap_release(
 	AndroidAudioPluginFactory *pluginFactory,
 	AndroidAudioPlugin *instance)
 {
-	auto ctx = (JuceAAPSpecific*) instance->plugin_specific;
+	auto ctx = (JuceAAPWrapper*) instance->plugin_specific;
 	if (ctx != nullptr) {
-		if (ctx->pluginUniqueId != nullptr)
-			free(ctx->pluginUniqueId);
 		delete ctx;
 		instance->plugin_specific = nullptr;
 	}
 	delete instance;
 }
 
-struct JuceAAPAudioPluginFactory juceaap_factory {
+struct AndroidAudioPluginFactory juceaap_factory{
 	juceaap_instantiate,
 	juceaap_release
 };
