@@ -4,7 +4,7 @@
               splashScreenColour="Dark" projectType="audioplug" version="1.0.0"
               bundleIdentifier="com.yourcompany.SARAH" includeBinaryInAppConfig="1"
               cppLanguageStandard="latest" buildVST="1" buildVST3="0" buildAU="1"
-              buildAUv3="0" buildRTAS="0" buildAAX="0" buildStandalone="0"
+              buildAUv3="0" buildRTAS="0" buildAAX="0" buildStandalone="1"
               enableIAA="0" pluginName="SARAH" pluginDesc="FFT-based Synthesizer"
               pluginManufacturer="your company" pluginManufacturerCode="Ycom"
               pluginCode="Pjit" pluginChannelConfigs="{0,2}" pluginIsSynth="1"
@@ -12,7 +12,7 @@
               pluginEditorRequiresKeys="0" pluginAUExportPrefix="SarahAU" pluginRTASCategory=""
               aaxIdentifier="com.yourcompany.SARAH" pluginAAXCategory="2" jucerVersion="5.4.7"
               companyName="your company" companyWebsite="www.yourcompany.com"
-              companyEmail="info@yourcompany.com" binaryDataNamespace="" pluginFormats="buildVST,buildAU"
+              companyEmail="info@yourcompany.com" binaryDataNamespace="" pluginFormats="buildAU,buildStandalone,buildVST"
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="lIYlKh" name="SARAH">
     <GROUP id="{60F36A42-6911-9BD2-E13B-D6F97561CD19}" name="Resources">
