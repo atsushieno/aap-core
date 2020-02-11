@@ -165,7 +165,7 @@ void SARAHAudioProcessor::getStateInformation (MemoryBlock& destData)
 
 void SARAHAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    ScopedPointer<XmlElement> xml = getXmlFromBinary(data, sizeInBytes);
+    auto xml = getXmlFromBinary(data, sizeInBytes);
     XmlElement* xprogs = xml->getFirstChildElement();
     if (xprogs->hasTagName(String("programs")))
     {
@@ -188,8 +188,8 @@ void SARAHAudioProcessor::getCurrentProgramStateInformation(MemoryBlock& destDat
 
 void SARAHAudioProcessor::setCurrentProgramStateInformation(const void* data, int sizeInBytes)
 {
-    ScopedPointer<XmlElement> xml = getXmlFromBinary(data, sizeInBytes);
-    programBank[currentProgram].putXml(xml);
+    auto xml = getXmlFromBinary(data, sizeInBytes);
+    programBank[currentProgram].putXml(xml.get());
     sendChangeMessage();
 }
 
