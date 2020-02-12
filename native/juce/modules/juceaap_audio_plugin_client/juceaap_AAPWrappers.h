@@ -2,48 +2,68 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "../../plugin-api/include/aap/android-audio-plugin.h"
 
-typedef class JuceAAPWrapper : public juce::AudioPluginInstance {
+extern juce::AudioProcessor* createPluginFilter(); // it is defined in each Audio plugin project (by Projucer).
+
+typedef class JuceAAPWrapper {
 	AndroidAudioPluginFactory *factory;
-	const char* pluginUniqueId;
-	int sampleRate;
+	const char* plugin_unique_id;
+	int sample_rate;
 	const AndroidAudioPluginExtension * const *extensions;
 	AndroidAudioPluginBuffer *buffer;
+	juce::AudioProcessor *juce_processor;
+	juce::AudioBuffer<float> juce_buffer;
+	juce::MidiBuffer juce_midi_messages;
 
 public:
-	JuceAAPWrapper(AndroidAudioPluginFactory *factory, const char* pluginuniqueId, int sampleRate, const AndroidAudioPluginExtension * const *extensions)
-		: factory(factory), pluginUniqueId(pluginUniqueId == nullptr ? nullptr : strdup(pluginUniqueId)), sampleRate(sampleRate), extensions(extensions)
+	JuceAAPWrapper(AndroidAudioPluginFactory *factory, const char* pluginUniqueId, int sampleRate, const AndroidAudioPluginExtension * const *extensions)
+		: factory(factory), plugin_unique_id(pluginUniqueId == nullptr ? nullptr : strdup(pluginUniqueId)), sample_rate(sampleRate), extensions(extensions)
 	{
+        juce_processor = createPluginFilter();
 	}
 
 	virtual ~JuceAAPWrapper()
 	{
-		if (pluginUniqueId != nullptr)
-			free((void*) pluginUniqueId);
+		if (plugin_unique_id != nullptr)
+			free((void*) plugin_unique_id);
 	}
 
 	void prepare(AndroidAudioPluginBuffer* buffer)
 	{
+        // FIXME: allocate juce_buffer. No need to interpret content.
 		this->buffer = buffer;
+        juce_processor->prepareToPlay(sample_rate, buffer->num_frames);
 	}
 
 	void activate()
 	{
+	    // FIXME: what can I do?
 	}
 
 	void deactivate()
 	{
+        // FIXME: what can I do?
 	}
 
 	void process(AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds)
 	{
+        // FIXME: reallocate juce_buffer, if pointer changed.
+        // FIXME: implement content convert.
+        juce_processor->processBlock(juce_buffer, juce_midi_messages);
 	}
 
+	// FIXME: we should probably make changes to getState() signature to not return raw pointer,
+	//  as it expects that memory allocation runs at plugins. It should be passed by argument and
+	//  allocated externally. JUCE does it better.
 	AndroidAudioPluginState* getState()
 	{
+	    MemoryBlock mb;
+	    mb.reset();
+	    juce_processor->getStateInformation(mb);
 	}
 
 	void setState(AndroidAudioPluginState* input)
 	{
+	    juce_processor->setStateInformation(input->raw_data, input->data_size);
 	}
 };
 
