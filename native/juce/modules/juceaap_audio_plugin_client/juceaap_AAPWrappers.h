@@ -24,6 +24,7 @@ typedef class JuceAAPWrapper {
 	int sample_rate;
 	const AndroidAudioPluginExtension * const *extensions;
 	AndroidAudioPluginBuffer *buffer;
+    AndroidAudioPluginState state;
 	juce::AudioProcessor *juce_processor;
 	juce::AudioBuffer<float> juce_buffer;
 	juce::MidiBuffer juce_midi_messages;
@@ -183,6 +184,8 @@ public:
 	    MemoryBlock mb;
 	    mb.reset();
 	    juce_processor->getStateInformation(mb);
+        memcpy((void*) state.raw_data, mb.begin(), mb.getSize());
+        return &state;
 	}
 
 	void setState(AndroidAudioPluginState* input)
