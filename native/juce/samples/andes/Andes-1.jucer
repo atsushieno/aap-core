@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="ughDDz" name="Andes-1" displaySplashScreen="0" reportAppUsage="0"
+              splashScreenColour="Dark" projectType="audioplug" version="0.1"
+              bundleIdentifier="net.artfwo.Andes-1" includeBinaryInAppConfig="1"
+              buildVST="1" buildVST3="0" buildAU="1" buildAUv3="0" buildRTAS="0"
+              buildAAX="0" buildStandalone="1" enableIAA="0" pluginName="Andes-1"
+              pluginDesc="Andes-1" pluginManufacturer="artfwo" pluginManufacturerCode="artF"
+              pluginCode="Ands" pluginChannelConfigs="" pluginIsSynth="1" pluginWantsMidiIn="1"
+              pluginProducesMidiOut="0" pluginIsMidiEffectPlugin="0" pluginEditorRequiresKeys="1"
+              pluginAUExportPrefix="Andes1AU" pluginRTASCategory="" aaxIdentifier="net.artfwo.Andes-1"
+              pluginAAXCategory="2" jucerVersion="5.4.7" companyName="artfwo"
+              companyWebsite="htts://artfwo.net" companyEmail="art@artfwo.net"
+              cppLanguageStandard="11" companyCopyright="artfwo" pluginFormats="buildVST,buildAU,buildStandalone"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn,pluginEditorRequiresKeys">
+  <MAINGROUP id="aZvOox" name="Andes-1">
+    <GROUP id="{7AF81C8A-37A1-221C-D6EB-D5BCF7D46A91}" name="Source">
+      <FILE id="k1RRRm" name="AndesSlider.cpp" compile="1" resource="0" file="Source/AndesSlider.cpp"/>
+      <FILE id="Qzz6vd" name="AndesSlider.h" compile="0" resource="0" file="Source/AndesSlider.h"/>
+      <FILE id="kn0wrV" name="AndesLookAndFeel.cpp" compile="1" resource="0"
+            file="Source/AndesLookAndFeel.cpp"/>
+      <FILE id="bSCTYj" name="AndesLookAndFeel.h" compile="0" resource="0"
+            file="Source/AndesLookAndFeel.h"/>
+      <FILE id="XnVXOR" name="NoiseEditor.cpp" compile="1" resource="0" file="Source/NoiseEditor.cpp"/>
+      <FILE id="m5jrqX" name="NoiseEditor.h" compile="0" resource="0" file="Source/NoiseEditor.h"/>
+      <FILE id="d7dOCP" name="EnvelopeEditor.cpp" compile="1" resource="0"
+            file="Source/EnvelopeEditor.cpp"/>
+      <FILE id="elF8og" name="EnvelopeEditor.h" compile="0" resource="0"
+            file="Source/EnvelopeEditor.h"/>
+      <FILE id="aKNUin" name="EnvelopeGenerator.cpp" compile="1" resource="0"
+            file="Source/EnvelopeGenerator.cpp"/>
+      <FILE id="a66NCw" name="EnvelopeGenerator.h" compile="0" resource="0"
+            file="Source/EnvelopeGenerator.h"/>
+      <FILE id="qyigFC" name="Noise.cpp" compile="1" resource="0" file="Source/Noise.cpp"/>
+      <FILE id="pglHN9" name="Noise.h" compile="0" resource="0" file="Source/Noise.h"/>
+      <FILE id="k4noTO" name="AndesVoice.cpp" compile="1" resource="0" file="Source/AndesVoice.cpp"/>
+      <FILE id="HLgp9R" name="AndesVoice.h" compile="0" resource="0" file="Source/AndesVoice.h"/>
+      <FILE id="tuGAUG" name="AndesSound.cpp" compile="1" resource="0" file="Source/AndesSound.cpp"/>
+      <FILE id="CiLFYF" name="AndesSound.h" compile="0" resource="0" file="Source/AndesSound.h"/>
+      <FILE id="YbnjgY" name="WaveformVisualiser.cpp" compile="1" resource="0"
+            file="Source/WaveformVisualiser.cpp"/>
+      <FILE id="qUjA7s" name="WaveformVisualiser.h" compile="0" resource="0"
+            file="Source/WaveformVisualiser.h"/>
+      <FILE id="ezgpMv" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="jMTruR" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="y4CNyi" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="MnQyhk" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <EXPORTFORMATS>
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="Andes-1"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="Andes-1"
+                       linuxArchitecture="-m64"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="JUCE/modules"/>
+        <MODULEPATH id="juce_video" path="JUCE/modules"/>
+        <MODULEPATH id="juce_opengl" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="JUCE/modules"/>
+      </MODULEPATHS>
+    </LINUX_MAKE>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="Andes-1"
+                       enablePluginBinaryCopyStep="1" osxArchitecture="64BitIntel"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="Andes-1"
+                       enablePluginBinaryCopyStep="1" osxArchitecture="64BitIntel"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video" path="JUCE/modules"/>
+        <MODULEPATH id="juce_opengl" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2017 targetFolder="Builds/VisualStudio2017_x64" windowsTargetPlatformVersion="10.0.16299.0">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" winWarningLevel="4" generateManifest="1" winArchitecture="x64"
+                       debugInformationFormat="ProgramDatabase" enablePluginBinaryCopyStep="0"
+                       linkTimeOptimisation="0" isDebug="1" optimisation="1" targetName="Andes-1"/>
+        <CONFIGURATION name="Release" winWarningLevel="4" generateManifest="1" winArchitecture="x64"
+                       debugInformationFormat="ProgramDatabase" enablePluginBinaryCopyStep="0"
+                       linkTimeOptimisation="1" isDebug="0" optimisation="3" targetName="Andes-1"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video" path="JUCE\modules"/>
+        <MODULEPATH id="juce_opengl" path="JUCE\modules"/>
+        <MODULEPATH id="juce_gui_extra" path="JUCE\modules"/>
+        <MODULEPATH id="juce_gui_basics" path="JUCE\modules"/>
+        <MODULEPATH id="juce_graphics" path="JUCE\modules"/>
+        <MODULEPATH id="juce_events" path="JUCE\modules"/>
+        <MODULEPATH id="juce_data_structures" path="JUCE\modules"/>
+        <MODULEPATH id="juce_cryptography" path="JUCE\modules"/>
+        <MODULEPATH id="juce_core" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_utils" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_processors" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_formats" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_devices" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_basics" path="JUCE\modules"/>
+      </MODULEPATHS>
+    </VS2017>
+    <VS2017 targetFolder="Builds/VisualStudio2017_w32" windowsTargetPlatformVersion="10.0.16299.0">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" winWarningLevel="4" generateManifest="1" winArchitecture="Win32"
+                       debugInformationFormat="ProgramDatabase" enablePluginBinaryCopyStep="0"
+                       linkTimeOptimisation="0" isDebug="1" optimisation="1" targetName="Andes-1"/>
+        <CONFIGURATION name="Release" winWarningLevel="4" generateManifest="1" winArchitecture="Win32"
+                       debugInformationFormat="ProgramDatabase" enablePluginBinaryCopyStep="0"
+                       linkTimeOptimisation="1" isDebug="0" optimisation="3" targetName="Andes-1"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video" path="JUCE\modules"/>
+        <MODULEPATH id="juce_opengl" path="JUCE\modules"/>
+        <MODULEPATH id="juce_gui_extra" path="JUCE\modules"/>
+        <MODULEPATH id="juce_gui_basics" path="JUCE\modules"/>
+        <MODULEPATH id="juce_graphics" path="JUCE\modules"/>
+        <MODULEPATH id="juce_events" path="JUCE\modules"/>
+        <MODULEPATH id="juce_data_structures" path="JUCE\modules"/>
+        <MODULEPATH id="juce_cryptography" path="JUCE\modules"/>
+        <MODULEPATH id="juce_core" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_utils" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_processors" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_formats" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_devices" path="JUCE\modules"/>
+        <MODULEPATH id="juce_audio_basics" path="JUCE\modules"/>
+      </MODULEPATHS>
+    </VS2017>
+    <ANDROIDSTUDIO targetFolder="Builds/Android">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug"/>
+        <CONFIGURATION isDebug="0" name="Release"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video" path="../../juce"/>
+        <MODULEPATH id="juce_opengl" path="../../juce"/>
+        <MODULEPATH id="juce_gui_extra" path="../../juce"/>
+        <MODULEPATH id="juce_gui_basics" path="../../juce"/>
+        <MODULEPATH id="juce_graphics" path="../../juce"/>
+        <MODULEPATH id="juce_events" path="../../juce"/>
+        <MODULEPATH id="juce_data_structures" path="../../juce"/>
+        <MODULEPATH id="juce_cryptography" path="../../juce"/>
+        <MODULEPATH id="juce_core" path="../../juce"/>
+        <MODULEPATH id="juce_audio_utils" path="../../juce"/>
+        <MODULEPATH id="juce_audio_processors" path="../../juce"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../juce"/>
+        <MODULEPATH id="juce_audio_formats" path="../../juce"/>
+        <MODULEPATH id="juce_audio_devices" path="../../juce"/>
+        <MODULEPATH id="juce_audio_basics" path="../../juce"/>
+      </MODULEPATHS>
+    </ANDROIDSTUDIO>
+    <CLION targetFolder="Builds/CLion">
+      <MODULEPATHS>
+        <MODULEPATH id="juce_video"/>
+        <MODULEPATH id="juce_opengl"/>
+        <MODULEPATH id="juce_gui_extra"/>
+        <MODULEPATH id="juce_gui_basics"/>
+        <MODULEPATH id="juce_graphics"/>
+        <MODULEPATH id="juce_events"/>
+        <MODULEPATH id="juce_data_structures"/>
+        <MODULEPATH id="juce_cryptography"/>
+        <MODULEPATH id="juce_core"/>
+        <MODULEPATH id="juce_audio_utils"/>
+        <MODULEPATH id="juce_audio_processors"/>
+        <MODULEPATH id="juce_audio_plugin_client"/>
+        <MODULEPATH id="juce_audio_formats"/>
+        <MODULEPATH id="juce_audio_devices"/>
+        <MODULEPATH id="juce_audio_basics"/>
+      </MODULEPATHS>
+    </CLION>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_video" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_QUICKTIME="disabled" JUCE_JACK="1" JUCE_WEB_BROWSER="0"/>
+  <LIVE_SETTINGS>
+    <LINUX/>
+  </LIVE_SETTINGS>
+</JUCERPROJECT>
