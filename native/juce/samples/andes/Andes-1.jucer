@@ -72,6 +72,7 @@
         <MODULEPATH id="juce_audio_processors" path="JUCE/modules"/>
         <MODULEPATH id="juce_audio_plugin_client" path="JUCE/modules"/>
         <MODULEPATH id="juce_audio_utils" path="JUCE/modules"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
     <XCODE_MAC targetFolder="Builds/MacOSX">
@@ -96,6 +97,7 @@
         <MODULEPATH id="juce_audio_formats" path="JUCE/modules"/>
         <MODULEPATH id="juce_audio_devices" path="JUCE/modules"/>
         <MODULEPATH id="juce_audio_basics" path="JUCE/modules"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <VS2017 targetFolder="Builds/VisualStudio2017_x64" windowsTargetPlatformVersion="10.0.16299.0">
@@ -122,6 +124,7 @@
         <MODULEPATH id="juce_audio_formats" path="JUCE\modules"/>
         <MODULEPATH id="juce_audio_devices" path="JUCE\modules"/>
         <MODULEPATH id="juce_audio_basics" path="JUCE\modules"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </VS2017>
     <VS2017 targetFolder="Builds/VisualStudio2017_w32" windowsTargetPlatformVersion="10.0.16299.0">
@@ -148,6 +151,7 @@
         <MODULEPATH id="juce_audio_formats" path="JUCE\modules"/>
         <MODULEPATH id="juce_audio_devices" path="JUCE\modules"/>
         <MODULEPATH id="juce_audio_basics" path="JUCE\modules"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </VS2017>
     <ANDROIDSTUDIO targetFolder="Builds/Android">
@@ -170,6 +174,7 @@
         <MODULEPATH id="juce_audio_formats" path="../../juce"/>
         <MODULEPATH id="juce_audio_devices" path="../../juce"/>
         <MODULEPATH id="juce_audio_basics" path="../../juce"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </ANDROIDSTUDIO>
     <CLION targetFolder="Builds/CLion">
@@ -188,10 +193,13 @@
         <MODULEPATH id="juce_audio_formats"/>
         <MODULEPATH id="juce_audio_devices"/>
         <MODULEPATH id="juce_audio_basics"/>
+        <MODULEPATH id="juceaap_audio_plugin_client" path="../../modules"/>
       </MODULEPATHS>
     </CLION>
   </EXPORTFORMATS>
   <MODULES>
+    <MODULE id="juceaap_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
