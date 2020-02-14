@@ -343,13 +343,14 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
     pluginElement->setAttribute("assets", "");
 
     auto &tree = filter->getParameterTree();
+    auto topLevelPortsElement = pluginElement->createNewChildElement("ports");
     for (auto node : tree) {
-        generate_xml_parameter_node(pluginElement, node);
+        generate_xml_parameter_node(topLevelPortsElement, node);
     }
 
     auto inChannels = filter->getBusesLayout().getMainInputChannelSet();
     for (int i = 0; i < inChannels.size(); i++) {
-        auto portXml = pluginElement->createNewChildElement("port");
+        auto portXml = topLevelPortsElement->createNewChildElement("port");
         portXml->setAttribute("direction", "input");
         portXml->setAttribute("content", "audio");
         portXml->setAttribute("name",
@@ -357,20 +358,20 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
     }
     auto outChannels = filter->getBusesLayout().getMainOutputChannelSet();
     for (int i = 0; i < outChannels.size(); i++) {
-        auto portXml = pluginElement->createNewChildElement("port");
+        auto portXml = topLevelPortsElement->createNewChildElement("port");
         portXml->setAttribute("direction", "output");
         portXml->setAttribute("content", "audio");
         portXml->setAttribute("name",
                               outChannels.getChannelTypeName(outChannels.getTypeOfChannel(i)));
     }
     if (filter->acceptsMidi()) {
-        auto portXml = pluginElement->createNewChildElement("port");
+        auto portXml = topLevelPortsElement->createNewChildElement("port");
         portXml->setAttribute("direction", "input");
         portXml->setAttribute("content", "midi");
         portXml->setAttribute("name", "MIDI input");
     }
     if (filter->producesMidi()) {
-        auto portXml = pluginElement->createNewChildElement("port");
+        auto portXml = topLevelPortsElement->createNewChildElement("port");
         portXml->setAttribute("direction", "output");
         portXml->setAttribute("content", "midi");
         portXml->setAttribute("name", "MIDI output");
