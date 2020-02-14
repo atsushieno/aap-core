@@ -50,3 +50,4 @@ which is distributed under the GPLv3 license.
 
 The sample app code under `samples/SARAH` directory is slightly modified version of [SARAH](https://github.com/getdunne/SARAH) which is distributed under the MIT license (apart from JUCE under GPLv3).
 
+The sample app code under `samples/andes` directory is slightly modified version of [andes](https://github.com/artfwo/andes) which is distributed under the GPLv3 license.
