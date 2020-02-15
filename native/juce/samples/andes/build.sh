@@ -9,8 +9,12 @@ cd $CURDIR
 
 $JUCE_DIR/Projucer --resave Andes-1.jucer
 
+make -C Builds/LinuxMakefile
+
+APP=Andes_1 ./fixup-project.sh
+
 # There is no way to generate those files in Projucer.
-cp ../../project-override.build.gradle Builds/Android/build.gradle
+#cp ../../project-override.build.gradle Builds/Android/build.gradle
 cp ../../copy-into-generated-project.gradle.properties Builds/Android/gradle.properties
 
 sed -e "s/project (\"Andes-1\" C CXX)/project (\"Andes-1\" C CXX)\n\nlink_directories (\n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/..\/..\/build\/native\/androidaudioplugin \n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/..\/..\/build\/native\/androidaudioplugin-lv2) \n\n/" Builds/CLion/CMakeLists.txt  > Builds/CLion/CMakeLists.txt.patched
