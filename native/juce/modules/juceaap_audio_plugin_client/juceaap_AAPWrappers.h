@@ -19,7 +19,7 @@ extern "C" int juce_aap_wrapper_last_error_code{0};
 //  IF exists JUCE MIDI input buffer -> AAP MIDI input port p+nIn+nOut
 //  IF exists JUCE MIDI output buffer -> AAP MIDI output port last
 
-class JuceAAPWrapper : public AudioProcessorListener {
+class JuceAAPWrapper {
 	AndroidAudioPlugin *aap;
 	const char* plugin_unique_id;
 	int sample_rate;
@@ -35,7 +35,6 @@ public:
 		: aap(plugin), plugin_unique_id(pluginUniqueId == nullptr ? nullptr : strdup(pluginUniqueId)), sample_rate(sampleRate), extensions(extensions)
 	{
         juce_processor = createPluginFilter();
-        juce_processor->addListener(this);
 	}
 
 	virtual ~JuceAAPWrapper()
@@ -46,15 +45,6 @@ public:
 			free((void*) plugin_unique_id);
 	}
 
-	// AudioProdessorListener overrides --------
-    void audioProcessorParameterChanged (AudioProcessor* processor, int parameterIndex, float newValue) override {
-        std::fill_n((float *) buffer->buffers[parameterIndex], buffer->num_frames, newValue);
-	}
-    void audioProcessorChanged (AudioProcessor* processor) override {
-
-	}
-	// -------
-
 	void allocateBuffer(AndroidAudioPluginBuffer* buffer)
     {
         if (!buffer) {
@@ -64,8 +54,6 @@ public:
         // allocates juce_buffer. No need to interpret content.
         this->buffer = buffer;
         juce_buffer.setSize(juce_processor->getMainBusNumInputChannels() + juce_processor->getMainBusNumOutputChannels(), buffer->num_frames);
-        for (int i = 0; i < juce_processor->getParameters().size(); i++)
-            std::fill_n((float *) buffer->buffers[i], buffer->num_frames, juce_processor->getParameters()[i]->getValue());
         juce_midi_messages.clear();
     }
 
@@ -98,8 +86,9 @@ public:
             return;
         }
         int nPara = juce_processor->getParameters().size();
-        // parameters should be filled whenever JUCE parameter is assigned, so no need to process here.
-        // FIXME: implement above.
+        // We can take at best one parameter value to be processed by JUCE plugin.
+        for (int i = 0; i < nPara; i++)
+            juce_processor->getParameters()[i]->setValue(((float*) audioBuffer->buffers[i])[0]);
 
         int nIn = juce_processor->getMainBusNumInputChannels();
 		int nBuf = juce_processor->getMainBusNumInputChannels() + juce_processor->getMainBusNumOutputChannels();
