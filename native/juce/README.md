@@ -18,11 +18,23 @@ $ JUCE_DIR=/path/to/JUCE_sdk ./samples/andes/build.sh
 
 Depending on the NDK setup you might also have to rewrite `Builds/Android/local.properties` to point to the right NDK location. Then run `cd Builds/Android && ./gradlew build` instead of `./build.sh`.
 
-You have to build `androidaudioplugin` from the top directory first.
+You have to build `androidaudioplugin` from the top directory before running
+the scripts above.
 Otherwise cmake will fail to resolve it and result in NOTFOUND.
 
+## Under the hood
+
+JUCE itself already supports JUCE apps running on Android and there is still
+no need to make any changes to the upstream JUCE. We use 5.4.7 release.
+
+Though Projucer is not capable of supporting arbitrary plugin format and
+thus we make additional changes to the generated Android Gradle project.
+It is mostly done by `fixup-project.sh`.
 
 ## Generating aap_metadata.xml
+
+It is already done as part of `fixup-project.sh` but in case you would like
+to run it manually...
 
 To import JUCE audio plugins into AAP world, we have to create plugin
 descriptor (`aap_metadata.xml`). We have a supplemental tool source to
