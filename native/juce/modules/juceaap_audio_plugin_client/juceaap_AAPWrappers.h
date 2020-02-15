@@ -95,7 +95,7 @@ public:
 
         if (juce_processor->acceptsMidi()) {
         	juce_midi_messages.clear();
-        	void* src = audioBuffer->buffers[nBuf];
+        	void* src = audioBuffer->buffers[nPara + nBuf];
         	uint8_t* csrc = (uint8_t*) src;
         	int* isrc = (int*) src;
         	int32_t timeDivision = outputTimeDivision = isrc[0];
@@ -145,13 +145,18 @@ public:
 				case 1:
 					skip = true; // there is no way to create MidiMessage for F6 (tune request) and F7 (end of sysex)
 					break;
-				case 2: m = MidiMessage{csrc[srcEventStart], csrc[srcEventStart + 1], timestamp};
-				case 3: m = MidiMessage{csrc[srcEventStart], csrc[srcEventStart + 1], csrc[srcEventStart + 2], timestamp};
+				case 2:
+				    m = MidiMessage{csrc[srcEventStart], csrc[srcEventStart + 1], timestamp};
+				    break;
+				case 3:
+				    m = MidiMessage{csrc[srcEventStart], csrc[srcEventStart + 1], csrc[srcEventStart + 2], timestamp};
+                    break;
 				default: // sysex etc.
 					m = MidiMessage::createSysExMessage(csrc + srcEventStart, midiEventSize);
+                    break;
 				}
 				if (!skip) {
-					m.setChannel(statusByte & 0x0F);
+					m.setChannel((statusByte & 0x0F) + 1); // they accept 1..16, not 0..15...
 					juce_midi_messages.addEvent(m, 0);
 				}
 				srcN += midiEventSize;
@@ -165,7 +170,7 @@ public:
 			memcpy(audioBuffer->buffers[i + nPara], (void *) juce_buffer.getReadPointer(i), sizeof(float) * audioBuffer->num_frames);
 
 		if(juce_processor->producesMidi()) {
-			int32_t bufIndex = nBuf + (juce_processor->acceptsMidi() ? 1 : 0);
+			int32_t bufIndex = nPara + nBuf + (juce_processor->acceptsMidi() ? 1 : 0);
 			void *dst = buffer->buffers[bufIndex];
 			uint8_t *cdst = (uint8_t*) dst;
 			int* idst = (int*) dst;
@@ -338,7 +343,8 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
     pluginElement->setAttribute("manufacturer", JucePlugin_ManufacturerWebsite);
     pluginElement->setAttribute("unique-id",
                                 String::formatted("juceaap:%x", JucePlugin_PluginCode));
-    pluginElement->setAttribute("library", "lib" JucePlugin_Name ".so");
+    //pluginElement->setAttribute("library", "lib" JucePlugin_Name ".so");
+    pluginElement->setAttribute("library", "libjuce_jni.so");
     pluginElement->setAttribute("entrypoint", "GetJuceAAPFactory");
     pluginElement->setAttribute("assets", "");
 
@@ -383,7 +389,7 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
         return JUCEAAP_EXPORT_AAP_METADATA_INVALID_OUTPUT_FILE;
     }
     auto s = pluginsElement->toString();
-    output.writeString(s);
+    output.writeText(s, false, false, "");
     output.flush();
 
     delete filter;

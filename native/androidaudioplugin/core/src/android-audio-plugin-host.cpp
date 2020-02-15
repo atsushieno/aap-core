@@ -1,4 +1,5 @@
 #include "../include/aap/android-audio-plugin-host.hpp"
+#include "../include/aap/logging.h"
 #include <vector>
 #include <tinyxml2.h>
 
@@ -10,6 +11,8 @@
 
 namespace aap
 {
+
+// plugin globals ---------------------
 
 void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
@@ -59,6 +62,8 @@ void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const cha
         plugins.push_back(plugin);
     }
 }
+
+//-----------------------------------
 
 std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const char * containerIdentifier, const char* xmlfile)
 {
@@ -124,11 +129,20 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	auto file = descriptor->getLocalPluginSharedLibrary();
 	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
-	assert (dl != nullptr);
+	if (dl == nullptr) {
+		aprintf("AAP library %s could not be loaded.\n", file.c_str());
+		return nullptr;
+	}
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
-	assert (factoryGetter != nullptr);
+	if (factoryGetter == nullptr) {
+		aprintf("AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
+		return nullptr;
+	}
 	auto pluginFactory = factoryGetter();
-	assert (pluginFactory != nullptr);
+	if (pluginFactory == nullptr) {
+		aprintf("AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
+		return nullptr;
+	}
 	return new PluginInstance(this, descriptor, pluginFactory);
 }
 

@@ -13,8 +13,7 @@
 #include <string>
 #include "aap/android-audio-plugin.h"
 
-namespace aap
-{
+namespace aap {
 
 class PluginInstance;
 

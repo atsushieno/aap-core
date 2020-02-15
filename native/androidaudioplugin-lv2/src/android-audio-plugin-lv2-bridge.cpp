@@ -7,9 +7,9 @@
 #include <vector>
 #include <map>
 #include <string>
-#if ANDROID
-#include <android/log.h>
-#endif
+
+#include "aap/logging.h"
+#include "aap/android-audio-plugin.h"
 
 #include <lilv/lilv.h>
 // FIXME: It is HACK, may not work under some environment...
@@ -22,7 +22,6 @@
 #include <../lib/lv2/event.lv2/event.h>
 #include <../lib/lv2/log.lv2/log.h>
 #include <../lib/lv2/buf-size.lv2/buf-size.h>
-#include "aap/android-audio-plugin.h"
 #include "../../../dependencies/dist/x86/lib/lv2/atom.lv2/atom.h"
 
 
@@ -45,37 +44,10 @@ LV2_URID urid_map_func (LV2_URID_Map_Handle handle, const char *uri)
     return map->find(s)->second;
 }
 
-int avprintf(const char *fmt, va_list ap)
-{
-#if ANDROID
-    return __android_log_vprint(ANDROID_LOG_INFO, "AAPHostNative", fmt, ap);
-#else
-    return vprintf(fmt, ap);
-#endif
-}
-
-int aprintf (const char *fmt,...)
-{
-    va_list ap;
-    va_start (ap, fmt);
-    auto ret = avprintf(fmt, ap);
-    va_end(ap);
-    return ret;
-}
-
-void aputs(const char* s)
-{
-#if ANDROID
-    __android_log_print(ANDROID_LOG_INFO, "AAPHostNative", "%s", s);
-#else
-	puts(s);
-#endif
-}
-
 int log_vprintf (LV2_Log_Handle handle, LV2_URID type, const char *fmt, va_list ap)
 {
-    int ret = aprintf ("LV2 LOG (%d): ", type);
-    ret += aprintf (fmt, ap);
+    int ret = aap::aprintf ("LV2 LOG (%d): ", type);
+    ret += aap::aprintf (fmt, ap);
     return ret;
 }
 

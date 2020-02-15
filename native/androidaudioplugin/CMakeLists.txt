@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.5.1)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
+	"core/src/logging.cpp"
 	"core/src/android-audio-plugin-host.cpp"
 	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
