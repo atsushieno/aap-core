@@ -47,6 +47,7 @@ public:
 		delete buffer->shared_memory_fds;
 		delete buffer->buffers;
 	}
+	void destroyResources();
 
 	inline const String getName() const override {
 		return native->getPluginDescriptor()->getName();

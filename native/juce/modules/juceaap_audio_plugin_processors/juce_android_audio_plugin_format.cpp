@@ -183,6 +183,10 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
 }
 
 void AndroidAudioPluginInstance::releaseResources() {
+    native->deactivate();
+}
+
+void AndroidAudioPluginInstance::destroyResources() {
     native->dispose();
 
     if (buffer->buffers) {
