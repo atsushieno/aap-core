@@ -384,7 +384,7 @@ public:
 
 	void prepare(double sampleRate, int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
-		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
+		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 		
 		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions);
 		plugin->prepare(plugin, preparedBuffer);
