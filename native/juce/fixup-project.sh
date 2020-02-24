@@ -9,11 +9,13 @@ gcc -g ../../tools/aap-metadata-generator.cpp \
 
 ./aap-metadata-generator `pwd`/aap_metadata.xml
 
-cp ../../sample-project-settings.gradle Builds/Android/settings.gradle
+cp ../sample-project.settings.gradle Builds/Android/settings.gradle
 
-mkdir -p Builds/Android/androidaudioplugin-debug/
-cp ../../../../java/androidaudioplugin/build/outputs/aar/androidaudioplugin-debug.aar Builds/Android/androidaudioplugin-debug/
-cp ../../androidaudioplugin-debug-build.gradle Builds/Android/androidaudioplugin-debug/build.gradle
+# There is no way to generate this in Projucer.
+cp ../sample-project.gradle.properties Builds/Android/gradle.properties
+
+# Projucer is too inflexible to generate required content.
+cp ../sample-project.build.gradle Builds/Android/build.gradle
 
 mkdir -p Builds/Android/app/src/debug/res/xml/
 mkdir -p Builds/Android/app/src/release/res/xml/

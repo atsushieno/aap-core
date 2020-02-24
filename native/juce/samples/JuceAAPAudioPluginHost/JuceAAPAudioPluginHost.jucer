@@ -63,7 +63,7 @@
                    androidProjectRepositories="google()&#10;jcenter()&#10;maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }"
                    androidMinimumSDK="29" androidTargetSDK="29" gradleVersion="6.1-rc-1"
                    androidManifestCustomXmlElements="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&#10;&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot; android:versionCode=&quot;1&quot; android:versionName=&quot;1.0.0&quot;&#10;          package=&quot;com.yourcompany.JuceAAPAudioPluginHost&quot;&gt;&#10;  &lt;application android:label=&quot;@string/app_name&quot; android:name=&quot;com.roli.juce.JuceApp&quot; android:hardwareAccelerated=&quot;true&quot;&gt;&#10;    &lt;provider&#10;        android:authorities=&quot;org.androidaudioplugin.AudioPluginNativeHostContentProvider&quot;&#10;        android:name=&quot;org.androidaudioplugin.AudioPluginNativeHostContentProvider&quot; /&gt;&#10;  &lt;/application&gt;&#10;&lt;/manifest&gt;&#10;"
-                   androidCustomAppBuildGradleContent="ndkVersion = '20.0.5594570'"
+                   androidCustomAppBuildGradleContent="ndkVersion = '21.0.6113669'"
                    androidPushNotifications="0">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="../../../../../androidaudioplugin/core/include;../../../../../plugin-api/include;../../../../../../dependencies/tinyxml2"

@@ -1,3 +1,0 @@
-include ':androidaudioplugin-debug'
-rootProject.name = 'Andes_1'
-include ':app'

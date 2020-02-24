@@ -13,13 +13,7 @@ This is what @atsushieno usually runs:
 
 ```
 $ JUCE_DIR=/path/to/JUCE_sdk ./samples/JuceAAPAudioPluginHost/build.sh
-$ JUCE_DIR=/path/to/JUCE_sdk ./samples/andes/build.sh
-```
-
-or... (newer)
-
-```
-$ JUCE_DIR=/path/to/JUCE_sdk ./samples/JuceAAPAudioPluginHost/build.sh
+$ cd ./samples/andes && JUCE_DIR=/path/to/JUCE_sdk APPNAME=Andes_1 ../../build.sh
 $ cd ./samples/SARAH && JUCE_DIR=/path/to/JUCE_sdk APPNAME=SARAH ../../build.sh
 ```
 
@@ -62,7 +56,7 @@ APP=__yourapp__ gcc (__thisdir__)/tools/aap-metadata-generator.cpp \
 
 ## Porting other JUCE-based audio plugins
 
-Here are the porting steps that we had:
+Here are the porting steps that we had. Note that this applies only to samples built under this `samples` directory:
 
 - Run Projucer and open the project `.jucer` file.
 - open project settings and ensure to build at least one plugin format (`Standalone` works)
@@ -73,11 +67,15 @@ Here are the porting steps that we had:
   - minSdkVersion 29
   - targetSdkVersion 29
   - Custom Manifest XML content: listed below
+  - Gradle Version 6.1-rc-1
+  - Android Plug-in Version 4.0.0-alpha09
+
+Copy `sample-project-build.gradle` as the project top-level `build.gradle` in `Builds/Android`. In ideal world, Projucer can generate required content, but Projucer is not capable enough.
 
 For module dependenciesm add below:
 
 ```
-implementation project(':androidaudioplugin-debug')
+implementation project(':androidaudioplugin')
 implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.61"
 ```
 
@@ -96,7 +94,6 @@ For custom Manifest XML content, replace `!!!APPNAME!!!` part with your own (thi
     </service>
   </application>
 </manifest>
-
 ```
 
 
