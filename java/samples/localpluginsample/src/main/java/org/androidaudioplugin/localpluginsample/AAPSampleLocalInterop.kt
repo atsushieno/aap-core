@@ -7,6 +7,6 @@ public class AAPSampleLocalInterop {
             System.loadLibrary("localpluginsample")
         }
         @JvmStatic
-        external fun runHostAAP(plugins: Array<String>, sampleRate: Int, waveInL: ByteArray, waveInR: ByteArray, waveOurL: ByteArray, waveOutR: ByteArray)
+        external fun runHostAAP(plugins: Array<String>, sampleRate: Int, waveInL: ByteArray, waveInR: ByteArray, waveOurL: ByteArray, waveOutR: ByteArray, parameters: FloatArray)
     }
 }

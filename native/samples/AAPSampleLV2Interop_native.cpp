@@ -15,7 +15,7 @@ typedef struct {
 } AAPInstanceUse;
 
 int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength,
-               void *outWavL, void *outWavR) {
+               void *outWavL, void *outWavR, float* parameters) {
     auto host = new aap::PluginHost();
 
     int buffer_size = 44100 * sizeof(float);
@@ -71,7 +71,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     instance->prepare(sampleRate, false, iu->plugin_buffer);
 
     // prepare inputs - dummy
-    for (int i = 0; i < float_count; i++) {
+    for (int i = 0; i < instance->getPluginDescriptor()->getNumPorts(); i++) {
 		if (i == midiInPort) {
             auto mb = (uint8_t*) currentMidiIn;
             int length = 20;
@@ -102,8 +102,8 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
             mb[27] = 0x00;
 		}
 		else
-				for (int b = 0; b < float_count; b++)
-						controlIn[b] = instance->getPluginDescriptor()->getPort(i)->getDefaultValue();
+            for (int b = 0; b < float_count; b++)
+                    controlIn[b] = parameters != nullptr ? parameters[i] : instance->getPluginDescriptor()->getPort(i)->getDefaultValue();
 	}
     // activate, run, deactivate
     instance->activate();
@@ -121,7 +121,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
 
     instance->deactivate();
 
-    for (int p = 0; iu->plugin_buffer->buffers[p]; p++) {
+    for (int p = 0; p < iu->plugin_buffer->num_buffers; p++) {
         if(iu->plugin_buffer->buffers[p] != nullptr
             && iu->plugin_buffer->buffers[p] != dummyBuffer
             && iu->plugin_buffer->buffers[p] != audioInL

@@ -57,9 +57,7 @@ void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 
 void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 {
-	int n = 0;
-	while (buffer->buffers[n] != nullptr)
-		n++;
+	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
 	auto &fds = ctx->shared_memory_fds;

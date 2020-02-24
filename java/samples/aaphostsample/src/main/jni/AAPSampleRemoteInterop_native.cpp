@@ -175,7 +175,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     auto status5 = proxy->deactivate(instanceID);
     assert (status5.isOk());
 
-    for (int p = 0; plugin_buffer->buffers[p]; p++)
+    for (int p = 0; p < plugin_buffer->num_buffers; p++)
         if(plugin_buffer->buffers[p] != nullptr)
             munmap(plugin_buffer->buffers[p], buffer_size);
     free(plugin_buffer->buffers);

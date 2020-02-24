@@ -60,11 +60,12 @@ public:
             sharedMemoryFDs.resize(newFDs.size(), 0);
         }
 
+        buffer.num_buffers = newFDs.size();
         buffer.num_frames = frameCount;
         current_buffer_size = buffer.num_frames * sizeof(float);
-        int n = newFDs.size();
+        int n = buffer.num_buffers;
         if (!buffer.buffers)
-            buffer.buffers = (void **) calloc(sizeof(void *), n + 1);
+            buffer.buffers = (void **) calloc(sizeof(void *), n);
         for (int i = 0; i < n; i++) {
             if (buffer.buffers[i])
                 munmap(buffer.buffers[i], current_buffer_size);
@@ -78,7 +79,6 @@ public:
             }
             assert(buffer.buffers[i] != nullptr);
         }
-        buffer.buffers[newFDs.size()] = nullptr;
         return 0;
     }
 

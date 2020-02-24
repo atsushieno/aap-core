@@ -11,7 +11,7 @@ struct AndroidAudioPlugin;
 typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
 typedef struct {
-	/* NULL-terminated list of buffers */
+	int32_t num_buffers;
 	void **buffers;
 	int32_t num_frames;
 } AndroidAudioPluginBuffer;

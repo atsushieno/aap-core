@@ -21,7 +21,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 						   long timeoutInNanoseconds) {
 	/* do anything. In this example, they are filled test vectors */
 	int size = buffer->num_frames * sizeof(float);
-	for (int i = 0; buffer->buffers[i]; i++) {
+	for (int i = 0; i < buffer->num_buffers; i++) {
 		for (int x = 0; x < size; x++)
 			((char*) buffer->buffers[i])[x] = (char) ((x % 8) + (i * 8));
 	}

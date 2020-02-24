@@ -11,12 +11,12 @@
 #include "aap/android-audio-plugin-host.hpp"
 
 namespace aaplv2sample {
-    int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR);
+    int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR, float *parameters);
 }
 
 extern "C" {
 
-jint Java_org_androidaudioplugin_localpluginsample_AAPSampleLocalInterop_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray inWavL, jbyteArray inWavR, jbyteArray outWavL, jbyteArray outWavR)
+jint Java_org_androidaudioplugin_localpluginsample_AAPSampleLocalInterop_runHostAAP(JNIEnv *env, jclass cls, jobjectArray jPlugins, jint sampleRate, jbyteArray inWavL, jbyteArray inWavR, jbyteArray outWavL, jbyteArray outWavR, jfloatArray jParameters)
 {
     jsize size = env->GetArrayLength(jPlugins);
     const char *pluginIDs[size];
@@ -36,8 +36,12 @@ jint Java_org_androidaudioplugin_localpluginsample_AAPSampleLocalInterop_runHost
 	env->GetByteArrayRegion(inWavL, 0, wavLength, (jbyte*) wavBytesR);
     void* outWavBytesL = calloc(wavLength, 1);
 	void* outWavBytesR = calloc(wavLength, 1);
+	int numParameters = env->GetArrayLength(jParameters);
+	float *parameters = (float*) calloc(numParameters, sizeof(float));
+	assert(parameters != nullptr);
+	env->GetFloatArrayRegion(jParameters, 0, numParameters, parameters);
 
-    int ret = aaplv2sample::runHostAAP(sampleRate, pluginIDs[0], wavBytesL, wavBytesR, wavLength, outWavBytesL, outWavBytesR);
+    int ret = aaplv2sample::runHostAAP(sampleRate, pluginIDs[0], wavBytesL, wavBytesR, wavLength, outWavBytesL, outWavBytesR, parameters);
 
     env->SetByteArrayRegion(outWavL, 0, wavLength, (jbyte*) outWavBytesL);
 	env->SetByteArrayRegion(outWavR, 0, wavLength, (jbyte*) outWavBytesR);

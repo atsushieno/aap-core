@@ -4,7 +4,7 @@
 
 // it is kind of hack, copying decl. manually.
 namespace aaplv2sample {
-    int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR);
+    int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength, void *outWavL, void *outWavR, float* parameters);
 }
 
 int main(int argc, char** argv)
@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 	void* inWavBytesR = calloc(wavLength, 1);
 	void* outWavBytesL = calloc(wavLength, 1);
 	void* outWavBytesR = calloc(wavLength, 1);
-	int ret = aaplv2sample::runHostAAP(sampleRate, pluginID, inWavBytesL, inWavBytesR, wavLength, outWavBytesL, outWavBytesR);
+	int ret = aaplv2sample::runHostAAP(sampleRate, pluginID, inWavBytesL, inWavBytesR, wavLength, outWavBytesL, outWavBytesR, nullptr);
 	free(inWavBytesL);
 	free(inWavBytesR);
 	free(outWavBytesL);
