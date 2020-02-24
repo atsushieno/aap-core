@@ -334,6 +334,8 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
     // FIXME: start application loop
 
     auto filter = createPluginFilter();
+    filter->enableAllBuses();
+
     String name = "aapports:juce/" + filter->getName();
     auto parameters = filter->getParameters();
 
@@ -397,7 +399,7 @@ int generate_aap_metadata(const char *aapMetadataFullPath) {
         return JUCEAAP_EXPORT_AAP_METADATA_INVALID_OUTPUT_FILE;
     }
     auto s = pluginsElement->toString();
-    output.writeText(s, false, false, "");
+    output.writeText(s, false, false, "\n");
     output.flush();
 
     delete filter;

@@ -9,8 +9,11 @@ cd $CURDIR
 
 $JUCE_DIR/Projucer --resave SARAH.jucer
 
+make -C Builds/LinuxMakefile
+
+APP=SARAH ./fixup-project.sh
+
 # There is no way to generate those files in Projucer.
-cp project-override.build.gradle Builds/Android/build.gradle
 cp ../../copy-into-generated-project.gradle.properties Builds/Android/gradle.properties
 
 sed -e "s/project (\"SARAH\" C CXX)/project (\"SARAH\" C CXX)\n\nlink_directories (\n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/..\/..\/build\/native\/androidaudioplugin \n  \$\{CMAKE_CURRENT_SOURCE_DIR\}\/..\/..\/..\/..\/..\/..\/build\/native\/androidaudioplugin-lv2) \n\n/" Builds/CLion/CMakeLists.txt  > Builds/CLion/CMakeLists.txt.patched

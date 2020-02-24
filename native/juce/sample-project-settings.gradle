@@ -1,0 +1,2 @@
+include ':androidaudioplugin-debug'
+include ':app'
