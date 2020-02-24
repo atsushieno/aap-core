@@ -54,17 +54,19 @@ public:
                     munmap(buffer.buffers[i], current_buffer_size);
     }
 
-    int resetBuffers(int frameCount, const std::vector<int64_t> &newFDs) {
-        if (sharedMemoryFDs.size() != newFDs.size()) {
+    int resetBuffers(int frameCount)
+    {
+        int nPorts = instance->getPluginDescriptor()->getNumPorts();
+        if (sharedMemoryFDs.size() != nPorts) {
             freeBuffers();
-            sharedMemoryFDs.resize(newFDs.size(), 0);
+            sharedMemoryFDs.resize(nPorts, 0);
         }
 
-        buffer.num_buffers = newFDs.size();
+        buffer.num_buffers = nPorts;
         buffer.num_frames = frameCount;
         current_buffer_size = buffer.num_frames * sizeof(float);
         int n = buffer.num_buffers;
-        if (!buffer.buffers)
+        if (buffer.buffers == nullptr)
             buffer.buffers = (void **) calloc(sizeof(void *), n);
         for (int i = 0; i < n; i++) {
             if (buffer.buffers[i])
@@ -84,7 +86,7 @@ public:
 
     int prepare(int32_t frameCount, int32_t portCount)
     {
-        int ret = resetBuffers(frameCount, sharedMemoryFDs);
+        int ret = resetBuffers(frameCount);
         if (ret != 0) {
             __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin", "Failed to prepare shared memory buffers.");
             return ret;

@@ -164,8 +164,9 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
 
     // minimum setup, as the pointers are not passed by JUCE framework side.
     int n = native->getPluginDescriptor()->getNumPorts();
-    shared_memory_fds.resize(n + 1);
-    buffer->buffers = new void *[n + 1];
+    shared_memory_fds.resize(n);
+    buffer->num_buffers = n;
+    buffer->buffers = (void**) calloc(n, sizeof(void*));
     buffer->num_frames = maximumExpectedSamplesPerBlock;
     for (int i = 0; i < n; i++)
         allocateSharedMemory(i, buffer->num_frames * sizeof(float));
