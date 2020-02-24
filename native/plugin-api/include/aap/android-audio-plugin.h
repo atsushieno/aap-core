@@ -16,13 +16,6 @@ typedef struct {
 	int32_t num_frames;
 } AndroidAudioPluginBuffer;
 
-/* They can be consolidated as a standalone helper library when people want C API for bindings (such as P/Invokes)
- */
-#if 0
-void **aap_buffer_get_buffers (AndroidAudioPluginBuffer *buffer) { return buffer->buffers;
-int32_t aap_buffer_num_frames (AndroidAudioPluginBuffer *buffer) { return buffer->num_frames; }
-#endif
-
 /* A minimum state support is provided in AAP framework itself.
  * LV2 has State extension, but it is provided to rather guide plugin developers
  * how to implement it. AAP is rather a bridge framework and needs simple solution.
@@ -62,11 +55,12 @@ typedef void (*aap_process_func_t) (
 	AndroidAudioPluginBuffer* audioBuffer,
 	long timeoutInNanoseconds);
 
-typedef const AndroidAudioPluginState* (*aap_get_state_func_t) (
-	AndroidAudioPlugin *plugin);
+typedef void (*aap_get_state_func_t) (
+	AndroidAudioPlugin *plugin,
+	AndroidAudioPluginState *result);
 
 typedef void (*aap_set_state_func_t) (
-	AndroidAudioPlugin *plugin, 
+	AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *input);
 
 typedef struct AndroidAudioPlugin {

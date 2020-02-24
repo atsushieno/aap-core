@@ -361,7 +361,8 @@ class PluginInstance
 	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
 	const AndroidAudioPluginExtension * const *extensions;
-	PluginInstantiationState plugin_state;
+	PluginInstantiationState instantiation_state;
+	AndroidAudioPluginState plugin_state{0, nullptr};
 
 	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory)
 		: host(pluginHost),
@@ -369,7 +370,7 @@ class PluginInstance
 		  plugin_factory(loadedPluginFactory),
 		  plugin(NULL),
 		  extensions(NULL),
-		  plugin_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
 	{
 	}
 	
@@ -384,31 +385,31 @@ public:
 
 	void prepare(double sampleRate, int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
-		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 		
 		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions);
 		plugin->prepare(plugin, preparedBuffer);
-		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
 	void activate()
 	{
-		if (plugin_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
+		if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
 			return;
-		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 		
 		plugin->activate(plugin);
-		plugin_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
 	}
 	
 	void deactivate()
 	{
-		if (plugin_state == PLUGIN_INSTANTIATION_STATE_INACTIVE)
+		if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE)
 			return;
-		assert(plugin_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
+		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
 		
 		plugin->deactivate(plugin);
-		plugin_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
 	void dispose()
@@ -416,7 +417,7 @@ public:
 		if (plugin != NULL)
 			plugin_factory->release(plugin_factory, plugin);
 		plugin = NULL;
-		plugin_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}
 	
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
@@ -458,18 +459,30 @@ public:
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 	}
-	
+
 	int32_t getStateSize()
 	{
-		return plugin->get_state(plugin)->data_size;
+		AndroidAudioPluginState result{0, nullptr};
+		plugin->get_state(plugin, &result);
+		return result.data_size;
 	}
-	
-	void const* getState()
+
+	const AndroidAudioPluginState& getState()
 	{
-		return plugin->get_state(plugin)->raw_data;
+		AndroidAudioPluginState result{0, nullptr};
+		plugin->get_state(plugin, &result);
+		if (plugin_state.data_size < result.data_size) {
+			if (plugin_state.raw_data != nullptr)
+				free((void*) plugin_state.raw_data);
+			plugin_state.raw_data = calloc(1, result.data_size);
+		}
+		plugin_state.data_size = result.data_size;
+		plugin->get_state(plugin, &plugin_state);
+
+		return plugin_state;
 	}
 	
-	void setState(const void* data, int32_t offset, int32_t sizeInBytes)
+	void setState(const void* data, int32_t sizeInBytes)
 	{
 		AndroidAudioPluginState state;
 		state.data_size = sizeInBytes;

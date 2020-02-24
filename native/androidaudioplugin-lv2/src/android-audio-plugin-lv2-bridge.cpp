@@ -267,15 +267,14 @@ void aap_lv2_plugin_deactivate(AndroidAudioPlugin *plugin)
 	lilv_instance_deactivate(l->instance);
 }
 
-AndroidAudioPluginState state;
-const AndroidAudioPluginState* aap_lv2_plugin_get_state(AndroidAudioPlugin *plugin)
+void aap_lv2_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
-    return &state; /* fill it */
+	/* FIXME: implement */
 }
 
 void aap_lv2_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
 {
-    /* apply argument input */
+	/* FIXME: implement */
 }
 
 LV2_Feature* features [6];

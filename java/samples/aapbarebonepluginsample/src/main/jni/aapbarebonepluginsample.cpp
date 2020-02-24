@@ -29,13 +29,12 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-AndroidAudioPluginState state;
-const AndroidAudioPluginState *sample_plugin_get_state(AndroidAudioPlugin *plugin) {
-	return &state; /* fill it */
+void sample_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* state) {
+	// FIXME: implement
 }
 
 void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input) {
-	/* apply argument input */
+	// FIXME: implement
 }
 
 typedef struct {

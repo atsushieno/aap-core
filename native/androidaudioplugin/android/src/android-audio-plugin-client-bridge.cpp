@@ -58,15 +58,38 @@ void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 {
 	int n = 0;
-	while (buffer->buffers[n] != nullptr) {
-		::ndk::ScopedFileDescriptor sfd;
-		sfd.set((int64_t) ctx->shared_memory_fds[n]);
-		auto pmstatus = ctx->proxy->prepareMemory(ctx->instance_id, n, sfd);
-		assert (pmstatus.isOk());
+	while (buffer->buffers[n] != nullptr)
 		n++;
-	}
+
+	auto prevBuf = ctx->previous_buffer;
+	auto &fds = ctx->shared_memory_fds;
+
+    // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
+    int nPrev = fds.size();
+    if (prevBuf != nullptr) {
+        for (int i = prevBuf->num_frames < buffer->num_frames ? 0 : n; i < nPrev; i++) {
+            close(fds[i]);
+            fds[i] = 0;
+        }
+    }
+    fds.resize(n, 0);
+
+    // allocate shm FDs, first locally, then remotely.
+    for (int i = 0; i < n; i++) {
+        if (fds[i] == 0) {
+            fds[i] = ASharedMemory_create(nullptr,
+                    buffer->num_frames * sizeof(float));
+            ::ndk::ScopedFileDescriptor sfd;
+            sfd.set(fds[i]);
+            auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
+            assert(pmStatus.isOk());
+        }
+        assert(fds[i] != 0);
+    }
+
 	auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
-    assert (status.isOk());
+    assert(status.isOk());
+
 	ctx->previous_buffer = buffer;
 }
 
@@ -101,20 +124,20 @@ void aap_bridge_plugin_deactivate(AndroidAudioPlugin *plugin)
     assert (status.isOk());
 }
 
-const AndroidAudioPluginState* aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin)
+void aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	int size;
 	auto status = ctx->proxy->getStateSize(ctx->instance_id, &size);
     assert (status.isOk());
 	ensureStateBuffer(ctx, size);
-	// FIXME: status check
-	// FIXME: Maybe this should be one call for potential state length mismatch.
+	// FIXME: Maybe this should be one call for potential state length mismatch, if ever possible (it isn't so far).
 	::ndk::ScopedFileDescriptor fd;
 	fd.set((int64_t) &ctx->state.raw_data);
 	auto status2 = ctx->proxy->getState(ctx->instance_id, fd);
     assert (status2.isOk());
-    return &ctx->state;
+    result->data_size = ctx->state.data_size;
+    result->raw_data = ctx->state.raw_data;
 }
 
 void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)

@@ -98,13 +98,13 @@ public:
 	}
 
 	inline void getStateInformation(juce::MemoryBlock &destData) override {
-		int32_t size = native->getStateSize();
-		destData.setSize(size);
-		destData.copyFrom(native->getState(), 0, size);
+		auto state = native->getState();
+		destData.setSize(state.data_size);
+		destData.copyFrom(state.raw_data, 0, state.data_size);
 	}
 
 	inline void setStateInformation(const void *data, int sizeInBytes) override {
-		native->setState(data, 0, sizeInBytes);
+		native->setState(data, sizeInBytes);
 	}
 
 	void fillInPluginDescription(PluginDescription &description) const override;

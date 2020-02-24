@@ -25,7 +25,7 @@ class JuceAAPWrapper {
 	int sample_rate;
 	const AndroidAudioPluginExtension * const *extensions;
 	AndroidAudioPluginBuffer *buffer;
-    AndroidAudioPluginState state;
+    AndroidAudioPluginState state{0, nullptr};
 	juce::AudioProcessor *juce_processor;
 	juce::AudioBuffer<float> juce_buffer;
 	juce::MidiBuffer juce_midi_messages;
@@ -55,6 +55,9 @@ public:
         this->buffer = buffer;
         juce_buffer.setSize(juce_processor->getMainBusNumInputChannels() + juce_processor->getMainBusNumOutputChannels(), buffer->num_frames);
         juce_midi_messages.clear();
+        cached_parameter_values.resize(juce_processor->getParameters().size());
+        for (int i = 0; i < cached_parameter_values.size(); i++)
+            cached_parameter_values[i] = 0.0f;
     }
 
 	void prepare(AndroidAudioPluginBuffer* buffer)
@@ -77,6 +80,8 @@ public:
 	int32_t current_bpm = 120; // FIXME: provide way to adjust it
 	int32_t default_time_division = 192;
 
+	std::vector<float> cached_parameter_values;
+
 	// FIXME: process() should not really pass audioBuffer.
 	//  It must be always deactivated, re-prepared, and re-activated.
 	void process(AndroidAudioPluginBuffer* audioBuffer, long timeoutInNanoseconds)
@@ -86,9 +91,14 @@ public:
             return;
         }
         int nPara = juce_processor->getParameters().size();
-        // We can take at best one parameter value to be processed by JUCE plugin.
-        for (int i = 0; i < nPara; i++)
-            juce_processor->getParameters()[i]->setValue(((float*) audioBuffer->buffers[i])[0]);
+        // For JUCE plugins, we can take at best one parameter value to be processed.
+        for (int i = 0; i < nPara; i++) {
+            float v = ((float *) audioBuffer->buffers[i])[0];
+            if (cached_parameter_values[i] != v) {
+                juce_processor->getParameters()[i]->setValue(v);
+                cached_parameter_values[i] = v;
+            }
+        }
 
         int nIn = juce_processor->getMainBusNumInputChannels();
 		int nBuf = juce_processor->getMainBusNumInputChannels() + juce_processor->getMainBusNumOutputChannels();
@@ -189,10 +199,7 @@ public:
 		}
 	}
 
-	// FIXME: we should probably make changes to getState() signature to not return raw pointer,
-	//  as it expects that memory allocation runs at plugins. It should be passed by argument and
-	//  allocated externally. JUCE does it better.
-	AndroidAudioPluginState* getState()
+	void getState(AndroidAudioPluginState* result)
 	{
 	    MemoryBlock mb;
 	    mb.reset();
@@ -203,7 +210,8 @@ public:
             state.raw_data = calloc(mb.getSize(), 1);
 	    }
         memcpy((void*) state.raw_data, mb.begin(), mb.getSize());
-        return &state;
+        result->data_size = state.data_size;
+        result->raw_data = state.raw_data;
 	}
 
 	void setState(AndroidAudioPluginState* input)
@@ -242,9 +250,9 @@ void juceaap_process(
 	getWrapper(plugin)->process(audioBuffer, timeoutInNanoseconds);
 }
 
-const AndroidAudioPluginState* juceaap_get_state(AndroidAudioPlugin *plugin)
+void juceaap_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
-	return getWrapper(plugin)->getState();
+	getWrapper(plugin)->getState(result);
 }
 
 void juceaap_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)

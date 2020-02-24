@@ -95,16 +95,16 @@ public:
 
     void getState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD)
     {
-        auto size = instance->getStateSize();
-        auto dst = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
-        memcpy(dst, instance->getState(), size);
-        munmap(dst, size);
+        auto state = instance->getState();
+        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
+        memcpy(dst, state.raw_data, state.data_size);
+        munmap(dst, state.data_size);
     }
 
     void setState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size)
     {
         auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
-        instance->setState(src, 0, in_size);
+        instance->setState(src, in_size);
         munmap(src, in_size);
     }
 
