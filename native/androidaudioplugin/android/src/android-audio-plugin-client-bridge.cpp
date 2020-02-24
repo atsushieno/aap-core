@@ -15,6 +15,7 @@ public:
 	const char *unique_id;
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
+	std::vector<int64_t> shared_memory_fds{};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state;
@@ -59,7 +60,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = 0;
 	while (buffer->buffers[n] != nullptr) {
 		::ndk::ScopedFileDescriptor sfd;
-		sfd.set((int64_t) buffer->shared_memory_fds[n]);
+		sfd.set((int64_t) ctx->shared_memory_fds[n]);
 		auto pmstatus = ctx->proxy->prepareMemory(ctx->instance_id, n, sfd);
 		assert (pmstatus.isOk());
 		n++;

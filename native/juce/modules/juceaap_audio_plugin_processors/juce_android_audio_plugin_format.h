@@ -32,6 +32,7 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	int sample_rate;
 	std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
 	std::map<int32_t,int32_t> portMapAapToJuce{};
+	std::vector<int64_t> shared_memory_fds{};
 
 	void fillNativeInputBuffers(AudioBuffer<float> &audioBuffer, MidiBuffer &midiBuffer);
 	void fillNativeOutputBuffers(AudioBuffer<float> &buffer);
@@ -44,7 +45,6 @@ public:
 
 	AndroidAudioPluginInstance(aap::PluginInstance *nativePlugin);
 	~AndroidAudioPluginInstance() {
-		delete buffer->shared_memory_fds;
 		delete buffer->buffers;
 	}
 	void destroyResources();
