@@ -1,7 +1,9 @@
 
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
-ANDROID_NDK=~/Android/Sdk/ndk/20.1.5948944
+ANDROID_NDK=~/Android/Sdk/ndk/21.1.6210238
 NATIVE_BINARIES_TAG=r1
+
+all: build-all
 
 build-all: \
 	maybe-download-ndk \
@@ -54,8 +56,6 @@ build-android-single:
 		-DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake \
 		-DANDROID_ABI=$(A_ABI) -DCMAKE_ANDROID_ARCH_ABI=$(A_ABI) \
 		-DANDROID_PLATFORM=android-29 ../.. && make
-
-all: build-all
 
 import-lv2-deps: build-lv2-importer
 	mkdir -p java/samples/aaphostsample/src/main/res/xml
