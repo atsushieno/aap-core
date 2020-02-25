@@ -289,7 +289,7 @@ AndroidAudioPlugin* aap_lv2_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char* pluginUniqueID,
         int sampleRate,
-        const AndroidAudioPluginExtension * const *extensions)
+        AndroidAudioPluginExtension ** extensions)
 {
 	auto world = lilv_world_new();
 	// Here we expect that LV2_PATH is already set using setenv() etc.

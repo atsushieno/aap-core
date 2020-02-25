@@ -15,7 +15,7 @@ public:
 	const char *unique_id;
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
-	std::vector<int64_t> shared_memory_fds{};
+	aap::SharedMemoryExtension* shared_memory_extension{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state;
@@ -60,7 +60,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto &fds = ctx->shared_memory_fds;
+	auto &fds = ctx->shared_memory_extension->getSharedMemoryFDs();
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
     if (prevBuf != nullptr) {
@@ -74,6 +74,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 
     // allocate shm FDs, first locally, then remotely.
     for (int i = 0; i < n; i++) {
+        assert(fds[i] != 0);
         if (fds[i] == 0) {
             fds[i] = ASharedMemory_create(nullptr,
                     buffer->num_frames * sizeof(float));
@@ -154,14 +155,21 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
 	int aapSampleRate,
-	const AndroidAudioPluginExtension * const *extensions	// unused
+	AndroidAudioPluginExtension** extensions	// unused
 	)
 {
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
 
 	auto ctx = new AAPClientContext(aapSampleRate, pluginUniqueId);
-	auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate, &ctx->instance_id);
+
+
+    for (const AndroidAudioPluginExtension* ext = extensions[0]; ext != nullptr; ext++)
+        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0)
+            ctx->shared_memory_extension = (aap::SharedMemoryExtension*) ext->data;
+    assert(ctx->shared_memory_extension != nullptr);
+
+    auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 	return new AndroidAudioPlugin {
 		ctx,

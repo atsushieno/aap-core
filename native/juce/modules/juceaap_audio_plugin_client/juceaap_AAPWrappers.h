@@ -264,7 +264,7 @@ AndroidAudioPlugin* juceaap_instantiate(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
-	const AndroidAudioPluginExtension * const *extensions)
+	AndroidAudioPluginExtension** extensions)
 {
 	auto *ret = new AndroidAudioPlugin();
 	auto *ctx = new JuceAAPWrapper(ret, pluginUniqueId, sampleRate, extensions);

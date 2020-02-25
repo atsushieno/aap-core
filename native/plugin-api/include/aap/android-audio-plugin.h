@@ -38,7 +38,7 @@ typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
-	const AndroidAudioPluginExtension * const *extensions);
+	AndroidAudioPluginExtension ** extensions);
 
 typedef void (*aap_release_func_t) (
 	AndroidAudioPluginFactory *pluginFactory,

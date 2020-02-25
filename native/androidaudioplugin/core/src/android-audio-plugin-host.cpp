@@ -110,6 +110,20 @@ bool PluginHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdated;
 }
 
+void PluginHost::destroyPlugin(PluginInstance* instance)
+{
+    for (AndroidAudioPluginExtension* ext : instance->extensions) {
+        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0) {
+            if (ext->data != nullptr)
+                delete (aap::SharedMemoryExtension*) ext->data;
+        }
+        delete ext;
+    }
+	delete instance;
+}
+
+char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.SharedMemoryExtension";
+
 PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
 {
 	const PluginInformation *descriptor = getPluginDescriptor(identifier);
@@ -155,7 +169,12 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
-	return new PluginInstance(this, descriptor, pluginFactory);
+	auto instance = new PluginInstance(this, descriptor, pluginFactory);
+	auto ext = new AndroidAudioPluginExtension();
+	ext->uri = aap::SharedMemoryExtension::URI;
+	ext->data = new aap::SharedMemoryExtension();
+	instance->extensions.emplace_back (ext);
+	return instance;
 }
 
 } // namespace

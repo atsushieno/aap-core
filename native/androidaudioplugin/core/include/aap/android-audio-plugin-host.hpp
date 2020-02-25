@@ -9,7 +9,9 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
+#include <unistd.h>
 #include <vector>
+#include <map>
 #include <string>
 #include "aap/android-audio-plugin.h"
 
@@ -302,10 +304,28 @@ public:
 PluginHostPAL* getPluginHostPAL();
 
 
+class SharedMemoryExtension
+{
+    std::vector<int64_t> shared_memory_fds{};
+
+public:
+    static char const *URI;
+
+    SharedMemoryExtension() {}
+    ~SharedMemoryExtension() {
+        for (int64_t fd : shared_memory_fds)
+            close(fd);
+        shared_memory_fds.clear();
+    }
+
+    std::vector<int64_t>& getSharedMemoryFDs() { return shared_memory_fds; }
+};
+
+
 class PluginHost
 {
-	std::vector<const PluginInformation*> plugin_descriptors;
-	
+	std::vector<const PluginInformation*> plugin_descriptors{};
+
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor);
 	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor);
 
@@ -345,6 +365,8 @@ public:
 	}
 	
 	PluginInstance* instantiatePlugin(const char* identifier);
+
+	void destroyPlugin(PluginInstance* instance);
 	
 	EditorInstance* createEditor(PluginInstance* instance)
 	{
@@ -360,7 +382,7 @@ class PluginInstance
 	const PluginInformation *descriptor;
 	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
-	const AndroidAudioPluginExtension * const *extensions;
+	std::vector<AndroidAudioPluginExtension*> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
@@ -368,8 +390,7 @@ class PluginInstance
 		: host(pluginHost),
 		  descriptor(pluginDescriptor),
 		  plugin_factory(loadedPluginFactory),
-		  plugin(NULL),
-		  extensions(NULL),
+		  plugin(nullptr),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
 	{
 	}
@@ -386,8 +407,8 @@ public:
 	void prepare(double sampleRate, int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
-		
-		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions);
+
+		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions.data());
 		plugin->prepare(plugin, preparedBuffer);
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
@@ -414,9 +435,9 @@ public:
 	
 	void dispose()
 	{
-		if (plugin != NULL)
+		if (plugin != nullptr)
 			plugin_factory->release(plugin_factory, plugin);
-		plugin = NULL;
+		plugin = nullptr;
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}
 	

@@ -45,7 +45,7 @@ AndroidAudioPlugin *sample_plugin_new(
 		AndroidAudioPluginFactory *pluginFactory,
 		const char *pluginUniqueId,
 		int sampleRate,
-		const AndroidAudioPluginExtension *const *extensions) {
+		AndroidAudioPluginExtension** extensions) {
 	return new AndroidAudioPlugin{
 			new SamplePluginSpecific{},
 			sample_plugin_prepare,
