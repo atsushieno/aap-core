@@ -37,7 +37,7 @@ public:
 
     ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
     {
-        *_aidl_return = host->createInstance(in_pluginId.data(), in_sampleRate);
+        *_aidl_return = host->createInstance(in_pluginId.c_str(), in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
         auto shm = new SharedMemoryExtension();
         shm->getSharedMemoryFDs().resize(instance->getPluginDescriptor()->getNumPorts());

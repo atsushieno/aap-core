@@ -63,7 +63,7 @@ public:
 		maximum_value = maximumValue;
 	}
 
-	const char* getName() const { return name.data(); }
+	const char* getName() const { return name.c_str(); }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
 	bool hasValueRange() const { return has_value_range; }
@@ -116,9 +116,9 @@ public:
 		  last_info_updated_unixtime((long) time(NULL))
 	{
 		char *cp;
-		int len = snprintf(nullptr, 0, "%s+%s+%s", name.data(), plugin_id.data(), version.data());
+		int len = snprintf(nullptr, 0, "%s+%s+%s", name.c_str(), plugin_id.c_str(), version.c_str());
 		cp = (char*) calloc(len, 1);
-		snprintf(cp, len, "%s+%s+%s", name.data(), plugin_id.data(), version.data());
+		snprintf(cp, len, "%s+%s+%s", name.c_str(), plugin_id.c_str(), version.c_str());
 		identifier_string = cp;
         free(cp);
 	}
@@ -203,7 +203,7 @@ public:
 	bool isInstrument() const
 	{
 		// The purpose of this function seems to be based on hacky premise. So do we.
-		return strstr(getPrimaryCategory().data(), "Instrument") != NULL;
+		return strstr(getPrimaryCategory().c_str(), "Instrument") != NULL;
 	}
 	
 	bool hasSharedContainer() const
