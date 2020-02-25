@@ -16,7 +16,8 @@ typedef struct {
 
 int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int wavLength,
                void *outWavL, void *outWavR, float* parameters) {
-    auto host = new aap::PluginHost();
+    auto manager = new aap::PluginHostManager();
+    auto host = new aap::PluginHost(manager);
 
     int buffer_size = 44100 * sizeof(float);
     int float_count = buffer_size / sizeof(float);
@@ -31,7 +32,8 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
 
     float *currentAudioInL = audioInL, *currentAudioInR = audioInR, *currentAudioOutL = nullptr, *currentAudioOutR = nullptr, *currentMidiIn = midiIn, *currentMidiOut = nullptr;
 
-    auto instance = host->instantiatePlugin(pluginID);
+    int32_t instanceID = host->createInstance(pluginID, sampleRate);
+    auto instance = host->getInstance(instanceID);
     if (instance == nullptr) {
         // FIXME: the entire code needs review to eliminate those printf/puts/stdout/stderr uses.
         printf("plugin %s failed to instantiate.\n", pluginID);
@@ -68,7 +70,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     }
 
     // prepare connections
-    instance->prepare(sampleRate, false, iu->plugin_buffer);
+    instance->prepare(false, iu->plugin_buffer);
 
     // prepare inputs - dummy
     for (int i = 0; i < instance->getPluginDescriptor()->getNumPorts(); i++) {
@@ -136,6 +138,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     delete iu;
 
     delete host;
+    delete manager;
 
     free(audioInL);
     free(audioInR);

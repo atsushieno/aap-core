@@ -132,7 +132,8 @@ void AndroidAudioPluginInstance::allocateSharedMemory(int bufferIndex, int32_t s
 {
 #if ANDROID
         int fd = ASharedMemory_create(nullptr, size);
-        shared_memory_fds[bufferIndex] = fd;
+        auto &fds = native->getSharedMemory()->getSharedMemoryFDs();
+        fds[bufferIndex] = fd;
         buffer->buffers[bufferIndex] = mmap(nullptr, buffer->num_frames * sizeof(float),
                 PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 #else
@@ -164,16 +165,16 @@ AndroidAudioPluginInstance::prepareToPlay(double sampleRate, int maximumExpected
 
     // minimum setup, as the pointers are not passed by JUCE framework side.
     int n = native->getPluginDescriptor()->getNumPorts();
-    shared_memory_fds.resize(n);
+    auto &fds = native->getSharedMemory()->getSharedMemoryFDs();
+    fds.resize(n);
     buffer->num_buffers = n;
     buffer->buffers = (void**) calloc(n, sizeof(void*));
     buffer->num_frames = maximumExpectedSamplesPerBlock;
     for (int i = 0; i < n; i++)
         allocateSharedMemory(i, buffer->num_frames * sizeof(float));
-    shared_memory_fds[n] = 0;
     buffer->buffers[n] = nullptr;
 
-    native->prepare(sampleRate, maximumExpectedSamplesPerBlock, buffer.get());
+    native->prepare(maximumExpectedSamplesPerBlock, buffer.get());
 
 	for (int i = 0; i < n; i++) {
 		auto port = native->getPluginDescriptor()->getPort(i);
@@ -191,11 +192,12 @@ void AndroidAudioPluginInstance::destroyResources() {
     native->dispose();
 
     if (buffer->buffers) {
-        for (int i = 0; buffer->buffers[i] != nullptr; i++) {
+        for (int i = 0; i < buffer->num_buffers; i++) {
 #if ANDROID
             munmap(buffer->buffers[i], buffer->num_frames * sizeof(float));
-            if (shared_memory_fds[i] != 0)
-	            close(shared_memory_fds[i]);
+            auto& fds = native->getSharedMemory()->getSharedMemoryFDs();
+            if (fds[i] != 0)
+	            close(fds[i]);
 #else
 			munmap(buffer->buffers[i], buffer->num_frames * sizeof(float));
             //free(buffer->buffers[i]);
@@ -246,10 +248,10 @@ AndroidAudioPluginFormat::findDescriptorFrom(const PluginDescription &desc) {
 }
 
 AndroidAudioPluginFormat::AndroidAudioPluginFormat()
-        : android_host(aap::PluginHost()) {
+        : android_host_manager(aap::PluginHostManager()), android_host(aap::PluginHost(&android_host_manager)) {
 #if ANDROID
-    for (int i = 0; i < android_host.getNumPluginDescriptors(); i++) {
-        auto d = android_host.getPluginDescriptorAt(i);
+    for (int i = 0; i < android_host_manager.getNumPluginDescriptors(); i++) {
+        auto d = android_host_manager.getPluginDescriptorAt(i);
         auto dst = new PluginDescription();
         fillPluginDescriptionFromNative(*dst, *d);
         cached_descs.set(d, dst);
@@ -296,8 +298,8 @@ void AndroidAudioPluginFormat::createPluginInstance(const PluginDescription &des
         error << "Android Audio Plugin " << description.name << "was not found.";
         callback(nullptr, error);
     } else {
-        auto androidInstance = android_host.instantiatePlugin(
-                descriptor->getPluginID().c_str());
+        int32_t instanceID = android_host.createInstance(descriptor->getPluginID().c_str(), initialSampleRate);
+        auto androidInstance = android_host.getInstance(instanceID);
         std::unique_ptr <AndroidAudioPluginInstance> instance{
                 new AndroidAudioPluginInstance(androidInstance)};
         callback(std::move(instance), error);

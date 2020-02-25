@@ -29,7 +29,7 @@ typedef struct {
 
 typedef struct {
 	const char *uri;
-	const void *data;
+	void *data;
 } AndroidAudioPluginExtension;
 
 

@@ -321,19 +321,37 @@ public:
     std::vector<int64_t>& getSharedMemoryFDs() { return shared_memory_fds; }
 };
 
+class PluginHostManager;
 
 class PluginHost
 {
-	std::vector<const PluginInformation*> plugin_descriptors{};
+	std::vector<PluginInstance*> instances{};
+	PluginHostManager* manager{nullptr};
 
-	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor);
-	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor);
+	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate);
+	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate);
+
+public:
+	PluginHost(PluginHostManager* manager)
+		: manager(manager)
+	{
+	}
+
+	int createInstance(const char* identifier, int sampleRate);
+	void destroyInstance(PluginInstance* instance);
+	int32_t getInstanceCount() { return instances.size(); }
+	PluginInstance* getInstance(int32_t index) { return instances[index]; }
+};
+
+class PluginHostManager
+{
+	std::vector<const PluginInformation*> plugin_descriptors{};
 
 public:
 
-	PluginHost();
+	PluginHostManager();
 
-	~PluginHost()
+	~PluginHostManager()
 	{
 	}
 
@@ -363,32 +381,26 @@ public:
 		}
 		return NULL;
 	}
-	
-	PluginInstance* instantiatePlugin(const char* identifier);
-
-	void destroyPlugin(PluginInstance* instance);
-	
-	EditorInstance* createEditor(PluginInstance* instance)
-	{
-		return nullptr;//new EditorInstance(instance);
-	}
 };
 
 class PluginInstance
 {
 	friend class PluginHost;
+	friend class PluginHostManager;
 	
 	PluginHost *host;
+	int sample_rate{44100};
 	const PluginInformation *descriptor;
 	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
-	std::vector<AndroidAudioPluginExtension*> extensions{};
+	std::vector<AndroidAudioPluginExtension> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
-	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory)
+	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: host(pluginHost),
 		  descriptor(pluginDescriptor),
+		  sample_rate(sampleRate),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
@@ -404,11 +416,30 @@ public:
 		return descriptor;
 	}
 
-	void prepare(double sampleRate, int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
+	void addExtension(AndroidAudioPluginExtension ext)
+	{
+		extensions.emplace_back(ext);
+	}
+
+	const void* getExtension(const char* uri)
+	{
+		for (auto ext : extensions)
+			if (strcmp(ext.uri, uri) == 0)
+				return ext.data;
+		return nullptr;
+	}
+
+	inline SharedMemoryExtension* getSharedMemory() { return (SharedMemoryExtension*) getExtension(SharedMemoryExtension::URI); }
+
+	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 
-		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sampleRate, extensions.data());
+		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
+		for (int i = 0; i < extensions.size(); i++)
+			extArr[i] = &extensions[i];
+		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sample_rate, extArr);
+		free(extArr);
 		plugin->prepare(plugin, preparedBuffer);
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
@@ -447,10 +478,11 @@ public:
 		// LV2 ports.
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
-	
+
 	EditorInstance* createEditor()
 	{
-		return host->createEditor(this);
+		// FIXME: implement
+		return nullptr;//new EditorInstance(instance);
 	}
 	
 	int getNumPrograms()

@@ -75,15 +75,10 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
     // allocate shm FDs, first locally, then remotely.
     for (int i = 0; i < n; i++) {
         assert(fds[i] != 0);
-        if (fds[i] == 0) {
-            fds[i] = ASharedMemory_create(nullptr,
-                    buffer->num_frames * sizeof(float));
-            ::ndk::ScopedFileDescriptor sfd;
-            sfd.set(fds[i]);
-            auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
-            assert(pmStatus.isOk());
-        }
-        assert(fds[i] != 0);
+        ::ndk::ScopedFileDescriptor sfd;
+        sfd.set(fds[i]);
+        auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
+        assert(pmStatus.isOk());
     }
 
 	auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
@@ -160,13 +155,17 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 {
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
+	assert(extensions != nullptr);
 
 	auto ctx = new AAPClientContext(aapSampleRate, pluginUniqueId);
 
-
-    for (const AndroidAudioPluginExtension* ext = extensions[0]; ext != nullptr; ext++)
-        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0)
-            ctx->shared_memory_extension = (aap::SharedMemoryExtension*) ext->data;
+    for (int i = 0; extensions[i] != nullptr; i++) {
+        auto ext = extensions[i];
+        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0) {
+            ctx->shared_memory_extension = (aap::SharedMemoryExtension *) ext->data;
+            break;
+        }
+    }
     assert(ctx->shared_memory_extension != nullptr);
 
     auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate, &ctx->instance_id);

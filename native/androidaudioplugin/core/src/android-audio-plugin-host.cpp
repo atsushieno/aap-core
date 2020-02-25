@@ -72,19 +72,27 @@ std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const c
 	return plugins;
 }
 
-PluginHost::PluginHost()
+void PluginHost::destroyInstance(PluginInstance* instance)
+{
+	auto shmExt = instance->getSharedMemory();
+	if (shmExt != nullptr)
+		delete shmExt;
+	delete instance;
+}
+
+PluginHostManager::PluginHostManager()
 {
 	auto pal = getPluginHostPAL();
 	updateKnownPlugins(pal->getInstalledPlugins());
 }
 
-void PluginHost::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
+void PluginHostManager::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
 {
 	for (auto entry : pluginDescriptors)
 		plugin_descriptors.emplace_back(entry);
 }
 
-bool PluginHost::isPluginAlive (const char *identifier) 
+bool PluginHostManager::isPluginAlive (const char *identifier)
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -101,7 +109,7 @@ bool PluginHost::isPluginAlive (const char *identifier)
 	return true;
 }
 
-bool PluginHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+bool PluginHostManager::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 {
 	auto desc = getPluginDescriptor(identifier);
 	if (!desc)
@@ -110,34 +118,23 @@ bool PluginHost::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdated;
 }
 
-void PluginHost::destroyPlugin(PluginInstance* instance)
-{
-    for (AndroidAudioPluginExtension* ext : instance->extensions) {
-        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0) {
-            if (ext->data != nullptr)
-                delete (aap::SharedMemoryExtension*) ext->data;
-        }
-        delete ext;
-    }
-	delete instance;
-}
-
 char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.SharedMemoryExtension";
 
-PluginInstance* PluginHost::instantiatePlugin(const char *identifier)
+int PluginHost::createInstance(const char *identifier, int sampleRate)
 {
-	const PluginInformation *descriptor = getPluginDescriptor(identifier);
-	assert (descriptor);
+	const PluginInformation *descriptor = manager->getPluginDescriptor(identifier);
+	assert (descriptor != nullptr);
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
-	if (descriptor->isOutProcess())
-		return instantiateRemotePlugin(descriptor);
-	else
-		return instantiateLocalPlugin(descriptor);
+	auto instance = descriptor->isOutProcess() ?
+			instantiateRemotePlugin(descriptor, sampleRate) :
+			instantiateLocalPlugin(descriptor, sampleRate);
+	instances.emplace_back(instance);
+	return instances.size() - 1;
 }
 
-PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
+PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
 {
 	dlerror(); // clean up any previous error state
 	auto file = descriptor->getLocalPluginSharedLibrary();
@@ -157,10 +154,10 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aprintf("AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
-	return new PluginInstance(this, descriptor, pluginFactory);
+	return new PluginInstance(this, descriptor, pluginFactory, sampleRate);
 }
 
-PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor)
+PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
 	dlerror(); // clean up any previous error state
 	auto dl = dlopen("libandroidaudioplugin.so", RTLD_LAZY);
@@ -169,11 +166,9 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
-	auto instance = new PluginInstance(this, descriptor, pluginFactory);
-	auto ext = new AndroidAudioPluginExtension();
-	ext->uri = aap::SharedMemoryExtension::URI;
-	ext->data = new aap::SharedMemoryExtension();
-	instance->extensions.emplace_back (ext);
+	auto instance = new PluginInstance(this, descriptor, pluginFactory, sampleRate);
+	AndroidAudioPluginExtension ext{aap::SharedMemoryExtension::URI, new aap::SharedMemoryExtension()};
+	instance->addExtension (ext);
 	return instance;
 }
 

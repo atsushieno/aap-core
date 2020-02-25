@@ -17,62 +17,105 @@
 
 namespace aap {
 
-class AudioPluginInstanceContext
-{
-	friend class AudioPluginInterfaceImpl;
+class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterface {
+    aap::PluginHostManager *manager;
+    aap::PluginHost *host;
+    std::vector<AndroidAudioPluginBuffer> buffers{};
 
-    aap::PluginInstance *instance;
-    std::vector<int64_t> sharedMemoryFDs{};
-    AndroidAudioPluginBuffer buffer;
-    int sample_rate;
-    int current_buffer_size;
 public:
-    AudioPluginInstanceContext(int sampleRate, PluginInstance* pluginInstance)
+
+    AudioPluginInterfaceImpl()
     {
-    	sample_rate = sampleRate;
-        buffer.num_frames = 0;
+        manager = new PluginHostManager();
+        host = new PluginHost(manager);
+    }
+
+    virtual ~AudioPluginInterfaceImpl() {
+        delete host;
+        delete manager;
+    }
+
+    ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
+    {
+        *_aidl_return = host->createInstance(in_pluginId.data(), in_sampleRate);
+        auto instance = host->getInstance(*_aidl_return);
+        auto shm = new SharedMemoryExtension();
+        shm->getSharedMemoryFDs().resize(instance->getPluginDescriptor()->getNumPorts());
+        AndroidAudioPluginExtension ext{SharedMemoryExtension::URI, shm};
+        instance->addExtension(ext);
+        buffers.resize(*_aidl_return + 1);
+        auto & buffer = buffers[*_aidl_return];
         buffer.buffers = nullptr;
-        instance = pluginInstance;
-        sharedMemoryFDs.clear();
+        buffer.num_buffers = 0;
+        buffer.num_frames = 0;
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override
+    {
+        assert(in_instanceID < host->getInstanceCount());
+        *_aidl_return = host->getInstance(in_instanceID) != nullptr;
+        return ndk::ScopedAStatus::ok();
     }
 
     // Since AIDL does not support sending List of ParcelFileDescriptor it is sent one by one.
     // Here we just cache the FDs, and process them later at prepare().
-    void prepareMemory(int32_t shmFDIndex, const ::ndk::ScopedFileDescriptor& sharedMemoryFD)
+    ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
-        auto fd = dup(sharedMemoryFD.get());
-        while (sharedMemoryFDs.size() <= shmFDIndex)
-            sharedMemoryFDs.push_back(0); // dummy
-        sharedMemoryFDs[shmFDIndex] = fd;
+        assert(in_instanceID < host->getInstanceCount());
+        auto shmExt = host->getInstance(in_instanceID)->getSharedMemory();
+        if (shmExt != nullptr)
+            shmExt->getSharedMemoryFDs()[in_shmFDIndex] = dup(in_sharedMemoryFD.get());
+        return ndk::ScopedAStatus::ok();
     }
 
-    void freeBuffers()
+    ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) override
+    {
+        assert(in_instanceID < host->getInstanceCount());
+        int ret = prepare(host->getInstance(in_instanceID), buffers[in_instanceID], in_frameCount, in_portCount);
+
+        return ret != 0 ? ndk::ScopedAStatus{AStatus_fromServiceSpecificError(ret)}
+                        : ndk::ScopedAStatus::ok();
+    }
+
+    void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
     {
         if (buffer.buffers)
-            for (int i = 0; i < sharedMemoryFDs.size(); i++)
+            for (int i = 0; i < instance->getSharedMemory()->getSharedMemoryFDs().size(); i++)
                 if (buffer.buffers[i])
-                    munmap(buffer.buffers[i], current_buffer_size);
+                    munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
 
-    int resetBuffers(int frameCount)
+    int prepare(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int32_t frameCount, int32_t portCount)
+    {
+        int ret = resetBuffers(instance, buffer, frameCount);
+        if (ret != 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin", "Failed to prepare shared memory buffers.");
+            return ret;
+        }
+        instance->prepare(frameCount, &buffer);
+        return 0;
+    }
+
+    int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginDescriptor()->getNumPorts();
-        if (sharedMemoryFDs.size() != nPorts) {
-            freeBuffers();
-            sharedMemoryFDs.resize(nPorts, 0);
+        auto& FDs = instance->getSharedMemory()->getSharedMemoryFDs();
+        if (FDs.size() != nPorts) {
+            freeBuffers(instance, buffer);
+            FDs.resize(nPorts, 0);
         }
 
         buffer.num_buffers = nPorts;
         buffer.num_frames = frameCount;
-        current_buffer_size = buffer.num_frames * sizeof(float);
         int n = buffer.num_buffers;
         if (buffer.buffers == nullptr)
             buffer.buffers = (void **) calloc(sizeof(void *), n);
         for (int i = 0; i < n; i++) {
             if (buffer.buffers[i])
-                munmap(buffer.buffers[i], current_buffer_size);
-            buffer.buffers[i] = mmap(nullptr, current_buffer_size, PROT_READ | PROT_WRITE,
-                                     MAP_SHARED, sharedMemoryFDs[i], 0);
+                munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
+            buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float), PROT_READ | PROT_WRITE,
+                                     MAP_SHARED, FDs[i], 0);
             if (buffer.buffers[i] == MAP_FAILED) {
                 int err = errno; // FIXME : define error codes
                 __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",
@@ -84,144 +127,59 @@ public:
         return 0;
     }
 
-    int prepare(int32_t frameCount, int32_t portCount)
-    {
-        int ret = resetBuffers(frameCount);
-        if (ret != 0) {
-            __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin", "Failed to prepare shared memory buffers.");
-            return ret;
-        }
-        instance->prepare(sample_rate, frameCount, &buffer);
-        return 0;
-    }
-
-    void getState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD)
-    {
-        auto state = instance->getState();
-        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
-        memcpy(dst, state.raw_data, state.data_size);
-        munmap(dst, state.data_size);
-    }
-
-    void setState(const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size)
-    {
-        auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
-        instance->setState(src, in_size);
-        munmap(src, in_size);
-    }
-
-    void destroy()
-    {
-        instance->dispose();
-        delete instance;
-        instance = nullptr;
-        freeBuffers();
-    }
-};
-
-class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterface {
-    aap::PluginHost *host;
-    std::vector<AudioPluginInstanceContext*> instances{};
-
-public:
-
-    AudioPluginInterfaceImpl()
-    {
-        host = new PluginHost();
-    }
-
-    virtual ~AudioPluginInterfaceImpl() {
-        delete host;
-    }
-
-    ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
-    {
-        auto ctx = new AudioPluginInstanceContext(in_sampleRate, host->instantiatePlugin(in_pluginId.data()));
-        *_aidl_return = instances.size();
-        for (int i = 0; i < instances.size(); i++) {
-            if (instances[i] == nullptr) {
-                *_aidl_return = i;
-                break;
-            }
-        }
-        if (*_aidl_return < instances.size())
-            instances[*_aidl_return] = ctx;
-        else
-            instances.push_back(ctx);
-        return ndk::ScopedAStatus::ok();
-    }
-
-    ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override
-    {
-        assert(in_instanceID < instances.size());
-        *_aidl_return = instances[in_instanceID] != nullptr;
-        return ndk::ScopedAStatus::ok();
-    }
-
-    // Since AIDL does not support sending List of ParcelFileDescriptor it is sent one by one.
-    // Here we just cache the FDs, and process them later at prepare().
-    ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
-    {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->prepareMemory(in_shmFDIndex, in_sharedMemoryFD);
-        return ndk::ScopedAStatus::ok();
-    }
-
-    ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) override
-    {
-        assert(in_instanceID < instances.size());
-        int ret = instances[in_instanceID]->prepare(in_frameCount, in_portCount);
-
-        return ret != 0 ? ndk::ScopedAStatus{AStatus_fromServiceSpecificError(ret)}
-                        : ndk::ScopedAStatus::ok();
-    }
-
     ::ndk::ScopedAStatus activate(int32_t in_instanceID) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->instance->activate();
+        assert(in_instanceID < host->getInstanceCount());
+        host->getInstance(in_instanceID)->activate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->instance->process(&instances[in_instanceID]->buffer, in_timeoutInNanoseconds);
+        assert(in_instanceID < host->getInstanceCount());
+        host->getInstance(in_instanceID)->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->instance->deactivate();
+        assert(in_instanceID < host->getInstanceCount());
+        host->getInstance(in_instanceID)->deactivate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus getStateSize(int32_t in_instanceID, int32_t *_aidl_return) override
     {
-        assert(in_instanceID < instances.size());
-        *_aidl_return = instances[in_instanceID]->instance->getStateSize();
+        assert(in_instanceID < host->getInstanceCount());
+        *_aidl_return = host->getInstance(in_instanceID)->getStateSize();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus getState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->getState(in_sharedMemoryFD);
+        assert(in_instanceID < host->getInstanceCount());
+        auto instance = host->getInstance(in_instanceID);
+        auto state = instance->getState();
+        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
+        memcpy(dst, state.raw_data, state.data_size);
+        munmap(dst, state.data_size);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus setState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->setState(in_sharedMemoryFD, in_size);
+        assert(in_instanceID < host->getInstanceCount());
+        auto instance = host->getInstance(in_instanceID);
+        auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
+        instance->setState(src, in_size);
+        munmap(src, in_size);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override
     {
-        assert(in_instanceID < instances.size());
-        instances[in_instanceID]->destroy();
+        assert(in_instanceID < host->getInstanceCount());
+        host->destroyInstance(host->getInstance(in_instanceID));
         return ndk::ScopedAStatus::ok();
     }
 };

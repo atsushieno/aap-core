@@ -32,7 +32,6 @@ class AndroidAudioPluginInstance : public juce::AudioPluginInstance {
 	int sample_rate;
 	std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
 	std::map<int32_t,int32_t> portMapAapToJuce{};
-	std::vector<int64_t> shared_memory_fds{};
 
 	void fillNativeInputBuffers(AudioBuffer<float> &audioBuffer, MidiBuffer &midiBuffer);
 	void fillNativeOutputBuffers(AudioBuffer<float> &buffer);
@@ -151,6 +150,7 @@ public:
 };
 
 class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
+	aap::PluginHostManager android_host_manager;
 	aap::PluginHost android_host;
 	OwnedArray<PluginDescription> juce_plugin_descs;
 	HashMap<const aap::PluginInformation *, PluginDescription *> cached_descs;
@@ -175,17 +175,17 @@ public:
 	}
 
 	inline String getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override {
-		auto descriptor = android_host.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
+		auto descriptor = android_host_manager.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
 		return descriptor != NULL ? String(descriptor->getName()) : String();
 	}
 
 	inline bool pluginNeedsRescanning(const PluginDescription &description) override {
-		return android_host.isPluginUpToDate(description.fileOrIdentifier.toRawUTF8(),
+		return android_host_manager.isPluginUpToDate(description.fileOrIdentifier.toRawUTF8(),
 											 description.lastInfoUpdateTime.toMilliseconds());
 	}
 
 	inline bool doesPluginStillExist(const PluginDescription &description) override {
-		return android_host.isPluginAlive(description.fileOrIdentifier.toRawUTF8());
+		return android_host_manager.isPluginAlive(description.fileOrIdentifier.toRawUTF8());
 	}
 
 	inline bool canScanForPlugins() const override {
