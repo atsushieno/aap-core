@@ -66,5 +66,5 @@ build-lv2-importer:
 	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:
-	cd java && ./gradlew build
+	cd java && ./gradlew build dokka
 
