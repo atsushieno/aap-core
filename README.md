@@ -409,6 +409,8 @@ On a related note, JUCE lacks VST3 support on Linux so far. [They have been work
 
 ## Hosting AAP
 
+We have AAP native API documentation hosted at: https://androidaudioplugin.web.app/references/native/ . It is not strictly in sync with the repository, let us know if you noticed that it is not up to date enough. Also right not it only provides the API structure without any documentation comments.
+
 We have an AAP proof-of-concept host in `java/samples/aaphostsample` directory.
 
 AAP plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder. `aaphostsample` issues queries and lists only remote AAPs.
