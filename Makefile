@@ -43,6 +43,7 @@ build-desktop:
 		cd mda-lv2 && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
 	cd ..
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
+	cd docs && doxygen && cd ..
 
 build-android:
 	for abi in $(ABIS_SIMPLE) ; do \

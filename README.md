@@ -7,24 +7,29 @@ disclaimer: the README is either up to date, partially obsoleted, or sometimes a
 
 ## What is AAP?
 
-Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LADSPA (either v1 or v2) is used, to some extent.
+Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LV2 is used, to some extent.
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for Audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable to other specific audio plugin specifications like VST3, LV2, CLAP, and so on (not necessarily meant that *we* write code for them).
+What AAP aims is to become like an inclusive standard for Audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin specifications like VST3, LV2, DISTRHO, CLAP, and so on (not necessarily meant that *we* write code for them).
 
-On the other hand it is designed so that cross-audio-plugin frameworks can support it. It would be possible to write backend and generator support for [JUCE](http://juce.com/) or [iPlug2](https://iplug2.github.io/). Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported to AAP world.
+On the other hand it is designed so that cross-audio-plugin frameworks like can support it. We have [JUCE](http://juce.com/) integration support, and once [iPlug2](https://iplug2.github.io/) supports Linux and Android it would become similarly possible. Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported to AAP world.
 
 Extensibility is provided like what LV2 does (but without RDF and Turtle complication). VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have, associalted with a URI. Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins, and a plugin can query the host which features it provides.
 
-Technically AAP would not be very different from other plugin frameworks, but Android is the first citizen in AAP. Plugin descriptions are in plain XML. We also support Linux desktop so that actual plugin development can be achieved on the desktop.
+Android is the first citizen in AAP, but we also support Linux desktop so that actual plugin development can be achieved on the desktop.
 
-There are samples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins. Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) within this repository.
+There are examples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins. Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) within this repository.
 
 
 ## How AAPs work: technical background
 
-AAP (Plugin) developers can ship their apps via Google Play (or any other app market). From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries and service queries in Dalvik/ART land).
+AAP distribution structure is like audio plugin vendors as well DAW vendors do for desktop:
+
+- AAP Host (DAW) developers can use AAP hosting API to query and load the plugins, then deal with audio data processed by them.
+- AAP (Plugin) developers can ship their apps via Google Play (or any other app market).
+
+From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries and service queries in Dalvik/ART land).
 
 AAP developers create audio plugin in native code using Android NDK, create plugin "metadata" as an Android XML resource (`aap_metadata.xml`), and optionally implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, then package them together. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage.)
 
@@ -44,7 +49,7 @@ A Remote plugin client is actually implemented just as a plugin, when it is used
 
 LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least gives hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
-In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) plays an important role here. There wouldn't be binary array transmits over binder IPC so far. This is also what AudioRoute does.
+In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) plays an important role here. There wouldn't be binary array transmits over binder IPC so far. This is also what AudioRoute does too.
 
 Therefore, at "prepare" step we pass a prepared "buffer" which is supposed to be constructed based on each plugin's ports, so that the plugins do not have to set them up at "process" time.
 
@@ -109,14 +114,14 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
 AndroidAudioPluginState state;
-const AndroidAudioPluginState* sample_plugin_get_state(AndroidAudioPlugin *plugin)
+void sample_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
-	return &state; /* fill it */
+	/* fill state data into result */
 }
 
 void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
 {
-	/* apply argument input */
+	/* apply argument input state to the plugin */
 }
 
 typedef struct {
@@ -160,7 +165,7 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example
+Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -235,18 +240,20 @@ The metadata format is somewhat hacky for now and subject to change. The metadat
 AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services.
 
 - `<plugin>` element
-  - `manufacturer`: name of the plugin manufacturer or developer or whatever.
-  - `name`: name of the plugin.
-  - `plugin-id`: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
-  - `version`: version ID of the plugin.
-  - `category`: category of the plugin.
-  - `library`: native library file name that contains the plugin entrypoint
-  - `entrypoint`: name of the entrypoint function name in the library. If it is not specified, then `GetAndroidAudioPluginFactory` is used.
-  - `assets`: an asset directory which contains related resources. It is optional. Most of the plugins would contain additional resources though.
-- `<port>` element
-  - `name`: a name string. An `xs:NMTOKENS` in XML Schema datatypes is expected.
-  - `direction`: either `input` or `output`.
-  - `content`: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
+  - `manufacturer` attribute: name of the plugin manufacturer or developer or whatever.
+  - `name` attribute: name of the plugin.
+  - `plugin-id` attribute: unique identifier string e.g. `9dc5d529-a0f9-4a69-843f-eb0a5ae44b72`. 
+  - `version` attribute: version ID of the plugin.
+  - `category` attribute: category of the plugin.
+  - `library` attribute: native library file name that contains the plugin entrypoint
+  - `entrypoint` attribute: name of the entrypoint function name in the library. If it is not specified, then `GetAndroidAudioPluginFactory` is used.
+  - `assets` attribute: an asset directory which contains related resources. It is optional. Most of the plugins would contain additional resources though.
+- `<ports>` element - defines port group (can be nested)
+  - `name`: attribute: port group name. An `xs:NMTOKEN` in XML Schema datatypes is expected.
+  - `<port>` element
+    - `name` attribute: a name string. An `xs:NMTOKEN` in XML Schema datatypes is expected.
+    - `direction` attribute: either `input` or `output`.
+    - `content` attribute: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
 
 `name` should be unique enough so that this standalone string can identify itself. An `xs:NMTOKENS` in XML Schema datatypes is expected (not `xs:NMTOKEN` because we accept `#x20`).
 
@@ -497,7 +504,7 @@ JUCE is designed to be extensible to include other audio plugin formats. So far,
 
 `native/juce/` directory contains juce:AudioPluginFormat implementation and related stuff for AAP. It is part of `JuceAAPAudioPluginHost` application which is some patched version of `AudioPluginHost` extra application in JUCE SDK.
 
-For details, follow another `README.md` in that directory.
+For details, follow another [`README.md`](native/juce/README.md) in that directory.
 
 It builds on Android and desktop (confirmed only on Linux so far). It can launch, enumerate the installed audio plugins on the system, and instantiate each plugin (only one can be instantiated), but audio inputs are not verified to work. There are couple of github issues that are tagged as `JUCE`.
 

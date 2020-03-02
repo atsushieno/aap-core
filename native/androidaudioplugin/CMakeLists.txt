@@ -74,15 +74,3 @@ target_compile_options (androidaudioplugin
         )
 
 target_link_libraries (androidaudioplugin ${androidaudioplugin_LIBS})
-
-
-if ( ANDROID )
-else ()
-find_package( Doxygen )
-endif ()
-
-if ( DOXYGEN_FOUND )
-
-doxygen_add_docs ( doxygen ${PROJECT_SOURCE_DIR})
-
-endif ()
