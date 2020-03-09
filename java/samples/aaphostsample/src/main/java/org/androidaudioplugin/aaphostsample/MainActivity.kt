@@ -159,6 +159,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var outBuf : ByteArray
     private var portsAdapter : PortViewAdapter? = null
 
+    override fun onDestroy() {
+        super.onDestroy()
+        host.connectedServices.forEach { conn ->
+            host.unbindAudioPluginService(conn)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)

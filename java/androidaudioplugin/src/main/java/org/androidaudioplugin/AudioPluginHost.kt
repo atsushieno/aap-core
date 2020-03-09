@@ -3,8 +3,6 @@ package org.androidaudioplugin
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
 import android.util.Log
 import java.lang.UnsupportedOperationException
 
@@ -50,12 +48,9 @@ class AudioPluginHost(private var applicationContext: Context) {
         return svc
     }
 
-    fun unbindAudioPluginService(serviceIdentifier: String) {
-        var conn = findExistingServiceConnection(serviceIdentifier)
-        if (conn == null)
-            return
+    fun unbindAudioPluginService(conn: AudioPluginServiceConnection) {
         connectedServices.remove(conn)
-        AudioPluginNatives.removeBinderForHost(serviceIdentifier)
+        AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName + '/' + conn.serviceInfo.className)
     }
 
     // Plugin instancing
@@ -64,15 +59,13 @@ class AudioPluginHost(private var applicationContext: Context) {
     {
         var conn = findExistingServiceConnection(pluginInfo.serviceIdentifier)
         if (conn == null) {
-            var serviceConnectedListener =
-                { c: AudioPluginServiceConnection -> instantiatePlugin(pluginInfo, c) }
-            var pluginInstantiatedListener: (AudioPluginInstance) -> Unit = { }
-            pluginInstantiatedListener = { _ ->
-                pluginInstantiatedListeners.remove(pluginInstantiatedListener)
+            var serviceConnectedListener: (AudioPluginServiceConnection) -> Unit ={}
+            serviceConnectedListener = { c ->
                 serviceConnectedListeners.remove(serviceConnectedListener)
+                instantiatePlugin(pluginInfo, c)
             }
             serviceConnectedListeners.add(serviceConnectedListener)
-            var service = AudioPluginServiceInformation("", pluginInfo.serviceIdentifier)
+            var service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext).first { c -> c.plugins.any { p -> p.pluginId == pluginInfo.pluginId }}
             bindAudioPluginService(service)
         }
         else
@@ -81,7 +74,7 @@ class AudioPluginHost(private var applicationContext: Context) {
 
     private fun instantiatePlugin(pluginInfo: PluginInformation, conn: AudioPluginServiceConnection)
     {
-        var instance = AudioPluginInstance(pluginInfo, conn)
+        var instance = conn.instantiatePlugin(pluginInfo, sampleRate)
         instantiatedPlugins.add(instance)
         pluginInstantiatedListeners.forEach { l -> l (instance) }
     }
@@ -189,23 +182,3 @@ class AudioBusPresets
     }
 }
 
-class AudioPluginServiceConnection(var serviceInfo: AudioPluginServiceInformation, var onConnectedCallback: (conn: AudioPluginServiceConnection) -> Unit) : ServiceConnection {
-
-    var binder: IBinder? = null
-
-    override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-        Log.d("AudioPluginServiceConnection", "onServiceConnected")
-        this.binder = binder
-        onConnectedCallback(this)
-    }
-
-    override fun onServiceDisconnected(name: ComponentName?) {
-    }
-}
-
-class AudioPluginInstance(var pluginInfo: PluginInformation, var service: AudioPluginServiceConnection)
-{
-    init {
-        AudioPluginNatives.instantiatePlugin(pluginInfo.serviceIdentifier, pluginInfo.pluginId!!)
-    }
-}

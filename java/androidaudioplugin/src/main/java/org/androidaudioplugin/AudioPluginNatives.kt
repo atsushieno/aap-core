@@ -2,6 +2,7 @@ package org.androidaudioplugin
 
 import android.content.Context
 import android.os.IBinder
+import android.os.SharedMemory
 
 class AudioPluginNatives
 {
@@ -35,6 +36,9 @@ class AudioPluginNatives
         external fun removeBinderForHost(serviceIdentifier: String)
 
         @JvmStatic
-        external fun instantiatePlugin(serviceIdentifier: String, pluginId: String)
+        external fun getSharedMemoryFD(shm: SharedMemory) : Int
+
+        @JvmStatic
+        external fun closeSharedMemoryFD(fd: Int)
     }
 }

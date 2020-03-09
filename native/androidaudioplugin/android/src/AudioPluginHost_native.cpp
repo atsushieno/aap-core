@@ -1,7 +1,8 @@
 
 #include <jni.h>
 #include <android/log.h>
-#include <stdlib.h>
+#include <android/sharedmem_jni.h>
+#include <cstdlib>
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
@@ -196,18 +197,30 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jcl
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
     apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(serviceIdentifierDup, binderRef, aiBinder));
+	free((void*) serviceIdentifierDup);
 }
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz,
                                                                    jstring serviceIdentifier) {
-    __android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "TODO: implement removeBinderFromHost");
+	const char *serviceIdentifierDup = strdup_fromJava(env, serviceIdentifier);
+	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
+	auto c = apal->serviceConnections.begin();
+	while (c != apal->serviceConnections.end()) {
+		c = std::next(c);
+		if (c->serviceIdentifier == serviceIdentifierDup)
+			apal->serviceConnections.erase(c);
+	}
+	free((void*) serviceIdentifierDup);
+}
+
+JNIEXPORT int JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_getSharedMemoryFD(JNIEnv *env, jclass clazz, jobject shm) {
+	return ASharedMemory_dupFromJava(env, shm);
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_instantiatePlugin(JNIEnv *env, jclass clazz,
-                                                                 jstring serviceIdentifier, jstring pluginId) {
-	__android_log_print(ANDROID_LOG_DEBUG, "AAPNativeBridge", "TODO: implement instantiatePlugin");
+Java_org_androidaudioplugin_AudioPluginNatives_closeSharedMemoryFD(JNIEnv *env, jclass clazz, int fd) {
+	close(fd);
 }
-
 } // extern "C"

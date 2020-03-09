@@ -399,8 +399,8 @@ class PluginInstance
 
 	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: host(pluginHost),
-		  descriptor(pluginDescriptor),
 		  sample_rate(sampleRate),
+		  descriptor(pluginDescriptor),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
