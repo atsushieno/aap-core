@@ -105,8 +105,7 @@ class MainActivity : AppCompatActivity() {
                             wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
                             Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
                         }
-                        // FIXME: enable this line?
-                        //host.unbindAudioPluginService("${service.packageName}/${service.className}")
+                        host.unbindAudioPluginService(instance.service)
                     }
                 }
                 host.instantiatePlugin(plugin)
