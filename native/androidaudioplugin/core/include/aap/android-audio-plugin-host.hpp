@@ -79,7 +79,7 @@ class PluginInformation
 
 	// basic information
 	std::string container_identifier{}; // serviceName for Android, aap_metadata path for desktop. Optional for apps, host needs to query it missing and needed.
-	std::string name{};
+	std::string display_name{};
 	std::string manufacturer_name{};
 	std::string version{};
 	std::string identifier_string{};
@@ -104,10 +104,10 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, std::string containerIdentifier, std::string pluginName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
+	PluginInformation(bool isOutProcess, std::string containerIdentifier, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
 		: is_out_process(isOutProcess),
 		  container_identifier(containerIdentifier),
-		  name(pluginName),
+		  display_name(displayName),
 		  manufacturer_name(manufacturerName),
 		  version(versionString),
 		  shared_library_filename(sharedLibraryFilename),
@@ -116,9 +116,9 @@ public:
 		  last_info_updated_unixtime((long) time(NULL))
 	{
 		char *cp;
-		int len = snprintf(nullptr, 0, "%s+%s+%s", name.c_str(), plugin_id.c_str(), version.c_str());
+		int len = snprintf(nullptr, 0, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
 		cp = (char*) calloc(len, 1);
-		snprintf(cp, len, "%s+%s+%s", name.c_str(), plugin_id.c_str(), version.c_str());
+		snprintf(cp, len, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
 		identifier_string = cp;
         free(cp);
 	}
@@ -132,9 +132,9 @@ public:
 		return container_identifier;
 	}
 
-	const std::string getName() const
+	const std::string getDisplayName() const
 	{
-		return name;
+		return display_name;
 	}
 	
 	const std::string getManufacturerName() const

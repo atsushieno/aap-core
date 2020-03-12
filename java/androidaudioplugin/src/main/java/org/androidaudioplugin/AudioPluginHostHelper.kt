@@ -15,7 +15,7 @@ class AudioPluginHostHelper {
 
         private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
             // TODO: this XML parsing is super hacky so far.
-            val aapServiceInfo = AudioPluginServiceInformation(label, "${packageName}/${className}")
+            val aapServiceInfo = AudioPluginServiceInformation(label, packageName, className)
 
             var currentPlugin: PluginInformation? = null
             while (true) {

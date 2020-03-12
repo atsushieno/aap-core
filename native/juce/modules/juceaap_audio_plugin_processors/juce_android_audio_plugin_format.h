@@ -49,7 +49,7 @@ public:
 	void destroyResources();
 
 	inline const String getName() const override {
-		return native->getPluginDescriptor()->getName();
+		return native->getPluginDescriptor()->getDisplayName();
 	}
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override;
@@ -176,7 +176,7 @@ public:
 
 	inline String getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override {
 		auto descriptor = android_host_manager.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
-		return descriptor != NULL ? String(descriptor->getName()) : String();
+		return descriptor != NULL ? String(descriptor->getDisplayName()) : String();
 	}
 
 	inline bool pluginNeedsRescanning(const PluginDescription &description) override {

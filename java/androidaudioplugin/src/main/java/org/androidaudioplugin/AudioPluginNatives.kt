@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.IBinder
 import android.os.SharedMemory
 
-class AudioPluginNatives
+internal class AudioPluginNatives
 {
     companion object {
         init {

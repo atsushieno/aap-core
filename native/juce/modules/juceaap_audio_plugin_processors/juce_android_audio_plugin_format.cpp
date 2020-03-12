@@ -24,7 +24,7 @@ double AndroidAudioPluginInstance::getTailLengthSeconds() const {
 
 static void fillPluginDescriptionFromNative(PluginDescription &description,
                                             const aap::PluginInformation &src) {
-    description.name = src.getName();
+    description.name = src.getDisplayName();
     description.pluginFormatName = "AAP";
 
     description.category.clear();

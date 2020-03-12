@@ -14,13 +14,5 @@ class AudioPluginServiceInformation
         this.packageName = packageName
         this.className = className
     }
-
-    constructor(label: String, serviceIdentifier: String)
-    {
-        this.label = label
-        var idx = serviceIdentifier.indexOf('/')
-        packageName = serviceIdentifier.substring(0, idx)
-        className = serviceIdentifier.substring(idx + 1)
-    }
 }
 

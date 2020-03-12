@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
             if (item == null)
                 return view
             view.audio_plugin_service_name.text = item.first.label
-            view.audio_plugin_name.text = item.second.name
+            view.audio_plugin_name.text = item.second.displayName
             view.audio_plugin_identifier.text = item.second.pluginId
 
             return view
