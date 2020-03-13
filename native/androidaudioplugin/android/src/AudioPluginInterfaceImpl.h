@@ -40,7 +40,7 @@ public:
         *_aidl_return = host->createInstance(in_pluginId.c_str(), in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
         auto shm = new SharedMemoryExtension();
-        shm->getSharedMemoryFDs().resize(instance->getPluginDescriptor()->getNumPorts());
+        shm->getSharedMemoryFDs().resize(instance->getPluginInformation()->getNumPorts());
         AndroidAudioPluginExtension ext{SharedMemoryExtension::URI, shm};
         instance->addExtension(ext);
         buffers.resize(*_aidl_return + 1);
@@ -99,7 +99,7 @@ public:
 
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
-        int nPorts = instance->getPluginDescriptor()->getNumPorts();
+        int nPorts = instance->getPluginInformation()->getNumPorts();
         auto& FDs = instance->getSharedMemory()->getSharedMemoryFDs();
         if (FDs.size() != nPorts) {
             freeBuffers(instance, buffer);

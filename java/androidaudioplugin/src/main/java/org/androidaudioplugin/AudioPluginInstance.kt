@@ -4,15 +4,21 @@ import android.os.ParcelFileDescriptor
 import android.os.SharedMemory
 import java.nio.ByteBuffer
 
-class AudioPluginInstance(var instanceId: Int, var pluginInfo: PluginInformation, var service: AudioPluginServiceConnection)
+class AudioPluginInstance
 {
     private class SharedMemoryBuffer (var shm : SharedMemory, var fd : Int, var buffer: ByteBuffer)
 
     private var shm_list = mutableListOf<SharedMemoryBuffer>()
 
     val proxy : AudioPluginInterface
+    var instanceId: Int
+    var pluginInfo: PluginInformation
+    var service: PluginServiceConnection
 
-    init {
+    internal constructor (instanceId: Int, pluginInfo: PluginInformation, service: PluginServiceConnection) {
+        this.instanceId = instanceId
+        this.pluginInfo = pluginInfo
+        this.service = service
         proxy = AudioPluginInterface.Stub.asInterface(service.binder!!)
     }
 

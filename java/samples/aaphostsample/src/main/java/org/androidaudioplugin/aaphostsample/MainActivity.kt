@@ -105,7 +105,8 @@ class MainActivity : AppCompatActivity() {
                             wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
                             Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
                         }
-                        host.unbindAudioPluginService(instance.service)
+                        var serviceInfo = instance.service.serviceInfo
+                        host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
                     }
                 }
                 host.instantiatePlugin(plugin)
@@ -160,9 +161,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        host.connectedServices.forEach { conn ->
-            host.unbindAudioPluginService(conn)
-        }
+        host.dispose()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

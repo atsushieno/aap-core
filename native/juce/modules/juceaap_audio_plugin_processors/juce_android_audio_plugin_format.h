@@ -49,7 +49,7 @@ public:
 	void destroyResources();
 
 	inline const String getName() const override {
-		return native->getPluginDescriptor()->getDisplayName();
+		return native->getPluginInformation()->getDisplayName();
 	}
 
 	void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override;
@@ -73,7 +73,7 @@ public:
 	AudioProcessorEditor *createEditor() override;
 
 	inline bool hasEditor() const override {
-		return native->getPluginDescriptor()->hasEditor();
+		return native->getPluginInformation()->hasEditor();
 	}
 
 	inline int getNumPrograms() override {
@@ -155,7 +155,7 @@ class AndroidAudioPluginFormat : public juce::AudioPluginFormat {
 	OwnedArray<PluginDescription> juce_plugin_descs;
 	HashMap<const aap::PluginInformation *, PluginDescription *> cached_descs;
 
-	const aap::PluginInformation *findDescriptorFrom(const PluginDescription &desc);
+	const aap::PluginInformation *findPluginInformationFrom(const PluginDescription &desc);
 
 public:
 	AndroidAudioPluginFormat();
@@ -175,8 +175,8 @@ public:
 	}
 
 	inline String getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override {
-		auto descriptor = android_host_manager.getPluginDescriptor(fileOrIdentifier.toRawUTF8());
-		return descriptor != NULL ? String(descriptor->getDisplayName()) : String();
+		auto pluginInfo = android_host_manager.getPluginInformation(fileOrIdentifier.toRawUTF8());
+		return pluginInfo != NULL ? String(pluginInfo->getDisplayName()) : String();
 	}
 
 	inline bool pluginNeedsRescanning(const PluginDescription &description) override {

@@ -37,7 +37,8 @@ class AudioPluginHostHelper {
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
                         val assets = xp.getAttributeValue(null, "assets")
                         currentPlugin = PluginInformation(
-                            "$packageName/$className",
+                            packageName,
+                            className,
                             name,
                             backend,
                             version,

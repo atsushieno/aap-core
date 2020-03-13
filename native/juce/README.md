@@ -13,8 +13,8 @@ This is what @atsushieno usually runs:
 
 ```
 $ JUCE_DIR=/path/to/JUCE_sdk ./samples/JuceAAPAudioPluginHost/build.sh
-$ cd ./samples/andes && JUCE_DIR=/path/to/JUCE_sdk APPNAME=Andes_1 ../../build.sh
-$ cd ./samples/SARAH && JUCE_DIR=/path/to/JUCE_sdk APPNAME=SARAH ../../build.sh
+$ cd ./samples/andes && JUCE_DIR=/path/to/JUCE_sdk APPNAME=Andes_1 ../../build-sample.sh
+$ cd ./samples/SARAH && JUCE_DIR=/path/to/JUCE_sdk APPNAME=SARAH ../../build-sample.sh
 ```
 
 Depending on the NDK setup you might also have to rewrite `Builds/Android/local.properties` to point to the right NDK location. Then run `cd Builds/Android && ./gradlew build` instead of `./build.sh`.

@@ -30,10 +30,10 @@ internal class AudioPluginNatives
         external fun destroyBinderForService(binder: IBinder)
 
         @JvmStatic
-        external fun addBinderForHost(serviceIdentifier: String, binder: IBinder)
+        external fun addBinderForHost(packageName: String, className: String, binder: IBinder)
 
         @JvmStatic
-        external fun removeBinderForHost(serviceIdentifier: String)
+        external fun removeBinderForHost(packageName: String, className: String)
 
         @JvmStatic
         external fun getSharedMemoryFD(shm: SharedMemory) : Int

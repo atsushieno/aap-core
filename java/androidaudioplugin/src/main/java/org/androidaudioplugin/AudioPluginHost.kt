@@ -13,10 +13,10 @@ class AudioPluginHost(private var applicationContext: Context) {
 
     // Service connection
 
-    var serviceConnectedListeners = mutableListOf<(conn: AudioPluginServiceConnection) -> Unit>()
+    internal var serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
     var pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
 
-    var connectedServices = mutableListOf<AudioPluginServiceConnection>()
+    internal var connectedServices = mutableListOf<PluginServiceConnection>()
     var instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
     fun bindAudioPluginService(service: AudioPluginServiceInformation) {
@@ -27,39 +27,44 @@ class AudioPluginHost(private var applicationContext: Context) {
         )
         intent.putExtra("sampleRate", this.sampleRate)
 
-        var conn = AudioPluginServiceConnection(service, { c -> onBindAudioPluginService(c) })
+        var conn = PluginServiceConnection(service, { c -> onBindAudioPluginService(c) })
 
         Log.d("AudioPluginHost", "bindAudioPluginService: ${service.packageName} | ${service.className}")
         applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)
     }
 
-    private fun onBindAudioPluginService(conn: AudioPluginServiceConnection) {
-        var serviceIdentifier = "${conn.serviceInfo.packageName}/${conn.serviceInfo.className}"
-        AudioPluginNatives.addBinderForHost(serviceIdentifier, conn.binder!!)
+    private fun onBindAudioPluginService(conn: PluginServiceConnection) {
+        AudioPluginNatives.addBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className, conn.binder!!)
         connectedServices.add(conn)
         serviceConnectedListeners.forEach { f -> f(conn) }
     }
 
-    private fun findExistingServiceConnection(serviceIdentifier: String) : AudioPluginServiceConnection? {
-        var idx = serviceIdentifier.indexOf('/')
-        var packageName = serviceIdentifier.substring(0, idx)
-        var className = serviceIdentifier.substring(idx + 1)
+    private fun findExistingServiceConnection(packageName: String, className: String) : PluginServiceConnection? {
         var svc = connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == className }
         return svc
     }
 
-    fun unbindAudioPluginService(conn: AudioPluginServiceConnection) {
+    fun unbindAudioPluginService(packageName: String, localName: String) {
+        var conn = findExistingServiceConnection(packageName, localName)
+        if (conn == null)
+            return
         connectedServices.remove(conn)
-        AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName + '/' + conn.serviceInfo.className)
+        AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
+    }
+
+    fun dispose() {
+        for (conn in connectedServices)
+            AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
+        connectedServices.clear()
     }
 
     // Plugin instancing
 
     fun instantiatePlugin(pluginInfo: PluginInformation)
     {
-        var conn = findExistingServiceConnection(pluginInfo.serviceIdentifier)
+        var conn = findExistingServiceConnection(pluginInfo.packageName, pluginInfo.localName)
         if (conn == null) {
-            var serviceConnectedListener: (AudioPluginServiceConnection) -> Unit ={}
+            var serviceConnectedListener: (PluginServiceConnection) -> Unit ={}
             serviceConnectedListener = { c ->
                 serviceConnectedListeners.remove(serviceConnectedListener)
                 instantiatePlugin(pluginInfo, c)
@@ -72,7 +77,7 @@ class AudioPluginHost(private var applicationContext: Context) {
             instantiatePlugin(pluginInfo, conn)
     }
 
-    private fun instantiatePlugin(pluginInfo: PluginInformation, conn: AudioPluginServiceConnection)
+    private fun instantiatePlugin(pluginInfo: PluginInformation, conn: PluginServiceConnection)
     {
         var instance = conn.instantiatePlugin(pluginInfo, sampleRate)
         instantiatedPlugins.add(instance)

@@ -28,7 +28,8 @@ const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginI
 
 static jmethodID
 		j_method_is_out_process,
-		j_method_get_service_identifier,
+		j_method_get_package_name,
+		j_method_get_local_name,
 		j_method_get_name,
 		j_method_get_manufacturer,
 		j_method_get_version,
@@ -54,9 +55,11 @@ void initializeJNIMetadata(JNIEnv *env)
 
 	j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
 											   "isOutProcess", "()Z");
-	j_method_get_service_identifier = env->GetMethodID(java_plugin_information_class, "getServiceIdentifier",
+	j_method_get_package_name = env->GetMethodID(java_plugin_information_class, "getPackageName",
 													   "()Ljava/lang/String;");
-	j_method_get_name = env->GetMethodID(java_plugin_information_class, "getName",
+	j_method_get_local_name = env->GetMethodID(java_plugin_information_class, "getLocalName",
+												 "()Ljava/lang/String;");
+	j_method_get_name = env->GetMethodID(java_plugin_information_class, "getDisplayName",
 										 "()Ljava/lang/String;");
 	j_method_get_manufacturer = env->GetMethodID(java_plugin_information_class,
 												 "getManufacturer", "()Ljava/lang/String;");
@@ -92,25 +95,35 @@ void initializeJNIMetadata(JNIEnv *env)
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
 }
 
+const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
+	freeList.emplace_back(ptr);
+	return ptr;
+}
+
 aap::PluginInformation *
 pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
+	std::vector<const char*> freeList{};
 	auto aapPI = new aap::PluginInformation(
 			env->CallBooleanMethod(pluginInformation, j_method_is_out_process),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_service_identifier)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_name)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_manufacturer)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_version)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_plugin_id)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_shared_library_filename)),
-			strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_library_entrypoint))
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_package_name))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_local_name))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_name))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_manufacturer))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_version))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_plugin_id))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_shared_library_filename))),
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_library_entrypoint)))
 	);
+	for (auto p : freeList)
+		free((void*) p);
 
 	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_port_count);
 	for (int i = 0; i < nPorts; i++) {
@@ -125,6 +138,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 					env->CallFloatMethod(port, j_method_port_get_minimum),
 					env->CallFloatMethod(port, j_method_port_get_maximum)) :
 			new aap::PortInformation(name, content, direction));
+		free((void*) name);
 	}
 
 	return aapPI;
@@ -191,27 +205,31 @@ Java_org_androidaudioplugin_AudioPluginNatives_initialize(JNIEnv *env, jclass cl
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jclass clazz,
-                                                                jstring serviceIdentifier, jobject binder) {
-	const char *serviceIdentifierDup = strdup_fromJava(env, serviceIdentifier);
+                                                                jstring packageName, jstring className, jobject binder) {
+	const char *packageNameDup = strdup_fromJava(env, packageName);
+	const char *classNameDup = strdup_fromJava(env, className);
 	auto binderRef = env->NewGlobalRef(binder);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(serviceIdentifierDup, binderRef, aiBinder));
-	free((void*) serviceIdentifierDup);
+    apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(packageNameDup, classNameDup, binderRef, aiBinder));
+	free((void*) packageNameDup);
+	free((void*) classNameDup);
 }
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz,
-                                                                   jstring serviceIdentifier) {
-	const char *serviceIdentifierDup = strdup_fromJava(env, serviceIdentifier);
+                                                                   jstring packageName, jstring className) {
+	const char *packageNameDup = strdup_fromJava(env, packageName);
+	const char *classNameDup = strdup_fromJava(env, className);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
 	auto c = apal->serviceConnections.begin();
 	while (c != apal->serviceConnections.end()) {
 		c = std::next(c);
-		if (c->serviceIdentifier == serviceIdentifierDup)
+		if (c->packageName == packageNameDup && c->className == classNameDup)
 			apal->serviceConnections.erase(c);
 	}
-	free((void*) serviceIdentifierDup);
+	free((void*) packageNameDup);
+	free((void*) classNameDup);
 }
 
 JNIEXPORT int JNICALL

@@ -5,7 +5,8 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
 
-class AudioPluginServiceConnection(var serviceInfo: AudioPluginServiceInformation, var onConnectedCallback: (conn: AudioPluginServiceConnection) -> Unit) :
+// FIXME: make it internal
+class PluginServiceConnection(var serviceInfo: AudioPluginServiceInformation, var onConnectedCallback: (conn: PluginServiceConnection) -> Unit) :
     ServiceConnection {
 
     var binder: IBinder? = null

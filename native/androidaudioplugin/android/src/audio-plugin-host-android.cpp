@@ -14,11 +14,13 @@
 
 namespace aap {
 
-AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string serviceIdentifier)
+AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string packageName, std::string className)
 {
-    for (int i = 0; i < serviceConnections.size(); i++)
-        if(serviceConnections[i].serviceIdentifier == serviceIdentifier)
+    for (int i = 0; i < serviceConnections.size(); i++) {
+        auto &s = serviceConnections[i];
+        if (s.packageName == packageName && s.className == className)
             return serviceConnections[i].aibinder;
+    }
     return nullptr;
 }
 
@@ -27,7 +29,7 @@ AIBinder* AndroidPluginHostPAL::getBinderForServiceConnectionForPlugin(std::stri
     auto pl = plugin_list_cache;
     for (int i = 0; pl[i] != nullptr; i++)
         if (pl[i]->getPluginID() == pluginId)
-            return getBinderForServiceConnection(pl[i]->getContainerIdentifier());
+            return getBinderForServiceConnection(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
     return nullptr;
 }
 

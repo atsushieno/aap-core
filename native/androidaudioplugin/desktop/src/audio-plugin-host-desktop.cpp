@@ -23,7 +23,8 @@ public:
 		std::vector<PluginInformation *> ret{};
 		for (auto p : aapMetadataPaths) {
 			char* pc = strdup(p.c_str());
-			for (auto x : PluginInformation::parsePluginDescriptor(pc, pc))
+			// FIXME: we need some semantics on packageName and localName on desktop
+			for (auto x : PluginInformation::parsePluginMetadataXml(nullptr, nullptr, pc))
 				ret.emplace_back(x);
 			free(pc);
 		}

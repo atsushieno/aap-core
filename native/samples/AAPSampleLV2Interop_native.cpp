@@ -40,7 +40,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
         return -1; // FIXME: determine error code
     }
     AAPInstanceUse *iu = new AAPInstanceUse();
-    auto desc = instance->getPluginDescriptor();
+    auto desc = instance->getPluginInformation();
     iu->plugin = instance;
     iu->plugin_buffer = new AndroidAudioPluginBuffer();
     iu->plugin_buffer->num_frames = buffer_size / sizeof(float);
@@ -73,7 +73,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
     instance->prepare(false, iu->plugin_buffer);
 
     // prepare inputs - dummy
-    for (int i = 0; i < instance->getPluginDescriptor()->getNumPorts(); i++) {
+    for (int i = 0; i < instance->getPluginInformation()->getNumPorts(); i++) {
 		if (i == midiInPort) {
             auto mb = (uint8_t*) currentMidiIn;
             int length = 20;
@@ -105,7 +105,7 @@ int runHostAAP(int sampleRate, const char *pluginID, void *wavL, void *wavR, int
 		}
 		else
             for (int b = 0; b < float_count; b++)
-                    controlIn[b] = parameters != nullptr ? parameters[i] : instance->getPluginDescriptor()->getPort(i)->getDefaultValue();
+                    controlIn[b] = parameters != nullptr ? parameters[i] : instance->getPluginInformation()->getPort(i)->getDefaultValue();
 	}
     // activate, run, deactivate
     instance->activate();

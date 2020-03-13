@@ -78,7 +78,8 @@ class PluginInformation
 	bool is_out_process;
 
 	// basic information
-	std::string container_identifier{}; // serviceName for Android, aap_metadata path for desktop. Optional for apps, host needs to query it missing and needed.
+	std::string plugin_package_name{}; // service package name for Android, FIXME: determine semantics for desktop
+	std::string plugin_local_name{}; // service class name for Android, FIXME: determine semantics for desktop
 	std::string display_name{};
 	std::string manufacturer_name{};
 	std::string version{};
@@ -98,15 +99,16 @@ class PluginInformation
 	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
 
 public:
-	static std::vector<PluginInformation*> parsePluginDescriptor(const char* containerIdentifier, const char* xmlfile);
+	static std::vector<PluginInformation*> parsePluginMetadataXml(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, std::string containerIdentifier, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
+	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
 		: is_out_process(isOutProcess),
-		  container_identifier(containerIdentifier),
+		  plugin_package_name(pluginPackageName),
+		  plugin_local_name(pluginLocalName),
 		  display_name(displayName),
 		  manufacturer_name(manufacturerName),
 		  version(versionString),
@@ -127,9 +129,14 @@ public:
 	{
 	}
 
-	const std::string getContainerIdentifier() const
+	const std::string getPluginPackageName() const
 	{
-		return container_identifier;
+		return plugin_package_name;
+	}
+
+	const std::string getPluginLocalName() const
+	{
+		return plugin_local_name;
 	}
 
 	const std::string getDisplayName() const
@@ -328,8 +335,8 @@ class PluginHost
 	std::vector<PluginInstance*> instances{};
 	PluginHostManager* manager{nullptr};
 
-	PluginInstance* instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate);
-	PluginInstance* instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate);
+	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
+	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
 	PluginHost(PluginHostManager* manager)
@@ -345,7 +352,7 @@ public:
 
 class PluginHostManager
 {
-	std::vector<const PluginInformation*> plugin_descriptors{};
+	std::vector<const PluginInformation*> plugin_infos{};
 
 public:
 
@@ -361,21 +368,21 @@ public:
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
 
-	int32_t getNumPluginDescriptors()
+	int32_t getNumPluginInformation()
 	{
-		return plugin_descriptors.size();
+		return plugin_infos.size();
 	}
 
-	const PluginInformation* getPluginDescriptorAt(int index)
+	const PluginInformation* getPluginInformation(int index)
 	{
-		return plugin_descriptors[index];
+		return plugin_infos[index];
 	}
 	
-	const PluginInformation* getPluginDescriptor(const char *identifier)
+	const PluginInformation* getPluginInformation(const char *identifier)
 	{
-		int n = getNumPluginDescriptors();
+		int n = getNumPluginInformation();
 		for(int i = 0; i < n; i++) {
-			auto d = getPluginDescriptorAt(i);
+			auto d = getPluginInformation(i);
 			if (d->getPluginID().compare(identifier) == 0)
 				return d;
 		}
@@ -390,17 +397,17 @@ class PluginInstance
 	
 	PluginHost *host;
 	int sample_rate{44100};
-	const PluginInformation *descriptor;
+	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
 	std::vector<AndroidAudioPluginExtension> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
-	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginDescriptor, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInfo, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: host(pluginHost),
 		  sample_rate(sampleRate),
-		  descriptor(pluginDescriptor),
+		  pluginInfo(pluginInfo),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
@@ -411,9 +418,9 @@ public:
 
     ~PluginInstance() { dispose(); }
 
-	const PluginInformation* getPluginDescriptor()
+	const PluginInformation* getPluginInformation()
 	{
-		return descriptor;
+		return pluginInfo;
 	}
 
 	void addExtension(AndroidAudioPluginExtension ext)
@@ -438,7 +445,7 @@ public:
 		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
 		for (int i = 0; i < extensions.size(); i++)
 			extArr[i] = &extensions[i];
-		plugin = plugin_factory->instantiate(plugin_factory, descriptor->getPluginID().c_str(), sample_rate, extArr);
+		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
 		free(extArr);
 		plugin->prepare(plugin, preparedBuffer);
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;

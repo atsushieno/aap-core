@@ -14,7 +14,7 @@ namespace aap
 
 // plugin globals ---------------------
 
-void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const char* xmlfile, std::vector<PluginInformation*>& plugins)
+void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
     tinyxml2::XMLDocument doc;
     auto error = doc.LoadFile(xmlfile);
@@ -31,7 +31,8 @@ void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const cha
         auto library = pluginElement->Attribute("library");
         auto entrypoint = pluginElement->Attribute("entrypoint");
         auto plugin = new PluginInformation(false,
-                containerIdentifier ? containerIdentifier : "",
+        		pluginPackageName ? pluginPackageName : "",
+        		pluginLocalName ? pluginLocalName : "",
                 name ? name : "",
                 manufacturer ? manufacturer : "",
                 version ? version : "",
@@ -65,10 +66,10 @@ void aap_parse_plugin_descriptor_into(const char* containerIdentifier, const cha
 
 //-----------------------------------
 
-std::vector<PluginInformation*> PluginInformation::parsePluginDescriptor(const char * containerIdentifier, const char* xmlfile)
+std::vector<PluginInformation*> PluginInformation::parsePluginMetadataXml(const char * pluginPackageName, const char * pluginLocalName, const char* xmlfile)
 {
 	std::vector<PluginInformation*> plugins{};
-	aap_parse_plugin_descriptor_into(containerIdentifier, xmlfile, plugins);
+	aap_parse_plugin_descriptor_into(pluginPackageName, pluginLocalName, xmlfile, plugins);
 	return plugins;
 }
 
@@ -89,12 +90,12 @@ PluginHostManager::PluginHostManager()
 void PluginHostManager::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
 {
 	for (auto entry : pluginDescriptors)
-		plugin_descriptors.emplace_back(entry);
+		plugin_infos.emplace_back(entry);
 }
 
 bool PluginHostManager::isPluginAlive (const char *identifier)
 {
-	auto desc = getPluginDescriptor(identifier);
+	auto desc = getPluginInformation(identifier);
 	if (!desc)
 		return false;
 
@@ -111,7 +112,7 @@ bool PluginHostManager::isPluginAlive (const char *identifier)
 
 bool PluginHostManager::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
 {
-	auto desc = getPluginDescriptor(identifier);
+	auto desc = getPluginInformation(identifier);
 	if (!desc)
 		return false;
 
@@ -122,7 +123,7 @@ char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.S
 
 int PluginHost::createInstance(const char *identifier, int sampleRate)
 {
-	const PluginInformation *descriptor = manager->getPluginDescriptor(identifier);
+	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.

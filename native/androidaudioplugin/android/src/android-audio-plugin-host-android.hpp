@@ -14,10 +14,11 @@ namespace aap {
 
 class AudioPluginServiceConnection {
 public:
-	AudioPluginServiceConnection(std::string serviceIdentifier, jobject jbinder, AIBinder *aibinder)
-			: serviceIdentifier(serviceIdentifier), aibinder(aibinder) {}
+	AudioPluginServiceConnection(std::string packageName, std::string className, jobject jbinder, AIBinder *aibinder)
+			: packageName(packageName), className(className), aibinder(aibinder) {}
 
-	std::string serviceIdentifier{};
+	std::string packageName{};
+	std::string className{};
 	jobject jbinder{nullptr};
 	AIBinder *aibinder{nullptr};
 };
@@ -37,8 +38,8 @@ public:
 		//  which is not the case. Therefore we simply accumulate query results and return unique values/
 #if true
     	for (auto p : getInstalledPlugins()) {
-			if (std::find(ret.begin(), ret.end(), p->getContainerIdentifier()) == ret.end())
-				ret.emplace_back(p->getContainerIdentifier());
+			if (std::find(ret.begin(), ret.end(), p->getPluginPackageName()) == ret.end())
+				ret.emplace_back(p->getPluginPackageName());
     	}
 #else
         for (auto c : serviceConnections)
@@ -56,7 +57,7 @@ public:
     std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override {
         std::vector<PluginInformation*> results{};
         for (auto p : plugin_list_cache)
-            if (std::find(aapMetadataPaths.begin(), aapMetadataPaths.end(), p->getContainerIdentifier()) != aapMetadataPaths.end())
+            if (std::find(aapMetadataPaths.begin(), aapMetadataPaths.end(), p->getPluginPackageName()) != aapMetadataPaths.end())
                 results.emplace_back(p);
         return results;
     }
@@ -75,7 +76,7 @@ public:
 
 	void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
 
-	AIBinder *getBinderForServiceConnection(std::string serviceIdentifier);
+	AIBinder *getBinderForServiceConnection(std::string packageName, std::string className);
 	AIBinder *getBinderForServiceConnectionForPlugin(std::string pluginId);
 };
 
