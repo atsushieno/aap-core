@@ -1,5 +1,6 @@
 
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
+ANDROID_SDK_ROOT=~/Android/Sdk
 ANDROID_NDK=~/Android/Sdk/ndk/21.1.6210238
 NATIVE_BINARIES_TAG=r1
 
@@ -66,5 +67,5 @@ build-lv2-importer:
 	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:
-	cd java && ./gradlew build dokka
+	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka
 
