@@ -277,7 +277,7 @@ void AndroidAudioPluginFormat::findAllTypesForFile(OwnedArray <PluginDescription
     }
 #else
 	auto metadataPath = fileOrIdentifier.toRawUTF8();
-	for (auto p : PluginInformation::parsePluginMetadataXml(metadataPath, metadataPath)) {
+	for (auto p : PluginInformation::parsePluginMetadataXml(metadataPath, metadataPath, metadataPath)) {
 		auto dst = new PluginDescription();
 		juce_plugin_descs.add(dst); // to automatically free when disposing `this`.
 		fillPluginDescriptionFromNative(*dst, *p);
