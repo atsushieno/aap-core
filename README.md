@@ -502,20 +502,7 @@ For a normative AAP host, `AAP_PLUGIN_PATH` environment variable is used to look
 
 ## JUCE integration
 
-JUCE is designed to be extensible to include other audio plugin formats. So far, we have created AAP JUCE audio processor so that apps that host audio plugins can also host AAPs.
-
-`native/juce/` directory contains juce:AudioPluginFormat implementation and related stuff for AAP. It is part of `JuceAAPAudioPluginHost` application which is some patched version of `AudioPluginHost` extra application in JUCE SDK.
-
-For details, follow another [`README.md`](native/juce/README.md) in that directory.
-
-It builds on Android and desktop (confirmed only on Linux so far). It can launch, enumerate the installed audio plugins on the system, and instantiate each plugin (only one can be instantiated), but audio inputs are not verified to work. There are couple of github issues that are tagged as `JUCE`.
-
-### Licensing notice
-
-Note that any JUCE-originated code, including sample app code which is
-basically a port of JUCE AudioPluginHost, cannot be distributed uner the
-MIT license.
-
+The development has moved to [aap-juce](https://github.com/atsushieno/aap-juce).
 
 
 ## Sample apps
@@ -605,7 +592,6 @@ And note that access to assets is not as simple as that to filesystem. It is imp
   - desktop (general Unix-y desktop specific parts; POSIX-IPC maybe)
   - lv2 (LV2-specific parts)
   - vst3 (VST3-specific parts; TODO)
-  - juce (JUCE audio processor implementation)
 - java
   - androidaudioplugin (aar)
     - lib

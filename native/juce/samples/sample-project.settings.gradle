@@ -1,3 +1,0 @@
-include ':androidaudioplugin'
-include ':app'
-project(':androidaudioplugin').projectDir = new File('../../../../../../java/androidaudioplugin')
