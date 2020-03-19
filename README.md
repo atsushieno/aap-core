@@ -630,8 +630,6 @@ android-audio-plugin-framework is (against the name) designed to be kind of cros
 
 In `Makefile`, those LV2 dependencies on desktop are built with debugging symbols by default (`waf -d`).
 
-JUCE integration on desktop is especially much easier as JUCE is primarily developed for desktop. JUCE exporter for CLion may be useful for debugging (especially that Android Studio native builds are also for CMake either way). On CLion (verified with 2019.3) setting the project root with `Tools` -> `CMake` -> `Change Project Root` command would make it possible to diagnose issues with breakpoints on the sources from AAP itself, LV2 dependencies and prebuilt LV2 plugins (e.g. mda-lv2).
-
 Debugging will become easier by setting the following environment variables (replace `{.../android-audio-plugin-framework}` part to match your repo checkout), as the local checkouts including submodules would become the debuggee sources:
 
 - `AAP_PLUGIN_PATH={.../android-audio-plugin-framework}/java/samples/aaplv2plugins/src/main/res/xml`
