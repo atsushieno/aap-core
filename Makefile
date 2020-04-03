@@ -1,7 +1,7 @@
 
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_SDK_ROOT=~/Android/Sdk
-ANDROID_NDK=~/Android/Sdk/ndk/21.1.6210238
+ANDROID_NDK=~/Android/Sdk/ndk/21.0.6113669
 NATIVE_BINARIES_TAG=r1
 
 all: build-all
