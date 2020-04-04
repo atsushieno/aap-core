@@ -1,7 +1,7 @@
 
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
-ANDROID_SDK_ROOT=~/Android/Sdk
-ANDROID_NDK=~/Android/Sdk/ndk/21.0.6113669
+ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/21.0.6113669
+
 NATIVE_BINARIES_TAG=r1
 
 all: build-all
@@ -17,6 +17,11 @@ build-all: \
 maybe-download-ndk: $(ANDROID_NDK)
 
 $(ANDROID_NDK):
+	if ! [ -d "$(ANDROID_SDK_ROOT)" ] ; then \
+		echo "ANDROID_SDK_ROOT is not defined." ; \
+		exit 1 ; \
+	fi
+	echo "Android NDK will be installed as $(ANDROID_NDK)"
 	wget https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip >/dev/null
 	unzip android-ndk-r21-linux-x86_64.zip >/dev/null
 	mkdir -p $(ANDROID_NDK)
