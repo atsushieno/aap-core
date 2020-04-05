@@ -1,4 +1,5 @@
 
+MINIMIZE_INTERMEDIATES=0
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/21.0.6113669
 
@@ -26,6 +27,9 @@ $(ANDROID_NDK):
 	unzip android-ndk-r21-linux-x86_64.zip >/dev/null
 	mkdir -p $(ANDROID_NDK)
 	mv android-ndk-r21/* $(ANDROID_NDK)
+	if [ $MINIMIZE_INTERMEDIATES ] ; then \
+		rm android-ndk-r21-linux-x86_64.zip ; \
+	fi
 
 get-lv2-deps: dependencies/dist/stamp
 
