@@ -63,6 +63,10 @@ std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins
 }
 
 AndroidPluginHostPAL android_pal_instance{};
+JavaVM *aap_jvm{nullptr};
+
+// FIXME: it is kind of hack; dynamically loaded and used by JuceAAPWrapper.
+extern "C" JavaVM* getJVM() { return aap_jvm; }
 
 PluginHostPAL* getPluginHostPAL()
 {
@@ -71,11 +75,17 @@ PluginHostPAL* getPluginHostPAL()
 
 JNIEnv* AndroidPluginHostPAL::getJNIEnv()
 {
-    assert(jvm != nullptr);
+    assert(aap_jvm != nullptr);
 
     JNIEnv* env;
-    jvm->AttachCurrentThread(&env, nullptr);
+    aap_jvm->AttachCurrentThread(&env, nullptr);
     return env;
+}
+
+void AndroidPluginHostPAL::initialize(JNIEnv *env, jobject applicationContext)
+{
+    env->GetJavaVM(&aap_jvm);
+    globalApplicationContext = applicationContext;
 }
 
 } // namespace aap
