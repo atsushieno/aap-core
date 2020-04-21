@@ -12,28 +12,33 @@
 class AAPClientContext {
 
 public:
-	const char *unique_id;
+	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
 	aap::SharedMemoryExtension* shared_memory_extension{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
-	AndroidAudioPluginState state;
-	int state_ashmem_fd;
+	AndroidAudioPluginState state{};
+	int state_ashmem_fd{0};
 
-    AAPClientContext(int sampleRate, const char *pluginUniqueId)
-		: unique_id(pluginUniqueId)
+	AAPClientContext() {}
+
+    int initialize(int sampleRate, const char *pluginUniqueId)
 	{
+		unique_id = pluginUniqueId;
     	auto pal = dynamic_cast<aap::AndroidPluginHostPAL*> (aap::getPluginHostPAL());
     	auto binder = pal->getBinderForServiceConnectionForPlugin(pluginUniqueId);
-    	assert(binder != nullptr);
+    	if(binder == nullptr)
+    		return 1; // unexpected
         spAIBinder.set(binder);
 		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
+		return 0;
     }
 
     ~AAPClientContext()
     {
-	    proxy->destroy(instance_id);
+		if (instance_id != 0)
+	    	proxy->destroy(instance_id);
     }
 };
 
@@ -157,7 +162,9 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 	assert(pluginUniqueId != nullptr);
 	assert(extensions != nullptr);
 
-	auto ctx = new AAPClientContext(aapSampleRate, pluginUniqueId);
+	auto ctx = new AAPClientContext();
+	if(ctx->initialize(aapSampleRate, pluginUniqueId))
+		return nullptr;
 
     for (int i = 0; extensions[i] != nullptr; i++) {
         auto ext = extensions[i];

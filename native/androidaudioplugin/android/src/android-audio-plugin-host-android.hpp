@@ -25,8 +25,6 @@ public:
 
 class AndroidPluginHostPAL : public PluginHostPAL
 {
-	JavaVM *jvm{nullptr};
-
 	std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos);
 	std::vector<PluginInformation*> queryInstalledPlugins();
 
@@ -68,11 +66,7 @@ public:
 
 	JNIEnv* getJNIEnv();
 
-	void initialize(JNIEnv *env, jobject applicationContext)
-	{
-		env->GetJavaVM(&jvm);
-		globalApplicationContext = applicationContext;
-	}
+	void initialize(JNIEnv *env, jobject applicationContext);
 
 	void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
 
