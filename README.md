@@ -11,27 +11,29 @@ Android lacks commonly used Audio Plugin Framework. On Windows and other desktop
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for Audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin specifications like VST3, LV2, DISTRHO, CLAP, and so on (not necessarily meant that *we* write code for them).
+What AAP aims is to become like an inclusive standard for audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin specifications like VST3, LV2, DISTRHO, CLAP, and so on (not necessarily meant that *we* write code for them).
 
-On the other hand it is designed so that cross-audio-plugin frameworks like can support it. We have [JUCE](http://juce.com/) integration support, and once [iPlug2](https://iplug2.github.io/) supports Linux and Android it would become similarly possible. Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported to AAP world.
+On the other hand it is designed so that cross-audio-plugin frameworks can support it. We have [JUCE](http://juce.com/) integration support, and once [iPlug2](https://iplug2.github.io/) supports Linux and Android it would become similarly possible. Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported to AAP world.
 
 Extensibility is provided like what LV2 does (but without RDF and Turtle complication). VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have, associalted with a URI. Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins, and a plugin can query the host which features it provides.
 
 Android is the first citizen in AAP, but we also support Linux desktop so that actual plugin development can be achieved on the desktop.
 
-There are examples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins. Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) within this repository.
+There are examples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins. Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) in [aap-juce](https://github.com/atsushieno/aap-juce) repository.
 
 
 ## How AAPs work: technical background
 
-AAP distribution structure is like audio plugin vendors as well DAW vendors do for desktop:
+AAP distribution structure is simple; both hosts (DAWs) and plugins (instruments/effects) can be shipped as Android applications (via Google Play etc.) respectively:
 
 - AAP Host (DAW) developers can use AAP hosting API to query and load the plugins, then deal with audio data processed by them.
-- AAP (Plugin) developers can ship their apps via Google Play (or any other app market).
+- AAP (Plugin) developers works as a service, processes audio and MIDI messages.
 
 From app packagers perspective and users perspective, it can be distributed like a MIDI device service. Like Android Native MIDI (introduced in Android 10.0), AAP processes all the audio stuff in native land (it still performs metadata queries and service queries in Dalvik/ART land).
 
-AAP developers create audio plugin in native code using Android NDK, create plugin "metadata" as an Android XML resource (`aap_metadata.xml`), and optionally implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, then package them together. The metadata provides developer details, port details, and feature requirement details. (The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage.)
+AAP developers create audio plugin in native code using Android NDK, create plugin "metadata" as an Android XML resource (`aap_metadata.xml`), and optionally implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, then package them together. The metadata provides developer details, port details (as long as they are known), and feature requirement details.
+
+TODO: The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage. We should seriously reconsider this. It will be mandatory when we support so-called plugin wrappers and loadable instrumental banks (e.g. [dexed](https://github.com/asb2m10/dexed) Carts).
 
 AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. We are rather native oriented for reusing existing code. (I believe they also aim to implement plugins in native code, but not sure. The SDK is not frequently updated.)
 
@@ -47,7 +49,7 @@ A Remote plugin client is actually implemented just as a plugin, when it is used
 
 ### Shared memory and fixed pointers
 
-LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers. Since we support LV2 as one of the backends, the host at least gives hint on "initial" pointers to each port, which we can change at run time later but basically only through setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
+LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers in prior to processing buffers. Since we support LV2 as one of the backends, the host at least gives hint on "initial" pointers to each port, which we can change at run time later but basically only by setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
 In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) plays an important role here. There wouldn't be binary array transmits over binder IPC so far. This is also what AudioRoute does too.
 
