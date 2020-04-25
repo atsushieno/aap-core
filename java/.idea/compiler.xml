@@ -8,6 +8,13 @@
       <module name="aappluginsample" target="1.7" />
       <module name="androidaudioplugin" target="1.7" />
       <module name="androidaudioplugin-lv2" target="1.7" />
+      <module name="AndroidAudioPlugin.aapbarebonepluginsample" target="1.7" />
+      <module name="AndroidAudioPlugin.aaphostsample" target="1.7" />
+      <module name="AndroidAudioPlugin.aaplv2plugins" target="1.7" />
+      <module name="AndroidAudioPlugin.aappluginsample" target="1.7" />
+      <module name="AndroidAudioPlugin.androidaudioplugin" target="1.7" />
+      <module name="AndroidAudioPlugin.androidaudioplugin-lv2" target="1.7" />
+      <module name="AndroidAudioPlugin.localpluginsample" target="1.7" />
       <module name="localpluginsample" target="1.7" />
     </bytecodeTargetLevel>
   </component>

@@ -65,7 +65,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto &fds = ctx->shared_memory_extension->getSharedMemoryFDs();
+	auto &fds = ctx->shared_memory_extension->getPortBufferFDs();
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
     if (prevBuf != nullptr) {

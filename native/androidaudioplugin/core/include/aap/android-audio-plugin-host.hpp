@@ -313,19 +313,24 @@ PluginHostPAL* getPluginHostPAL();
 
 class SharedMemoryExtension
 {
-    std::vector<int64_t> shared_memory_fds{};
+    std::vector<int64_t> port_buffer_fds{};
+	std::vector<int64_t> extension_fds{};
 
 public:
     static char const *URI;
 
     SharedMemoryExtension() {}
     ~SharedMemoryExtension() {
-        for (int64_t fd : shared_memory_fds)
+        for (int64_t fd : port_buffer_fds)
             close(fd);
-        shared_memory_fds.clear();
+        port_buffer_fds.clear();
+		for (int64_t fd : extension_fds)
+			close(fd);
+		extension_fds.clear();
     }
 
-    std::vector<int64_t>& getSharedMemoryFDs() { return shared_memory_fds; }
+    std::vector<int64_t>& getPortBufferFDs() { return port_buffer_fds; }
+	std::vector<int64_t>& getExtensionFDs() { return extension_fds; }
 };
 
 class PluginHostManager;
@@ -436,7 +441,7 @@ public:
 		return nullptr;
 	}
 
-	inline SharedMemoryExtension* getSharedMemory() { return (SharedMemoryExtension*) getExtension(SharedMemoryExtension::URI); }
+	inline SharedMemoryExtension* getSharedMemoryExtension() { return (SharedMemoryExtension*) getExtension(SharedMemoryExtension::URI); }
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{

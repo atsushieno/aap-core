@@ -3,6 +3,7 @@ package org.androidaudioplugin;
 interface AudioPluginInterface {
 
 	int create(String pluginId, int sampleRate);
+	void addExtension(int instanceID, String uri, in ParcelFileDescriptor sharedMemoryFD, int size);
 
 	boolean isPluginAlive(int instanceID);
 

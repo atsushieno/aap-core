@@ -40,14 +40,29 @@ public:
         *_aidl_return = host->createInstance(in_pluginId.c_str(), in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
         auto shm = new SharedMemoryExtension();
-        shm->getSharedMemoryFDs().resize(instance->getPluginInformation()->getNumPorts());
-        AndroidAudioPluginExtension ext{SharedMemoryExtension::URI, shm};
+        shm->getPortBufferFDs().resize(instance->getPluginInformation()->getNumPorts());
+        AndroidAudioPluginExtension ext{SharedMemoryExtension::URI, 0, shm};
         instance->addExtension(ext);
         buffers.resize(*_aidl_return + 1);
         auto & buffer = buffers[*_aidl_return];
         buffer.buffers = nullptr;
         buffer.num_buffers = 0;
         buffer.num_frames = 0;
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override
+    {
+        assert(in_instanceID < host->getInstanceCount());
+        AndroidAudioPluginExtension extension;
+        extension.uri = in_uri.c_str();
+        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        assert(shmExt != nullptr);
+        auto dfd = dup(in_sharedMemoryFD.get());
+        shmExt->getExtensionFDs().emplace_back(dfd);
+        extension.transmit_size = in_size;
+        extension.data = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
+        host->getInstance(in_instanceID)->addExtension(extension);
         return ndk::ScopedAStatus::ok();
     }
 
@@ -63,9 +78,9 @@ public:
     ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
         assert(in_instanceID < host->getInstanceCount());
-        auto shmExt = host->getInstance(in_instanceID)->getSharedMemory();
-        if (shmExt != nullptr)
-            shmExt->getSharedMemoryFDs()[in_shmFDIndex] = dup(in_sharedMemoryFD.get());
+        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        assert(shmExt != nullptr);
+        shmExt->getPortBufferFDs()[in_shmFDIndex] = dup(in_sharedMemoryFD.get());
         return ndk::ScopedAStatus::ok();
     }
 
@@ -81,7 +96,7 @@ public:
     void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
     {
         if (buffer.buffers)
-            for (int i = 0; i < instance->getSharedMemory()->getSharedMemoryFDs().size(); i++)
+            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs().size(); i++)
                 if (buffer.buffers[i])
                     munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
@@ -100,7 +115,7 @@ public:
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto& FDs = instance->getSharedMemory()->getSharedMemoryFDs();
+        auto& FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
         if (FDs.size() != nPorts) {
             freeBuffers(instance, buffer);
             FDs.resize(nPorts, 0);

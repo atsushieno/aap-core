@@ -1,3 +1,4 @@
+rootProject.name = 'AndroidAudioPlugin'
 include ':androidaudioplugin', ':androidaudioplugin-lv2', ':aapbarebonepluginsample', ':aaphostsample', ':localpluginsample', ':aaplv2plugins', ':aappluginsample'
 project(':aaplv2plugins').projectDir = new File('samples/aaplv2plugins')
 project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepluginsample')

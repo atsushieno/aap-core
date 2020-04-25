@@ -15,7 +15,9 @@ What AAP aims is to become like an inclusive standard for audio plugin, adoped t
 
 On the other hand it is designed so that cross-audio-plugin frameworks can support it. We have [JUCE](http://juce.com/) integration support, and once [iPlug2](https://iplug2.github.io/) supports Linux and Android it would become similarly possible. Namely, AAP is first designed so that JUCE audio processor can be implemented and JUCE-based audio plugins can be easily imported to AAP world.
 
-Extensibility is provided like what LV2 does (but without RDF and Turtle complication). VST3-specifics, or AAX-specifics, can be represented as long as it can be represented through raw pointer of any type (`void*`) i.e. cast to any context you'd like to have, associalted with a URI. Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins, and a plugin can query the host which features it provides.
+AAP is extensible to some extent; plugins can query host for extension data which is represented as a pointer on shared memory (explained later), associated with certain extension URI. It is similar to how LV2 extensions works, but in AAP it is limited to **data** pointers (also without RDF and Turtle complication). Those extensions can be used only with supported hosts. A host can query each plugin whether it supports certain feature or not and disable those not-supported plugins, and a plugin can query the host which features it provides. It is limited to data i.e. no runnable code, because code in host application is simply not runnable on the plugin application.
+
+VST3 specifics, LV2 specifics, etc. should be processed by (so-called) plugin wrappers, with some help with extensions, if provided by anyone.
 
 Android is the first citizen in AAP, but we also support Linux desktop so that actual plugin development can be achieved on the desktop.
 

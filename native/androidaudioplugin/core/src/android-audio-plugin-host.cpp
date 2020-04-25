@@ -75,7 +75,7 @@ std::vector<PluginInformation*> PluginInformation::parsePluginMetadataXml(const 
 
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
-	auto shmExt = instance->getSharedMemory();
+	auto shmExt = instance->getSharedMemoryExtension();
 	if (shmExt != nullptr)
 		delete shmExt;
 	delete instance;
@@ -168,7 +168,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
 	auto instance = new PluginInstance(this, descriptor, pluginFactory, sampleRate);
-	AndroidAudioPluginExtension ext{aap::SharedMemoryExtension::URI, new aap::SharedMemoryExtension()};
+	AndroidAudioPluginExtension ext{aap::SharedMemoryExtension::URI, 0, new aap::SharedMemoryExtension()};
 	instance->addExtension (ext);
 	return instance;
 }

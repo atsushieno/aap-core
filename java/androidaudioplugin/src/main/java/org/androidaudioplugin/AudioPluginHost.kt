@@ -19,6 +19,8 @@ class AudioPluginHost(private var applicationContext: Context) {
     internal var connectedServices = mutableListOf<PluginServiceConnection>()
     var instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
+    val extensions = mutableListOf<AudioPluginExtensionData>()
+
     fun bindAudioPluginService(service: AudioPluginServiceInformation) {
         var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(
@@ -79,7 +81,7 @@ class AudioPluginHost(private var applicationContext: Context) {
 
     private fun instantiatePlugin(pluginInfo: PluginInformation, conn: PluginServiceConnection)
     {
-        var instance = conn.instantiatePlugin(pluginInfo, sampleRate)
+        var instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
         instantiatedPlugins.add(instance)
         pluginInstantiatedListeners.forEach { l -> l (instance) }
     }

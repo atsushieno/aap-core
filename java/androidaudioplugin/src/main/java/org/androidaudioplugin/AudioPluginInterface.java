@@ -11,6 +11,9 @@ public interface AudioPluginInterface extends android.os.IInterface
     {
       return 0;
     }
+    @Override public void addExtension(int instanceID, java.lang.String uri, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+    {
+    }
     @Override public boolean isPluginAlive(int instanceID) throws android.os.RemoteException
     {
       return false;
@@ -96,6 +99,26 @@ public interface AudioPluginInterface extends android.os.IInterface
           int _result = this.create(_arg0, _arg1);
           reply.writeNoException();
           reply.writeInt(_result);
+          return true;
+        }
+        case TRANSACTION_addExtension:
+        {
+          data.enforceInterface(descriptor);
+          int _arg0;
+          _arg0 = data.readInt();
+          java.lang.String _arg1;
+          _arg1 = data.readString();
+          android.os.ParcelFileDescriptor _arg2;
+          if ((0!=data.readInt())) {
+            _arg2 = android.os.ParcelFileDescriptor.CREATOR.createFromParcel(data);
+          }
+          else {
+            _arg2 = null;
+          }
+          int _arg3;
+          _arg3 = data.readInt();
+          this.addExtension(_arg0, _arg1, _arg2, _arg3);
+          reply.writeNoException();
           return true;
         }
         case TRANSACTION_isPluginAlive:
@@ -263,6 +286,34 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.recycle();
         }
         return _result;
+      }
+      @Override public void addExtension(int instanceID, java.lang.String uri, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeInt(instanceID);
+          _data.writeString(uri);
+          if ((sharedMemoryFD!=null)) {
+            _data.writeInt(1);
+            sharedMemoryFD.writeToParcel(_data, 0);
+          }
+          else {
+            _data.writeInt(0);
+          }
+          _data.writeInt(size);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_addExtension, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().addExtension(instanceID, uri, sharedMemoryFD, size);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
       }
       @Override public boolean isPluginAlive(int instanceID) throws android.os.RemoteException
       {
@@ -487,16 +538,17 @@ public interface AudioPluginInterface extends android.os.IInterface
       public static org.androidaudioplugin.AudioPluginInterface sDefaultImpl;
     }
     static final int TRANSACTION_create = (android.os.IBinder.FIRST_CALL_TRANSACTION + 0);
-    static final int TRANSACTION_isPluginAlive = (android.os.IBinder.FIRST_CALL_TRANSACTION + 1);
-    static final int TRANSACTION_prepare = (android.os.IBinder.FIRST_CALL_TRANSACTION + 2);
-    static final int TRANSACTION_prepareMemory = (android.os.IBinder.FIRST_CALL_TRANSACTION + 3);
-    static final int TRANSACTION_activate = (android.os.IBinder.FIRST_CALL_TRANSACTION + 4);
-    static final int TRANSACTION_process = (android.os.IBinder.FIRST_CALL_TRANSACTION + 5);
-    static final int TRANSACTION_deactivate = (android.os.IBinder.FIRST_CALL_TRANSACTION + 6);
-    static final int TRANSACTION_getStateSize = (android.os.IBinder.FIRST_CALL_TRANSACTION + 7);
-    static final int TRANSACTION_getState = (android.os.IBinder.FIRST_CALL_TRANSACTION + 8);
-    static final int TRANSACTION_setState = (android.os.IBinder.FIRST_CALL_TRANSACTION + 9);
-    static final int TRANSACTION_destroy = (android.os.IBinder.FIRST_CALL_TRANSACTION + 10);
+    static final int TRANSACTION_addExtension = (android.os.IBinder.FIRST_CALL_TRANSACTION + 1);
+    static final int TRANSACTION_isPluginAlive = (android.os.IBinder.FIRST_CALL_TRANSACTION + 2);
+    static final int TRANSACTION_prepare = (android.os.IBinder.FIRST_CALL_TRANSACTION + 3);
+    static final int TRANSACTION_prepareMemory = (android.os.IBinder.FIRST_CALL_TRANSACTION + 4);
+    static final int TRANSACTION_activate = (android.os.IBinder.FIRST_CALL_TRANSACTION + 5);
+    static final int TRANSACTION_process = (android.os.IBinder.FIRST_CALL_TRANSACTION + 6);
+    static final int TRANSACTION_deactivate = (android.os.IBinder.FIRST_CALL_TRANSACTION + 7);
+    static final int TRANSACTION_getStateSize = (android.os.IBinder.FIRST_CALL_TRANSACTION + 8);
+    static final int TRANSACTION_getState = (android.os.IBinder.FIRST_CALL_TRANSACTION + 9);
+    static final int TRANSACTION_setState = (android.os.IBinder.FIRST_CALL_TRANSACTION + 10);
+    static final int TRANSACTION_destroy = (android.os.IBinder.FIRST_CALL_TRANSACTION + 11);
     public static boolean setDefaultImpl(org.androidaudioplugin.AudioPluginInterface impl) {
       if (Stub.Proxy.sDefaultImpl == null && impl != null) {
         Stub.Proxy.sDefaultImpl = impl;
@@ -509,6 +561,7 @@ public interface AudioPluginInterface extends android.os.IInterface
     }
   }
   public int create(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
+  public void addExtension(int instanceID, java.lang.String uri, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException;
   public boolean isPluginAlive(int instanceID) throws android.os.RemoteException;
   public void prepare(int instanceID, int frameCount, int portCount) throws android.os.RemoteException;
   public void prepareMemory(int instanceID, int shmFDIndex, android.os.ParcelFileDescriptor sharedMemoryFD) throws android.os.RemoteException;

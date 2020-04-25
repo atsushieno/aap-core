@@ -29,6 +29,7 @@ typedef struct {
 
 typedef struct {
 	const char *uri;
+	int32_t transmit_size;
 	void *data;
 } AndroidAudioPluginExtension;
 
