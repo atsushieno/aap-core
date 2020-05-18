@@ -2,6 +2,8 @@
 MINIMIZE_INTERMEDIATES=0
 ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/21.0.6113669
+NDK_HOST=`uname | tr '[:upper:]' '[:lower:]'`
+
 
 NATIVE_BINARIES_TAG=r1
 
@@ -23,12 +25,12 @@ $(ANDROID_NDK):
 		exit 1 ; \
 	fi
 	echo "Android NDK will be installed as $(ANDROID_NDK)"
-	wget https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip >/dev/null
-	unzip android-ndk-r21-linux-x86_64.zip >/dev/null
+	wget https://dl.google.com/android/repository/android-ndk-r21-$(NDK_HOST)-x86_64.zip >/dev/null
+	unzip android-ndk-r21-$(NDK_HOST)-x86_64.zip >/dev/null
 	mkdir -p $(ANDROID_NDK)
 	mv android-ndk-r21/* $(ANDROID_NDK)
 	if [ $MINIMIZE_INTERMEDIATES ] ; then \
-		rm android-ndk-r21-linux-x86_64.zip ; \
+		rm android-ndk-r21-$(NDK_HOST)-x86_64.zip ; \
 	fi
 
 get-lv2-deps: dependencies/dist/stamp
@@ -47,10 +49,10 @@ build-desktop:
 	cd dependencies && \
 		cd serd && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd sord && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd lv2 && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd lv2 && ./waf -d --prefix=../lv2-desktop/dist --lv2dir=`pwd`/../dist/lib/lv2 configure build install && cd .. && \
 		cd sratom && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd lilv && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd mda-lv2 && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
+		cd mda-lv2 && ./waf -d --prefix=../lv2-desktop/dist --lv2dir=`pwd`/../dist/lib/lv2 configure build install && cd .. && \
 	cd ..
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 	cd docs && doxygen && cd ..
