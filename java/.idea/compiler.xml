@@ -1,20 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel>
+    <bytecodeTargetLevel target="1.8">
       <module name="aapbarebonepluginsample" target="1.7" />
       <module name="aaphostsample" target="1.7" />
       <module name="aaplv2plugins" target="1.7" />
       <module name="aappluginsample" target="1.7" />
       <module name="androidaudioplugin" target="1.7" />
       <module name="androidaudioplugin-lv2" target="1.7" />
-      <module name="AndroidAudioPlugin.aapbarebonepluginsample" target="1.7" />
-      <module name="AndroidAudioPlugin.aaphostsample" target="1.7" />
-      <module name="AndroidAudioPlugin.aaplv2plugins" target="1.7" />
-      <module name="AndroidAudioPlugin.aappluginsample" target="1.7" />
-      <module name="AndroidAudioPlugin.androidaudioplugin" target="1.7" />
-      <module name="AndroidAudioPlugin.androidaudioplugin-lv2" target="1.7" />
-      <module name="AndroidAudioPlugin.localpluginsample" target="1.7" />
       <module name="localpluginsample" target="1.7" />
     </bytecodeTargetLevel>
   </component>
