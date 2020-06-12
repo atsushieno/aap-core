@@ -45,7 +45,7 @@ android-lv2-binaries.zip:
 
 build-desktop:
 	echo TODO: covers core and lv2 so far. Need to build for testing on desktop
-	export PKG_CONFIG_PATH=../lv2-desktop/dist/lib/pkgconfig && \
+	export PKG_CONFIG_PATH=`pwd`/dependencies/lv2-desktop/dist/lib/pkgconfig && \
 	cd dependencies && \
 		cd serd && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd sord && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
@@ -53,7 +53,7 @@ build-desktop:
 		cd sratom && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd lilv && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
 		cd mda-lv2 && ./waf -d --prefix=../lv2-desktop/dist --lv2dir=`pwd`/../dist/lib/lv2 configure build install && cd .. && \
-	cd ..
+	cd .. && \
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 	cd docs && doxygen && cd ..
 
@@ -75,6 +75,7 @@ import-lv2-deps: build-lv2-importer
 	bash import-lv2-deps.sh
 
 build-lv2-importer:
+	export PKG_CONFIG_PATH=`pwd`/dependencies/lv2-desktop/dist/lib/pkgconfig && \
 	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:

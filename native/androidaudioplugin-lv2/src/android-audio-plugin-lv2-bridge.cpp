@@ -12,17 +12,14 @@
 #include "aap/android-audio-plugin.h"
 
 #include <lilv/lilv.h>
-// FIXME: It is HACK, may not work under some environment...
-#include <../lib/lv2/atom.lv2/atom.h>
-#include <../lib/lv2/atom.lv2/util.h>
-#include <../lib/lv2/atom.lv2/forge.h>
-#include <../lib/lv2/urid.lv2/urid.h>
-#include <../lib/lv2/midi.lv2/midi.h>
-#include <../lib/lv2/time.lv2/time.h>
-#include <../lib/lv2/event.lv2/event.h>
-#include <../lib/lv2/log.lv2/log.h>
-#include <../lib/lv2/buf-size.lv2/buf-size.h>
-#include "../../../dependencies/dist/x86/lib/lv2/atom.lv2/atom.h"
+#include <lv2/atom/atom.h>
+#include <lv2/atom/util.h>
+#include <lv2/atom/forge.h>
+#include <lv2/urid/urid.h>
+#include <lv2/midi/midi.h>
+#include <lv2/time/time.h>
+#include <lv2/log/log.h>
+#include <lv2/buf-size/buf-size.h>
 
 
 namespace aaplv2bridge {

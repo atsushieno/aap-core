@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export LD_LIBRARY_PATH=`pwd`/dependencies/lv2-desktop/dist/lib:$LD_LIBRARY_PATH
+
 ABIS_SIMPLE=(x86 x86_64 armeabi-v7a arm64-v8a)
 
 # Remove existing jniLibs for sanity

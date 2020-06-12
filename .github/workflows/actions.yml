@@ -7,7 +7,7 @@ on:
 jobs:
   linux-build:
     name: build on linux
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - name: checkout
       uses: actions/checkout@v1
@@ -22,6 +22,28 @@ jobs:
         java-version: 1.8
     - name: apt install
       run: |
-        echo y | sudo apt-get install liblilv-dev
+        echo y | sudo apt-get install doxygen
+    - name: stupid NDK setup workaround for GitHub Actions
+      run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
       run: make
+  
+  osx-build:
+    name: build on osx
+    runs-on: macos-10.15
+    steps:
+    - name: checkout
+      uses: actions/checkout@v1
+      with:
+        submodules: recursive
+    - name: set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    - name: install deps
+      run: |
+        brew install doxygen pkg-config cmake
+    - name: build
+      run: make
+      env:
+        ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
