@@ -16,15 +16,11 @@ set (androidaudioplugin_INCLUDES
 	"core/include"
 	"android/src/gen/include"
 	"../../dependencies/tinyxml2"
-	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
-	"../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
 	)
 
 #set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} tinyxml2)
 
 if (ANDROID)
-
-set (ENV{PKG_CONFIG_PATH} "../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/lib/pkgconfig/")
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
