@@ -5,15 +5,9 @@ ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/21.0.6113669
 NDK_HOST=`uname | tr '[:upper:]' '[:lower:]'`
 
 
-NATIVE_BINARIES_TAG=r1
-
-all: build-all
-
-build-all: \
+all: \
 	maybe-download-ndk \
-	get-lv2-deps \
 	build-desktop \
-	import-lv2-deps \
 	build-java
 
 .PHONY:
@@ -33,27 +27,7 @@ $(ANDROID_NDK):
 		rm android-ndk-r21-$(NDK_HOST)-x86_64.zip ; \
 	fi
 
-get-lv2-deps: dependencies/dist/stamp
-
-dependencies/dist/stamp: android-lv2-binaries.zip
-	mkdir -p dependencies
-	unzip android-lv2-binaries -d dependencies
-	touch dependencies/dist/stamp
-
-android-lv2-binaries.zip:
-	wget https://github.com/atsushieno/android-native-audio-builders/releases/download/refs/heads/$(NATIVE_BINARIES_TAG)/android-lv2-binaries.zip
-
 build-desktop:
-	echo TODO: covers core and lv2 so far. Need to build for testing on desktop
-	export PKG_CONFIG_PATH=`pwd`/dependencies/lv2-desktop/dist/lib/pkgconfig && \
-	cd dependencies && \
-		cd serd && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd sord && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd lv2 && ./waf -d --prefix=../lv2-desktop/dist --lv2dir=`pwd`/../dist/lib/lv2 configure build install && cd .. && \
-		cd sratom && ./waf -d --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd lilv && ./waf -d --no-utils --prefix=../lv2-desktop/dist configure build install && cd .. && \
-		cd mda-lv2 && ./waf -d --prefix=../lv2-desktop/dist --lv2dir=`pwd`/../dist/lib/lv2 configure build install && cd .. && \
-	cd .. && \
 	mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 	cd docs && doxygen && cd ..
 
@@ -69,14 +43,6 @@ build-android-single:
 		-DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake \
 		-DANDROID_ABI=$(A_ABI) -DCMAKE_ANDROID_ARCH_ABI=$(A_ABI) \
 		-DANDROID_PLATFORM=android-29 ../.. && make
-
-import-lv2-deps: build-lv2-importer
-	mkdir -p java/samples/aaphostsample/src/main/res/xml
-	bash import-lv2-deps.sh
-
-build-lv2-importer:
-	export PKG_CONFIG_PATH=`pwd`/dependencies/lv2-desktop/dist/lib/pkgconfig && \
-	cd tools/aap-import-lv2-metadata && rm -rf build && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
 
 build-java:
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka

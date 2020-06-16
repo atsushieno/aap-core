@@ -2,7 +2,7 @@
 
 ![](https://github.com/atsushieno/android-audio-plugin-framework/workflows/build%20dist/badge.svg)
 
-disclaimer: the README is either up to date, partially obsoleted, or sometimes ahead of implementation (to describe the ideal state). Do not trust it too much.
+disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation (to describe the ideal state). Do not trust it too much.
 
 
 ## What is AAP?
@@ -21,7 +21,7 @@ VST3 specifics, LV2 specifics, etc. should be processed by (so-called) plugin wr
 
 Android is the first citizen in AAP, but we also support Linux desktop so that actual plugin development can be achieved on the desktop.
 
-There are examples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins. Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) in [aap-juce](https://github.com/atsushieno/aap-juce) repository.
+There are examples based on LV2 plugins, including [mda-lv2](https://gitlab.com/drobilla/mda-lv2) (which was ported from [mda-vst](https://sourceforge.net/projects/mda-vst/)), as well as porting helper utility to generate XML metadata from LV2 plugins (see [aap-lv2](https://github.com/atsushieno/aap-lv2) for more details). Also, we already have JUCE audio processors for AAP (`AndroidAudioPluginFormat`) in [aap-juce](https://github.com/atsushieno/aap-juce) repository.
 
 
 ## How AAPs work: technical background
@@ -293,111 +293,12 @@ Note: JUCE sends timestamp values as application-dependent, meaning that somethi
 
 ## Importing LV2 plugins
 
-### directory structure conversion
-
-LV2 packaging is not straightforward. Android native libraries are usually packaged like
-
-- `lib/armeabi-v7a/libfoo.so`
-- `lib/arm64-v8a/libfoo.so`
-- `lib/x86/libfoo.so`
-- `lib/x86_64/libfoo.so`
-
-while normal `lv2` packages usually look like:
-
-- `lib/foo.lv2/manifest.ttl`
-- `lib/foo.lv2/foo.ttl`
-- `lib/foo.lv2/foo.so`
-
-Attempt to copy those `lv2` contents under `lib/{abi}` with simple build.gradle script failed. Asking plugin developers to add `copy(from/into)` operation hack (which might still not work) is awkward, so we would rather provide simpler solution - we put `lv2/` contents under `assets`, and put ABI-specific `*.so` files directly under `lib/{abi}`. Loading `*.so` from `assets` subdirectories is not possible either.
-
-- `assets/foo.lv2/manifest.ttl`
-- `assets/foo.lv2/foo.ttl`
-- `lib/{abi}/foo.so`
-
-The `import-lv2-deps.sh` does this task for `java/aaplv2samples` which is used by `aaphostsample` and `localpluginsample`.
-
-
-### LV2_PATH workarounds
-
-There is another big limitation on Android platform: it is not possible to get list of asset directories in Android, meaning that querying audio plugins based on the filesystem is not doable. All those plugins must be therefore explicitly listed at some manifest.
-
-To address this issue, AAP-LV2 plugin service takes a list of LV2 asset paths from `aap_metadata.xml`, which are used for `LV2_PATH` settings. It is taken care by `org.androidaudioplugin.lv2.AudioPluginLV2ServiceExtension` and plugin developers shouldn't have to worry about it, as long as they add the following metadata within `<service>` for AudioPluginService:
-
-```
-            <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService#Extensions"
-                android:value="org.androidaudioplugin.lv2.AudioPluginLV2ServiceExtension"
-                />
-```
-
-
-### converting LV2 metadata to AAP metadata
-
-We decided to NOT support shorthand metadata notation like
-
-```
-<plugin backend='LV2' assets='lv2/eg-amp.lv2' product='eg-amp.lv2' />
-```
-
-... because it will make metadata non-queryable to normal Android app developers.
-
-Instead we provide a metadata generator tool `app-import-lv2-metadata` and ask LV2 plugin developers (importers) to describe everything in `aap-metadata.xml`:
-
-```
-$ ./aap-import-lv2-metadata [lv2path] [res_xml_path]
-(...)
-LV2 directory: /sources/android-audio-plugin-framework/java/samples/aaphostsample/src/main/assets/lv2
-Loading from /sources/android-audio-plugin-framework/java/samples/aaphostsample/src/main/assets/lv2/ui.lv2/manifest.ttl
-Loaded bundle. Dumping all plugins from there.
-all plugins loaded
-Writing metadata file java/samples/aaphostsample/src/main/res/xml/aap_metadata.xml
-done.
-
-$ cat res/xml/metadata0.xml 
-<plugins>
-  <plugin backend="LV2" name="Example MIDI Gate" category="Effect" author="" manufacturer="http://lv2plug.in/ns/lv2" unique-id="lv2:http://lv2plug.in/plugins/eg-midigate" library="..." entrypoint="...">
-    <ports>
-      <port direction="input" content="midi" name="Control" />
-      <port direction="input" content="audio" name="In" />
-      <port direction="output" content="audio" name="Out" />
-    </ports>
-  </plugin>
-</plugins>
-$ cat manifest-fragment.xml 
-<plugins>
-  <plugin backend="LV2" name="MDA Ambience" category="Effect" author="David Robillard" manufacturer="http://drobilla.net/plugins/mda/" unique-id="lv2:http://drobilla.net/plugins/mda/Ambience" library="libandroidaudioplugin-lv2.so" entrypoint="GetAndroidAudioPluginFactoryLV2Bridge" assets="/lv2/mda.lv2/">
-    <ports>
-      <port direction="input" default="0.700000" minimum="0.000000" maximum="1.000000" content="other" name="Size" />
-      <port direction="input" default="0.700000" minimum="0.000000" maximum="1.000000" content="other" name="HF Damp" />
-      <port direction="input" default="0.900000" minimum="0.000000" maximum="1.000000" content="other" name="Mix" />
-      <port direction="input" default="0.500000" minimum="0.000000" maximum="1.000000" content="other" name="Output" />
-      <port direction="input"    content="audio" name="Left In" />
-      <port direction="input"    content="audio" name="Right In" />
-      <port direction="output"    content="audio" name="Left Out" />
-      <port direction="output"    content="audio" name="Right Out" />
-    </ports>
-  </plugin>
-  ...
-```
-
-For `content`, if a port is `atom:atomPort` and `atom:supports` has `midi:MidiEvent`, then it is `midi`. Any LV2 port that is `lv2:AudioPort` are regarded as `audio`. Anything else is `other` in AAP.
-
-The plugin `category` becomes `Instrument` if and only if it is `lv2:InstrumentPlugin`. Anything else falls back to `Effect`.
-
-We don't detect any impedance mismatch between TTL and metadata XML; LV2 backend implementation uses "lilv" which only loads TTL. lilv doesn't assure port description correctness in TTL either (beyond what lv2validate does as a tool, not runtime).
-
-
-### Licensing notice
-
-Note that `mda-lv2` is distributed under the GPLv3 license and you have to
-follow it when distributing or making changes to that part (the LV2 plugin
-samples). This does not apply to other LV2 related bits.
-
+See [aap-lv2](https://github.com/atsushieno/aap-lv2) for details.
 
 
 ## Importing VST3 plugins
 
-TBD - there should be similar restriction to that of AAP-LV2.
+TBD - vst3sdk does not build on Android yet. Once it's out, there would be similar restriction to that of AAP-LV2.
 
 ### blockers
 
@@ -408,7 +309,7 @@ Currently vst3sdk does not build on Android due to:
 - lack of libc++fs (experimental/filesystem) https://github.com/android-ndk/ndk/issues/609 <del>**NOTE**: it looks as if its milestone is set for NDK r21, but it had been marked since back to r16, so do not trust the milestone.</del> It is finally going to be included in NDK r22.
 - It is not limited to Android, but `FUID::generate()` is not implemented on Linux (where they could just use `uuid/uuid.h` or `uuid.h` API...)
 
-On a related note, JUCE v5.x lacks VST3 support on Linux so far. [They have been working on it](https://forum.juce.com/t/vst3-support-on-linux/31872) for more than a year, but finally [JUCE6 is going to supprort it](https://juce.com/discover/stories/announcing-juce-6).
+On a related note, JUCE v5.x lacks VST3 support on Linux so far. [It will be available in JUCE6](https://juce.com/discover/stories/announcing-juce-6).
 
 
 
@@ -436,21 +337,35 @@ AAP plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which s
 
 There is another hosting sample in `java/samples/localpluginsample`, which does not support remote plugins. Instead it only lists local AAPs.
 
+### Important new requirement for Android 11
+
+Android 11 brought in a new restriction on querying information on other applications on the local system. To make service query based on Android intent, we now have to make additional changes to `AndroidManifest.xml` in any AAP host application, to add the extra block below within `<manifest>` element:
+
+```
+    <queries>
+        <intent>
+            <action android:name="org.androidaudioplugin.AudioPluginService" />
+        </intent>
+    </queries>
+```
+
 
 ### (no) need for particular backends
 
 While AAP supports LV2 and probably VST3 in the future, they are not directly included as part of the hosting API and implementation. Instead, they are implemented as plugins. AAP host only processes requests and responses through the internal AAP interfaces. Therefore, there is no need for host "backend" kind of things.
 
-LV2 support is implemented in `androidaudioplugin-lv2` Android module with native library `libandroidaudioplugin-lv2.so` which itself is an AAP plugin. It implements the plugin API using lilv. VST3 support is planned similarly, with vst3sdk in mind.
+LV2 support is implemented in `androidaudioplugin-lv2` (in [aap-lv2](https://github.com/atsushieno/aap-lv2) repository) as an Android module an AAP plugin. It includes the native library `libandroidaudioplugin-lv2.so` which implements the plugin API using lilv.
+
+VST3 support would be considered similarly, with vst3sdk in mind (but with no actual concrete plan). This (again) does not necessarily mean that *we* provide the bridge.
 
 
 ### AAP native hosting API
 
-It is similar to LV2. Ports are connected only by index and no port instance structure for runtime.
+It is similar to LV2. Ports are connected only by index and no port instance structure for runtime buffers.
 
-Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. However plugin developers should not be required to do so by themselves. It should be as easy as implementing plugin framework API and package in AAP format.
+Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. But plugin developers shouldn't have to worry about it. It should be as easy as implementing plugin API and package in AAP format.
 
-Currently, hosting API is provided only in C++. They are in `aap` namespace.
+Currently, the Hosting API is provided only in C++. They are in `aap` namespace.
 
 - Types
   - `class PluginHost`
@@ -466,6 +381,7 @@ Currently, hosting API is provided only in C++. They are in `aap` namespace.
 
 The API is not really well-thought at this state and subject to any changes.
 
+There are some incomplete Kotlin API too, which is similarly subject to any changes.
 
 ### Accessing Remote plugin
 
@@ -503,6 +419,8 @@ Due to [AIDL tool limitation or framework limitation](https://issuetracker.googl
 
 
 ## Desktop support
+
+TODO: we have been revamping a lot of build structures and the desktop build is not really useful at this stage. Especially, lv2 bridge does not exist (there is not really technical blocker; it's just that we didn't need it for diagnosing code issues which were mostly Android specific).
 
 AAP is a framework which is also intended to be cross platform on Unix and optionally other OSes. Although there is no Android service and binder on those OSes and therefore we need alternatives.
 
@@ -553,93 +471,39 @@ Once native dependencies are set up, Android Studio can be used for development 
 
 ## Build Dependencies
 
-### Platform features and modules
-
-TODO: move those descriptions to `android-native-audio-builders` repo.
-
-android-audio-plugin-framework repo has some dependencies, which are either platform-level-specific, or external. Note that this is NOT about build script.
-
-External software projects:
-
-- lv2 category
-  - lv2
-    - libsndfile
-      - libogg
-      - libvorbis
-      - flac
-    - cairo
-      - glib
-      - libpng
-      - zlib
-      - pixman
-      - fontconfig
-      - freetype
-  - lilv (private fork)
-    - serd (private fork)
-    - sord (private fork)
-    - sratom
-  - cerbero (as the builder, private fork)
-- vst3 category (TODO)
-  - vst3sdk (no particular dependency found, for non-GUI parts)
-
-### cerbero fork
-
-The external dependencies are built using cerbero build system. Cerbero is a comprehensive build system that cares all standard Android ABIs and builds some complicated projects like glib (which has many dependencies) and cairo.
-
-
-### LV2 forks
-
-There are couple of lv2 related source repositories, namely serd and lilv. Their common assumption is that they have access to local files, which is not true about Android. They are forked from the original sources and partly rewritten to get working on Android.
-
-And note that access to assets is not as simple as that to filesystem. It is impossible to enumerate assets at runtime. They have to be explicitly named and given. Therefore there are some plugin loader changes in our lilv fork.
-
+(There has been a lot of structural changes to the source tree. Earlier it was mostly about how to build LV2-specific stuff. Now they are moved to [aap-lv2](https://github.com/atsushieno/aap-lv2).)
 
 ### android-audio-plugin-framework source tree structure
 
-- README.md - this file.
-- aidl - contains common internal interface definitions for native and Kotlin modules.
-- dependencies - native source dependencies. Most of them are now part of [android-native-audio-builders](https://github.com/atsushieno/android-native-audio-builders/).
-- native
-  - plugin-api (C include file; it is just for reference for plugin developers)
-  - core
-    - include - AAP C++ header files for native host developers.
+- `aidl` - contains common internal interface definitions for native and Kotlin modules.
+- `dependencies` - native source dependencies. Most of them are now part of [android-native-audio-builders](https://github.com/atsushieno/android-native-audio-builders/).
+- `native`
+  - `plugin-api` (C include file; it is just for reference for plugin developers)
+  - `core`
+    - `include` - AAP C++ header files for native host developers.
       - (plugins don't have to reference anything. Packaging is another story though.)
-    - src - AAP hosting reference implementation
-  - android (Android-specific parts; NdkBinder etc.)
-  - desktop (general Unix-y desktop specific parts; POSIX-IPC maybe)
-  - lv2 (LV2-specific parts)
-  - vst3 (VST3-specific parts; TODO)
-- java
-  - androidaudioplugin (aar)
-    - lib
-    - test (currently empty)
-    - androidTest (currently empty)
-  - androidaudioplugin-LV2 (aar) - follows the same AGP-modules structure
-  - androidaudioplugin-VST3 (aar; TODO) - follows the same AGP-modules structure
-  - samples
-    - aaphostsample - sample host app - follows the same AGP-modules structure
-    - aaplv2plugins - library module (aar) that contains LV2 plugins (resources and manifests)
-    - aappluginsample - sample LV2 plugins to be consumed by out of process hosts
-    - localpluginsample - sample host and plugins bundled within an application
-- tools
-  - aap-import-lv2-metadata
-
+    - `src` - AAP hosting reference implementation
+  - `android` (Android-specific parts; NdkBinder etc.)
+  - `desktop` (general Unix-y desktop specific parts; POSIX-IPC maybe)
+- `java`
+  - `androidaudioplugin` (aar)
+  - `samples`
+    - `aaphostsample` - sample host app - follows the same AGP-modules structure
+    - `localpluginsample` - sample host and plugins bundled within an application
 
 ### Running host app and plugins app
 
-AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). Therefore, there are `aaphostsample` and `aappluginsample` for completeness. Both have to be installed to try out.
+AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). There are `aaphostsample` and `aapbarebonesample` within this repository, but `aap_lv2_mda` in [aap-lv2](https://github.com/atsushieno/aap-lv2) contains more complete plugin examples. Both host and plugins have to be installed to try out.
 
 There is another sample `localpluginsample` which does not really demonstrate inter-app connection but demonstrates local plugin processing instead. Note that those plugins in the app is also queryabled and indeed shows up when `aaphostsample` is run (and if this `localpluginsample` in installed).
 
 On Android Studio, you can switch which app to launch.
-
 
 ### Debugging Audio Plugins (Services)
 
 When you would like to debug your AudioPluginServices, an important thing to note is that services (plugins) are not debuggable until you invoke `android.os.Debug.waitForDebugger()`, and you cannot invoke this method when you are NOT debugging (it will wait forever!) as long as the host and client are different apps. This also applies to native debugging via lldb (to my understanding).
 
 `aappluginsample` therefore invokes this method only at `MainAcivity.onCreate()` i,e. it is kind of obvious that it is being debugged.
-
 
 ### Hacking on desktop
 
