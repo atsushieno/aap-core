@@ -166,10 +166,12 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
         auto status4 = proxy->process(instanceID, 0);
         assert (status4.isOk());
         // FIXME: handle more channels
-        if (audioOutBytesL != nullptr && audioOutPortL >= 0)
+        if (audioOutBytesL != nullptr && (audioOutPortL >= 0))
             memcpy(((char*) audioOutBytesL) + b, plugin_buffer->buffers[audioOutPortL], size);
-        if (audioOutBytesR != nullptr && audioOutPortL >= 0)
+        if (audioOutBytesR != nullptr && (audioOutPortR >= 0))
             memcpy(((char*) audioOutBytesR) + b, plugin_buffer->buffers[audioOutPortR], size);
+        else
+            memcpy(((char*) audioOutBytesR) + b, plugin_buffer->buffers[audioOutPortL], size);
     }
 
     auto status5 = proxy->deactivate(instanceID);
