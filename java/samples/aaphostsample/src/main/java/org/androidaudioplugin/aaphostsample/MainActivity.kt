@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
 
         val wavAsset = assets.open("sample.wav")
         // read wave samples and and deinterleave into L/R
-        inBuf = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        inBuf = wavAsset.readBytes().drop(88).take(2 * 2 * 44100 * 4).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
         wavAsset.close()
 
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
