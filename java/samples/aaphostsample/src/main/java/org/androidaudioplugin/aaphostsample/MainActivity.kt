@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_service_name.text = item.first.label
             view.audio_plugin_name.text = item.second.displayName
             view.audio_plugin_list_identifier.text = item.second.pluginId
+            view.plugin_apply_button.isEnabled = position == this@MainActivity.selectedPluginIndex
 
             val service = item.first
             val plugin = item.second
@@ -71,10 +72,11 @@ class MainActivity : AppCompatActivity() {
             view.setOnClickListener {
                 portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
                 this@MainActivity.audioPluginParametersListView.adapter = portsAdapter
+                this@MainActivity.selectedPluginIndex = position
+                view.plugin_apply_button.isEnabled = true
             }
 
-            view.plugin_toggle_switch.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-
+            view.plugin_apply_button.setOnClickListener {
                 val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
                 intent.component = ComponentName(
                     service.packageName,
@@ -158,6 +160,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var inBuf : ByteArray
     private lateinit var outBuf : ByteArray
     private var portsAdapter : PortViewAdapter? = null
+    private var selectedPluginIndex : Int = -1
 
     override fun onDestroy() {
         super.onDestroy()
@@ -172,7 +175,7 @@ class MainActivity : AppCompatActivity() {
 
         val wavAsset = assets.open("sample.wav")
         // read wave samples and and deinterleave into L/R
-        inBuf = wavAsset.readBytes().drop(88).take(2 * 2 * 44100 * 4).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        inBuf = wavAsset.readBytes().drop(88).take(2 * 2 * 44100 * 3).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
         wavAsset.close()
 
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
