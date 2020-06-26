@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var host : AudioPluginHost
+    private var instance : AudioPluginInstance? = null
 
     private lateinit var inBuf : ByteArray
     private lateinit var outBuf : ByteArray
@@ -163,33 +164,48 @@ class MainActivity : AppCompatActivity() {
 
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->
-            Log.d("MainActivity", "plugin instantiated listener invoked")
+            this.instance = instance
 
             GlobalScope.launch {
-                Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
-                prepareAudioData()
-                var parameters = (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
-                var a = this@MainActivity.portsAdapter
-                if (a != null)
-                    parameters = a.parameters
-                AAPSampleInterop.runClientAAP(instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
-                    host.audioInputs[0],
-                    host.audioInputs[1],
-                    host.audioOutputs[0],
-                    host.audioOutputs[1],
-                    parameters)
-                processAudioOutputData()
-
-                runOnUiThread {
-                    wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
-                    Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
-                }
-                var serviceInfo = instance.service.serviceInfo
-                host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
+                processPluginOnce()
             }
         }
         host.instantiatePlugin(plugin)
 
+    }
+
+    private fun processPluginOnce() {
+        prepareAudioData()
+        var plugin = instance!!.pluginInfo
+        var parameters =
+            (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
+        var a = this@MainActivity.portsAdapter
+        if (a != null)
+            parameters = a.parameters
+        AAPSampleInterop.runClientAAP(
+            instance!!.service.binder!!, host.sampleRate, plugin.pluginId!!,
+            host.audioInputs[0],
+            host.audioInputs[1],
+            host.audioOutputs[0],
+            host.audioOutputs[1],
+            parameters
+        )
+        processAudioOutputData()
+
+        onProcessAudioCompleted()
+    }
+
+    private fun onProcessAudioCompleted()
+    {
+        runOnUiThread {
+            wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
+            Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
+        }
+        var instance = this.instance
+        if (instance != null) {
+            var serviceInfo = instance.service.serviceInfo
+            host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
+        }
     }
 
     private fun prepareAudioData()
