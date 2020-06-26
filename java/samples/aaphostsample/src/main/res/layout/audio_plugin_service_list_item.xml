@@ -14,15 +14,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" android:id="@+id/audio_plugin_service_name"
                 android:textSize="12sp"
-                app:layout_constraintStart_toEndOf="@+id/plugin_apply_button"
+                app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="4dp"
                 app:layout_constraintBottom_toBottomOf="@+id/audio_plugin_name"/>
-        <Button
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:id="@+id/plugin_apply_button"
-                app:layout_constraintTop_toTopOf="parent" android:layout_marginTop="8dp"
-                android:text="Apply"
-                app:layout_constraintStart_toStartOf="parent"/>
         <TextView
                 android:text="TextView"
                 android:layout_width="wrap_content"
@@ -36,7 +30,7 @@
                 android:layout_height="wrap_content"
                 android:id="@+id/audio_plugin_list_identifier"
                 app:layout_constraintTop_toBottomOf="@+id/audio_plugin_name"
-                app:layout_constraintStart_toEndOf="@+id/plugin_apply_button"
+                app:layout_constraintStart_toStartOf="parent"
                 android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent"
                 android:layout_marginEnd="8dp" android:textSize="12sp"/>
     </androidx.constraintlayout.widget.ConstraintLayout>

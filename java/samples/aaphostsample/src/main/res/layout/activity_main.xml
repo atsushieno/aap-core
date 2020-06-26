@@ -86,25 +86,6 @@
         app:layout_constraintGuide_percent="0.8" />
 
     <com.masoudss.lib.WaveformSeekBar
-        android:id="@+id/wavePrePlugin"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_margin="16dp"
-        app:wave_progress="0"
-        app:wave_width="5dp"
-        app:wave_gap="2dp"
-        app:wave_min_height="5dp"
-        app:wave_corner_radius="2dp"
-        app:wave_background_color="@color/colorAccent"
-        app:wave_progress_color="@color/colorPrimary"
-        app:wave_gravity="center"
-        app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/buttonsWaveformSplitter"
-        app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
-        />
-
-    <com.masoudss.lib.WaveformSeekBar
         android:id="@+id/wavePostPlugin"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -137,16 +118,16 @@
                                                 app:layout_constraintTop_toTopOf="parent"
         />
 
-    <TextView
-            android:text="[pre-plugin]"
+    <ToggleButton
+            android:text="Apply"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/playPrePluginLabel" app:layout_constraintStart_toStartOf="parent"
+            android:id="@+id/applyToggleButton" app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
             app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
             app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"/>
     <TextView
-            android:text="[post-plugin]"
+            android:text="[Play]"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/playPostPluginLabel" app:layout_constraintStart_toStartOf="parent"

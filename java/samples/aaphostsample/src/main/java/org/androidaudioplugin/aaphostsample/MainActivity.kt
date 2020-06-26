@@ -30,25 +30,6 @@ class MainActivity : AppCompatActivity() {
     inner class PluginViewAdapter(ctx:Context, layout: Int, array: Array<Pair<AudioPluginServiceInformation,PluginInformation>>)
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
-        fun processAudioOutputData()
-        {
-            val outL = host.audioOutputs[0]
-            val outR = host.audioOutputs[1]
-            outBuf = ByteArray(outL.size + outR.size)
-            // merge L/R
-            assert(outL.size == outR.size)
-            for (i in 0 until outL.size / 4) {
-                outBuf[i * 8] = outL[i * 4]
-                outBuf[i * 8 + 1] = outL[i * 4 + 1]
-                outBuf[i * 8 + 2] = outL[i * 4 + 2]
-                outBuf[i * 8 + 3] = outL[i * 4 + 3]
-                outBuf[i * 8 + 4] = outR[i * 4]
-                outBuf[i * 8 + 5] = outR[i * 4 + 1]
-                outBuf[i * 8 + 6] = outR[i * 4 + 2]
-                outBuf[i * 8 + 7] = outR[i * 4 + 3]
-            }
-        }
-
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val item = getItem(position)
             var view = convertView
@@ -61,7 +42,6 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_service_name.text = item.first.label
             view.audio_plugin_name.text = item.second.displayName
             view.audio_plugin_list_identifier.text = item.second.pluginId
-            view.plugin_apply_button.isEnabled = position == this@MainActivity.selectedPluginIndex
 
             val service = item.first
             val plugin = item.second
@@ -73,45 +53,6 @@ class MainActivity : AppCompatActivity() {
                 portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
                 this@MainActivity.audioPluginParametersListView.adapter = portsAdapter
                 this@MainActivity.selectedPluginIndex = position
-                view.plugin_apply_button.isEnabled = true
-            }
-
-            view.plugin_apply_button.setOnClickListener {
-                val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-                intent.component = ComponentName(
-                    service.packageName,
-                    service.className
-                )
-                intent.putExtra("sampleRate", host.sampleRate)
-
-                host.pluginInstantiatedListeners.clear()
-                host.pluginInstantiatedListeners.add { instance ->
-                    Log.d("MainActivity", "plugin instantiated listener invoked")
-
-                    GlobalScope.launch {
-                        Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
-                        prepareAudioData()
-                        var parameters = (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
-                        var a = this@MainActivity.portsAdapter
-                        if (a != null)
-                            parameters = a.parameters
-                        AAPSampleInterop.runClientAAP(instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
-                            host.audioInputs[0],
-                            host.audioInputs[1],
-                            host.audioOutputs[0],
-                            host.audioOutputs[1],
-                            parameters)
-                        processAudioOutputData()
-
-                        runOnUiThread {
-                            wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
-                            Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
-                        }
-                        var serviceInfo = instance.service.serviceInfo
-                        host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
-                    }
-                }
-                host.instantiatePlugin(plugin)
             }
 
             return view
@@ -181,7 +122,6 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
 
         setContentView(R.layout.activity_main)
-        wavePrePlugin.sample = arrayOf(0).toIntArray() // dummy
         wavePostPlugin.sample = arrayOf(0).toIntArray() // dummy
 
         // Query AAPs
@@ -192,14 +132,64 @@ class MainActivity : AppCompatActivity() {
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
         this.audioPluginListView.adapter = adapter
 
-        playPrePluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, false) } }
-        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, true) } }
+
+        applyToggleButton.setOnCheckedChangeListener { _, checked ->
+            if (checked) {
+                if (selectedPluginIndex < 0)
+                    return@setOnCheckedChangeListener
+                var item = adapter.getItem(selectedPluginIndex)
+                if (item != null)
+                    applyPlugin(item.first, item.second)
+            } else {
+                wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
+                wavePostPlugin.requestLayout()
+            }
+        }
+        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, applyToggleButton.isChecked) } }
 
         outBuf = inBuf
-        wavePrePlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
-        wavePrePlugin.requestLayout()
         wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
         wavePostPlugin.requestLayout()
+    }
+
+    private fun applyPlugin(service: AudioPluginServiceInformation, plugin: PluginInformation)
+    {
+        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
+        intent.component = ComponentName(
+            service.packageName,
+            service.className
+        )
+        intent.putExtra("sampleRate", host.sampleRate)
+
+        host.pluginInstantiatedListeners.clear()
+        host.pluginInstantiatedListeners.add { instance ->
+            Log.d("MainActivity", "plugin instantiated listener invoked")
+
+            GlobalScope.launch {
+                Log.d("MainActivity", "starting AAPSampleInterop.runClientAAP")
+                prepareAudioData()
+                var parameters = (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
+                var a = this@MainActivity.portsAdapter
+                if (a != null)
+                    parameters = a.parameters
+                AAPSampleInterop.runClientAAP(instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
+                    host.audioInputs[0],
+                    host.audioInputs[1],
+                    host.audioOutputs[0],
+                    host.audioOutputs[1],
+                    parameters)
+                processAudioOutputData()
+
+                runOnUiThread {
+                    wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
+                    Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
+                }
+                var serviceInfo = instance.service.serviceInfo
+                host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
+            }
+        }
+        host.instantiatePlugin(plugin)
+
     }
 
     private fun prepareAudioData()
@@ -216,6 +206,25 @@ class MainActivity : AppCompatActivity() {
             in_rawR [i * 4 + 1] = inBuf[i * 8 + 5]
             in_rawR [i * 4 + 2] = inBuf[i * 8 + 6]
             in_rawR [i * 4 + 3] = inBuf[i * 8 + 7]
+        }
+    }
+
+    private fun processAudioOutputData()
+    {
+        val outL = host.audioOutputs[0]
+        val outR = host.audioOutputs[1]
+        outBuf = ByteArray(outL.size + outR.size)
+        // merge L/R
+        assert(outL.size == outR.size)
+        for (i in 0 until outL.size / 4) {
+            outBuf[i * 8] = outL[i * 4]
+            outBuf[i * 8 + 1] = outL[i * 4 + 1]
+            outBuf[i * 8 + 2] = outL[i * 4 + 2]
+            outBuf[i * 8 + 3] = outL[i * 4 + 3]
+            outBuf[i * 8 + 4] = outR[i * 4]
+            outBuf[i * 8 + 5] = outR[i * 4 + 1]
+            outBuf[i * 8 + 6] = outR[i * 4 + 2]
+            outBuf[i * 8 + 7] = outR[i * 4 + 3]
         }
     }
 
