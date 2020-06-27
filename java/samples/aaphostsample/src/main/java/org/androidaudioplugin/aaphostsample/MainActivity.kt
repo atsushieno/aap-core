@@ -23,6 +23,7 @@ import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
+import java.nio.ByteBuffer
 
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity() {
@@ -76,7 +77,6 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_parameter_content_type.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
             view.audio_plugin_parameter_direction.text = if(item.direction == 0) "In" else "Out"
             view.audio_plugin_parameter_name.text = item.name
-            view.audio_plugin_seekbar_parameter_value.progress = (100.0 * (if (item.hasValueRange) item.default else 0.5f)).toInt()
             view.audio_plugin_seekbar_parameter_value.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     parameters[position] = progress / 100.0f
@@ -89,11 +89,13 @@ class MainActivity : AppCompatActivity() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 }
             })
+            var value = parameters[ports.indexOf(item)]
+            view.audio_plugin_seekbar_parameter_value.progress = (100.0 * value).toInt()
 
             return view
         }
 
-        val parameters = (0 until count).map { i -> 0.0f }.toFloatArray()
+        val parameters = ports.map { p -> p.default }.toFloatArray()
     }
 
     private lateinit var host : AudioPluginHost
@@ -175,13 +177,59 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processPluginOnce() {
+        var instance = this.instance!!
         prepareAudioData()
-        var plugin = instance!!.pluginInfo
+        var plugin = instance.pluginInfo
         var parameters =
             (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
         var a = this@MainActivity.portsAdapter
         if (a != null)
             parameters = a.parameters
+
+        /*
+        var floatCount = host.audioBufferSizeInBytes / 4
+        instance.prepare(host.sampleRate, floatCount) // sizeof(float)
+        (0 until plugin.ports.count()).map { i ->
+            if (plugin.ports[i].content != PortInformation.PORT_CONTENT_TYPE_GENERAL)
+                return@map
+            var c = instance.getPortBuffer(i).asFloatBuffer()
+            c.position(0)
+            (0 until floatCount).forEach{ c.put(parameters[i]) }
+        }
+
+        var audioInL = instance.pluginInfo.ports.indexOfFirst { p -> p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO && p.direction == PortInformation.PORT_DIRECTION_INPUT }
+        var audioInNext = instance.pluginInfo.ports.drop(audioInL + 1).indexOfFirst { p -> p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO && p.direction == PortInformation.PORT_DIRECTION_INPUT }
+        var audioInR = if (audioInNext < 0) audioInNext else audioInL + 1 + audioInNext
+        var instanceInL = instance.getPortBuffer(audioInL)
+        instanceInL.position(0)
+        instanceInL.put(host.audioInputs[0])
+        if (audioInR > audioInL) {
+            var instanceInR = instance.getPortBuffer(audioInR)
+            instanceInR.position(0)
+            instanceInR.put(host.audioInputs[1])
+        }
+
+        instance.activate()
+        instance.process()
+        instance.deactivate()
+
+        var audioOutL = instance.pluginInfo.ports.indexOfFirst { p -> p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO && p.direction == PortInformation.PORT_DIRECTION_OUTPUT }
+        var audioOutNext = instance.pluginInfo.ports.drop(audioOutL + 1).indexOfFirst { p -> p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO && p.direction == PortInformation.PORT_DIRECTION_OUTPUT }
+        var audioOutR = if (audioOutNext < 0) audioOutNext else audioOutL + 1 + audioOutNext
+        var instanceOutL = instance.getPortBuffer(audioOutL)
+        instanceOutL.position(0)
+        instanceOutL.get (host.audioOutputs[0])
+        if (audioOutR > audioOutL) {
+            var instanceOutR = instance.getPortBuffer(audioOutR)
+            instanceOutR.position(0)
+            instanceOutR.get(host.audioOutputs[1])
+        } else {
+            // monoral output
+            instanceOutL.position(0)
+            instanceOutL.get(host.audioOutputs[1])
+        }
+        */
+
         AAPSampleInterop.runClientAAP(
             instance!!.service.binder!!, host.sampleRate, plugin.pluginId!!,
             host.audioInputs[0],
@@ -190,6 +238,7 @@ class MainActivity : AppCompatActivity() {
             host.audioOutputs[1],
             parameters
         )
+
         processAudioOutputData()
 
         onProcessAudioCompleted()
