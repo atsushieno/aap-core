@@ -54,7 +54,7 @@
             />
         <EditText
             android:id="@+id/audio_plugin_edit_text_parameter_value"
-            android:layout_width="40dp"
+            android:layout_width="50dp"
             android:layout_height="wrap_content"
             android:text="0.5"
             app:layout_constraintTop_toTopOf="parent"
