@@ -1,6 +1,7 @@
 package org.androidaudioplugin.ui.androidx
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -31,6 +32,13 @@ class LocalPluginListActivity : AppCompatActivity() {
             view.audio_plugin_service_name.text = item.first.label
             view.audio_plugin_name.text = item.second.displayName
             view.audio_plugin_identifier.text = item.second.pluginId
+
+            view.setOnClickListener {
+                var intent = Intent(context, LocalPluginDetailsActivity::class.java).apply {
+                    putExtra("pluginId", item.second.pluginId)
+                }
+                startActivity(intent)
+            }
 
             return view
         }
