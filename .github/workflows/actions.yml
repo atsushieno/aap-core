@@ -27,7 +27,17 @@ jobs:
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
       run: make
-  
+    - name: upload artifact
+      if: success()
+      uses: actions/upload-artifact@v1
+      with:
+        name: aar_and_apk
+        path:
+          java/androidaudioplugin/build/outputs/aar/androidaudioplugin-debug.aar
+          java/androidaudioplugin-ui-androidx/build/outputs/aar/androidaudioplugin-ui-androidx-debug.aar
+          java/samples/aapbarebonepluginsample/build/outputs/apk/debug/aapbarebonepluginsample-debug.apk
+          java/samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk
+
   osx-build:
     name: build on osx
     runs-on: macos-10.15
