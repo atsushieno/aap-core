@@ -19,12 +19,15 @@ void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
 void sample_plugin_process(AndroidAudioPlugin *plugin,
 						   AndroidAudioPluginBuffer *buffer,
 						   long timeoutInNanoseconds) {
-	/* do anything. In this example, they are filled test vectors */
+	/* do anything. In this example, inputs (0,1) are directly copied to outputs (2,3) */
 	int size = buffer->num_frames * sizeof(float);
+	memcpy(buffer->buffers[2], buffer->buffers[0], size);
+	memcpy(buffer->buffers[3], buffer->buffers[1], size);
+	/*
 	for (int i = 0; i < buffer->num_buffers; i++) {
 		for (int x = 0; x < size; x++)
 			((char*) buffer->buffers[i])[x] = (char) ((x % 8) + (i * 8));
-	}
+	}*/
 }
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
