@@ -24,6 +24,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity() {
@@ -218,10 +219,10 @@ class MainActivity : AppCompatActivity() {
         (0 until plugin.ports.count()).map { i ->
             if (plugin.ports[i].content != PortInformation.PORT_CONTENT_TYPE_GENERAL)
                 return@map
-            var c = instance.getPortBuffer(i).asFloatBuffer()
+            var c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
             c.position(0)
             var v = parameters[i]
-            (0 until bufSize).forEach { c.put(v) } // 4 is sizeof(float)
+            (0 until bufSize).forEach { c.put(v) }
         }
 
         instance.activate()
@@ -292,43 +293,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun deinterleaveInput(startInFloat: Int, sizeInFloat: Int)
     {
-        val l = host.audioInputs[0]
-        val r = host.audioInputs[1]
-        var j = startInFloat
+        val l = ByteBuffer.wrap(host.audioInputs[0]).asFloatBuffer()
+        val r = ByteBuffer.wrap(host.audioInputs[1]).asFloatBuffer()
+        var inF = ByteBuffer.wrap(inBuf).asFloatBuffer()
+        inF.position(startInFloat * 2)
+        var j = startInFloat * 2
+        var end = inBuf.size / 4
         for (i in 0 until sizeInFloat) {
-            if (j * 8 + 8 > inBuf.size)
-                break;
-            l [i * 4] = inBuf[j * 8]
-            l [i * 4 + 1] = inBuf[j * 8 + 1]
-            l [i * 4 + 2] = inBuf[j * 8 + 2]
-            l [i * 4 + 3] = inBuf[j * 8 + 3]
-            r [i * 4] = inBuf[j * 8 + 4]
-            r [i * 4 + 1] = inBuf[j * 8 + 5]
-            r [i * 4 + 2] = inBuf[j * 8 + 6]
-            r [i * 4 + 3] = inBuf[j * 8 + 7]
-            j++
+            if (j >= end)
+                break
+            l.put(inF[j++])
+            r.put(inF[j++])
         }
     }
 
     private fun interleaveOutput(startInFloat: Int, sizeInFloat: Int)
     {
-        val outL = host.audioOutputs[0]
-        val outR = host.audioOutputs[1]
-        var j = startInFloat
+        val outL = ByteBuffer.wrap(host.audioOutputs[0]).asFloatBuffer()
+        val outR = ByteBuffer.wrap(host.audioOutputs[1]).asFloatBuffer()
+        var outF = ByteBuffer.wrap(outBuf).asFloatBuffer()
+        outF.position(startInFloat * 2)
+        var j = startInFloat * 2
+        var end = outBuf.size / 4
         for (i in 0 until sizeInFloat) {
-            if (j * 8 + 8 > outBuf.size)
-                break;
-            outBuf[j * 8] = outL[i * 4]
-            outBuf[j * 8 + 1] = outL[i * 4 + 1]
-            outBuf[j * 8 + 2] = outL[i * 4 + 2]
-            outBuf[j * 8 + 3] = outL[i * 4 + 3]
-            outBuf[j * 8 + 4] = outR[i * 4]
-            outBuf[j * 8 + 5] = outR[i * 4 + 1]
-            outBuf[j * 8 + 6] = outR[i * 4 + 2]
-            outBuf[j * 8 + 7] = outR[i * 4 + 3]
+            if (j >= end)
+                break
+            outF.put(outL[i])
+            j++
+            outF.put(outR[i])
             j++
         }
-        var resultJ = j
     }
 
     private fun playSound(sampleRate: Int, postApplied: Boolean)
