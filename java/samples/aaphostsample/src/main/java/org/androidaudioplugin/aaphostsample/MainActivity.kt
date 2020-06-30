@@ -188,94 +188,157 @@ class MainActivity : AppCompatActivity() {
         if (a != null)
             parameters = a.parameters
 
-/*
-        // TODO: give dummy MIDI messages to MIDI in channel
+        // Kotlin version of audio/MIDI processing.
+        if (true) {
 
-        var audioInL = -1
-        var audioInR = -1
-        var audioOutL = -1
-        var audioOutR = -1
-        var midiIn = -1
-        instance.pluginInfo.ports.forEachIndexed { i, p ->
-            if (p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO) {
-                if (p.direction == PortInformation.PORT_DIRECTION_INPUT) {
-                    if (audioInL < 0)
-                        audioInL = i
-                    else
-                        audioInR = i
-                } else {
-                    if (audioOutL < 0)
-                        audioOutL = i
-                    else
-                        audioOutR = i
+            var audioInL = -1
+            var audioInR = -1
+            var audioOutL = -1
+            var audioOutR = -1
+            instance.pluginInfo.ports.forEachIndexed { i, p ->
+                if (p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO) {
+                    if (p.direction == PortInformation.PORT_DIRECTION_INPUT) {
+                        if (audioInL < 0)
+                            audioInL = i
+                        else
+                            audioInR = i
+                    } else {
+                        if (audioOutL < 0)
+                            audioOutL = i
+                        else
+                            audioOutR = i
+                    }
                 }
-            } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI
-                    && p.direction == PortInformation.PORT_DIRECTION_INPUT)
-                midiIn = i
-        }
-
-        var bufSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-
-        (0 until plugin.ports.count()).map { i ->
-            if (plugin.ports[i].content != PortInformation.PORT_CONTENT_TYPE_GENERAL)
-                return@map
-            var c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-            c.position(0)
-            var v = parameters[i]
-            (0 until bufSize).forEach { c.put(v) }
-        }
-
-        instance.activate()
-
-        var current = 0
-        while (current < inBuf.size / 4 / 2) {
-            deinterleaveInput(current, bufSize)
-
-            var instanceInL = instance.getPortBuffer(audioInL)
-            instanceInL.position(0)
-            instanceInL.put(host.audioInputs[0], 0, bufSize * 4)
-            if (audioInR > audioInL) {
-                var instanceInR = instance.getPortBuffer(audioInR)
-                instanceInR.position(0)
-                instanceInR.put(host.audioInputs[1], 0, bufSize * 4)
             }
 
-            instance.process()
+            var bufSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-            var instanceOutL = instance.getPortBuffer(audioOutL)
-            instanceOutL.position(0)
-            instanceOutL.get (host.audioOutputs[0], 0, bufSize * 4)
-            if (audioOutR > audioOutL) {
-                var instanceOutR = instance.getPortBuffer(audioOutR)
-                instanceOutR.position(0)
-                instanceOutR.get(host.audioOutputs[1], 0, bufSize * 4)
-            } else {
-                // monoral output
-                instanceOutL.position(0)
-                instanceOutL.get(host.audioOutputs[1], 0, bufSize * 4)
+            (0 until plugin.ports.count()).map { i ->
+                if (plugin.ports[i].direction == PortInformation.PORT_DIRECTION_OUTPUT)
+                    return@map
+                if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
+                    return@map
+                if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
+                    // test MIDI messages
+                    var mb = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN)
+                    putDummyMidiBuffer(mb)
+                } else {
+                    var c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                    c.position(0)
+                    var v = parameters[i]
+                    (0 until bufSize).forEach { c.put(v) }
+                }
             }
 
-            interleaveOutput(current, bufSize)
+            instance.activate()
 
-            current += bufSize
+            var current = 0
+            while (current < inBuf.size / 4 / 2) {
+                deinterleaveInput(current, bufSize)
+
+                if (audioInL >= 0) {
+                    var instanceInL = instance.getPortBuffer(audioInL)
+                    instanceInL.position(0)
+                    instanceInL.put(host.audioInputs[0], 0, bufSize * 4)
+                    if (audioInR > audioInL) {
+                        var instanceInR = instance.getPortBuffer(audioInR)
+                        instanceInR.position(0)
+                        instanceInR.put(host.audioInputs[1], 0, bufSize * 4)
+                    }
+                }
+
+                instance.process()
+
+                if (audioOutL >= 0) {
+                    var instanceOutL = instance.getPortBuffer(audioOutL)
+                    instanceOutL.position(0)
+                    instanceOutL.get(host.audioOutputs[0], 0, bufSize * 4)
+                    if (audioOutR > audioOutL) {
+                        var instanceOutR = instance.getPortBuffer(audioOutR)
+                        instanceOutR.position(0)
+                        instanceOutR.get(host.audioOutputs[1], 0, bufSize * 4)
+                    } else {
+                        // monoral output
+                        instanceOutL.position(0)
+                        instanceOutL.get(host.audioOutputs[1], 0, bufSize * 4)
+                    }
+                }
+
+                interleaveOutput(current, bufSize)
+
+                current += bufSize
+            }
+
+            instance.deactivate()
+
+        } else {
+            // Native version of audio processing. (Note that it passes the entire wav buffer.)
+            host.audioBufferSizeInBytes = inBuf.size / 2 // 2 is for stereo
+
+            deinterleaveInput(0, host.audioInputs[0].size / 4) // 4 is sizeof(float)
+            AAPSampleInterop.runClientAAP(
+                instance!!.service.binder!!, host.sampleRate, plugin.pluginId!!,
+                host.audioInputs[0],
+                host.audioInputs[1],
+                host.audioOutputs[0],
+                host.audioOutputs[1],
+                parameters
+            )
+            interleaveOutput(0, host.audioOutputs[0].size / 4) // 4 is sizeof(float)
         }
-
-        instance.deactivate()
-*/
-        host.audioBufferSizeInBytes = inBuf.size / 2 // 2 is for stereo
-
-        deinterleaveInput(0, host.audioInputs[0].size / 4) // 4 is sizeof(float)
-        AAPSampleInterop.runClientAAP(
-            instance!!.service.binder!!, host.sampleRate, plugin.pluginId!!,
-            host.audioInputs[0],
-            host.audioInputs[1],
-            host.audioOutputs[0],
-            host.audioOutputs[1],
-            parameters
-        )
-        interleaveOutput(0, host.audioOutputs[0].size / 4) // 4 is sizeof(float)
 
         onProcessAudioCompleted()
+    }
+
+    private fun putDummyMidiBuffer(mb: ByteBuffer)
+    {
+        var length = 30
+        var fps : Short = -30
+        var ticksPerFrame : Short = 100
+        var mbi = mb.asIntBuffer()
+        mbi.put(0xF000 or ticksPerFrame.toInt() or (fps.toInt() shl 8)) // 30fps, 100 ticks per frame
+        //*(int*) mb = 480;
+        mbi.put(length)
+        mb.position(8)
+        // program change (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0xC0.toByte())
+        mb.put(0)
+        // note on 1 (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0x90.toByte())
+        mb.put(0x39.toByte())
+        mb.put(0x70.toByte())
+        // note on 2 (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0x90.toByte())
+        mb.put(0x3D.toByte())
+        mb.put(0x70.toByte())
+        // note on 3 (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0x90.toByte())
+        mb.put(0x40.toByte())
+        mb.put(0x70.toByte())
+        // note off 1 (DeltaTime: 8080E001 in 7-bit encoded int )
+        mb.put(0x80.toByte())
+        mb.put(0x80.toByte())
+        mb.put(0xE0.toByte())
+        mb.put(1)
+        mb.put(0x80.toByte())
+        mb.put(0x39.toByte())
+        mb.put(0)
+        // note on 2 (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0x80.toByte())
+        mb.put(0x3D.toByte())
+        mb.put(0)
+        // note on 3 (DeltaTime: 0)
+        mb.put(0)
+        mb.put(0x80.toByte())
+        mb.put(0x40.toByte())
+        mb.put(0)
+
+        mb.position(0)
     }
 
     private fun onProcessAudioCompleted()
