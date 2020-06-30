@@ -227,31 +227,31 @@ class MainActivity : AppCompatActivity() {
         instance.activate()
 
         var current = 0
-        while (current < host.audioInputs[0].size) {
+        while (current < inBuf.size / 4 / 2) {
             deinterleaveInput(current, bufSize)
 
             var instanceInL = instance.getPortBuffer(audioInL)
             instanceInL.position(0)
-            instanceInL.put(host.audioInputs[0], 0, bufSize)
+            instanceInL.put(host.audioInputs[0], 0, bufSize * 4)
             if (audioInR > audioInL) {
                 var instanceInR = instance.getPortBuffer(audioInR)
                 instanceInR.position(0)
-                instanceInR.put(host.audioInputs[1], 0, bufSize)
+                instanceInR.put(host.audioInputs[1], 0, bufSize * 4)
             }
 
             instance.process()
 
             var instanceOutL = instance.getPortBuffer(audioOutL)
             instanceOutL.position(0)
-            instanceOutL.get (host.audioOutputs[0])
+            instanceOutL.get (host.audioOutputs[0], 0, bufSize * 4)
             if (audioOutR > audioOutL) {
                 var instanceOutR = instance.getPortBuffer(audioOutR)
                 instanceOutR.position(0)
-                instanceOutR.get(host.audioOutputs[1])
+                instanceOutR.get(host.audioOutputs[1], 0, bufSize * 4)
             } else {
                 // monoral output
                 instanceOutL.position(0)
-                instanceOutL.get(host.audioOutputs[1])
+                instanceOutL.get(host.audioOutputs[1], 0, bufSize * 4)
             }
 
             interleaveOutput(current, bufSize)
@@ -294,8 +294,10 @@ class MainActivity : AppCompatActivity() {
     {
         val l = host.audioInputs[0]
         val r = host.audioInputs[1]
+        var j = startInFloat
         for (i in 0 until sizeInFloat) {
-            var j = startInFloat + i
+            if (j * 8 + 8 > inBuf.size)
+                break;
             l [i * 4] = inBuf[j * 8]
             l [i * 4 + 1] = inBuf[j * 8 + 1]
             l [i * 4 + 2] = inBuf[j * 8 + 2]
@@ -304,6 +306,7 @@ class MainActivity : AppCompatActivity() {
             r [i * 4 + 1] = inBuf[j * 8 + 5]
             r [i * 4 + 2] = inBuf[j * 8 + 6]
             r [i * 4 + 3] = inBuf[j * 8 + 7]
+            j++
         }
     }
 
@@ -311,8 +314,10 @@ class MainActivity : AppCompatActivity() {
     {
         val outL = host.audioOutputs[0]
         val outR = host.audioOutputs[1]
+        var j = startInFloat
         for (i in 0 until sizeInFloat) {
-            var j = startInFloat + i
+            if (j * 8 + 8 > outBuf.size)
+                break;
             outBuf[j * 8] = outL[i * 4]
             outBuf[j * 8 + 1] = outL[i * 4 + 1]
             outBuf[j * 8 + 2] = outL[i * 4 + 2]
@@ -321,7 +326,9 @@ class MainActivity : AppCompatActivity() {
             outBuf[j * 8 + 5] = outR[i * 4 + 1]
             outBuf[j * 8 + 6] = outR[i * 4 + 2]
             outBuf[j * 8 + 7] = outR[i * 4 + 3]
+            j++
         }
+        var resultJ = j
     }
 
     private fun playSound(sampleRate: Int, postApplied: Boolean)
