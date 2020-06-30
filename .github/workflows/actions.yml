@@ -32,11 +32,11 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: aar_and_apk
-        path:
+        path: |
           java/androidaudioplugin/build/outputs/aar/androidaudioplugin-debug.aar
-          | java/androidaudioplugin-ui-androidx/build/outputs/aar/androidaudioplugin-ui-androidx-debug.aar
-          | java/samples/aapbarebonepluginsample/build/outputs/apk/debug/aapbarebonepluginsample-debug.apk
-          | java/samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk
+          java/androidaudioplugin-ui-androidx/build/outputs/aar/androidaudioplugin-ui-androidx-debug.aar
+          java/samples/aapbarebonepluginsample/build/outputs/apk/debug/aapbarebonepluginsample-debug.apk
+          java/samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk
 
   osx-build:
     name: build on osx
