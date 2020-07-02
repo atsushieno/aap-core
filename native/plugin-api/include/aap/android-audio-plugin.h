@@ -11,9 +11,9 @@ struct AndroidAudioPlugin;
 typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
 typedef struct {
-	int32_t num_buffers;
+	size_t num_buffers;
 	void **buffers;
-	int32_t num_frames;
+	size_t num_frames;
 } AndroidAudioPluginBuffer;
 
 /* A minimum state support is provided in AAP framework itself.
@@ -22,7 +22,7 @@ typedef struct {
  * Anyone can develop something similar session implementation helpers.
  */
 typedef struct {
-	int32_t data_size;
+	size_t data_size;
 	const void *raw_data;
 } AndroidAudioPluginState;
 

@@ -110,13 +110,13 @@ bool PluginHostManager::isPluginAlive (const char *identifier)
 	return true;
 }
 
-bool PluginHostManager::isPluginUpToDate (const char *identifier, long lastInfoUpdated)
+bool PluginHostManager::isPluginUpToDate (const char *identifier, int64_t lastInfoUpdatedTimeInMilliseconds)
 {
 	auto desc = getPluginInformation(identifier);
 	if (!desc)
 		return false;
 
-	return desc->getLastInfoUpdateTime() <= lastInfoUpdated;
+	return desc->getLastInfoUpdateTime() <= lastInfoUpdatedTimeInMilliseconds;
 }
 
 char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.SharedMemoryExtension";

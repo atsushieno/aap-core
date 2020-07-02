@@ -87,7 +87,7 @@ class PluginInformation
 	std::string shared_library_filename{};
 	std::string library_entrypoint{};
 	std::string plugin_id{};
-	long last_info_updated_unixtime;
+	int64_t last_info_updated_unixtime_milliseconds;
 
 	/* NULL-terminated list of categories */
 	std::string primary_category{};
@@ -114,9 +114,11 @@ public:
 		  version(versionString),
 		  shared_library_filename(sharedLibraryFilename),
 		  library_entrypoint(libraryEntrypoint),
-		  plugin_id(pluginID),
-		  last_info_updated_unixtime((long) time(nullptr))
+		  plugin_id(pluginID)
 	{
+	    struct tm epoch{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        last_info_updated_unixtime_milliseconds = (int64_t) (1000.0 * difftime(time(nullptr), mktime(&epoch)));
+
 		char *cp;
 		size_t len = (size_t) snprintf(nullptr, 0, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
 		cp = (char*) calloc(len, 1);
@@ -166,39 +168,39 @@ public:
 		return primary_category;
 	}
 	
-	size_t getNumPorts() const
+	int getNumPorts() const
 	{
-		return ports.size();
+		return (int) ports.size();
 	}
 	
-	const PortInformation* getPort(size_t index) const
+	const PortInformation* getPort(int index) const
 	{
-		return ports[index];
+		return ports[(size_t) index];
 	}
 	
-	size_t getNumRequiredExtensions() const
+	int getNumRequiredExtensions() const
 	{
-		return required_extensions.size();
+		return (int) required_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getRequiredExtension(size_t index) const
+	const AndroidAudioPluginExtension *getRequiredExtension(int index) const
 	{
-		return required_extensions[index];
+		return required_extensions[(size_t) index];
 	}
 	
-	size_t getNumOptionalExtensions() const
+	int getNumOptionalExtensions() const
 	{
-		return optional_extensions.size();
+		return (int) optional_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getOptionalExtension(size_t index) const
+	const AndroidAudioPluginExtension *getOptionalExtension(int index) const
 	{
-		return optional_extensions[index];
+		return optional_extensions[(size_t) index];
 	}
 	
-	long getLastInfoUpdateTime() const
+	int64_t getLastInfoUpdateTime() const
 	{
-		return last_info_updated_unixtime;
+		return last_info_updated_unixtime_milliseconds;
 	}
 	
 	/* unique identifier across various environment */
@@ -352,7 +354,7 @@ public:
 	int createInstance(const char* identifier, int sampleRate);
 	void destroyInstance(PluginInstance* instance);
 	size_t getInstanceCount() { return instances.size(); }
-	PluginInstance* getInstance(size_t index) { return instances[index]; }
+	PluginInstance* getInstance(int32_t index) { return instances[(size_t) index]; }
 };
 
 class PluginHostManager
@@ -371,16 +373,16 @@ public:
 	
 	bool isPluginAlive (const char *identifier);
 	
-	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
+	bool isPluginUpToDate (const char *identifier, int64_t lastInfoUpdated);
 
 	size_t getNumPluginInformation()
 	{
 		return plugin_infos.size();
 	}
 
-	const PluginInformation* getPluginInformation(size_t index)
+	const PluginInformation* getPluginInformation(int32_t index)
 	{
-		return plugin_infos[index];
+		return plugin_infos[(size_t) index];
 	}
 	
 	const PluginInformation* getPluginInformation(const char *identifier)
@@ -409,10 +411,10 @@ class PluginInstance
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
-	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInfo, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: host(pluginHost),
 		  sample_rate(sampleRate),
-		  pluginInfo(pluginInfo),
+		  pluginInfo(pluginInformation),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
@@ -525,7 +527,7 @@ public:
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 	}
 
-	int32_t getStateSize()
+	size_t getStateSize()
 	{
 		AndroidAudioPluginState result{0, nullptr};
 		plugin->get_state(plugin, &result);
@@ -547,7 +549,7 @@ public:
 		return plugin_state;
 	}
 	
-	void setState(const void* data, int32_t sizeInBytes)
+	void setState(const void* data, size_t sizeInBytes)
 	{
 		AndroidAudioPluginState state;
 		state.data_size = sizeInBytes;
