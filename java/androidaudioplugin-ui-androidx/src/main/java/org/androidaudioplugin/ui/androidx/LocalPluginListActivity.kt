@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.local_plugin_list.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
@@ -48,8 +49,6 @@ class LocalPluginListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.local_plugin_list)
 
-        AudioPluginService.enableDebug = true
-
         // Query AAPs
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
         val servicedPlugins = pluginServices.flatMap { s -> s.plugins.map { p -> Pair(s, p) } }.toTypedArray()
@@ -57,5 +56,12 @@ class LocalPluginListActivity : AppCompatActivity() {
         val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, localPlugins)
         this.localAudioPluginListView.adapter = localAdapter
+
+        // It is a hidden clickable label to enable debugger
+        this.findViewById<View>(R.id.localPluginsLabel).setOnClickListener {
+            AudioPluginService.enableDebug = true
+            Toast.makeText(this, "Debugging mode enabled: now the service will block until debugger gets connected",
+                Toast.LENGTH_LONG).show()
+        }
     }
 }
