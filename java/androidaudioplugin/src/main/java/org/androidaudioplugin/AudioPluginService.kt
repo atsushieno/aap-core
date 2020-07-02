@@ -39,6 +39,9 @@ open class AudioPluginService : Service()
 
     override fun onUnbind(intent: Intent?): Boolean {
         AudioPluginLocalHost.cleanup()
+        var binder = native_binder
+        if (binder != null)
+            AudioPluginNatives.destroyBinderForService(binder)
         return true
     }
 
