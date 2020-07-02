@@ -115,10 +115,10 @@ public:
 		  shared_library_filename(sharedLibraryFilename),
 		  library_entrypoint(libraryEntrypoint),
 		  plugin_id(pluginID),
-		  last_info_updated_unixtime((long) time(NULL))
+		  last_info_updated_unixtime((long) time(nullptr))
 	{
 		char *cp;
-		int len = snprintf(nullptr, 0, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
+		size_t len = (size_t) snprintf(nullptr, 0, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
 		cp = (char*) calloc(len, 1);
 		snprintf(cp, len, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
 		identifier_string = cp;
@@ -166,32 +166,32 @@ public:
 		return primary_category;
 	}
 	
-	int32_t getNumPorts() const
+	size_t getNumPorts() const
 	{
 		return ports.size();
 	}
 	
-	const PortInformation* getPort(int32_t index) const
+	const PortInformation* getPort(size_t index) const
 	{
 		return ports[index];
 	}
 	
-	int32_t getNumRequiredExtensions() const
+	size_t getNumRequiredExtensions() const
 	{
 		return required_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getRequiredExtension(int32_t index) const
+	const AndroidAudioPluginExtension *getRequiredExtension(size_t index) const
 	{
 		return required_extensions[index];
 	}
 	
-	int32_t getNumOptionalExtensions() const
+	size_t getNumOptionalExtensions() const
 	{
 		return optional_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getOptionalExtension(int32_t index) const
+	const AndroidAudioPluginExtension *getOptionalExtension(size_t index) const
 	{
 		return optional_extensions[index];
 	}
@@ -210,7 +210,7 @@ public:
 	bool isInstrument() const
 	{
 		// The purpose of this function seems to be based on hacky premise. So do we.
-		return strstr(getPrimaryCategory().c_str(), "Instrument") != NULL;
+		return strstr(getPrimaryCategory().c_str(), "Instrument") != nullptr;
 	}
 	
 	bool hasSharedContainer() const
@@ -313,24 +313,24 @@ PluginHostPAL* getPluginHostPAL();
 
 class SharedMemoryExtension
 {
-    std::vector<int64_t> port_buffer_fds{};
-	std::vector<int64_t> extension_fds{};
+    std::vector<int32_t> port_buffer_fds{};
+	std::vector<int32_t> extension_fds{};
 
 public:
     static char const *URI;
 
     SharedMemoryExtension() {}
     ~SharedMemoryExtension() {
-        for (int64_t fd : port_buffer_fds)
+        for (int32_t fd : port_buffer_fds)
             close(fd);
         port_buffer_fds.clear();
-		for (int64_t fd : extension_fds)
+		for (int32_t fd : extension_fds)
 			close(fd);
 		extension_fds.clear();
     }
 
-    std::vector<int64_t>& getPortBufferFDs() { return port_buffer_fds; }
-	std::vector<int64_t>& getExtensionFDs() { return extension_fds; }
+    std::vector<int32_t>& getPortBufferFDs() { return port_buffer_fds; }
+	std::vector<int32_t>& getExtensionFDs() { return extension_fds; }
 };
 
 class PluginHostManager;
@@ -344,15 +344,15 @@ class PluginHost
 	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(PluginHostManager* manager)
-		: manager(manager)
+	PluginHost(PluginHostManager* pluginHostManager)
+		: manager(pluginHostManager)
 	{
 	}
 
 	int createInstance(const char* identifier, int sampleRate);
 	void destroyInstance(PluginInstance* instance);
-	int32_t getInstanceCount() { return instances.size(); }
-	PluginInstance* getInstance(int32_t index) { return instances[index]; }
+	size_t getInstanceCount() { return instances.size(); }
+	PluginInstance* getInstance(size_t index) { return instances[index]; }
 };
 
 class PluginHostManager
@@ -373,25 +373,25 @@ public:
 	
 	bool isPluginUpToDate (const char *identifier, long lastInfoUpdated);
 
-	int32_t getNumPluginInformation()
+	size_t getNumPluginInformation()
 	{
 		return plugin_infos.size();
 	}
 
-	const PluginInformation* getPluginInformation(int index)
+	const PluginInformation* getPluginInformation(size_t index)
 	{
 		return plugin_infos[index];
 	}
 	
 	const PluginInformation* getPluginInformation(const char *identifier)
 	{
-		int n = getNumPluginInformation();
-		for(int i = 0; i < n; i++) {
+		size_t n = getNumPluginInformation();
+		for(size_t i = 0; i < n; i++) {
 			auto d = getPluginInformation(i);
 			if (d->getPluginID().compare(identifier) == 0)
 				return d;
 		}
-		return NULL;
+		return nullptr;
 	}
 };
 
@@ -448,7 +448,7 @@ public:
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 
 		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
-		for (int i = 0; i < extensions.size(); i++)
+		for (size_t i = 0; i < extensions.size(); i++)
 			extArr[i] = &extensions[i];
 		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
 		free(extArr);
@@ -517,7 +517,7 @@ public:
 	const char * getProgramName(int index)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
-		return NULL;
+		return nullptr;
 	}
 	
 	void changeProgramName(int index, const char * newName)
@@ -539,7 +539,7 @@ public:
 		if (plugin_state.data_size < result.data_size) {
 			if (plugin_state.raw_data != nullptr)
 				free((void*) plugin_state.raw_data);
-			plugin_state.raw_data = calloc(1, result.data_size);
+			plugin_state.raw_data = calloc(result.data_size, 1);
 		}
 		plugin_state.data_size = result.data_size;
 		plugin->get_state(plugin, &plugin_state);
