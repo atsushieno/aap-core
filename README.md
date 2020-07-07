@@ -2,6 +2,8 @@
 
 ![](https://github.com/atsushieno/android-audio-plugin-framework/workflows/build%20dist/badge.svg)
 
+[![AAP demo 20200708](http://img.youtube.com/vi/gKCpHvYzupU&/0.jpg)](http://www.youtube.com/watch?v=gKCpHvYzupU& "AAP demo 20200708")
+
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation (to describe the ideal state). Do not trust it too much.
 
 
