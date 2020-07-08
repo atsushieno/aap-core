@@ -32,10 +32,10 @@ jobs:
       env:
         cache-name: cache-ndk
       with:
-        path: android-ndk-r21d-linux-x86_64.zip
-        key: android-ndk-r21d-linux-x86_64.zip
+        path: android-ndk-r21c-linux-x86_64.zip
+        key: android-ndk-r21c-linux-x86_64.zip
         restore-keeys: |
-          android-ndk-r21d-linux-x86_64.zip
+          android-ndk-r21c-linux-x86_64.zip
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
