@@ -19,12 +19,12 @@ $(ANDROID_NDK):
 		exit 1 ; \
 	fi
 	echo "Android NDK will be installed as $(ANDROID_NDK)"
-	wget https://dl.google.com/android/repository/android-ndk-r21-$(NDK_HOST)-x86_64.zip >/dev/null
-	unzip android-ndk-r21-$(NDK_HOST)-x86_64.zip >/dev/null
+	wget https://dl.google.com/android/repository/android-ndk-r21d-$(NDK_HOST)-x86_64.zip >/dev/null
+	unzip android-ndk-r21d-$(NDK_HOST)-x86_64.zip >/dev/null
 	mkdir -p $(ANDROID_NDK)
-	mv android-ndk-r21/* $(ANDROID_NDK)
+	mv android-ndk-r21d/* $(ANDROID_NDK)
 	if [ $MINIMIZE_INTERMEDIATES ] ; then \
-		rm android-ndk-r21-$(NDK_HOST)-x86_64.zip ; \
+		rm android-ndk-r21d-$(NDK_HOST)-x86_64.zip ; \
 	fi
 
 build-desktop:
