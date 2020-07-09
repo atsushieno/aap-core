@@ -292,11 +292,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun putDummyMidiBuffer(mb: ByteBuffer)
     {
-        var length = 30
+        var length = 27
         var fps : Short = -30
         var ticksPerFrame : Short = 100
         var mbi = mb.asIntBuffer()
-        mbi.put(0xF000 or ticksPerFrame.toInt() or (fps.toInt() shl 8)) // 30fps, 100 ticks per frame
+        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
         //*(int*) mb = 480;
         mbi.put(length)
         mb.position(8)
@@ -319,11 +319,8 @@ class MainActivity : AppCompatActivity() {
         mb.put(0x90.toByte())
         mb.put(0x40.toByte())
         mb.put(0x70.toByte())
-        // note off 1 (DeltaTime: 8080E001 in 7-bit encoded int )
-        mb.put(0x80.toByte())
-        mb.put(0x80.toByte())
-        mb.put(0xE0.toByte())
-        mb.put(1)
+        // note off 1 (DeltaTime: 29frame/30fps = almost 1sec. )
+        mb.put(29)
         mb.put(0x80.toByte())
         mb.put(0x39.toByte())
         mb.put(0)
