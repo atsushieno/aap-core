@@ -8,10 +8,33 @@
 namespace aap
 {
 
-int avprintf(const char *fmt, va_list ap);
+const char* logged_android_app_name = "AAPHostNative";
 
-int aprintf (const char *fmt,...);
+static inline int avprintf(const char *fmt, va_list ap)
+{
+#if ANDROID
+    return __android_log_vprint(ANDROID_LOG_INFO, logged_android_app_name, fmt, ap);
+#else
+    return vprintf(fmt, ap);
+#endif
+}
 
-void aputs(const char* s);
+static inline int aprintf (const char *fmt,...)
+{
+    va_list ap;
+    va_start (ap, fmt);
+    auto ret = avprintf(fmt, ap);
+    va_end(ap);
+    return ret;
+}
+
+static inline void aputs(const char* s)
+{
+#if ANDROID
+    __android_log_print(ANDROID_LOG_INFO, logged_android_app_name, "%s", s);
+#else
+    puts(s);
+#endif
+}
 
 }
