@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity() {
@@ -112,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         host.dispose()
     }
 
+    @ExperimentalTime
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -156,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         wavePostPlugin.requestLayout()
     }
 
+    @ExperimentalTime
     private fun applyPlugin(service: AudioPluginServiceInformation, plugin: PluginInformation)
     {
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
@@ -179,6 +183,11 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    var PROCESS_AUDIO_NATIVE = false
+    var NOTE_DISTANCE_IN_FRAMES = 22050
+    var NOTE_LENGTH_IN_FRAMES = 20000
+
+    @ExperimentalTime
     private fun processPluginOnce() {
         var instance = this.instance!!
         var plugin = instance.pluginInfo
@@ -189,12 +198,13 @@ class MainActivity : AppCompatActivity() {
             parameters = a.parameters
 
         // Kotlin version of audio/MIDI processing.
-        if (true) {
+        if (!PROCESS_AUDIO_NATIVE) {
 
             var audioInL = -1
             var audioInR = -1
             var audioOutL = -1
             var audioOutR = -1
+            var midiIn = -1
             instance.pluginInfo.ports.forEachIndexed { i, p ->
                 if (p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO) {
                     if (p.direction == PortInformation.PORT_DIRECTION_INPUT) {
@@ -208,65 +218,91 @@ class MainActivity : AppCompatActivity() {
                         else
                             audioOutR = i
                     }
+                } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
+                    if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
+                        midiIn = i
                 }
             }
 
-            var bufSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+            var bufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
 
             (0 until plugin.ports.count()).map { i ->
                 if (plugin.ports[i].direction == PortInformation.PORT_DIRECTION_OUTPUT)
                     return@map
                 if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
                     return@map
-                if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
-                    // test MIDI messages
-                    var mb = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN)
-                    putDummyMidiBuffer(mb)
-                } else {
+                if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI)
+                    return@map
+                else {
                     var c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                     c.position(0)
                     var v = parameters[i]
-                    (0 until bufSize).forEach { c.put(v) }
+                    (0 until bufferFrameSize).forEach { c.put(v) }
                 }
             }
 
             instance.activate()
 
-            var current = 0
-            while (current < inBuf.size / 4 / 2) {
-                deinterleaveInput(current, bufSize)
+            var currentFrame = 0
+            var nextNoteInFrames = 0
+            var isNoteOnState = false
+
+            while (currentFrame < inBuf.size / 2 / 4) { // channels / sizeof(float)
+                deinterleaveInput(currentFrame, bufferFrameSize)
 
                 if (audioInL >= 0) {
                     var instanceInL = instance.getPortBuffer(audioInL)
                     instanceInL.position(0)
-                    instanceInL.put(host.audioInputs[0], 0, bufSize * 4)
+                    instanceInL.put(host.audioInputs[0], 0, bufferFrameSize * 4)
                     if (audioInR > audioInL) {
                         var instanceInR = instance.getPortBuffer(audioInR)
                         instanceInR.position(0)
-                        instanceInR.put(host.audioInputs[1], 0, bufSize * 4)
+                        instanceInR.put(host.audioInputs[1], 0, bufferFrameSize * 4)
+                    }
+                }
+                if (midiIn >= 0) {
+                    var currentNotePos = nextNoteInFrames - NOTE_DISTANCE_IN_FRAMES
+                    var midiBuffer = instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN)
+                    midiBuffer.position(0)
+                    var midiPos = resetMidiBuffer(midiBuffer)
+                    if (isNoteOnState && currentFrame + bufferFrameSize > currentNotePos + NOTE_LENGTH_IN_FRAMES) {
+                        midiPos = midiBufferNoteOff(midiBuffer, midiPos,
+                            (currentNotePos + NOTE_LENGTH_IN_FRAMES) % bufferFrameSize
+                        )
+                        isNoteOnState = false
+                    }
+                    if (!isNoteOnState && nextNoteInFrames <= currentFrame + bufferFrameSize) {
+                        midiPos = midiBufferNoteOn(midiBuffer, midiPos,
+                            if (nextNoteInFrames > 0) nextNoteInFrames - currentFrame else 0
+                        )
+                        isNoteOnState = true
+                        nextNoteInFrames += NOTE_DISTANCE_IN_FRAMES
                     }
                 }
 
-                instance.process()
+                var duration = measureTime {
+                    instance.process()
+                }
+                //Log.d("AAPHost Perf", "instance process time: " + duration.inNanoseconds)
 
                 if (audioOutL >= 0) {
                     var instanceOutL = instance.getPortBuffer(audioOutL)
                     instanceOutL.position(0)
-                    instanceOutL.get(host.audioOutputs[0], 0, bufSize * 4)
+                    instanceOutL.get(host.audioOutputs[0], 0, bufferFrameSize * 4)
                     if (audioOutR > audioOutL) {
                         var instanceOutR = instance.getPortBuffer(audioOutR)
                         instanceOutR.position(0)
-                        instanceOutR.get(host.audioOutputs[1], 0, bufSize * 4)
+                        instanceOutR.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
                     } else {
                         // monoral output
                         instanceOutL.position(0)
-                        instanceOutL.get(host.audioOutputs[1], 0, bufSize * 4)
+                        instanceOutL.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
                     }
                 }
 
-                interleaveOutput(current, bufSize)
+                interleaveOutput(currentFrame, bufferFrameSize)
 
-                current += bufSize
+                currentFrame += bufferFrameSize
             }
 
             instance.deactivate()
@@ -290,22 +326,33 @@ class MainActivity : AppCompatActivity() {
         onProcessAudioCompleted()
     }
 
-    private fun putDummyMidiBuffer(mb: ByteBuffer)
+    private fun resetMidiBuffer(mb: ByteBuffer) : Int
     {
-        var length = 27
+        var mbi = mb.asIntBuffer()
+        var fps : Short = -30
+        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
+        mbi.put(0)
+
+        return 8
+    }
+
+    private fun midiBufferNoteOn(mb: ByteBuffer, midiPos: Int, positionInFrames: Int) : Int
+    {
+        var length = 12
         var fps : Short = -30
         var ticksPerFrame : Short = 100
         var mbi = mb.asIntBuffer()
         mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
         //*(int*) mb = 480;
-        mbi.put(length)
-        mb.position(8)
-        // program change (DeltaTime: 0)
-        mb.put(0)
-        mb.put(0xC0.toByte())
-        mb.put(0)
-        // note on 1 (DeltaTime: 0)
-        mb.put(0)
+        mbi.put(midiPos + length)
+
+        mb.position(midiPos)
+
+        // 8frame/30fps = almost 1/4sec.
+        var pos = positionInFrames * ticksPerFrame / host.sampleRate
+
+        // note on 1 (DeltaTime: pos)
+        mb.put(pos.toByte())
         mb.put(0x90.toByte())
         mb.put(0x39.toByte())
         mb.put(0x70.toByte())
@@ -319,23 +366,42 @@ class MainActivity : AppCompatActivity() {
         mb.put(0x90.toByte())
         mb.put(0x40.toByte())
         mb.put(0x70.toByte())
-        // note off 1 (DeltaTime: 29frame/30fps = almost 1sec. )
-        mb.put(29)
+
+        return mb.position()
+    }
+
+    private fun midiBufferNoteOff(mb: ByteBuffer, midiPos: Int, positionInFrames: Int) : Int
+    {
+        var length = 12
+        var fps : Short = -30
+        var ticksPerFrame : Short = 100
+        var mbi = mb.asIntBuffer()
+        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
+        //*(int*) mb = 480;
+        mbi.put(midiPos + length)
+
+        mb.position(midiPos)
+
+        // 8frame/30fps = almost 1/4sec.
+        var pos = positionInFrames * ticksPerFrame / host.sampleRate
+
+        // note off 1 (DeltaTime: pos)
+        mb.put(pos.toByte())
         mb.put(0x80.toByte())
         mb.put(0x39.toByte())
         mb.put(0)
-        // note on 2 (DeltaTime: 0)
+        // note off 2 (DeltaTime: 0)
         mb.put(0)
         mb.put(0x80.toByte())
         mb.put(0x3D.toByte())
         mb.put(0)
-        // note on 3 (DeltaTime: 0)
+        // note off 3 (DeltaTime: 0)
         mb.put(0)
         mb.put(0x80.toByte())
         mb.put(0x40.toByte())
         mb.put(0)
 
-        mb.position(0)
+        return mb.position()
     }
 
     private fun onProcessAudioCompleted()

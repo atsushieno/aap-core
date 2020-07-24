@@ -97,13 +97,13 @@ class AudioPluginHost(private var applicationContext: Context) {
 
     var sampleRate = 44100
 
-    var audioBufferSizeInBytes = 44100 * 4
+    var audioBufferSizeInBytes = 4096 * 4
         set(value) {
             field = value
             resetInputBuffer()
             resetOutputBuffer()
         }
-    var controlBufferSizeInBytes = 44100 * 4
+    var controlBufferSizeInBytes = 4096 * 4
         set(value) {
             field = value
             resetControlBuffer()
