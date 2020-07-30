@@ -2,6 +2,7 @@ package org.androidaudioplugin.ui.androidx
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -63,5 +64,12 @@ class LocalPluginListActivity : AppCompatActivity() {
             Toast.makeText(this, "Debugging mode enabled: now the service will block until debugger gets connected",
                 Toast.LENGTH_LONG).show()
         }
+
+        // Show permissions dialog if any of them are required.
+        var readExtStorage = android.Manifest.permission.READ_EXTERNAL_STORAGE
+        if (packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+                        .requestedPermissions.contains(readExtStorage) &&
+                checkSelfPermission(readExtStorage) == PackageManager.PERMISSION_DENIED)
+            requestPermissions(arrayOf(readExtStorage), 0)
     }
 }
