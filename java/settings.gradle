@@ -1,4 +1,4 @@
 rootProject.name = 'AndroidAudioPlugin'
-include ':androidaudioplugin', ':aapbarebonepluginsample', ':aaphostsample', 'androidaudioplugin-ui-androidx'
+include ':androidaudioplugin', ':aapbarebonepluginsample', ':aaphostsample', ':androidaudioplugin-ui-androidx'
 project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepluginsample')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
