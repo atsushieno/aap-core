@@ -13,6 +13,7 @@ set (androidaudioplugin_SOURCES
 set (androidaudioplugin_INCLUDES
 	"../plugin-api/include"
 	"core/include"
+	"android/include"
 	"android/src/gen/include"
 	"../../dependencies/tinyxml2"
 	)
@@ -25,6 +26,7 @@ set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"android/src/android-audio-plugin-client-bridge.cpp"
 	"android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
+	"android/src/android-context.cpp"
 	"android/src/AudioPluginHost_native.cpp"
 	"android/src/audio-plugin-host-android.cpp"
 	)

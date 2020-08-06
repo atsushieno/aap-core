@@ -9,6 +9,7 @@
 #include "aap/android-audio-plugin-host.hpp"
 #include "android-audio-plugin-host-android.hpp"
 #include "AudioPluginInterfaceImpl.h"
+#include "aap/android-context.h"
 
 extern "C" {
 
@@ -154,7 +155,7 @@ jobjectArray queryInstalledPluginsJNI()
 	jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
 	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
-	return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, apal->globalApplicationContext);
+	return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
 }
 
 

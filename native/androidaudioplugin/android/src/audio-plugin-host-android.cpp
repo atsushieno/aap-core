@@ -11,6 +11,7 @@
 #include "aap/android-audio-plugin-host.hpp"
 #include "android-audio-plugin-host-android.hpp"
 #include "AudioPluginInterfaceImpl.h"
+#include "aap/android-context.h"
 
 namespace aap {
 
@@ -63,10 +64,6 @@ std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins
 }
 
 AndroidPluginHostPAL android_pal_instance{};
-JavaVM *aap_jvm{nullptr};
-
-// FIXME: it is kind of hack; dynamically loaded and used by JuceAAPWrapper.
-extern "C" JavaVM* getJVM() { return aap_jvm; }
 
 PluginHostPAL* getPluginHostPAL()
 {
@@ -75,17 +72,17 @@ PluginHostPAL* getPluginHostPAL()
 
 JNIEnv* AndroidPluginHostPAL::getJNIEnv()
 {
-    assert(aap_jvm != nullptr);
+    JavaVM* vm = aap::get_android_jvm();
+    assert(vm);
 
     JNIEnv* env;
-    aap_jvm->AttachCurrentThread(&env, nullptr);
+    vm->AttachCurrentThread(&env, nullptr);
     return env;
 }
 
 void AndroidPluginHostPAL::initialize(JNIEnv *env, jobject applicationContext)
 {
-    env->GetJavaVM(&aap_jvm);
-    globalApplicationContext = applicationContext;
+    aap::set_application_context(env, applicationContext);
 }
 
 } // namespace aap

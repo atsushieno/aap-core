@@ -60,8 +60,6 @@ public:
         return results;
     }
 
-	// FIXME: move them back to private
-	jobject globalApplicationContext{nullptr};
 	std::vector<AudioPluginServiceConnection> serviceConnections{};
 
 	JNIEnv* getJNIEnv();

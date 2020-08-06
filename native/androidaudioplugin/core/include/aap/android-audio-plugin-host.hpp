@@ -17,7 +17,9 @@
 
 namespace aap {
 
-class PluginInstance;
+	void set_application_context(void* javaVM, void* jobjectApplicationContext);
+
+	class PluginInstance;
 
 enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED,

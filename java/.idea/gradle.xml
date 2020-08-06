@@ -10,11 +10,11 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/androidaudioplugin" />
-            <option value="$PROJECT_DIR$/androidaudioplugin-ui-androidx" />
-            <option value="$PROJECT_DIR$/samples/aapbarebonepluginsample" />
-            <option value="$PROJECT_DIR$/samples/aaphostsample" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/androidaudioplugin" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/androidaudioplugin-ui-androidx" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/samples/aapbarebonepluginsample" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/samples/aaphostsample" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
