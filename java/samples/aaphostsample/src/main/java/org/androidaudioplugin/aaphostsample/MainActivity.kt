@@ -22,7 +22,9 @@ import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import org.androidaudioplugin.*
+import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.time.ExperimentalTime
@@ -187,6 +189,66 @@ class MainActivity : AppCompatActivity() {
     var NOTE_DISTANCE_IN_FRAMES = 22050
     var NOTE_LENGTH_IN_FRAMES = 20000
 
+    private fun getFixedMidiEventLength(seq: UByteArray, from: Int) =
+        when (seq[from].toUInt().toInt() and 0xF0) {
+            0xA0, 0xC0 -> 2
+            0xF0 ->
+                when (seq[from].toUInt().toInt()) {
+                    0xF1, 0xF3 -> 1
+                    0xF2 -> 2
+                    else -> 0
+                }
+            else -> 3
+        }
+    private fun splitMidiEvents(seq: UByteArray) = sequence {
+        var cur = 0
+        var i = 0
+        while (i < seq.size) {
+            // delta time
+            while (seq[i] >= 0x80u)
+                i++
+            i++
+            // message
+            var evPos = i
+            if (seq[evPos] == 0xF0u.toUByte())
+                i += seq.drop(i).indexOf(0xF7u) + 1
+            else
+                i += getFixedMidiEventLength(seq, i)
+            yield(seq.slice(IntRange(cur, i - 1)))
+            cur = i
+        }
+    }
+    private fun groupMidiEventsByTiming(events: Sequence<List<UByte>>) = sequence {
+        var i = 0
+        var iter = events.iterator()
+        var list = mutableListOf<List<UByte>>()
+        while (iter.hasNext()) {
+            var ev = iter.next()
+            if (getFirstMidiEventDuration(ev) != 0) {
+                if (list.any())
+                    yield(list.toList())
+                list = mutableListOf<List<UByte>>()
+            }
+            list.add(ev)
+        }
+        if (list.any())
+            yield(list.toList())
+    }
+    private fun getFirstMidiEventDuration(bytes: List<UByte>) : Int {
+        var len = 0
+        var pos = 0
+        var mul = 1
+        while (pos < bytes.size) {
+            var b = bytes[pos]
+            len += (b.toInt() and 0x7F) * mul
+            pos++
+            if (b < 0x80u)
+                break
+            mul *= 0x80
+        }
+        return len
+    }
+
     @ExperimentalTime
     private fun processPluginOnce() {
         var instance = this.instance!!
@@ -196,6 +258,23 @@ class MainActivity : AppCompatActivity() {
         var a = this@MainActivity.portsAdapter
         if (a != null)
             parameters = a.parameters
+
+        // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
+        var noteOnSeq = arrayOf(
+                17 + 0x80, 86, 0x90, 0x39, 0x78, // 17 + 0x80 * 86 = 11025
+                0, 0x90, 0x3D, 0x78,
+                0, 0x90, 0x40, 0x78)
+                .map {i -> i.toUByte() }
+        var noteOffSeq = arrayOf(
+                17 + 0x80, 86, 0x80, 0x39, 0,
+                0, 0x80, 0x3D, 0,
+                0, 0x80, 0x40, 0)
+                .map {i -> i.toUByte() }
+        var noteSeq = noteOnSeq.plus(noteOffSeq)
+        var midiSeq = noteSeq
+        repeat(9, { midiSeq += noteSeq}) // repeat 10 times
+        var midiEvents = splitMidiEvents(midiSeq.toUByteArray())
+        var midiEventsGroups = groupMidiEventsByTiming(midiEvents).toList()
 
         // Kotlin version of audio/MIDI processing.
         if (!PROCESS_AUDIO_NATIVE) {
@@ -244,9 +323,14 @@ class MainActivity : AppCompatActivity() {
             instance.activate()
 
             var currentFrame = 0
-            var nextNoteInFrames = 0
-            var isNoteOnState = false
+            var midiEventsGroupsIterator = midiEventsGroups.iterator()
+            var nextMidiGroup = if (midiEventsGroupsIterator.hasNext()) midiEventsGroupsIterator.next() else listOf<List<UByte>>()
+            var nextMidiEventFrame = if (nextMidiGroup.size > 0) getFirstMidiEventDuration(nextMidiGroup.first()) else 0
 
+            // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
+            // the input sample data. Note that it does not involve any real tiem processing.
+            // For such usage, there should be native audio callback based on Oboe or AAudio
+            // (not in Kotlin).
             while (currentFrame < inBuf.size / 2 / 4) { // channels / sizeof(float)
                 deinterleaveInput(currentFrame, bufferFrameSize)
 
@@ -261,23 +345,34 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (midiIn >= 0) {
-                    var currentNotePos = nextNoteInFrames - NOTE_DISTANCE_IN_FRAMES
+                    // MIDI buffer is complicated. The AAP input MIDI buffer is formed as follows:
+                    // - i32 length unit specifier: positive frames, or negative frames per beat in the
+                    //   context tempo.
+                    // - i32 MIDI buffer size
+                    // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
+
                     var midiBuffer = instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN)
                     midiBuffer.position(0)
-                    var midiPos = resetMidiBuffer(midiBuffer)
-                    if (isNoteOnState && currentFrame + bufferFrameSize > currentNotePos + NOTE_LENGTH_IN_FRAMES) {
-                        midiPos = midiBufferNoteOff(midiBuffer, midiPos,
-                            (currentNotePos + NOTE_LENGTH_IN_FRAMES) % bufferFrameSize
-                        )
-                        isNoteOnState = false
+                    midiBuffer.position(resetMidiBuffer(midiBuffer))
+                    var midiDataLengthInLoop = 0
+
+                    var arr = ByteArray(bufferFrameSize)
+                    while (nextMidiEventFrame < currentFrame + bufferFrameSize) {
+                        var nextMidiEvents = nextMidiGroup.flatten().map { u -> u.toByte() }.toByteArray()
+                        midiDataLengthInLoop += nextMidiEvents.size
+                        // FIXME: adjust delta time, the position is practically ignored now.
+                        midiBuffer.put(nextMidiEvents)
+                        if (!midiEventsGroupsIterator.hasNext())
+                            break
+                        nextMidiGroup = midiEventsGroupsIterator.next()
+                        nextMidiEventFrame += getFirstMidiEventDuration(nextMidiGroup.first())
                     }
-                    if (!isNoteOnState && nextNoteInFrames <= currentFrame + bufferFrameSize) {
-                        midiPos = midiBufferNoteOn(midiBuffer, midiPos,
-                            if (nextNoteInFrames > 0) nextNoteInFrames - currentFrame else 0
-                        )
-                        isNoteOnState = true
-                        nextNoteInFrames += NOTE_DISTANCE_IN_FRAMES
-                    }
+                    var xz = midiBuffer.position()
+                    midiBuffer.position(4)
+                    midiBuffer.putInt(midiDataLengthInLoop)
+                    instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN).get(arr, 0, xz)
+                    if (arr.size > 0x10000)
+                        throw Exception()
                 }
 
                 var duration = measureTime {
@@ -334,74 +429,6 @@ class MainActivity : AppCompatActivity() {
         mbi.put(0)
 
         return 8
-    }
-
-    private fun midiBufferNoteOn(mb: ByteBuffer, midiPos: Int, positionInFrames: Int) : Int
-    {
-        var length = 12
-        var fps : Short = -30
-        var ticksPerFrame : Short = 100
-        var mbi = mb.asIntBuffer()
-        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
-        //*(int*) mb = 480;
-        mbi.put(midiPos + length)
-
-        mb.position(midiPos)
-
-        // 8frame/30fps = almost 1/4sec.
-        var pos = positionInFrames * ticksPerFrame / host.sampleRate
-
-        // note on 1 (DeltaTime: pos)
-        mb.put(pos.toByte())
-        mb.put(0x90.toByte())
-        mb.put(0x39.toByte())
-        mb.put(0x70.toByte())
-        // note on 2 (DeltaTime: 0)
-        mb.put(0)
-        mb.put(0x90.toByte())
-        mb.put(0x3D.toByte())
-        mb.put(0x70.toByte())
-        // note on 3 (DeltaTime: 0)
-        mb.put(0)
-        mb.put(0x90.toByte())
-        mb.put(0x40.toByte())
-        mb.put(0x70.toByte())
-
-        return mb.position()
-    }
-
-    private fun midiBufferNoteOff(mb: ByteBuffer, midiPos: Int, positionInFrames: Int) : Int
-    {
-        var length = 12
-        var fps : Short = -30
-        var ticksPerFrame : Short = 100
-        var mbi = mb.asIntBuffer()
-        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
-        //*(int*) mb = 480;
-        mbi.put(midiPos + length)
-
-        mb.position(midiPos)
-
-        // 8frame/30fps = almost 1/4sec.
-        var pos = positionInFrames * ticksPerFrame / host.sampleRate
-
-        // note off 1 (DeltaTime: pos)
-        mb.put(pos.toByte())
-        mb.put(0x80.toByte())
-        mb.put(0x39.toByte())
-        mb.put(0)
-        // note off 2 (DeltaTime: 0)
-        mb.put(0)
-        mb.put(0x80.toByte())
-        mb.put(0x3D.toByte())
-        mb.put(0)
-        // note off 3 (DeltaTime: 0)
-        mb.put(0)
-        mb.put(0x80.toByte())
-        mb.put(0x40.toByte())
-        mb.put(0)
-
-        return mb.position()
     }
 
     private fun onProcessAudioCompleted()
