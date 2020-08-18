@@ -186,8 +186,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     var PROCESS_AUDIO_NATIVE = false
-    var NOTE_DISTANCE_IN_FRAMES = 22050
-    var NOTE_LENGTH_IN_FRAMES = 20000
+
+    var FRAMES_PER_TICK = 100
+    var FRAMES_PER_SECOND = 44100
 
     private fun getFixedMidiEventLength(seq: UByteArray, from: Int) =
         when (seq[from].toUInt().toInt() and 0xF0) {
@@ -200,6 +201,7 @@ class MainActivity : AppCompatActivity() {
                 }
             else -> 3
         }
+
     private fun splitMidiEvents(seq: UByteArray) = sequence {
         var cur = 0
         var i = 0
@@ -218,6 +220,7 @@ class MainActivity : AppCompatActivity() {
             cur = i
         }
     }
+
     private fun groupMidiEventsByTiming(events: Sequence<List<UByte>>) = sequence {
         var i = 0
         var iter = events.iterator()
@@ -234,6 +237,7 @@ class MainActivity : AppCompatActivity() {
         if (list.any())
             yield(list.toList())
     }
+
     private fun getFirstMidiEventDuration(bytes: List<UByte>) : Int {
         var len = 0
         var pos = 0
@@ -249,6 +253,29 @@ class MainActivity : AppCompatActivity() {
         return len
     }
 
+    private fun Int.toBCD() = (this / 10) shl 4 + (this % 10)
+
+    private fun Int.fromBCD() = ((this and 0xF0) shr 4) * 10 + (this and 0xF)
+
+    private fun toMidiTimeCode(frameRate: Int, framesPerSeconds: Int, frames: Int) : Array<UByte> {
+        var frameUnit = framesPerSeconds / frameRate
+        var seconds = frames / framesPerSeconds
+        var ticks = ((frames % framesPerSeconds) / frameUnit)
+        var ret = arrayOf(ticks.toUByte(),
+            (seconds % 60).toBCD().toUByte(),
+            (seconds / 60).toBCD().toUByte(),
+            (seconds / 3600).toBCD().toUByte())
+        return ret
+    }
+
+    private fun expandSMPTE(frameRate: Int, framesPerSeconds: Int, smpte: Int) : Int {
+        var ticks = smpte and 0xFF
+        var seconds = (smpte shr 8 and 0xFF).fromBCD()
+        var minutes = (smpte shr 16 and 0xFF).fromBCD()
+        var hours = (smpte shr 24 and 0xFF).fromBCD()
+        return (hours * 3600 + minutes * 60 + seconds) * framesPerSeconds + ticks * frameRate
+    }
+
     @ExperimentalTime
     private fun processPluginOnce() {
         var instance = this.instance!!
@@ -261,12 +288,12 @@ class MainActivity : AppCompatActivity() {
 
         // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
         var noteOnSeq = arrayOf(
-                17 + 0x80, 86, 0x90, 0x39, 0x78, // 17 + 0x80 * 86 = 11025
+                110, 0x90, 0x39, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
                 0, 0x90, 0x3D, 0x78,
                 0, 0x90, 0x40, 0x78)
                 .map {i -> i.toUByte() }
         var noteOffSeq = arrayOf(
-                17 + 0x80, 86, 0x80, 0x39, 0,
+                110, 0x80, 0x39, 0,
                 0, 0x80, 0x3D, 0,
                 0, 0x80, 0x40, 0)
                 .map {i -> i.toUByte() }
@@ -325,7 +352,8 @@ class MainActivity : AppCompatActivity() {
             var currentFrame = 0
             var midiEventsGroupsIterator = midiEventsGroups.iterator()
             var nextMidiGroup = if (midiEventsGroupsIterator.hasNext()) midiEventsGroupsIterator.next() else listOf<List<UByte>>()
-            var nextMidiEventFrame = if (nextMidiGroup.size > 0) getFirstMidiEventDuration(nextMidiGroup.first()) else 0
+            var nextMidiEventDeltaTime = if (nextMidiGroup.size > 0) getFirstMidiEventDuration(nextMidiGroup.first()) else 0
+            var nextMidiEventFrame = expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, nextMidiEventDeltaTime)
 
             // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
             // the input sample data. Note that it does not involve any real tiem processing.
@@ -356,23 +384,31 @@ class MainActivity : AppCompatActivity() {
                     midiBuffer.position(resetMidiBuffer(midiBuffer))
                     var midiDataLengthInLoop = 0
 
-                    var arr = ByteArray(bufferFrameSize)
                     while (nextMidiEventFrame < currentFrame + bufferFrameSize) {
-                        var nextMidiEvents = nextMidiGroup.flatten().map { u -> u.toByte() }.toByteArray()
-                        midiDataLengthInLoop += nextMidiEvents.size
                         // FIXME: adjust delta time, the position is practically ignored now.
+                        var timedEvent = nextMidiGroup.first()
+                        var deltaTimeTmp = getFirstMidiEventDuration(timedEvent)
+                        var deltaTimeBytes = 1
+                        while (deltaTimeTmp > 0x80) {
+                            deltaTimeBytes++
+                            deltaTimeTmp /= 0x80
+                        }
+                        var diffFrame = nextMidiEventFrame % bufferFrameSize
+                        var diffMTC = toMidiTimeCode(FRAMES_PER_TICK, FRAMES_PER_SECOND, diffFrame)
+                        var b0 = 0.toUByte()
+                        var diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
+                        var updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
+                        var nextMidiEvents = updatedFirstEvent.plus(nextMidiGroup.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
+                        midiDataLengthInLoop += nextMidiEvents.size
                         midiBuffer.put(nextMidiEvents)
                         if (!midiEventsGroupsIterator.hasNext())
                             break
                         nextMidiGroup = midiEventsGroupsIterator.next()
-                        nextMidiEventFrame += getFirstMidiEventDuration(nextMidiGroup.first())
+                        nextMidiEventFrame += expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, getFirstMidiEventDuration(nextMidiGroup.first()))
                     }
                     var xz = midiBuffer.position()
                     midiBuffer.position(4)
                     midiBuffer.putInt(midiDataLengthInLoop)
-                    instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN).get(arr, 0, xz)
-                    if (arr.size > 0x10000)
-                        throw Exception()
                 }
 
                 var duration = measureTime {
@@ -424,8 +460,8 @@ class MainActivity : AppCompatActivity() {
     private fun resetMidiBuffer(mb: ByteBuffer) : Int
     {
         var mbi = mb.asIntBuffer()
-        var fps : Short = -30
-        mbi.put(fps.toInt()) // 30fps, 100 ticks per frame
+        var ticksPerFrame : Short = (-1 * FRAMES_PER_TICK).toShort()
+        mbi.put(ticksPerFrame.toInt()) // 1 frame = 10 milliseconds
         mbi.put(0)
 
         return 8
