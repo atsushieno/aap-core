@@ -385,7 +385,6 @@ class MainActivity : AppCompatActivity() {
                     var midiDataLengthInLoop = 0
 
                     while (nextMidiEventFrame < currentFrame + bufferFrameSize) {
-                        // FIXME: adjust delta time, the position is practically ignored now.
                         var timedEvent = nextMidiGroup.first()
                         var deltaTimeTmp = getFirstMidiEventDuration(timedEvent)
                         var deltaTimeBytes = 1
