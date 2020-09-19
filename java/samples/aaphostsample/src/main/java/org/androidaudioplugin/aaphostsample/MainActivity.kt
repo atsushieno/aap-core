@@ -8,13 +8,11 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.ArrayAdapter
-import android.widget.CompoundButton
 import android.widget.SeekBar
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
@@ -22,9 +20,7 @@ import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 import org.androidaudioplugin.*
-import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.time.ExperimentalTime
@@ -202,7 +198,7 @@ class MainActivity : AppCompatActivity() {
             else -> 3
         }
 
-    private fun splitMidiEvents(seq: UByteArray) = sequence {
+    private fun splitMidi1Events(seq: UByteArray) = sequence {
         var cur = 0
         var i = 0
         while (i < seq.size) {
@@ -221,13 +217,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun groupMidiEventsByTiming(events: Sequence<List<UByte>>) = sequence {
+    private fun groupMidi1EventsByTiming(events: Sequence<List<UByte>>) = sequence {
         var i = 0
         var iter = events.iterator()
         var list = mutableListOf<List<UByte>>()
         while (iter.hasNext()) {
             var ev = iter.next()
-            if (getFirstMidiEventDuration(ev) != 0) {
+            if (getFirstMidi1EventDuration(ev) != 0) {
                 if (list.any())
                     yield(list.toList())
                 list = mutableListOf<List<UByte>>()
@@ -238,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             yield(list.toList())
     }
 
-    private fun getFirstMidiEventDuration(bytes: List<UByte>) : Int {
+    private fun getFirstMidi1EventDuration(bytes: List<UByte>) : Int {
         var len = 0
         var pos = 0
         var mul = 1
@@ -300,8 +296,9 @@ class MainActivity : AppCompatActivity() {
         var noteSeq = noteOnSeq.plus(noteOffSeq)
         var midiSeq = noteSeq
         repeat(9, { midiSeq += noteSeq}) // repeat 10 times
-        var midiEvents = splitMidiEvents(midiSeq.toUByteArray())
-        var midiEventsGroups = groupMidiEventsByTiming(midiEvents).toList()
+
+        var midi1Events = splitMidi1Events(midiSeq.toUByteArray())
+        var midi1EventsGroups = groupMidi1EventsByTiming(midi1Events).toList()
 
         // Kotlin version of audio/MIDI processing.
         if (!PROCESS_AUDIO_NATIVE) {
@@ -350,10 +347,10 @@ class MainActivity : AppCompatActivity() {
             instance.activate()
 
             var currentFrame = 0
-            var midiEventsGroupsIterator = midiEventsGroups.iterator()
-            var nextMidiGroup = if (midiEventsGroupsIterator.hasNext()) midiEventsGroupsIterator.next() else listOf<List<UByte>>()
-            var nextMidiEventDeltaTime = if (nextMidiGroup.size > 0) getFirstMidiEventDuration(nextMidiGroup.first()) else 0
-            var nextMidiEventFrame = expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, nextMidiEventDeltaTime)
+            var midi1EventsGroupsIterator = midi1EventsGroups.iterator()
+            var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf<List<UByte>>()
+            var nextMidi1EventDeltaTime = if (nextMidi1Group.size > 0) getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
+            var nextMidi1EventFrame = expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, nextMidi1EventDeltaTime)
 
             // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
             // the input sample data. Note that it does not involve any real tiem processing.
@@ -384,26 +381,26 @@ class MainActivity : AppCompatActivity() {
                     midiBuffer.position(resetMidiBuffer(midiBuffer))
                     var midiDataLengthInLoop = 0
 
-                    while (nextMidiEventFrame < currentFrame + bufferFrameSize) {
-                        var timedEvent = nextMidiGroup.first()
-                        var deltaTimeTmp = getFirstMidiEventDuration(timedEvent)
+                    while (nextMidi1EventFrame < currentFrame + bufferFrameSize) {
+                        var timedEvent = nextMidi1Group.first()
+                        var deltaTimeTmp = getFirstMidi1EventDuration(timedEvent)
                         var deltaTimeBytes = 1
                         while (deltaTimeTmp > 0x80) {
                             deltaTimeBytes++
                             deltaTimeTmp /= 0x80
                         }
-                        var diffFrame = nextMidiEventFrame % bufferFrameSize
+                        var diffFrame = nextMidi1EventFrame % bufferFrameSize
                         var diffMTC = toMidiTimeCode(FRAMES_PER_TICK, FRAMES_PER_SECOND, diffFrame)
                         var b0 = 0.toUByte()
                         var diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
                         var updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
-                        var nextMidiEvents = updatedFirstEvent.plus(nextMidiGroup.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
+                        var nextMidiEvents = updatedFirstEvent.plus(nextMidi1Group.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
                         midiDataLengthInLoop += nextMidiEvents.size
                         midiBuffer.put(nextMidiEvents)
-                        if (!midiEventsGroupsIterator.hasNext())
+                        if (!midi1EventsGroupsIterator.hasNext())
                             break
-                        nextMidiGroup = midiEventsGroupsIterator.next()
-                        nextMidiEventFrame += expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, getFirstMidiEventDuration(nextMidiGroup.first()))
+                        nextMidi1Group = midi1EventsGroupsIterator.next()
+                        nextMidi1EventFrame += expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, getFirstMidi1EventDuration(nextMidi1Group.first()))
                     }
                     var xz = midiBuffer.position()
                     midiBuffer.position(4)

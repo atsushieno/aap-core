@@ -48,6 +48,7 @@ void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char*
             ContentType content =
                     !strcmp(contentString, "audio") ? ContentType::AAP_CONTENT_TYPE_AUDIO :
                     !strcmp(contentString, "midi") ? ContentType::AAP_CONTENT_TYPE_MIDI :
+                    !strcmp(contentString, "midi2") ? ContentType::AAP_CONTENT_TYPE_MIDI2 :
                     ContentType::AAP_CONTENT_TYPE_UNDEFINED;
             auto directionString = portElement->Attribute("direction");
             PortDirection  direction = !strcmp(directionString, "input") ? PortDirection::AAP_PORT_DIRECTION_INPUT : PortDirection::AAP_PORT_DIRECTION_OUTPUT;

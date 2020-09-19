@@ -22,9 +22,10 @@ namespace aap {
 	class PluginInstance;
 
 enum ContentType {
-	AAP_CONTENT_TYPE_UNDEFINED,
-	AAP_CONTENT_TYPE_AUDIO,
-	AAP_CONTENT_TYPE_MIDI,
+	AAP_CONTENT_TYPE_UNDEFINED = 0,
+	AAP_CONTENT_TYPE_AUDIO = 1,
+	AAP_CONTENT_TYPE_MIDI = 2,
+	AAP_CONTENT_TYPE_MIDI2 = 3,
 };
 
 enum PortDirection {
