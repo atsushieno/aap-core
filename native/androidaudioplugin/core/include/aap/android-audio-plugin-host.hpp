@@ -438,6 +438,15 @@ public:
 		extensions.emplace_back(ext);
 	}
 
+	void completeInstantiation()
+	{
+		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
+		for (size_t i = 0; i < extensions.size(); i++)
+			extArr[i] = &extensions[i];
+		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
+		free(extArr);
+	}
+
 	const void* getExtension(const char* uri)
 	{
 		for (auto ext : extensions)
@@ -452,11 +461,6 @@ public:
 	{
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 
-		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
-		for (size_t i = 0; i < extensions.size(); i++)
-			extArr[i] = &extensions[i];
-		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
-		free(extArr);
 		plugin->prepare(plugin, preparedBuffer);
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}

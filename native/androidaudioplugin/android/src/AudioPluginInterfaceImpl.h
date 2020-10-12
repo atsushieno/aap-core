@@ -68,6 +68,7 @@ public:
 
     ::ndk::ScopedAStatus endCreate(int32_t in_instanceID)
     {
+        host->getInstance(in_instanceID)->completeInstantiation();
         return ndk::ScopedAStatus::ok();
     }
 
