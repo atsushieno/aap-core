@@ -175,8 +175,10 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
     }
     assert(ctx->shared_memory_extension != nullptr);
 
-    auto status = ctx->proxy->create(pluginUniqueId, aapSampleRate, &ctx->instance_id);
+    auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
+    ctx->proxy->endCreate(ctx->instance_id);
+
 	return new AndroidAudioPlugin {
 		ctx,
 		aap_bridge_plugin_prepare,

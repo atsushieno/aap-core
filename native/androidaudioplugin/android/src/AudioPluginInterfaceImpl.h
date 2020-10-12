@@ -35,7 +35,7 @@ public:
         delete manager;
     }
 
-    ::ndk::ScopedAStatus create(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
+    ::ndk::ScopedAStatus beginCreate(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
     {
         *_aidl_return = host->createInstance(in_pluginId.c_str(), in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
@@ -63,6 +63,11 @@ public:
         extension.transmit_size = in_size;
         extension.data = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         host->getInstance(in_instanceID)->addExtension(extension);
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus endCreate(int32_t in_instanceID)
+    {
         return ndk::ScopedAStatus::ok();
     }
 

@@ -8,6 +8,8 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +17,7 @@ import android.view.Window
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.widget.addTextChangedListener
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
 import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
@@ -80,6 +83,8 @@ class MainActivity : AppCompatActivity() {
             view.audio_plugin_parameter_name.text = item.name
             view.audio_plugin_seekbar_parameter_value.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (!fromUser)
+                        return
                     parameters[position] = progress / 100.0f
                     view.audio_plugin_edit_text_parameter_value.text.clear()
                     view.audio_plugin_edit_text_parameter_value.text.insert(0, parameters[position].toString())

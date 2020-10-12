@@ -47,7 +47,9 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
     // enter processing...
 
     int32_t instanceID;
-    auto status = proxy->create(pluginInfo->getPluginID(), sampleRate, &instanceID);
+    auto status = proxy->beginCreate(pluginInfo->getPluginID(), sampleRate, &instanceID);
+    assert (status.isOk());
+    status.set(proxy->endCreate(instanceID).get());
     assert (status.isOk());
 
     auto plugin_buffer = new AndroidAudioPluginBuffer();
