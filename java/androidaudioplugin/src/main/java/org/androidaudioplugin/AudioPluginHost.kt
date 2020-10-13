@@ -38,7 +38,10 @@ class AudioPluginHost(private var applicationContext: Context) {
     private fun onBindAudioPluginService(conn: PluginServiceConnection) {
         AudioPluginNatives.addBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className, conn.binder!!)
         connectedServices.add(conn)
-        serviceConnectedListeners.forEach { f -> f(conn) }
+
+        // avoid conflicting concurrent updates
+        var currentListeners = serviceConnectedListeners.toTypedArray()
+        currentListeners.forEach { f -> f(conn) }
     }
 
     private fun findExistingServiceConnection(packageName: String, className: String) : PluginServiceConnection? {
@@ -55,9 +58,11 @@ class AudioPluginHost(private var applicationContext: Context) {
     }
 
     fun dispose() {
-        for (conn in connectedServices)
-            AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
-        connectedServices.clear()
+        while (connectedServices.any()) {
+            var list = connectedServices.toTypedArray()
+            for (conn in list)
+                AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
+        }
     }
 
     // Plugin instancing
