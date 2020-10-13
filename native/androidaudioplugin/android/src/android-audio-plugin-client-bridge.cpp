@@ -132,7 +132,7 @@ void aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	ensureStateBuffer(ctx, size);
 	// FIXME: Maybe this should be one call for potential state length mismatch, if ever possible (it isn't so far).
 	::ndk::ScopedFileDescriptor fd;
-	fd.set((int64_t) &ctx->state.raw_data);
+	fd.set(ctx->state_ashmem_fd);
 	auto status2 = ctx->proxy->getState(ctx->instance_id, fd);
     assert (status2.isOk());
     result->data_size = ctx->state.data_size;
@@ -146,7 +146,7 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
 	ensureStateBuffer(ctx, input->data_size);
 	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
 	::ndk::ScopedFileDescriptor fd;
-	fd.set((int64_t) input->raw_data);
+	fd.set(ctx->state_ashmem_fd);
 	auto status = ctx->proxy->setState(ctx->instance_id, fd, input->data_size);
     assert (status.isOk());
 }
