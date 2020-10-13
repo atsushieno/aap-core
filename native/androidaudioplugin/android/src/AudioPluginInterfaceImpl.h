@@ -66,7 +66,7 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus endCreate(int32_t in_instanceID)
+    ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override
     {
         host->getInstance(in_instanceID)->completeInstantiation();
         return ndk::ScopedAStatus::ok();
