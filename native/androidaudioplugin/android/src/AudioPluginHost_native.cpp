@@ -159,11 +159,11 @@ jobjectArray queryInstalledPluginsJNI()
 }
 
 
-std::unique_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
+std::shared_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
 
 jobject
 Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz, jint sampleRate) {
-    sp_binder.reset(new aap::AudioPluginInterfaceImpl());
+    sp_binder = ndk::SharedRefBase::make<aap::AudioPluginInterfaceImpl>();
     auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
     return ret;
 }
@@ -173,7 +173,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
                                                                       jobject binder) {
     auto abinder = AIBinder_fromJavaBinder(env, binder);
     AIBinder_decStrong(abinder);
-    sp_binder.reset(nullptr);
+    sp_binder.reset();
 }
 
 void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHost(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)

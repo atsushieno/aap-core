@@ -2,7 +2,14 @@
 
 #include <android/binder_interface_utils.h>
 
-#include <android/binder_parcel_utils.h>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+#ifdef BINDER_STABILITY_SUPPORT
+#include <android/binder_stability.h>
+#endif  // BINDER_STABILITY_SUPPORT
 
 namespace aidl {
 namespace org {

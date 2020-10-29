@@ -1,3 +1,4 @@
+#include <android/binder_parcel_utils.h>
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include <aidl/org/androidaudioplugin/AudioPluginInterface.h>
@@ -255,7 +256,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
     }
   }
   return _aidl_ret_status;
-};
+}
 
 static AIBinder_Class* _g_aidl_clazz = ::ndk::ICInterface::defineClass(IAudioPluginInterface::descriptor, _aidl_onTransact);
 
@@ -282,7 +283,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 0 /*beginCreate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->beginCreate(in_pluginId, in_sampleRate, _aidl_return);
   }
@@ -326,7 +331,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 1 /*addExtension*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->addExtension(in_instanceID, in_uri, in_sharedMemoryFD, in_size);
   }
@@ -358,7 +367,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 2 /*endCreate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->endCreate(in_instanceID);
   }
@@ -390,7 +403,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 3 /*isPluginAlive*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->isPluginAlive(in_instanceID, _aidl_return);
   }
@@ -425,7 +442,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 4 /*getStateSize*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->getStateSize(in_instanceID, _aidl_return);
   }
@@ -463,7 +484,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 5 /*getState*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->getState(in_instanceID, in_sharedMemoryFD);
   }
@@ -501,7 +526,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 6 /*setState*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->setState(in_instanceID, in_sharedMemoryFD, in_size);
   }
@@ -539,7 +568,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 7 /*prepare*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->prepare(in_instanceID, in_frameCount, in_portCount);
   }
@@ -577,7 +610,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 8 /*prepareMemory*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->prepareMemory(in_instanceID, in_shmFDIndex, in_sharedMemoryFD);
   }
@@ -609,7 +646,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 9 /*activate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->activate(in_instanceID);
   }
@@ -644,7 +685,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 10 /*process*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->process(in_instanceID, in_timeoutInNanoseconds);
   }
@@ -676,7 +721,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 11 /*deactivate*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->deactivate(in_instanceID);
   }
@@ -708,7 +757,11 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     (FIRST_CALL_TRANSACTION + 12 /*destroy*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
-    0);
+    0
+    #ifdef BINDER_STABILITY_SUPPORT
+    | FLAG_PRIVATE_LOCAL
+    #endif  // BINDER_STABILITY_SUPPORT
+    );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
     return IAudioPluginInterface::getDefaultImpl()->destroy(in_instanceID);
   }
@@ -728,6 +781,9 @@ BnAudioPluginInterface::BnAudioPluginInterface() {}
 BnAudioPluginInterface::~BnAudioPluginInterface() {}
 ::ndk::SpAIBinder BnAudioPluginInterface::createBinder() {
   AIBinder* binder = AIBinder_new(_g_aidl_clazz, static_cast<void*>(this));
+  #ifdef BINDER_STABILITY_SUPPORT
+  AIBinder_markCompilationUnitStability(binder);
+  #endif  // BINDER_STABILITY_SUPPORT
   return ::ndk::SpAIBinder(binder);
 }
 // Source for IAudioPluginInterface
@@ -742,7 +798,7 @@ std::shared_ptr<IAudioPluginInterface> IAudioPluginInterface::fromBinder(const :
   if (interface) {
     return std::static_pointer_cast<IAudioPluginInterface>(interface);
   }
-  return (new BpAudioPluginInterface(binder))->ref<IAudioPluginInterface>();
+  return ::ndk::SharedRefBase::make<BpAudioPluginInterface>(binder);
 }
 
 binder_status_t IAudioPluginInterface::writeToParcel(AParcel* parcel, const std::shared_ptr<IAudioPluginInterface>& instance) {
@@ -756,7 +812,11 @@ binder_status_t IAudioPluginInterface::readFromParcel(const AParcel* parcel, std
   return STATUS_OK;
 }
 bool IAudioPluginInterface::setDefaultImpl(std::shared_ptr<IAudioPluginInterface> impl) {
-  if (!IAudioPluginInterface::default_impl && impl) {
+  // Only one user of this interface can use this function
+  // at a time. This is a heuristic to detect if two different
+  // users in the same process use this function.
+  assert(!IAudioPluginInterface::default_impl);
+  if (impl) {
     IAudioPluginInterface::default_impl = impl;
     return true;
   }
