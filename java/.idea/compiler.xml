@@ -6,7 +6,6 @@
       <module name="aaphostsample" target="1.7" />
       <module name="aaplv2plugins" target="1.7" />
       <module name="aappluginsample" target="1.7" />
-      <module name="androidaudioplugin" target="1.7" />
       <module name="androidaudioplugin-lv2" target="1.7" />
       <module name="localpluginsample" target="1.7" />
     </bytecodeTargetLevel>
