@@ -1,16 +1,11 @@
-apply plugin: 'com.android.application'
-
-apply plugin: 'kotlin-android'
-
-apply plugin: 'kotlin-android-extensions'
-
-repositories {
-    maven { url "https://jitpack.io" }
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-android-extensions'
 }
 
 android {
     compileSdkVersion 30
-    buildToolsVersion "29.0.3"
     defaultConfig {
         applicationId "org.androidaudioplugin.aaphostsample"
         minSdkVersion 29
