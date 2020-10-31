@@ -1,6 +1,5 @@
 
 MINIMIZE_INTERMEDIATES=0
-ABIS_SIMPLE= x86 x86_64 armeabi-v7a arm64-v8a
 ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/21.2.6472646
 NDK_HOST=`uname | tr '[:upper:]' '[:lower:]'`
 
@@ -30,19 +29,6 @@ $(ANDROID_NDK):
 build-desktop:
 	mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=dist -DCMAKE_BUILD_TYPE=Debug .. && make && make install
 	cd docs && doxygen && cd ..
-
-build-android:
-	for abi in $(ABIS_SIMPLE) ; do \
-		make A_ABI=$$abi build-android-single ; \
-	done
-
-build-android-single:
-	mkdir -p build-android/$(A_ABI) && cd build-android/$(A_ABI) && \
-	cmake -DCMAKE_BUILD_TYPE=Debug \
-		-DANDROID_STL=c++_shared -DBUILD_SHARED_LIBS=on \
-		-DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK)/build/cmake/android.toolchain.cmake \
-		-DANDROID_ABI=$(A_ABI) -DCMAKE_ANDROID_ARCH_ABI=$(A_ABI) \
-		-DANDROID_PLATFORM=android-29 ../.. && make
 
 build-java:
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka
