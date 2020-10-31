@@ -3,9 +3,9 @@
 # This shell script is to set up ASAN for debugging native libs.
 # Specify your own path in those variables below.
 
-ANDROID_NDK_PATH=~/Android/Sdk/ndk/20.0.5594570
+ANDROID_NDK_PATH=~/Android/Sdk/ndk/21.3.6528147
 HOST_ARCH_LIB=linux-x86_64/lib64
-CLANG_VER=8.0.7
+CLANG_VER=9.0.8
 
 
 CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG_VER/lib
@@ -20,7 +20,7 @@ mkdir -p $SAMPLE_RES/x86
 mkdir -p $SAMPLE_RES/x86_64
 mkdir -p $SAMPLE_RES/armeabi-v7a
 mkdir -p $SAMPLE_RES/aarch64-v8a
-cp -R $ANDROID_NDK_PATH/wrap.sh/asan.x86.sh $SAMPLE_RES/x86/
-cp -R $ANDROID_NDK_PATH/wrap.sh/asan.x86_64.sh $SAMPLE_RES/x86_64/
-cp -R $ANDROID_NDK_PATH/wrap.sh/asan.armeabi-v7a.sh $SAMPLE_RES/armeabi-v7a/
-cp -R $ANDROID_NDK_PATH/wrap.sh/asan.arm64-v8a.sh $SAMPLE_RES/aarch64-v8a/
+cp -R $ANDROID_NDK_PATH/wrap.sh/asan.sh $SAMPLE_RES/x86/
+cp -R $ANDROID_NDK_PATH/wrap.sh/asan.sh $SAMPLE_RES/x86_64/
+cp -R $ANDROID_NDK_PATH/wrap.sh/asan.sh $SAMPLE_RES/armeabi-v7a/
+cp -R $ANDROID_NDK_PATH/wrap.sh/asan.sh $SAMPLE_RES/aarch64-v8a/
