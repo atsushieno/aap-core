@@ -430,7 +430,7 @@ It is up to hosting application, but there is a normative way to look up AAPs on
 
 For a normative AAP host, `AAP_PLUGIN_PATH` environment variable is used to look up AAPs on the specified paths. The environment variable contains the list of paths which are joined by platform-specific separator. Here is the list of well-known `AAP_PLUGIN_PATH` values per platform:
 
-- Linux and other Unix variants: `$HOME/.aap:/usr/local/lib/aap:/usr/lib/aap`
+- Linux and other Unix variants: `$HOME/.local/lib/aap:/usr/local/lib/aap:/usr/lib/aap`
 - MacOS (not sure if it will be supported): `$HOME/Library/Audio/Plug-ins/AAP:/Library/Audio/Plug-ins/AAP`
 - Windows (not sure if it will be supported): `c:\AAP Plugins;c:\Program Files[\AAP Plugins`
   - There is no plan to support 32bit builds on 64-bit OS. Unlike VSTs we have no 32bit legacy.

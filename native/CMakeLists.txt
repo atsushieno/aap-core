@@ -8,5 +8,7 @@ add_subdirectory ("androidaudioplugin")
 
 if (NOT ANDROID)
 	add_subdirectory ("samples")
+	add_subdirectory ("samples/aapbarebonepluginsample")
+	add_subdirectory ("tools/aap-list")
 endif (NOT ANDROID)
 

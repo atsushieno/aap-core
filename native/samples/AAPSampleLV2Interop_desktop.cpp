@@ -9,7 +9,12 @@ namespace aaplv2sample {
 
 int main(int argc, char** argv)
 {
-    aap::getPluginHostPAL()->setPluginListCache(aap::getPluginHostPAL()->getInstalledPlugins());
+	if (argc < 2) {
+		puts ("usage: aaphostsample [plugin-identifier]");
+		return 1;
+	}
+
+	aap::getPluginHostPAL()->setPluginListCache(aap::getPluginHostPAL()->getInstalledPlugins());
 
 	int sampleRate = 44100;
 	const char* pluginID = argv[1];

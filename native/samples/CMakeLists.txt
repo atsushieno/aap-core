@@ -41,4 +41,3 @@ target_compile_options(aaphostsample
 
 target_link_libraries(aaphostsample ${aaphostsample-LIBS} androidaudioplugin)
 
-

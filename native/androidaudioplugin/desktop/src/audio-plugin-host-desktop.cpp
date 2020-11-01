@@ -83,7 +83,7 @@ public:
 			cached_search_paths.emplace_back(std::string(getenv("HOME")) + "/Library/Audio/Plug-ins/AAP");
 			cached_search_paths.emplace_back("/Library/Audio/Plug-ins/AAP");
         } else {
-			cached_search_paths.emplace_back(std::string(getenv("HOME")) + "/.aap");
+			cached_search_paths.emplace_back(std::string(getenv("HOME")) + "/.local/lib/aap");
 			cached_search_paths.emplace_back("/usr/local/lib/aap");
 			cached_search_paths.emplace_back("/usr/lib/aap");
         }
