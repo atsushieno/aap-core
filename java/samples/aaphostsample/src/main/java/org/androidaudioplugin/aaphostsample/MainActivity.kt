@@ -535,13 +535,13 @@ class MainActivity : AppCompatActivity() {
             .build()
         track.setVolume(5.0f)
         track.play()
-        var i = 0
         /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
         val fa = FloatArray(w.size / 4)
         for (i in 0 .. fa.size - 1) {
             val bits = (w[i * 4 + 3].toUByte().toInt() shl 24) + (w[i * 4 + 2].toUByte().toInt() shl 16) + (w[i * 4 + 1].toUByte().toInt() shl 8) + w[i * 4].toUByte().toInt()
             fa[i] = Float.fromBits(bits)
         }
+        var i = 0
         while (i < w.size) {
             val ret = track.write(fa, i, bufferSize / 4, AudioTrack.WRITE_BLOCKING)
             if (ret <= 0)
