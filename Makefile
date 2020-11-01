@@ -28,7 +28,7 @@ $(ANDROID_NDK):
 
 build-desktop:
 	mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=dist -DCMAKE_BUILD_TYPE=Debug .. && make && make install
-	cd docs && doxygen && cd ..
+	cd docs/native && doxygen && cd ../..
 
 build-java:
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka
