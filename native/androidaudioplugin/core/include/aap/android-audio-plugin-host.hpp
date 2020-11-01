@@ -10,6 +10,7 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <unistd.h>
+#include <memory>
 #include <vector>
 #include <map>
 #include <string>
@@ -97,9 +98,9 @@ class PluginInformation
 	/* NULL-terminated list of ports */
 	std::vector<const PortInformation*> ports;
 	/* NULL-terminated list of required extensions */
-	std::vector<const AndroidAudioPluginExtension *> required_extensions;
+	std::vector<std::unique_ptr<std::string>> required_extensions;
 	/* NULL-terminated list of optional extensions */
-	std::vector<const AndroidAudioPluginExtension *> optional_extensions;
+	std::vector<std::unique_ptr<std::string>> optional_extensions;
 
 public:
 	static std::vector<PluginInformation*> parsePluginMetadataXml(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile);
@@ -186,9 +187,9 @@ public:
 		return (int) required_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getRequiredExtension(int index) const
+	const std::string* getRequiredExtension(int index) const
 	{
-		return required_extensions[(size_t) index];
+		return required_extensions[(size_t) index].get();
 	}
 	
 	int getNumOptionalExtensions() const
@@ -196,9 +197,9 @@ public:
 		return (int) optional_extensions.size();
 	}
 	
-	const AndroidAudioPluginExtension *getOptionalExtension(int index) const
+	const std::string* getOptionalExtension(int index) const
 	{
-		return optional_extensions[(size_t) index];
+		return optional_extensions[(size_t) index].get();
 	}
 	
 	int64_t getLastInfoUpdateTime() const
