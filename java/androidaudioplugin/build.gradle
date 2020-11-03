@@ -64,9 +64,10 @@ android {
         androidaudioplugin {
             name 'androidaudioplugin'
             libraryName 'androidaudioplugin'
-            headers '../../native/androidaudioplugin/core/include'
             // There is no way to specify more than one include directory.
             // headers '../../native/androidaudioplugin/android/include'
+            // FIXME: remove this dummy headers dir hack once https://issuetracker.google.com/issues/172105145 is supported.
+            headers '../../dummy-prefab-headers/include'
         }
     }
 }

@@ -7,6 +7,7 @@ NDK_HOST=`uname | tr '[:upper:]' '[:lower:]'`
 all: \
 	maybe-download-ndk \
 	build-desktop \
+	setup-dummy-prefab-headers-dir\
 	build-java
 
 .PHONY:
@@ -32,4 +33,11 @@ build-desktop:
 
 build-java:
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka
+
+# FIXME: remove this target once https://issuetracker.google.com/issues/172105145 is supported.
+setup-dummy-prefab-headers-dir:
+	mkdir dummy-prefab-headers
+	cp -R native/plugin-api/include dummy-prefab-headers
+	cp -R native/androidaudioplugin/core/include dummy-prefab-headers
+	cp -R native/androidaudioplugin/android/include dummy-prefab-headers
 
