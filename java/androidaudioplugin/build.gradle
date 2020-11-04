@@ -21,6 +21,7 @@ android {
 
         externalNativeBuild {
             cmake {
+                arguments "-DANDROID_STL=c++_shared"
                 // Enable this section if you want to debug native code using AddressSanitizer
                 //arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                 //cppFlags "-fsanitize=address -fno-omit-frame-pointer"
@@ -44,7 +45,7 @@ android {
 
     packagingOptions{
         // FIXME: (ASAN) looks like a hack, but -DANDROID_STL=c++_shared causes this https://stackoverflow.com/questions/48749876/more-than-one-file-was-found-with-os-independent-path-lib-armeabi-v7a-libopencv
-        pickFirst '*.so'
+        // pickFirst '*.so'
         doNotStrip "*/*/*.so" // debuggable!
     }
 
