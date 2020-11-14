@@ -303,7 +303,7 @@ public:
     }
 
 	std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr) {
-		auto ret = plugin_list_cache;
+		auto& ret = plugin_list_cache;
 		if (ret.size() > 0)
 			return ret;
 		std::vector<std::string> aapPaths{};
