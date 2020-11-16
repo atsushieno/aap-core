@@ -22,7 +22,7 @@ jobs:
         java-version: 1.8
     - name: apt install
       run: |
-        echo y | sudo apt-get install doxygen libgrpc++-dev libgrpc-dev libproto-dev
+        echo y | sudo apt-get install doxygen libgrpc++-dev libgrpc-dev libprotobuf-dev
     - name: stupid NDK setup workaround for GitHub Actions
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
