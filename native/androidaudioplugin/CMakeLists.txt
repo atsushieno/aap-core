@@ -41,6 +41,7 @@ set (androidaudioplugin_SOURCES
 	"desktop/src/gen/AudioPluginService.pb.cc"
 	"desktop/src/gen/AudioPluginService.grpc.pb.cc"
 	"desktop/src/audio-plugin-host-desktop.cpp"
+	"desktop/src/AudioPluginInterfaceImpl.cpp"
 	)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} dl grpc grpc++ protobuf rt)
