@@ -17,6 +17,8 @@ class GenericDesktopPluginHostPAL : public PluginHostPAL
 #endif
 
 public:
+	std::string getRemotePluginEntrypoint() override { return "GetDesktopAudioPluginFactoryClientBridge"; }
+
 	std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override {
 		std::vector<PluginInformation *> ret{};
 		for (auto p : aapMetadataPaths) {

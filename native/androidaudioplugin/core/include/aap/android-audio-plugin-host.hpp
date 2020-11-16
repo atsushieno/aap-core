@@ -288,6 +288,7 @@ public:
 			delete plugin;
 	}
 
+	virtual std::string getRemotePluginEntrypoint() = 0;
 	virtual std::vector<std::string> getPluginPaths() = 0;
 	virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
 	virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;

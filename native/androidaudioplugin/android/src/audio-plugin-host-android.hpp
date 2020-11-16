@@ -31,7 +31,8 @@ class AndroidPluginHostPAL : public PluginHostPAL
 	std::vector<PluginInformation*> queryInstalledPlugins();
 
 public:
-    std::vector<std::string> getPluginPaths() override {
+	std::string getRemotePluginEntrypoint() override { return "GetAndroidAudioPluginFactoryClientBridge"; }
+	std::vector<std::string> getPluginPaths() override {
 		// Due to the way how Android service query works (asynchronous),
 		// it has to wait until AudioPluginHost service query completes.
 		for (int i = 0; i < SERVICE_QUERY_TIMEOUT_IN_SECONDS; i++)

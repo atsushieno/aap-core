@@ -164,7 +164,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	dlerror(); // clean up any previous error state
 	auto dl = dlopen("libandroidaudioplugin.so", RTLD_LAZY);
 	assert (dl != nullptr);
-	auto factoryGetter = (aap_factory_t) dlsym(dl, "GetAndroidAudioPluginFactoryClientBridge");
+	auto factoryGetter = (aap_factory_t) dlsym(dl, getPluginHostPAL()->getRemotePluginEntrypoint().c_str());
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
