@@ -38,8 +38,8 @@ else (ANDROID)
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"desktop/src/desktop-audio-plugin-client-bridge.cpp"
-	"desktop/src/AudioPluginService.pb.cc"
-	"desktop/src/AudioPluginService.grpc.pb.cc"
+	"desktop/src/gen/AudioPluginService.pb.cc"
+	"desktop/src/gen/AudioPluginService.grpc.pb.cc"
 	"desktop/src/audio-plugin-host-desktop.cpp"
 	)
 

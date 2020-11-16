@@ -1,5 +1,5 @@
-// protoc --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` AudioPluginService.proto 
-// protoc AudioPluginService.proto --cpp_out=.
+// protoc --grpc_out=gen --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` AudioPluginService.proto 
+// protoc AudioPluginService.proto --cpp_out=gen
 
 syntax = "proto3";
 

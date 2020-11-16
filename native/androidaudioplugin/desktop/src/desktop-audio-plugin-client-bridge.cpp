@@ -6,7 +6,7 @@
 #include "aap/android-audio-plugin-host.hpp"
 #include "audio-plugin-host-desktop.hpp"
 #include <grpc++/grpc++.h>
-#include "AudioPluginService.grpc.pb.h"
+#include "gen/AudioPluginService.grpc.pb.h"
 
 #define AAP_SERVICE_URL "localhost:44100"
 
