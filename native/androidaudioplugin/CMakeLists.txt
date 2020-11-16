@@ -37,9 +37,13 @@ else (ANDROID)
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
-	"desktop/src/audio-plugin-host-desktop.cpp" android/src/android-audio-plugin-host-android.hpp)
+	"desktop/src/desktop-audio-plugin-client-bridge.cpp"
+	"desktop/src/AudioPluginService.pb.cc"
+	"desktop/src/AudioPluginService.grpc.pb.cc"
+	"desktop/src/audio-plugin-host-desktop.cpp"
+	)
 
-set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} dl)
+set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} dl grpc grpc++ protobuf rt)
 endif (ANDROID)
 
 # Specifies a library name, specifies whether the library is STATIC or

@@ -1,0 +1,67 @@
+// protoc --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` AudioPluginService.proto 
+// protoc AudioPluginService.proto --cpp_out=.
+
+syntax = "proto3";
+
+package org.androidaudioplugin;
+
+service AudioPluginService {
+    rpc Create(CreateRequest) returns (InstanceId) {}
+    rpc IsPluginAlive(InstanceId) returns (AliveStatus) {}
+    rpc GetStateSize(InstanceId) returns (Size) {}
+    rpc GetState(GetStateRequest) returns (Unit) {}
+    rpc SetState(SetStateRequest) returns (Unit) {}
+    rpc Prepare(PrepareRequest) returns (Unit) {}
+    rpc Activate(InstanceId) returns (Unit) {}
+    rpc Process(ProcessRequest) returns (Unit) {}
+    rpc Deactivate(InstanceId) returns (Unit) {}
+    rpc Destroy(InstanceId) returns (Unit) {}
+}
+
+message Unit {}
+
+message AliveStatus {
+    bool is_alive = 1;
+}
+
+message Size {
+    int32 size = 1;
+}
+
+message InstanceId {
+    int32 instance_id = 1;
+}
+
+message CreateRequest {
+    string plugin_id = 1;
+    int32 sample_rate = 2;
+    repeated Extension extensions = 3;
+}
+
+message Extension {
+    string uri = 1;
+    int64 fd = 2;
+}
+
+message GetStateRequest {
+    int32 instance_id = 1;
+    int64 shared_memory_fd = 2;
+}
+
+message SetStateRequest {
+    int32 instance_id = 1;
+    int64 shared_memory_fd = 2;
+    int32 size = 3;
+}
+
+message PrepareRequest {
+    int32 instance_id = 1;
+    int32 frame_count = 2;
+    int32 port_count = 3;
+    repeated int32 shared_memory_fds = 4;
+}
+
+message ProcessRequest {
+    int32 instance_id = 1;
+    int32 timeout_nanoseconds = 2;
+}
