@@ -10,6 +10,8 @@
 #include <android/binder_ibinder.h>
 #include "aap/android-audio-plugin-host.hpp"
 
+#define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
+
 namespace aap {
 
 class AudioPluginServiceConnection {
@@ -30,19 +32,16 @@ class AndroidPluginHostPAL : public PluginHostPAL
 
 public:
     std::vector<std::string> getPluginPaths() override {
+		// Due to the way how Android service query works (asynchronous),
+		// it has to wait until AudioPluginHost service query completes.
+		for (int i = 0; i < SERVICE_QUERY_TIMEOUT_IN_SECONDS; i++)
+			if (plugin_list_cache.size() == 0)
+				sleep(1);
 		std::vector<std::string> ret{};
-		// FIXME: ideally serviceConnections should have a valid list by the time this function is called.
-		//  Unfortunately to get it working, bindService() needs to come up with results synchronously,
-		//  which is not the case. Therefore we simply accumulate query results and return unique values/
-#if true
-    	for (auto p : getInstalledPlugins()) {
+    	for (auto p : plugin_list_cache) {
 			if (std::find(ret.begin(), ret.end(), p->getPluginPackageName()) == ret.end())
 				ret.emplace_back(p->getPluginPackageName());
     	}
-#else
-        for (auto c : serviceConnections)
-            ret.emplace_back(c.serviceIdentifier);
-#endif
 		return ret;
     }
 
