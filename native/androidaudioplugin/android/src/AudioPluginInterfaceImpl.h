@@ -17,22 +17,20 @@
 
 namespace aap {
 
+// This is a service class that is instantiated by a local Kotlin AudioPluginService instance.
+// It is instantiated for one plugin per client.
+// One client can instantiate multiple plugins.
 class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterface {
-    aap::PluginHostManager *manager;
-    aap::PluginHost *host;
+    std::unique_ptr<aap::PluginHostManager> manager;
+    std::unique_ptr<aap::PluginHost> host;
     std::vector<AndroidAudioPluginBuffer> buffers{};
 
 public:
 
     AudioPluginInterfaceImpl()
     {
-        manager = new PluginHostManager();
-        host = new PluginHost(manager);
-    }
-
-    virtual ~AudioPluginInterfaceImpl() {
-        delete host;
-        delete manager;
+        manager.reset(new PluginHostManager());
+        host.reset(new PluginHost(manager.get()));
     }
 
     ::ndk::ScopedAStatus beginCreate(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override
