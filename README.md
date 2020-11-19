@@ -53,7 +53,7 @@ From app packagers perspective and users perspective, it can be distributed like
 
 AAP developers create audio plugin in native code using Android NDK, create plugin "metadata" as an Android XML resource (`aap_metadata.xml`), and optionally implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, then package them together. The metadata provides developer details, port details (as long as they are known), and feature requirement details.
 
-TODO: The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage. We should seriously reconsider this. It will be mandatory when we support so-called plugin wrappers and loadable instrumental banks (e.g. [dexed](https://github.com/asb2m10/dexed) Carts).
+TODO: The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage. We should seriously reconsider this. It will be mandatory when we support so-called plugin wrappers.
 
 AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. We are rather native oriented for reusing existing code. (I believe they also aim to implement plugins in native code, but not sure. The SDK is not frequently updated.)
 
