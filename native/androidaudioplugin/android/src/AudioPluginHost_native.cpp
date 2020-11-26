@@ -121,7 +121,8 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
 																 j_method_get_shared_library_filename))),
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_library_entrypoint)))
+																 j_method_get_library_entrypoint))),
+			"" // no use on Android
 	);
 	for (auto p : freeList)
 		free((void*) p);

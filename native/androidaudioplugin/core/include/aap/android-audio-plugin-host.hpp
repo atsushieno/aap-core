@@ -91,6 +91,7 @@ class PluginInformation
 	std::string shared_library_filename{};
 	std::string library_entrypoint{};
 	std::string plugin_id{};
+	std::string metadata_full_path{};
 	int64_t last_info_updated_unixtime_milliseconds;
 
 	/* NULL-terminated list of categories */
@@ -109,7 +110,7 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
 	
-	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint)
+	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath)
 		: is_out_process(isOutProcess),
 		  plugin_package_name(pluginPackageName),
 		  plugin_local_name(pluginLocalName),
@@ -118,7 +119,8 @@ public:
 		  version(versionString),
 		  shared_library_filename(sharedLibraryFilename),
 		  library_entrypoint(libraryEntrypoint),
-		  plugin_id(pluginID)
+		  plugin_id(pluginID),
+		  metadata_full_path(metadataFullPath)
 	{
 	    struct tm epoch{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         last_info_updated_unixtime_milliseconds = (int64_t) (1000.0 * difftime(time(nullptr), mktime(&epoch)));
@@ -212,7 +214,12 @@ public:
 	{
 		return plugin_id;
 	}
-	
+
+	const std::string getMetadataFullPath() const
+	{
+		return metadata_full_path;
+	}
+
 	bool isInstrument() const
 	{
 		// The purpose of this function seems to be based on hacky premise. So do we.

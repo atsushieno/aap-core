@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include "../include/aap/android-audio-plugin-host.hpp"
 #include "../include/aap/logging.h"
 #include <vector>
@@ -38,7 +39,8 @@ void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char*
                 version ? version : "",
                 uid ? uid : "",
                 library ? library : "",
-                entrypoint ? entrypoint : "");
+                entrypoint ? entrypoint : "",
+                xmlfile);
         auto portsElement = pluginElement->FirstChildElement("ports");
         for (auto portElement = portsElement->FirstChildElement("port");
                 portElement != nullptr;
@@ -140,6 +142,16 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 {
 	dlerror(); // clean up any previous error state
 	auto file = descriptor->getLocalPluginSharedLibrary();
+	auto metadataFullPath = descriptor->getMetadataFullPath();
+	if (!metadataFullPath.empty()) {
+		size_t idx = metadataFullPath.find_last_of('/');
+		if (idx > 0) {
+			auto soFullPath = metadataFullPath.substr(0, idx + 1) + file;
+			struct stat st;
+			if (stat(soFullPath.c_str(), &st) == 0)
+				file = soFullPath;
+		}
+	}
 	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
 	if (dl == nullptr) {

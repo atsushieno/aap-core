@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ostream>
 #include "aap/android-audio-plugin-host.hpp"
+#include <sys/stat.h>
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -48,5 +49,25 @@ int main(int argc, char** argv) {
         std::cout << "    - Min Value: " << port->getMinimumValue() << std::endl;
         std::cout << "    - Max Value: " << port->getMaximumValue() << std::endl;
     }
+
+    auto file = info->getLocalPluginSharedLibrary();
+    auto metadataFullPath = info->getMetadataFullPath();
+    std::cout << "Metadata fullpath:\t" << metadataFullPath << std::endl;
+    if (!metadataFullPath.empty()) {
+        size_t idx = metadataFullPath.find_last_of('/');
+        if (idx > 0) {
+            auto soFullPath = metadataFullPath.substr(0, idx + 1) + file;
+            struct stat st;
+            if (stat(soFullPath.c_str(), &st) == 0)
+                file = soFullPath;
+            std::cout << "so fullpath:\t\t" << soFullPath << std::endl;
+        }
+    }
+    auto entrypoint = info->getLocalPluginLibraryEntryPoint();
+    auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
+    if (dl == nullptr)
+        std::cout << "AAP library " << file << " could not be loaded." << std::endl;
+    else
+        dlclose(dl);
 }
 
