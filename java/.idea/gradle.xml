@@ -15,10 +15,10 @@
             <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/androidaudioplugin-ui-androidx" />
             <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/samples/aapbarebonepluginsample" />
             <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/samples/aaphostsample" />
+            <option value="/media/atsushi/extssd0/sources/android-audio-plugin-framework/java/samples/aaphostsample2" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
-        <option name="useQualifiedModuleNames" value="true" />
       </GradleProjectSettings>
     </option>
   </component>

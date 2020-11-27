@@ -8,9 +8,6 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.isVisible
-import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
-import kotlinx.android.synthetic.main.local_plugin_details.*
 import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
