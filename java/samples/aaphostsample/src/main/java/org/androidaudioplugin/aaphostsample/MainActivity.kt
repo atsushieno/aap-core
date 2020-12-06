@@ -8,8 +8,6 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,13 +15,13 @@ import android.view.Window
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
-import androidx.core.widget.addTextChangedListener
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.audio_plugin_parameters_list_item.view.*
-import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
+import androidx.core.view.isVisible
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
+import org.androidaudioplugin.aaphostsample.databinding.ActivityMainBinding
+import org.androidaudioplugin.aaphostsample.databinding.AudioPluginParametersListItemBinding
+import org.androidaudioplugin.aaphostsample.databinding.AudioPluginServiceListItemBinding
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.time.ExperimentalTime
@@ -36,28 +34,28 @@ class MainActivity : AppCompatActivity() {
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val binding =
+                if (convertView != null)
+                    AudioPluginServiceListItemBinding.bind(convertView)
+                else AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(context))
             val item = getItem(position)
-            var view = convertView
-            if (view == null)
-                view = LayoutInflater.from(context).inflate(R.layout.audio_plugin_service_list_item, parent, false)
-            if (view == null)
-                throw UnsupportedOperationException()
+            val view = binding.root
             if (item == null)
-                return view
-            view.audio_plugin_service_name.text = item.first.label
-            view.audio_plugin_name.text = item.second.displayName
-            view.audio_plugin_list_identifier.text = item.second.pluginId
+                throw UnsupportedOperationException()
 
-            val service = item.first
             val plugin = item.second
 
             if (plugin.pluginId == null)
                 throw UnsupportedOperationException ("Insufficient plugin information was returned; missing pluginId")
 
+            binding.audioPluginServiceName.text = item.first.label
+            binding.audioPluginName.text = item.second.displayName
+            binding.audioPluginListIdentifier.text = item.second.pluginId
+
             view.setOnClickListener {
                 portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
-                this@MainActivity.audioPluginParametersListView.adapter = portsAdapter
                 this@MainActivity.selectedPluginIndex = position
+                this@MainActivity.binding.audioPluginParametersListView.adapter = portsAdapter
             }
 
             return view
@@ -70,24 +68,23 @@ class MainActivity : AppCompatActivity() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View
         {
             val item = getItem(position)
-            var view = convertView
-            if (view == null)
-                view = LayoutInflater.from(context).inflate(R.layout.audio_plugin_parameters_list_item, parent, false)
-            if (view == null)
-                throw UnsupportedOperationException()
+            val binding =
+                if (convertView != null)
+                    AudioPluginParametersListItemBinding.bind(convertView)
+                else AudioPluginParametersListItemBinding.inflate(LayoutInflater.from(context))
             if (item == null)
-                return view
+                throw UnsupportedOperationException()
 
-            view.audio_plugin_parameter_content_type.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
-            view.audio_plugin_parameter_direction.text = if(item.direction == 0) "In" else "Out"
-            view.audio_plugin_parameter_name.text = item.name
-            view.audio_plugin_seekbar_parameter_value.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            binding.audioPluginParameterContentType.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
+            binding.audioPluginParameterDirection.text = if(item.direction == 0) "In" else "Out"
+            binding.audioPluginParameterName.text = item.name
+            binding.audioPluginSeekbarParameterValue.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     if (!fromUser)
                         return
                     parameters[position] = progress / 100.0f
-                    view.audio_plugin_edit_text_parameter_value.text.clear()
-                    view.audio_plugin_edit_text_parameter_value.text.insert(0, parameters[position].toString())
+                    binding.audioPluginEditTextParameterValue.text.clear()
+                    binding.audioPluginEditTextParameterValue.text.insert(0, parameters[position].toString())
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {
                 }
@@ -96,14 +93,15 @@ class MainActivity : AppCompatActivity() {
                 }
             })
             var value = parameters[ports.indexOf(item)]
-            view.audio_plugin_seekbar_parameter_value.progress = (100.0 * value).toInt()
+            binding.audioPluginSeekbarParameterValue.progress = (100.0 * value).toInt()
 
-            return view
+            return binding.root
         }
 
         val parameters = ports.map { p -> p.default }.toFloatArray()
     }
 
+    private lateinit var binding : ActivityMainBinding
     private lateinit var host : AudioPluginHost
     private var instance : AudioPluginInstance? = null
 
@@ -121,6 +119,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
+        binding = ActivityMainBinding.inflate(LayoutInflater.from(this))
+        setContentView(binding.root)
 
         host = AudioPluginHost(applicationContext)
 
@@ -131,8 +131,7 @@ class MainActivity : AppCompatActivity() {
 
         Toast.makeText(this, "loaded input wav", Toast.LENGTH_LONG).show()
 
-        setContentView(R.layout.activity_main)
-        wavePostPlugin.sample = arrayOf(0).toIntArray() // dummy
+        binding.wavePostPlugin.sample = arrayOf(0, 0, 0, 0).toIntArray() // dummy
 
         // Query AAPs
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
@@ -140,10 +139,10 @@ class MainActivity : AppCompatActivity() {
 
         val plugins = servicedPlugins.filter { p -> p.first.packageName != applicationInfo.packageName }.toTypedArray()
         val adapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, plugins)
-        this.audioPluginListView.adapter = adapter
+        binding.audioPluginListView.adapter = adapter
 
 
-        applyToggleButton.setOnCheckedChangeListener { _, checked ->
+        binding.applyToggleButton.setOnCheckedChangeListener { _, checked ->
             if (checked) {
                 if (selectedPluginIndex < 0)
                     return@setOnCheckedChangeListener
@@ -151,15 +150,15 @@ class MainActivity : AppCompatActivity() {
                 if (item != null)
                     applyPlugin(item.first, item.second)
             } else {
-                wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
-                wavePostPlugin.requestLayout()
+                binding.wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
+                binding.wavePostPlugin.requestLayout()
             }
         }
-        playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, applyToggleButton.isChecked) } }
+        binding.playPostPluginLabel.setOnClickListener { GlobalScope.launch {playSound(host.sampleRate, binding.applyToggleButton.isChecked) } }
 
         outBuf = ByteArray(inBuf.size)
-        wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
-        wavePostPlugin.requestLayout()
+        binding.wavePostPlugin.sample = inBuf.map { b -> b.toInt() }.toIntArray()
+        binding.wavePostPlugin.requestLayout()
     }
 
     @ExperimentalTime
@@ -471,7 +470,7 @@ class MainActivity : AppCompatActivity() {
     private fun onProcessAudioCompleted()
     {
         runOnUiThread {
-            wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
+            binding.wavePostPlugin.sample = outBuf.map { b -> b.toInt() }.toIntArray()
             Toast.makeText(this@MainActivity, "set output wav", Toast.LENGTH_LONG).show()
         }
         var instance = this.instance

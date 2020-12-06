@@ -1,22 +1,12 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id 'kotlin-android-extensions'
     id 'org.jetbrains.dokka-android'
     id 'maven-publish'
 }
 
 android {
     compileSdkVersion 30
-    // It will not be enalbed until ALL dependencies switch to viewBinding.
-    // See https://issuetracker.google.com/issues/161157937.
-    /*
-    buildFeatures {
-        viewBinding true
-    }*/
-    androidExtensions {
-        experimental = true
-    }
 
     defaultConfig {
         minSdkVersion 29
@@ -40,6 +30,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        viewBinding true
     }
 }
 
@@ -83,8 +77,8 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2"
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
-    implementation  'com.github.massoudss:waveformSeekBar:1.1.4'
+    implementation  'com.github.massoudss:waveformSeekBar:2.0.0'
 }

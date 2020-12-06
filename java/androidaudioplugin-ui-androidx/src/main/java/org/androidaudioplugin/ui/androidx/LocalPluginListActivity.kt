@@ -10,12 +10,12 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.android.synthetic.main.local_plugin_list.*
-import kotlinx.android.synthetic.main.audio_plugin_service_list_item.view.*
 import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.ui.androidx.databinding.AudioPluginServiceListItemBinding
+import org.androidaudioplugin.ui.androidx.databinding.LocalPluginListBinding
 
 class LocalPluginListActivity : AppCompatActivity() {
 
@@ -23,17 +23,16 @@ class LocalPluginListActivity : AppCompatActivity() {
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            var binding =
+                if (convertView != null) AudioPluginServiceListItemBinding.bind(convertView)
+                else AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(this@LocalPluginListActivity))
             val item = getItem(position)
-            var view = convertView
-            if (view == null)
-                view = LayoutInflater.from(context).inflate(R.layout.audio_plugin_service_list_item, parent, false)
-            if (view == null)
-                throw UnsupportedOperationException()
+            var view = binding.root
             if (item == null)
-                return view
-            view.audio_plugin_service_name.text = item.first.label
-            view.audio_plugin_name.text = item.second.displayName
-            view.audio_plugin_identifier.text = item.second.pluginId
+                throw UnsupportedOperationException("item not available!?")
+            binding.audioPluginServiceName.text = item.first.label
+            binding.audioPluginName.text = item.second.displayName
+            binding.audioPluginIdentifier.text = item.second.pluginId
 
             view.setOnClickListener {
                 var intent = Intent(context, LocalPluginDetailsActivity::class.java).apply {
@@ -48,7 +47,8 @@ class LocalPluginListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.local_plugin_list)
+        val binding = LocalPluginListBinding.inflate(LayoutInflater.from(this))
+        setContentView(binding.root)
 
         // Query AAPs
         val pluginServices = AudioPluginHostHelper.queryAudioPluginServices(this)
@@ -56,7 +56,7 @@ class LocalPluginListActivity : AppCompatActivity() {
 
         val localPlugins = servicedPlugins.filter { p -> p.first.packageName == applicationInfo.packageName }.toTypedArray()
         val localAdapter = PluginViewAdapter(this, R.layout.audio_plugin_service_list_item, localPlugins)
-        this.localAudioPluginListView.adapter = localAdapter
+        binding.localAudioPluginListView.adapter = localAdapter
 
         // It is a hidden clickable label to enable debugger
         this.findViewById<View>(R.id.localPluginsLabel).setOnClickListener {
