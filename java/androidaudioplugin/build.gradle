@@ -13,14 +13,13 @@ android {
         minSdkVersion 29
         targetSdkVersion 30
         versionCode 1
-        versionName "0.6.1"
+        versionName "0.6.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
 
         externalNativeBuild {
             cmake {
-                arguments "-DANDROID_STL=c++_shared"
                 // Enable this section if you want to debug native code using AddressSanitizer
                 //arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                 //cppFlags "-fsanitize=address -fno-omit-frame-pointer"
@@ -39,13 +38,6 @@ android {
         cmake {
             path "../../native/androidaudioplugin/CMakeLists.txt"
         }
-    }
-    ndkVersion '21.3.6528147'
-
-    packagingOptions{
-        // FIXME: (ASAN) looks like a hack, but -DANDROID_STL=c++_shared causes this https://stackoverflow.com/questions/48749876/more-than-one-file-was-found-with-os-independent-path-lib-armeabi-v7a-libopencv
-        // pickFirst '*.so'
-        doNotStrip "*/*/*.so" // debuggable!
     }
 
     dokka {
