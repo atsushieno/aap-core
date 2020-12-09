@@ -24,17 +24,13 @@ class AudioPluginServiceTest {
         val serviceInfo = serviceInfos.first { c -> c.label == "AAPLV2SamplePlugin" }
         val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        val idx = pluginInfo.serviceIdentifier.indexOf('/')
-        intent.component = ComponentName(
-            pluginInfo.serviceIdentifier.substring(0, idx),
-            pluginInfo.serviceIdentifier.substring(idx + 1)
-        )
+        intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
         val binder = serviceRule.bindService(intent)
         val iface = AudioPluginInterface.Stub.asInterface(binder)
 
-        val instanceId = iface.create(pluginId, 44100)
+        val instanceId = iface.beginCreate(pluginId, 44100)
         assert(instanceId >= 0)
-        val instanceId2 = iface.create(pluginId, 44100) // can create multiple times
+        val instanceId2 = iface.beginCreate(pluginId, 44100) // can create multiple times
         assert(instanceId2 >= 0)
         assert(instanceId != instanceId2)
 
