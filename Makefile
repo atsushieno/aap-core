@@ -32,7 +32,7 @@ build-desktop:
 	cd docs/native && doxygen && cd ../..
 
 build-java:
-	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka
+	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka publishToMavenLocal
 
 # FIXME: remove this target once https://issuetracker.google.com/issues/172105145 is supported.
 setup-dummy-prefab-headers-dir:
