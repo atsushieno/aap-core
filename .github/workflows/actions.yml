@@ -78,6 +78,8 @@ jobs:
     - name: install deps
       run: |
         brew install doxygen pkg-config cmake graphviz
+    - name: workaround for https://github.com/actions/virtual-environments/issues/2228
+      run: echo cmake.dir=/usr/local > java/local.properties
     - name: build
       run: make all-no-desktop
       env:
