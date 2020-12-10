@@ -24,6 +24,9 @@ android {
             }
         }
     }
+    buildFeatures {
+        prefab true
+    }
     buildTypes {
         release {
             minifyEnabled false
