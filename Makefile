@@ -7,7 +7,12 @@ NDK_HOST=`uname | tr '[:upper:]' '[:lower:]'`
 all: \
 	maybe-download-ndk \
 	build-desktop \
-	setup-dummy-prefab-headers-dir\
+	setup-dummy-prefab-headers-dir \
+	build-java
+
+all-no-desktop: \
+	maybe-download-ndk \
+	setup-dummy-prefab-headers-dir \
 	build-java
 
 .PHONY:

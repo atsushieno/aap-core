@@ -77,8 +77,8 @@ jobs:
         java-version: 11
     - name: install deps
       run: |
-        brew install doxygen pkg-config cmake grpc graphviz
+        brew install doxygen pkg-config cmake graphviz
     - name: build
-      run: make
+      run: make all-no-desktop
       env:
         ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
