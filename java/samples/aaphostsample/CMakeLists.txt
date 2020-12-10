@@ -23,6 +23,8 @@ add_library( # Specifies the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
+        # FIXME: this is not a valid sample anymore. It accesses AIDL which is NOT public.
+        # replace with aap::PluginHost and co.
         "src/main/jni/AAPSampleRemoteInterop_native.cpp"
         )
 
@@ -30,6 +32,7 @@ target_include_directories(aaphostsample
         PRIVATE
         "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
         "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/core/include"
+        # FIXME: it should have no access to AIDL generated code.
         "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/android/src/gen/include"
         "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
         "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
@@ -44,5 +47,19 @@ target_compile_options(aaphostsample
         -Wshadow-field
         )
 
+if (FALSE)
+if (ANDROID)
+    find_package (androidaudioplugin REQUIRED CONFIG)
+    set (aaphostsample_LIBS
+            android
+            binder_ndk
+            log
+            androidaudioplugin::androidaudioplugin)
+else (ANDROID)
+    set (aaphostsample_LIBS
+            androidaudioplugin)
+endif (ANDROID)
+target_link_libraries(aaphostsample ${aaphostsample_LIBS})
+else ()
 target_link_libraries(aaphostsample android binder_ndk log androidaudioplugin)
-
+endif ()

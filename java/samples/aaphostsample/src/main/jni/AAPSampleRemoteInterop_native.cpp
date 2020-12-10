@@ -1,3 +1,4 @@
+#if false
 
 #include <jni.h>
 #include <android/binder_ibinder.h>
@@ -257,3 +258,5 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
 }
 
 } // extern "C"
+
+#endif
