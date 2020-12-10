@@ -35,19 +35,8 @@ android {
             path "CMakeLists.txt"
         }
     }
-    ndkVersion = '21.3.6528147'
-    packagingOptions{
-        // FIXME: (ASAN) looks like a hack, but -DANDROID_STL=c++_shared causes this https://stackoverflow.com/questions/48749876/more-than-one-file-was-found-with-os-independent-path-lib-armeabi-v7a-libopencv
-        pickFirst '*.so'
-        doNotStrip "*/*/*.so" // debuggable!
-    }
-
     aaptOptions {
         noCompress "sample.wav"
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
