@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.5.1)
 
 project(androidaudioplugin VERSION 0.6.2 LANGUAGES CXX)
 
