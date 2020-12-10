@@ -29,6 +29,7 @@ allprojects {
         maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
         maven { url "https://jitpack.io" }
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
+        mavenLocal()
     }
 }
 
