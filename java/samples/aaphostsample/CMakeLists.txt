@@ -47,7 +47,7 @@ target_compile_options(aaphostsample
         -Wshadow-field
         )
 
-if (TRUE)
+if (BUILD_WITH_PREFAB)
 if (ANDROID)
     find_package (androidaudioplugin REQUIRED CONFIG)
     set (aaphostsample_LIBS
