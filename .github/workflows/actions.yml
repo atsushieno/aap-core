@@ -20,6 +20,13 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
+    - name: cache NDK
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-ndk
+      with:
+        path: /usr/local/lib/android/sdk/ndk/21.2.6472646
+        key: ndk_r21c
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libgrpc++-dev libgrpc-dev libprotobuf-dev graphviz cmake ninja-build
@@ -29,15 +36,6 @@ jobs:
       run: echo cmake.dir=/usr > java/local.properties
     - name: build
       run: make
-    - name: cache NDK
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-ndk
-      with:
-        path: android-ndk-r21c-linux-x86_64.zip
-        key: android-ndk-r21c-linux-x86_64.zip
-        restore-keeys: |
-          android-ndk-r21c-linux-x86_64.zip
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
@@ -75,6 +73,13 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
+    - name: cache NDK
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-ndk
+      with:
+        path: /Users/runner/Library/Android/sdk/ndk/21.2.6472646
+        key: ndk_r21c
     - name: install deps
       run: |
         brew install doxygen ninja graphviz
