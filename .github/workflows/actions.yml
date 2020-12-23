@@ -26,7 +26,7 @@ jobs:
         cache-name: cache-ndk
       with:
         path: /usr/local/lib/android/sdk/ndk/21.2.6472646
-        key: ndk_r21c
+        key: ndk_r21c_linux
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libgrpc++-dev libgrpc-dev libprotobuf-dev graphviz cmake ninja-build
@@ -79,7 +79,7 @@ jobs:
         cache-name: cache-ndk
       with:
         path: /Users/runner/Library/Android/sdk/ndk/21.2.6472646
-        key: ndk_r21c
+        key: ndk_r21c_osx
     - name: install deps
       run: |
         brew install doxygen ninja graphviz
