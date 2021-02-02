@@ -36,6 +36,3 @@ AAssetManager *get_android_asset_manager(JNIEnv* env) {
 }
 
 }
-
-// FIXME: it is kind of hack; dynamically loaded and used by JuceAAPWrapper.
-extern "C" JavaVM *getJVM() { return aap::android_vm; }
