@@ -65,6 +65,7 @@ public:
 	JNIEnv* getJNIEnv();
 
 	void initialize(JNIEnv *env, jobject applicationContext);
+	void terminate(JNIEnv *env);
 
 	void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
 

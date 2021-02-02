@@ -6,6 +6,7 @@
 namespace aap {
 
 void set_application_context(JNIEnv *env, jobject applicationContext);
+void unset_application_context(JNIEnv *env);
 
 JavaVM *get_android_jvm();
 

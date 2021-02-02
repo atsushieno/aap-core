@@ -85,4 +85,9 @@ void AndroidPluginHostPAL::initialize(JNIEnv *env, jobject applicationContext)
     aap::set_application_context(env, applicationContext);
 }
 
+void AndroidPluginHostPAL::terminate(JNIEnv *env)
+{
+    aap::unset_application_context(env);
+}
+
 } // namespace aap

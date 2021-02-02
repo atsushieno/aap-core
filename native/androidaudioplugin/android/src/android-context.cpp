@@ -6,10 +6,19 @@ namespace aap {
 JavaVM *android_vm{nullptr};
 jobject application_context{nullptr};
 
+extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+	android_vm = vm;
+	return JNI_VERSION_1_6;
+}
+
+void unset_application_context(JNIEnv *env) {
+	if (application_context)
+		env->DeleteGlobalRef(application_context);
+}
+
 void set_application_context(JNIEnv *env, jobject jobjectApplicationContext) {
     if (application_context)
-        env->DeleteGlobalRef(application_context);
-	env->GetJavaVM(&android_vm);
+        unset_application_context(env);
 	application_context = env->NewGlobalRef((jobject) jobjectApplicationContext);
 }
 
