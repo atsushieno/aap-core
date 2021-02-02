@@ -414,7 +414,6 @@ class PluginInstance
 	friend class PluginHost;
 	friend class PluginHostManager;
 	
-	PluginHost *host;
 	int sample_rate{44100};
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
@@ -424,8 +423,7 @@ class PluginInstance
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
 	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-		: host(pluginHost),
-		  sample_rate(sampleRate),
+		: sample_rate(sampleRate),
 		  pluginInfo(pluginInformation),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
