@@ -46,7 +46,7 @@ afterEvaluate {
                 groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
                 from components.release
-                artifactId = 'androidaudioplugin-ui-androidx'
+                artifactId = 'androidaudioplugin-ui-traditional'
             }
             // Creates a Maven publication called "debug".
             debug(MavenPublication) {
@@ -54,7 +54,7 @@ afterEvaluate {
                 groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
                 from components.debug
-                artifactId = 'androidaudioplugin-ui-androidx'
+                artifactId = 'androidaudioplugin-ui-traditional'
             }
         }
         repositories {

@@ -26,7 +26,7 @@ Once supplemental things are set up, Android Studio can be used for development 
   -  `desktop` (general Unix-y desktop specific parts; POSIX-IPC maybe)
 -  `java`
   -  `androidaudioplugin` plugin framework and service implementation
-  -  `androidaudioplugin-ui-androidx` plugin UI implementation helper (not mandatory), based on traditional android.widget.
+  -  `androidaudioplugin-ui-traditional` plugin UI implementation helper (not mandatory), based on traditional android.widget.
   -  `samples`
     -  `aaphostsample` - sample host app - follows the same AGP-modules structure
     -  `aapbarebonepluginsample` - sample plugin project, which can be used as a template. Audio processing part is no-op.

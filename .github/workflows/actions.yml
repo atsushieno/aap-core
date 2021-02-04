@@ -47,7 +47,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: androidaudioplugin-ui-androix.aar
-        path: java/androidaudioplugin-ui-androidx/build/outputs/aar/androidaudioplugin-ui-androidx-debug.aar
+        path: java/androidaudioplugin-ui-traditional/build/outputs/aar/androidaudioplugin-ui-traditional-debug.aar
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
