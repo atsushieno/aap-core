@@ -1,7 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.4.10'
+    ext.kotlin_version = '1.4.21'
     ext.dokkaVersion = '0.9.17'
     ext.compose_version = '1.0.0-alpha07'
     ext.compose_plugin_version = '0.1.0-dev97'
@@ -25,11 +25,9 @@ buildscript {
 allprojects {
     repositories {
         google()
-        jcenter()
-        maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
+        mavenCentral()
         maven { url "https://jitpack.io" }
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
-        mavenLocal()
     }
 }
 
