@@ -1,4 +1,4 @@
-package org.androidaudioplugin.ui.androidx
+package org.androidaudioplugin.ui.traditional
 
 import android.content.Context
 import android.os.Bundle
@@ -12,8 +12,8 @@ import androidx.core.view.isVisible
 import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
-import org.androidaudioplugin.ui.androidx.databinding.AudioPluginParametersListItemBinding
-import org.androidaudioplugin.ui.androidx.databinding.LocalPluginDetailsBinding
+import org.androidaudioplugin.ui.traditional.databinding.AudioPluginParametersListItemBinding
+import org.androidaudioplugin.ui.traditional.databinding.LocalPluginDetailsBinding
 import java.lang.UnsupportedOperationException
 
 class LocalPluginDetailsActivity : AppCompatActivity() {

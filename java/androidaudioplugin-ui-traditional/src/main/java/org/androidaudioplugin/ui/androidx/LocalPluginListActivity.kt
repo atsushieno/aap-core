@@ -1,4 +1,4 @@
-package org.androidaudioplugin.ui.androidx
+package org.androidaudioplugin.ui.traditional
 
 import android.content.Context
 import android.content.Intent
@@ -14,8 +14,8 @@ import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.ui.androidx.databinding.AudioPluginServiceListItemBinding
-import org.androidaudioplugin.ui.androidx.databinding.LocalPluginListBinding
+import org.androidaudioplugin.ui.traditional.databinding.AudioPluginServiceListItemBinding
+import org.androidaudioplugin.ui.traditional.databinding.LocalPluginListBinding
 
 class LocalPluginListActivity : AppCompatActivity() {
 

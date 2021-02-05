@@ -10,14 +10,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="org.androidaudioplugin.ui.androidx.LocalPluginListActivity">
+        <activity android:name="org.androidaudioplugin.ui.traditional.LocalPluginListActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="org.androidaudioplugin.ui.androidx.LocalPluginDetailsActivity" />
+        <activity android:name="org.androidaudioplugin.ui.traditional.LocalPluginDetailsActivity" />
         <service android:name="org.androidaudioplugin.AudioPluginService"
             android:label="AAPBareBoneSamplePlugin">
             <intent-filter>
