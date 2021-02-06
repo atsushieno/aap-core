@@ -1,4 +1,4 @@
-package org.androidaudioplugin.ui.androidx
+package org.androidaudioplugin.ui.traditional
 
 import org.junit.Test
 
