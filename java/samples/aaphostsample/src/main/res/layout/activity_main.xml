@@ -126,6 +126,15 @@
             app:layout_constraintEnd_toStartOf="@+id/buttonsWaveformSplitter"
             app:layout_constraintTop_toTopOf="@+id/pluginsWaveformSplitter"
             app:layout_constraintBottom_toTopOf="@+id/twoWaveformsSplitter"/>
+
+    <Button
+            android:text="UI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/button_launch_ui"
+            app:layout_constraintTop_toTopOf="@+id/applyToggleButton"
+            app:layout_constraintLeft_toRightOf="@+id/applyToggleButton" />
+
     <TextView
             android:text="[Play]"
             android:layout_width="wrap_content"

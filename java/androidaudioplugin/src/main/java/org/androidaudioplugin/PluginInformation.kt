@@ -3,7 +3,7 @@ package org.androidaudioplugin
 class PluginInformation(var packageName: String, var localName: String, var displayName: String, var backend: String?, var version: String?,
                         var category: String?, var author: String?, var manufacturer: String?,
                         var pluginId: String?, var sharedLibraryName: String?,
-                        var libraryEntryPoint: String?, var assets: String?, var isOutProcess: Boolean)
+                        var libraryEntryPoint: String?, var assets: String?, var uiActivity : String?, var uiWeb : String?, var isOutProcess: Boolean)
 {
     var ports = mutableListOf<PortInformation>()
 

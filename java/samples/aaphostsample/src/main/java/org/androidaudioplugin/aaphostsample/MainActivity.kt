@@ -3,6 +3,7 @@ package org.androidaudioplugin.aaphostsample
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -15,10 +16,10 @@ import android.view.Window
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
-import androidx.core.view.isVisible
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
+import org.androidaudioplugin.AudioPluginHostHelper.Companion.launchInProcessPluginUI
 import org.androidaudioplugin.aaphostsample.databinding.ActivityMainBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginParametersListItemBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginServiceListItemBinding
@@ -56,10 +57,19 @@ class MainActivity : AppCompatActivity() {
                 portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
                 this@MainActivity.selectedPluginIndex = position
                 this@MainActivity.binding.audioPluginParametersListView.adapter = portsAdapter
+
+                this@MainActivity.binding.buttonLaunchUi.setOnClickListener {
+                    launchInProcessPluginUI(item.second)
+                }
             }
 
             return view
         }
+    }
+
+    fun launchInProcessPluginUI(pluginInfo: PluginInformation) {
+        val instanceId = if (instance?.pluginInfo?.pluginId == pluginInfo.pluginId) instance?.instanceId else null
+        pluginInfo.launchInProcessPluginUI(this, instanceId)
     }
 
     inner class PortViewAdapter(ctx:Context, layout: Int, private var ports: List<PortInformation>)

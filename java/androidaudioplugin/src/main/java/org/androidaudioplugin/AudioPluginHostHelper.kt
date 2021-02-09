@@ -1,8 +1,10 @@
 package org.androidaudioplugin
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import org.xmlpull.v1.XmlPullParser
@@ -36,6 +38,8 @@ class AudioPluginHostHelper {
                         val sharedLibraryName = xp.getAttributeValue(null, "library")
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
                         val assets = xp.getAttributeValue(null, "assets")
+                        val uiActivity = xp.getAttributeValue(null, "ui-activity")
+                        val uiWeb = xp.getAttributeValue(null, "ui-web")
                         currentPlugin = PluginInformation(
                             packageName,
                             className,
@@ -49,6 +53,8 @@ class AudioPluginHostHelper {
                             sharedLibraryName,
                             libraryEntryPoint,
                             assets,
+                            uiActivity,
+                            uiWeb,
                             isOutProcess
                         )
                         aapServiceInfo.plugins.add(currentPlugin)
@@ -116,6 +122,20 @@ class AudioPluginHostHelper {
             }
 
             return plugins.toTypedArray()
+        }
+
+        @JvmStatic
+        fun PluginInformation.launchInProcessPluginUI(context: Context, instanceId: Int?) {
+            val pkg = this.packageName
+            val pkgInfo = context.packageManager.getPackageInfo(this.packageName, PackageManager.GET_ACTIVITIES)
+            val activity = this.uiActivity ?: pkgInfo.activities?.first()?.name ?: ".MainActivity"
+            // If current plugin instance in this app is of this plugin, then use it as the target instance.
+            val intent = Intent()
+            intent.component = ComponentName(pkg, activity)
+            val bundle = Bundle()
+            if (instanceId != null)
+                intent.putExtra("instanceId", instanceId.toInt())
+            context.startActivity(intent, bundle)
         }
     }
 }
