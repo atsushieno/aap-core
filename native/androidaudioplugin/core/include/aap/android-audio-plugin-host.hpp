@@ -20,8 +20,6 @@ namespace aap {
 
 	void set_application_context(void* javaVM, void* jobjectApplicationContext);
 
-	class PluginInstance;
-
 enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED = 0,
 	AAP_CONTENT_TYPE_AUDIO = 1,
@@ -264,24 +262,6 @@ public:
 	}
 };
 
-class EditorInstance
-{
-	//const PluginInstance *owner;
-
-public:
-
-	EditorInstance(const PluginInstance *ownerPlugin)
-	//	: owner(ownerPlugin)
-	{
-		// TODO: FUTURE (v0.4)
-	}
-
-	void startEditorUI()
-	{
-		// TODO: FUTURE (v0.4)
-	}
-};
-
 
 class PluginHostPAL
 {
@@ -347,27 +327,7 @@ public:
 	std::vector<int32_t>& getExtensionFDs() { return extension_fds; }
 };
 
-class PluginHostManager;
 
-class PluginHost
-{
-	std::vector<PluginInstance*> instances{};
-	PluginHostManager* manager{nullptr};
-
-	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
-	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
-
-public:
-	PluginHost(PluginHostManager* pluginHostManager)
-		: manager(pluginHostManager)
-	{
-	}
-
-	int createInstance(const char* identifier, int sampleRate);
-	void destroyInstance(PluginInstance* instance);
-	size_t getInstanceCount() { return instances.size(); }
-	PluginInstance* getInstance(int32_t index) { return instances[(size_t) index]; }
-};
 
 class PluginHostManager
 {
@@ -382,9 +342,9 @@ public:
 	}
 
 	void updateKnownPlugins(std::vector<PluginInformation*> plugins);
-	
+
 	bool isPluginAlive (const char *identifier);
-	
+
 	bool isPluginUpToDate (const char *identifier, int64_t lastInfoUpdated);
 
 	size_t getNumPluginInformation()
@@ -396,7 +356,7 @@ public:
 	{
 		return plugin_infos[(size_t) index];
 	}
-	
+
 	const PluginInformation* getPluginInformation(const char *identifier)
 	{
 		size_t n = getNumPluginInformation();
@@ -408,6 +368,30 @@ public:
 		return nullptr;
 	}
 };
+
+
+class PluginInstance;
+
+class PluginHost
+{
+	std::vector<PluginInstance*> instances{};
+	PluginHostManager* manager{nullptr};
+
+	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
+	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
+
+public:
+	PluginHost(PluginHostManager* pluginHostManager)
+			: manager(pluginHostManager)
+	{
+	}
+
+	int createInstance(const char* identifier, int sampleRate);
+	void destroyInstance(PluginInstance* instance);
+	size_t getInstanceCount() { return instances.size(); }
+	PluginInstance* getInstance(int32_t instanceId) { return instances[(size_t) instanceId]; }
+};
+
 
 class PluginInstance
 {
@@ -507,12 +491,6 @@ public:
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
 
-	EditorInstance* createEditor()
-	{
-		// FIXME: implement
-		return nullptr;//new EditorInstance(instance);
-	}
-	
 	int getNumPrograms()
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
@@ -577,6 +555,7 @@ public:
 		return 0;
 	}
 };
+
 
 } // namespace
 
