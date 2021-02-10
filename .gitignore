@@ -1,8 +1,4 @@
 *.so
-*.lv2
+.idea
 build
-build-android
-cmake-build-debug
-android-lv2-binaries.zip
 dummy-prefab-headers
-
