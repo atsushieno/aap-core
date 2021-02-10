@@ -125,10 +125,10 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun PluginInformation.launchInProcessPluginUI(context: Context, instanceId: Int?) {
-            val pkg = this.packageName
-            val pkgInfo = context.packageManager.getPackageInfo(this.packageName, PackageManager.GET_ACTIVITIES)
-            val activity = this.uiActivity ?: pkgInfo.activities?.first()?.name ?: ".MainActivity"
+        fun launchInProcessPluginUI(context: Context, pluginInfo: PluginInformation, instanceId: Int?) {
+            val pkg = pluginInfo.packageName
+            val pkgInfo = context.packageManager.getPackageInfo(pluginInfo.packageName, PackageManager.GET_ACTIVITIES)
+            val activity = pluginInfo.uiActivity ?: pkgInfo.activities?.first()?.name ?: ".MainActivity"
             // If current plugin instance in this app is of this plugin, then use it as the target instance.
             val intent = Intent()
             intent.component = ComponentName(pkg, activity)

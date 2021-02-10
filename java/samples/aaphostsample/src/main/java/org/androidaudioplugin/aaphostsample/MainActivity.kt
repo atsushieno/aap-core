@@ -19,7 +19,6 @@ import android.widget.Toast
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
-import org.androidaudioplugin.AudioPluginHostHelper.Companion.launchInProcessPluginUI
 import org.androidaudioplugin.aaphostsample.databinding.ActivityMainBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginParametersListItemBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginServiceListItemBinding
@@ -69,7 +68,7 @@ class MainActivity : AppCompatActivity() {
 
     fun launchInProcessPluginUI(pluginInfo: PluginInformation) {
         val instanceId = if (instance?.pluginInfo?.pluginId == pluginInfo.pluginId) instance?.instanceId else null
-        pluginInfo.launchInProcessPluginUI(this, instanceId)
+        AudioPluginHostHelper.launchInProcessPluginUI(this, pluginInfo, instanceId)
     }
 
     inner class PortViewAdapter(ctx:Context, layout: Int, private var ports: List<PortInformation>)
