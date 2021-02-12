@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -98,27 +99,38 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
+        fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : AudioPluginServiceInformation? {
+            val xp = serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
+                ?: return null
+            val isOutProcess = serviceInfo.packageName != context.packageName
+            val label = serviceInfo.loadLabel(context.packageManager).toString()
+            val packageName = serviceInfo.packageName
+            val className = serviceInfo.name
+            val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
+            val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
+            if (extensions != null)
+                plugin.extensions = extensions.toString().split(',').toMutableList()
+            return plugin
+        }
+
+        @JvmStatic
         fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
             val resolveInfos =
                 context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
             val plugins = mutableListOf<AudioPluginServiceInformation>()
             for (ri in resolveInfos) {
-                Log.i("AAP", "Service " + ri.serviceInfo.name)
-                val xp = ri.serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
-                if (xp == null) {
-                    Log.w("AAP", "Service " + ri.serviceInfo.name + " has no AAP metadata XML resource.")
+                val serviceInfo = ri.serviceInfo
+                Log.i("AAP", "Service " + serviceInfo.name)
+                val pluginServiceInfo = createAudioPluginServiceInformation(context, serviceInfo)
+                if (pluginServiceInfo == null) {
+                    Log.w(
+                        "AAP",
+                        "Service " + serviceInfo.name + " has no AAP metadata XML resource."
+                    )
                     continue
                 }
-                val isOutProcess = ri.serviceInfo.packageName != context.packageName
-                val label = ri.serviceInfo.loadLabel(context.packageManager).toString()
-                val packageName = ri.serviceInfo.packageName
-                val className = ri.serviceInfo.name
-                val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
-                val extensions = ri.serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
-                if (extensions != null)
-                    plugin.extensions = extensions.toString().split(',').toMutableList()
-                plugins.add(plugin)
+                plugins.add(pluginServiceInfo)
             }
 
             return plugins.toTypedArray()
