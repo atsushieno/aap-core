@@ -1,11 +1,12 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.aaphostsample
 
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.rule.ServiceTestRule
-import junit.framework.Assert
+import org.androidaudioplugin.AudioPluginHostHelper
+import org.androidaudioplugin.AudioPluginInterface
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,7 +22,7 @@ class AudioPluginServiceTest {
         val pluginId = "lv2:http://drobilla.net/plugins/mda/Delay"
         val context = ApplicationProvider.getApplicationContext<Context>()
         val serviceInfos = AudioPluginHostHelper.queryAudioPluginServices(context)
-        val serviceInfo = serviceInfos.first { c -> c.label == "AAPLV2SamplePlugin" }
+        val serviceInfo = serviceInfos.first { c -> c.label == "MDA-LV2 Plugins" }
         val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
@@ -36,5 +37,7 @@ class AudioPluginServiceTest {
 
         iface.destroy(instanceId2)
         iface.destroy(instanceId)
+
+        serviceRule.unbindService()
     }
 }
