@@ -38,6 +38,9 @@ android {
         kotlinCompilerExtensionVersion compose_version
         kotlinCompilerVersion '1.4.21-2'
     }
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
