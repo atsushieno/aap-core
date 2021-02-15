@@ -13,7 +13,7 @@ We end up using XML for the metadata format (`aap_metadata.xml`).
 
 LV2 uses Turtle format, which is [questionable](https://drobilla.net/2019/11/11/lv2-the-good-bad-and-ugly.html) in that the format brings in extraneous learning curve.
 
-A better alternative is obviously JSON, but for AAP there is a contraining reason to use XML - we have to retrieve plugin metadata contents, and only XML meets these two contraints:
+A better alternative is obviously JSON, but for AAP there is a constraining reason to use XML - we have to retrieve plugin metadata contents, and only XML meets these two constraints:
 
 - We don't have to start and bind Service to retrieve metadata.
 - We can query metadata content (like [PackageItemInfo.loadXmlMetadata()](https://developer.android.com/reference/android/content/pm/PackageItemInfo#loadXmlMetaData(android.content.pm.PackageManager,%20java.lang.String)))
