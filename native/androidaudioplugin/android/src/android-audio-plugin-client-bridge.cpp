@@ -6,7 +6,7 @@
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
-#include "audio-plugin-host-android.hpp"
+#include "audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 
 class AAPClientContext {

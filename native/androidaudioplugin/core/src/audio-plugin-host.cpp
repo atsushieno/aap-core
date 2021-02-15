@@ -1,5 +1,5 @@
 #include <sys/stat.h>
-#include "../include/aap/android-audio-plugin-host.hpp"
+#include "../include/aap/audio-plugin-host.h"
 #include "../include/aap/logging.h"
 #include <vector>
 #include <tinyxml2.h>
@@ -57,11 +57,13 @@ void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char*
             auto defaultValue = portElement->Attribute("default");
 			auto minimumValue = portElement->Attribute("minimum");
 			auto maximumValue = portElement->Attribute("maximum");
-            if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr)
-				plugin->addPort(new PortInformation(portName, content, direction,
-						atof(defaultValue), atof(minimumValue), atof(maximumValue)));
-            else
-            	plugin->addPort(new PortInformation(portName, content, direction));
+			auto nativePort = new PortInformation(portName, content, direction);
+            if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr) {
+				nativePort->setPropertyValueString(AAP_PORT_DEFAULT, defaultValue);
+				nativePort->setPropertyValueString(AAP_PORT_MINIMUM, minimumValue);
+				nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, maximumValue);
+            }
+			plugin->addPort(nativePort);
         }
         plugins.push_back(plugin);
     }

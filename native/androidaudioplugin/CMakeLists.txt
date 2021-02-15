@@ -4,7 +4,7 @@ project(androidaudioplugin VERSION 0.6.2 LANGUAGES CXX)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
-	"core/src/android-audio-plugin-host.cpp"
+	"core/src/audio-plugin-host.cpp"
 	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 

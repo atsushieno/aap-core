@@ -6,8 +6,8 @@
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
-#include "aap/android-audio-plugin-host.hpp"
-#include "audio-plugin-host-android.hpp"
+#include "aap/audio-plugin-host.h"
+#include "audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "aap/android-context.h"
 
@@ -133,13 +133,13 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 		auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(port, j_method_port_get_name));
 		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
 		auto direction = (aap::PortDirection) (int) env->CallIntMethod(port, j_method_port_get_direction);
-		aapPI->addPort(
-			env->CallBooleanMethod(port, j_method_port_has_value_range) ?
-			new aap::PortInformation(name, content, direction,
-					env->CallFloatMethod(port, j_method_port_get_default),
-					env->CallFloatMethod(port, j_method_port_get_minimum),
-					env->CallFloatMethod(port, j_method_port_get_maximum)) :
-			new aap::PortInformation(name, content, direction));
+		auto nativePort = new aap::PortInformation(name, content, direction);
+		if (env->CallBooleanMethod(port, j_method_port_has_value_range)) {
+			nativePort->setPropertyValueString(AAP_PORT_DEFAULT, std::to_string(env->CallFloatMethod(port, j_method_port_get_default)));
+			nativePort->setPropertyValueString(AAP_PORT_MINIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_minimum)));
+			nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_maximum)));
+		}
+		aapPI->addPort(nativePort);
 		free((void*) name);
 	}
 

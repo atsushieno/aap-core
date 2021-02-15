@@ -8,8 +8,8 @@
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
-#include "aap/android-audio-plugin-host.hpp"
-#include "audio-plugin-host-android.hpp"
+#include "aap/audio-plugin-host.h"
+#include "audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "aap/android-context.h"
 

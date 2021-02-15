@@ -13,7 +13,7 @@
 #include <android/binder_parcel_utils.h>
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 namespace aap {
 

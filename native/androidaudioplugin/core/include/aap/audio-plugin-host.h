@@ -15,10 +15,11 @@
 #include <map>
 #include <string>
 #include "aap/android-audio-plugin.h"
+#include "aap/port-properties.h"
 
 namespace aap {
 
-	void set_application_context(void* javaVM, void* jobjectApplicationContext);
+void set_application_context(void* javaVM, void* jobjectApplicationContext);
 
 enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED = 0,
@@ -44,10 +45,7 @@ class PortInformation
 	std::string name{};
 	ContentType content_type;
 	PortDirection direction;
-	bool has_value_range{false};
-	float default_value{0.0f};
-	float minimum_value{0.0f};
-	float maximum_value{1.0f};
+	std::map<std::string, std::string> properties{};
 	
 public:
 	PortInformation(const char *portName, ContentType content, PortDirection portDirection)
@@ -55,23 +53,42 @@ public:
 	{
 	}
 
-	PortInformation(const char *portName, ContentType content, PortDirection portDirection,
-			float defaultValue, float minimumValue, float maximumValue)
-		: PortInformation(portName, content, portDirection)
-	{
-		has_value_range = true;
-		default_value = defaultValue;
-		minimum_value = minimumValue;
-		maximum_value = maximumValue;
-	}
-
 	const char* getName() const { return name.c_str(); }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }
-	bool hasValueRange() const { return has_value_range; }
-	float getDefaultValue() const { return default_value; }
-	float getMinimumValue() const { return minimum_value; }
-	float getMaximumValue() const { return maximum_value; }
+
+	// deprecated
+	bool hasValueRange() const { return hasProperty(AAP_PORT_DEFAULT); }
+
+	void setPropertyValueString(std::string id, std::string value) {
+		properties.insert_or_assign(id, value);
+	}
+
+	// deprecated
+	float getDefaultValue() const { return getPropertyAsFloat(AAP_PORT_DEFAULT); }
+	// deprecated
+	float getMinimumValue() const { return getPropertyAsFloat(AAP_PORT_MINIMUM); }
+	// deprecated
+	float getMaximumValue() const { return getPropertyAsFloat(AAP_PORT_MAXIMUM); }
+
+	bool getPropertyAsBoolean(std::string id) const {
+		return getPropertyAsDouble(id) > 0;
+	}
+	int getPropertyAsInteger(std::string id) const {
+		return atoi(getPropertyAsString(id).c_str());
+	}
+	float getPropertyAsFloat(std::string id) const {
+		return (float) atof(getPropertyAsString(id).c_str());
+	}
+	double getPropertyAsDouble(std::string id) const {
+		return atof(getPropertyAsString(id).c_str());
+	}
+	bool hasProperty(std::string id) const {
+		return properties.find(id) == properties.end();
+	}
+	std::string getPropertyAsString(std::string id) const {
+		return properties.find(id)->second;
+	}
 };
 
 class PluginInformation

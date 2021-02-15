@@ -24,6 +24,13 @@ class AudioPluginServiceTest {
         val serviceInfos = AudioPluginHostHelper.queryAudioPluginServices(context)
         val serviceInfo = serviceInfos.first { c -> c.label == "MDA-LV2 Plugins" }
         val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
+
+        val portInfo = pluginInfo.getPort(0);
+        assert(portInfo.name == "L Delay");
+        assert(portInfo.default == 0.5f);
+        assert(portInfo.minimum == 0f);
+        assert(portInfo.maximum == 1.0f);
+
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
         val binder = serviceRule.bindService(intent)

@@ -8,7 +8,7 @@
 
 #include <jni.h>
 #include <android/binder_ibinder.h>
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 #define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
 
