@@ -1,6 +1,6 @@
 #include <iostream>
 #include <ostream>
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 #include <sys/stat.h>
 
 int main(int argc, char** argv) {

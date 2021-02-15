@@ -4,7 +4,7 @@
 #include <cstring>
 #include <vector>
 
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 namespace aaplv2sample {
 

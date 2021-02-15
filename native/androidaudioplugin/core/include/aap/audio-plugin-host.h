@@ -119,7 +119,6 @@ class PluginInformation
 	std::vector<std::unique_ptr<std::string>> optional_extensions;
 
 public:
-	static std::vector<PluginInformation*> parsePluginMetadataXml(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile);
 
 	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";

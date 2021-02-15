@@ -1,6 +1,6 @@
 #include <cstdlib>
 #include <memory>
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 // it is kind of hack, copying decl. manually.
 namespace aaplv2sample {

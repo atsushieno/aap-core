@@ -5,7 +5,6 @@ project(androidaudioplugin VERSION 0.6.2 LANGUAGES CXX)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
 	"core/src/audio-plugin-host.cpp"
-	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
@@ -13,7 +12,6 @@ set (androidaudioplugin_INCLUDES
 	"core/include"
 	"android/include"
 	"android/src/gen/include"
-	"../../dependencies/tinyxml2"
 	)
 
 if (ANDROID)
@@ -105,6 +103,7 @@ set (androidaudioplugin_SOURCES
 	${GenProtoGrpcSources}
 	"desktop/src/audio-plugin-host-desktop.cpp"
 	"desktop/src/AudioPluginInterfaceImpl.cpp"
+	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
@@ -113,6 +112,7 @@ set (androidaudioplugin_INCLUDES
 	${GEN_PROTO_GRPC_INCLUDE_DIR}
 	${PROTOBUF_INCLUDE_DIRS}
 	${GRPCPP_INCLUDE_DIRS}
+	"../../dependencies/tinyxml2"
 	)
 
 set (androidaudioplugin_LIBRARY_DIRS ${PROTOBUF_LIBRARY_DIRS} ${GRPC_LIBRARY_DIRS} ${GRPCPP_LIBRARY_DIRS})

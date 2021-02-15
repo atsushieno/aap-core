@@ -2,7 +2,6 @@
 #include "../include/aap/audio-plugin-host.h"
 #include "../include/aap/logging.h"
 #include <vector>
-#include <tinyxml2.h>
 
 #if ANDROID
 #include <jni.h>
@@ -13,70 +12,7 @@
 namespace aap
 {
 
-// plugin globals ---------------------
-
-void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile, std::vector<PluginInformation*>& plugins)
-{
-    tinyxml2::XMLDocument doc;
-    auto error = doc.LoadFile(xmlfile);
-    if (error != tinyxml2::XMLError::XML_SUCCESS)
-        return;
-    auto pluginsElement = doc.FirstChildElement("plugins");
-    for (auto pluginElement = pluginsElement->FirstChildElement("plugin");
-            pluginElement != nullptr;
-            pluginElement = pluginElement->NextSiblingElement("plugin")) {
-        auto name = pluginElement->Attribute("name");
-        auto manufacturer = pluginElement->Attribute("manufacturer");
-        auto version = pluginElement->Attribute("version");
-        auto uid = pluginElement->Attribute("unique-id");
-        auto library = pluginElement->Attribute("library");
-        auto entrypoint = pluginElement->Attribute("entrypoint");
-        auto plugin = new PluginInformation(false,
-        		pluginPackageName ? pluginPackageName : "",
-        		pluginLocalName ? pluginLocalName : "",
-                name ? name : "",
-                manufacturer ? manufacturer : "",
-                version ? version : "",
-                uid ? uid : "",
-                library ? library : "",
-                entrypoint ? entrypoint : "",
-                xmlfile);
-        auto portsElement = pluginElement->FirstChildElement("ports");
-        for (auto portElement = portsElement->FirstChildElement("port");
-                portElement != nullptr;
-                portElement = portElement->NextSiblingElement("port")) {
-            auto portName = portElement->Attribute("name");
-            auto contentString = portElement->Attribute("content");
-            ContentType content =
-                    !strcmp(contentString, "audio") ? ContentType::AAP_CONTENT_TYPE_AUDIO :
-                    !strcmp(contentString, "midi") ? ContentType::AAP_CONTENT_TYPE_MIDI :
-                    !strcmp(contentString, "midi2") ? ContentType::AAP_CONTENT_TYPE_MIDI2 :
-                    ContentType::AAP_CONTENT_TYPE_UNDEFINED;
-            auto directionString = portElement->Attribute("direction");
-            PortDirection  direction = !strcmp(directionString, "input") ? PortDirection::AAP_PORT_DIRECTION_INPUT : PortDirection::AAP_PORT_DIRECTION_OUTPUT;
-            auto defaultValue = portElement->Attribute("default");
-			auto minimumValue = portElement->Attribute("minimum");
-			auto maximumValue = portElement->Attribute("maximum");
-			auto nativePort = new PortInformation(portName, content, direction);
-            if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr) {
-				nativePort->setPropertyValueString(AAP_PORT_DEFAULT, defaultValue);
-				nativePort->setPropertyValueString(AAP_PORT_MINIMUM, minimumValue);
-				nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, maximumValue);
-            }
-			plugin->addPort(nativePort);
-        }
-        plugins.push_back(plugin);
-    }
-}
-
 //-----------------------------------
-
-std::vector<PluginInformation*> PluginInformation::parsePluginMetadataXml(const char * pluginPackageName, const char * pluginLocalName, const char* xmlfile)
-{
-	std::vector<PluginInformation*> plugins{};
-	aap_parse_plugin_descriptor_into(pluginPackageName, pluginLocalName, xmlfile, plugins);
-	return plugins;
-}
 
 void PluginHost::destroyInstance(PluginInstance* instance)
 {

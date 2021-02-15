@@ -1,5 +1,5 @@
 #include <iostream>
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 int main(int argc, char** argv) {
     aap::PluginHostManager manager{};
