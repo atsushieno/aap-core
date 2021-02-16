@@ -6,63 +6,86 @@
 #include <sys/utsname.h>
 #include "aap/audio-plugin-host.h"
 #include "audio-plugin-host-desktop.h"
-#include <tinyxml2.h>
+#include <libxml/tree.h>
+#include <libxml/parser.h>
+
 
 namespace aap
 {
 
+// FIXME: this is super hacky code
+#define XC(ptr) (const xmlChar*)(ptr)
+#define C(ptr) (const char*)(ptr)
 void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char* pluginLocalName, const char* xmlfile, std::vector<PluginInformation*>& plugins)
 {
-    tinyxml2::XMLDocument doc;
-    auto error = doc.LoadFile(xmlfile);
-    if (error != tinyxml2::XMLError::XML_SUCCESS)
-        return;
-    auto pluginsElement = doc.FirstChildElement("plugins");
-    for (auto pluginElement = pluginsElement->FirstChildElement("plugin");
-         pluginElement != nullptr;
-         pluginElement = pluginElement->NextSiblingElement("plugin")) {
-        auto name = pluginElement->Attribute("name");
-        auto manufacturer = pluginElement->Attribute("manufacturer");
-        auto version = pluginElement->Attribute("version");
-        auto uid = pluginElement->Attribute("unique-id");
-        auto library = pluginElement->Attribute("library");
-        auto entrypoint = pluginElement->Attribute("entrypoint");
-        auto plugin = new PluginInformation(false,
+    auto xmlParserCtxt = xmlNewParserCtxt();
+    auto xmlDoc = xmlCtxtReadFile(xmlParserCtxt, xmlfile, nullptr, XML_PARSE_NOBLANKS | XML_PARSE_NOCDATA);
+    if (xmlDoc) {
+        auto root = xmlDocGetRootElement(xmlDoc);
+        if (!strcmp(C(root->name), "plugins") && root->ns == nullptr) {
+            for (xmlNode* rootChild = root->children; rootChild; rootChild = rootChild->next) {
+                if (rootChild->type != XML_ELEMENT_NODE ||
+                    strcmp(C(rootChild->name), "plugin") ||
+                    rootChild->ns != nullptr)
+                    continue;
+                auto pluginElem = rootChild;
+                auto name = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("name"), nullptr));
+                auto manufacturer = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("manufacturer"), nullptr));
+                auto version = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("version"), nullptr));
+                auto uid = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("unique-id"), nullptr));
+                auto library = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("library"), nullptr));
+                auto entrypoint = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("entrypoint"), nullptr));
+                auto plugin = new PluginInformation(false,
                                             pluginPackageName ? pluginPackageName : "",
                                             pluginLocalName ? pluginLocalName : "",
-                                            name ? name : "",
-                                            manufacturer ? manufacturer : "",
-                                            version ? version : "",
-                                            uid ? uid : "",
-                                            library ? library : "",
-                                            entrypoint ? entrypoint : "",
+                                            name ? C(name.get()) : "",
+                                            manufacturer ? C(manufacturer.get()) : "",
+                                            version ? C(version.get()) : "",
+                                            uid ? C(uid.get()) : "",
+                                            library ? C(library.get()) : "",
+                                            entrypoint ? C(entrypoint.get()) : "",
                                             xmlfile);
-        auto portsElement = pluginElement->FirstChildElement("ports");
-        for (auto portElement = portsElement->FirstChildElement("port");
-             portElement != nullptr;
-             portElement = portElement->NextSiblingElement("port")) {
-            auto portName = portElement->Attribute("name");
-            auto contentString = portElement->Attribute("content");
-            ContentType content =
-                    !strcmp(contentString, "audio") ? ContentType::AAP_CONTENT_TYPE_AUDIO :
-                    !strcmp(contentString, "midi") ? ContentType::AAP_CONTENT_TYPE_MIDI :
-                    !strcmp(contentString, "midi2") ? ContentType::AAP_CONTENT_TYPE_MIDI2 :
-                    ContentType::AAP_CONTENT_TYPE_UNDEFINED;
-            auto directionString = portElement->Attribute("direction");
-            PortDirection  direction = !strcmp(directionString, "input") ? PortDirection::AAP_PORT_DIRECTION_INPUT : PortDirection::AAP_PORT_DIRECTION_OUTPUT;
-            auto defaultValue = portElement->Attribute("default");
-            auto minimumValue = portElement->Attribute("minimum");
-            auto maximumValue = portElement->Attribute("maximum");
-            auto nativePort = new PortInformation(portName, content, direction);
-            if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr) {
-                nativePort->setPropertyValueString(AAP_PORT_DEFAULT, defaultValue);
-                nativePort->setPropertyValueString(AAP_PORT_MINIMUM, minimumValue);
-                nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, maximumValue);
+                for (xmlNode* pluginChild = pluginElem->children; pluginChild; pluginChild = pluginChild->next) {
+                    if (pluginChild->type != XML_ELEMENT_NODE ||
+                        strcmp(C(pluginChild->name), "ports") ||
+                        pluginChild->ns != nullptr)
+                        continue;
+                    auto portsElement = pluginChild;
+                    for (xmlNode* portsChild = portsElement->children; portsChild; portsChild = portsChild->next) {
+                        if (portsChild->type != XML_ELEMENT_NODE ||
+                            strcmp(C(portsChild->name), "port") ||
+                            portsChild->ns != nullptr)
+                            continue;
+                        auto portElement = portsChild;
+
+                        auto portName = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("name"), nullptr)));
+                        auto contentString = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("content"), nullptr)));
+                        ContentType content =
+                                !strcmp(contentString.get(), "audio") ? ContentType::AAP_CONTENT_TYPE_AUDIO :
+                                !strcmp(contentString.get(), "midi") ? ContentType::AAP_CONTENT_TYPE_MIDI :
+                                !strcmp(contentString.get(), "midi2") ? ContentType::AAP_CONTENT_TYPE_MIDI2 :
+                                ContentType::AAP_CONTENT_TYPE_UNDEFINED;
+                        auto directionString = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("direction"), nullptr)));
+                        PortDirection  direction = !strcmp(directionString.get(), "input") ? PortDirection::AAP_PORT_DIRECTION_INPUT : PortDirection::AAP_PORT_DIRECTION_OUTPUT;
+                        // FIXME: specify correct XML namespace URI
+                        auto defaultValue = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("default"), nullptr)));
+                        auto minimumValue = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("minimum"), nullptr)));
+                        auto maximumValue = std::unique_ptr<const char>(C(xmlGetNsProp(portElement, XC("maximum"), nullptr)));
+                        auto nativePort = new PortInformation(portName.get(), content, direction);
+                        if (defaultValue != nullptr || minimumValue != nullptr || maximumValue != nullptr) {
+                            nativePort->setPropertyValueString(AAP_PORT_DEFAULT, defaultValue.get());
+                            nativePort->setPropertyValueString(AAP_PORT_MINIMUM, minimumValue.get());
+                            nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, maximumValue.get());
+                        }
+                        plugin->addPort(nativePort);
+                    }
+                }
+                plugins.push_back(plugin);
             }
-            plugin->addPort(nativePort);
         }
-        plugins.push_back(plugin);
     }
+    xmlFreeDoc(xmlDoc);
+    xmlFreeParserCtxt(xmlParserCtxt);
 }
 
 GenericDesktopPluginHostPAL pal_instance{};

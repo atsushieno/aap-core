@@ -29,7 +29,7 @@ jobs:
         key: ndk_r21c_linux
     - name: apt install
       run: |
-        echo y | sudo apt-get install doxygen libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
+        echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
     - name: stupid NDK setup workaround for GitHub Actions
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: workaround for https://github.com/actions/virtual-environments/issues/2228
@@ -82,7 +82,7 @@ jobs:
         key: ndk_r21c_osx
     - name: install deps
       run: |
-        brew tap grpc/grpc && brew install doxygen ninja graphviz openssl grpc
+        brew tap grpc/grpc && brew install doxygen libxml2 ninja graphviz openssl grpc
     - name: workaround for https://github.com/actions/virtual-environments/issues/2228
       run: echo cmake.dir=/usr/local > java/local.properties
     - name: build

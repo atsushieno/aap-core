@@ -103,7 +103,6 @@ set (androidaudioplugin_SOURCES
 	${GenProtoGrpcSources}
 	"desktop/src/audio-plugin-host-desktop.cpp"
 	"desktop/src/AudioPluginInterfaceImpl.cpp"
-	"../../dependencies/tinyxml2/tinyxml2.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
@@ -112,12 +111,12 @@ set (androidaudioplugin_INCLUDES
 	${GEN_PROTO_GRPC_INCLUDE_DIR}
 	${PROTOBUF_INCLUDE_DIRS}
 	${GRPCPP_INCLUDE_DIRS}
-	"../../dependencies/tinyxml2"
+	${LIBXML2_INCLUDE_DIRS}
 	)
 
-set (androidaudioplugin_LIBRARY_DIRS ${PROTOBUF_LIBRARY_DIRS} ${GRPC_LIBRARY_DIRS} ${GRPCPP_LIBRARY_DIRS})
+set (androidaudioplugin_LIBRARY_DIRS ${PROTOBUF_LIBRARY_DIRS} ${GRPC_LIBRARY_DIRS} ${GRPCPP_LIBRARY_DIRS} ${LIBXML2_LIBRARY_DIRS})
 
-set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} ${PROTOBUF_LIBRARIES} ${GRPC_LIBRARIES} ${GRPCPP_LIBRARIES} dl)
+set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} ${PROTOBUF_LIBRARIES} ${GRPC_LIBRARIES} ${GRPCPP_LIBRARIES} ${LIBXML2_LIBRARIES} dl)
 
 find_library(LIBRT "rt")
 if (NOT "${LIBRT}" MATCHES LIBRT-NOTFOUND)
