@@ -61,7 +61,7 @@ public:
 	bool hasValueRange() const { return hasProperty(AAP_PORT_DEFAULT); }
 
 	void setPropertyValueString(std::string id, std::string value) {
-		properties.insert_or_assign(id, value);
+		properties[id] = value;
 	}
 
 	// deprecated
