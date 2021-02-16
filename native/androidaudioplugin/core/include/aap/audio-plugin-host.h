@@ -65,11 +65,11 @@ public:
 	}
 
 	// deprecated
-	float getDefaultValue() const { return getPropertyAsFloat(AAP_PORT_DEFAULT); }
+	float getDefaultValue() const { return hasProperty(AAP_PORT_DEFAULT) ? getPropertyAsFloat(AAP_PORT_DEFAULT) : 0.0f; }
 	// deprecated
-	float getMinimumValue() const { return getPropertyAsFloat(AAP_PORT_MINIMUM); }
+	float getMinimumValue() const { return hasProperty(AAP_PORT_MINIMUM) ? getPropertyAsFloat(AAP_PORT_MINIMUM) : 0.0f; }
 	// deprecated
-	float getMaximumValue() const { return getPropertyAsFloat(AAP_PORT_MAXIMUM); }
+	float getMaximumValue() const { return hasProperty(AAP_PORT_MAXIMUM) ? getPropertyAsFloat(AAP_PORT_MAXIMUM) : 0.0f; }
 
 	bool getPropertyAsBoolean(std::string id) const {
 		return getPropertyAsDouble(id) > 0;
@@ -84,7 +84,7 @@ public:
 		return atof(getPropertyAsString(id).c_str());
 	}
 	bool hasProperty(std::string id) const {
-		return properties.find(id) == properties.end();
+		return properties.find(id) != properties.end();
 	}
 	std::string getPropertyAsString(std::string id) const {
 		return properties.find(id)->second;
