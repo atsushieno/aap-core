@@ -15,6 +15,8 @@ class AudioPluginHostHelper {
         const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
         const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService#Extensions"
+        const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
+        const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
 
         private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
             // TODO: this XML parsing is super hacky so far.
@@ -28,7 +30,7 @@ class AudioPluginHostHelper {
                 if (eventType == XmlPullParser.IGNORABLE_WHITESPACE)
                     continue
                 if (eventType == XmlPullParser.START_TAG) {
-                    if (xp.name == "plugin") {
+                    if (xp.name == "plugin" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                         val name = xp.getAttributeValue(null, "name")
                         val backend = xp.getAttributeValue(null, "backend")
                         val version = xp.getAttributeValue(null, "version")
@@ -59,14 +61,14 @@ class AudioPluginHostHelper {
                             isOutProcess
                         )
                         aapServiceInfo.plugins.add(currentPlugin)
-                    } else if (xp.name == "port") {
+                    } else if (xp.name == "port" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                         if (currentPlugin != null) {
                             val name = xp.getAttributeValue(null, "name")
                             val direction = xp.getAttributeValue(null, "direction")
                             val content = xp.getAttributeValue(null, "content")
-                            val default = xp.getAttributeValue(null, "default")
-                            val minimum = xp.getAttributeValue(null, "minimum")
-                            val maximum = xp.getAttributeValue(null, "maximum")
+                            val default = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "default")
+                            val minimum = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "minimum")
+                            val maximum = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "maximum")
                             val port = PortInformation(
                                 name,
                                 if (direction == "input") PortInformation.PORT_DIRECTION_INPUT else PortInformation.PORT_DIRECTION_OUTPUT,
@@ -83,7 +85,7 @@ class AudioPluginHostHelper {
                     }
                 }
                 if (eventType == XmlPullParser.END_TAG) {
-                    if (xp.name == "plugin")
+                    if (xp.name == "plugin" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS))
                         currentPlugin = null
                 }
             }

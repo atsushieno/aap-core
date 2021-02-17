@@ -64,12 +64,12 @@ external fun initialize(lv2Path: String, assets: AssetManager)
 The other one with `org.androidaudioplugin.AudioPluginService#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
-<plugins>
+<plugins xmlns:pp="urn:org.androidaudioplugin.port">
   <plugin manufacturer="AndroidAudioPluginProject"
           name="BareBoneSamplePlugin">
     <ports>
 	  <port direction="input" content="midi" name="MidiIn" />
-	  <port direction="input" default="0.5" minimum="0.0" maximum="1.0" content="other" name="ControlIn" />
+	  <port direction="input" pp:default="0.5" pp:minimum="0.0" pp:maximum="1.0" content="other" name="ControlIn" />
 	  <port direction="input" content="audio" name="AudioIn" />
 	  <port direction="output" content="audio" name="AudioOut" />
     </ports>

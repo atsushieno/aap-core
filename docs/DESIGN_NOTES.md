@@ -20,6 +20,19 @@ A better alternative is obviously JSON, but for AAP there is a constraining reas
 
 They are important in that if they are not met then hosts will have to cache plugin metadata list like VST hosts. LV2 design is clever in this aspect.
 
+On a related note, the actual parameter names were designed like:
+
+```
+#define AAP_PORT_BASE "org.androidaudioplugin.port"
+#define AAP_PORT_DEFAULT AAP_PORT_BASE ":default"
+```
+
+which were like that it can be directly used as XML namespace prefix (because BASE does not contain a ':') while keeping things pseudo-globally-unique, or JSON object keys.
+Since we were using an XML parser that does not support XML Namespaces (tinyxml2), it could work like a hacky solution.
+But since we cannot switch to JSON anyways, we rather went back to the basics and eliminated any XML parsing bits from native code on Android, and used authentic XML parser (libxml2) on desktop.
+
+At that stage, there is no point of avoiding standard URI format for port property identifiers, so we simply use "urn:" for the parameters. (It can be "http:", but I guess it would be weird if the protocol without 's' will stay forever and if it matches "cool URLs don't change." concept...)
+
 ### out-process model
 
 Unlike in-host-process plugin processing, switching process context is important. Considering the performance loss and limited resources on mobile devices, it is best if we can avoid that. However it is inevitable. It will be handled via [NdkBinder](https://developer.android.com/ndk/reference/group/ndk-binder).
