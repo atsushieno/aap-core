@@ -64,12 +64,20 @@ external fun initialize(lv2Path: String, assets: AssetManager)
 The other one with `org.androidaudioplugin.AudioPluginService#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
-<plugins xmlns:pp="urn:org.androidaudioplugin.port">
+<plugins xmlns="urn:org.androidaudioplugin.core"
+         xmlns:pp="urn:org.androidaudioplugin.port">
   <plugin manufacturer="AndroidAudioPluginProject"
           name="BareBoneSamplePlugin">
     <ports>
 	  <port direction="input" content="midi" name="MidiIn" />
-	  <port direction="input" pp:default="0.5" pp:minimum="0.0" pp:maximum="1.0" content="other" name="ControlIn" />
+	  <port direction="input" content="other" name="ControlIn"
+                pp:default="0.5" pp:minimum="0.0" pp:maximum="1.0" />
+	  <port direction="input" content="other" name="Enumerated" 
+                pp:type="enumeration">
+              <pp:enumeration label="11KHz" value="11025" />
+              <pp:enumeration label="22KHz" value="22050" />
+              <pp:enumeration label="44KHz" value="44100" />
+          </port>
 	  <port direction="input" content="audio" name="AudioIn" />
 	  <port direction="output" content="audio" name="AudioOut" />
     </ports>
@@ -102,6 +110,12 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
     - `name` attribute: a name string. An `xs:NMTOKEN` in XML Schema datatypes is expected.
     - `direction` attribute: either `input` or `output`.
     - `content` attribute: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
+    - `pp:type` attribute: specifies value restriction.
+    - `pp:minimum`, `pp:maximum` attributes: specifies value ranges.
+    - `pp:default` attribute: specifies the default value.
+    - `<pp:enumeration>` element: specifies a candidate value.
+      - `label` attribute: value label that is shown to user.
+      - `value` attribute: the actual value.
 
 `name` should be unique enough so that this standalone string can identify itself. An `xs:NMTOKENS` in XML Schema datatypes is expected (not `xs:NMTOKEN` because we accept `#x20`).
 
@@ -115,6 +129,7 @@ For `category`, we have undefined format. VST has some strings like `Effect`, `S
 
 `entrypoint` is to sprcify custom entrypoint function. It is optional; if you simply declared `GetAndroidAudioPluginFactory()` function in the native library, then it is used. Otherwise the function specified by this attribute is used. It is useful if your library has more than one plugin factory entrypoints (like our `libandroidaudioplugin.so` does).
 
+For `pp:type` attribute, currently one of `integer`, `toggled`, `float`, `double` or `enumeration` is expected. It is `float` by default. `enumeration` restricts the value options to the child `<pp:enumeration>` element items.
 
 ## AAP Plugin API and implementation
 
