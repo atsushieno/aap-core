@@ -1,0 +1,78 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        minSdkVersion 29
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                // https://github.com/google/prefab/blob/bccf5a6a75b67add30afbb6d4f7a7c50081d2d86/api/src/main/kotlin/com/google/prefab/api/Android.kt#L243
+                arguments "-DANDROID_STL=c++_shared"
+                cppFlags "-Werror"
+
+                // Enable this section if you want to debug native code using AddressSanitizer
+                //arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
+                //cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+            }
+        }
+    }
+    // This should not be necessary in normal projects, but we specify c++_shared and thus
+    // ODR hits us. We specify ANDROID_STL=c++_shared in favor of prefab (which is not enabled
+    // yet but will be at some stage). This means, every AAP related project has to fix the
+    // NDK version in use. It is not realistic when it becomes for public uses, but so far
+    // we have to take this pill...
+    ndkVersion "21.3.6528147"
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    // FIXME: enable these sections once we migrated to prefab.
+    /*
+    buildFeatures {
+        prefab true
+    }
+    */
+    packagingOptions {
+        exclude '**libc++_shared.so'
+    }
+}
+
+dependencies {
+
+    implementation project(':androidaudioplugin')
+    implementation 'androidx.core:core-ktx:1.3.2'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'com.google.android.material:material:1.3.0'
+    testImplementation 'junit:junit:4.+'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+}

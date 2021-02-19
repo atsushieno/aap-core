@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.androidaudioplugin.samples.host.engine">
+
+    <queries>
+        <intent>
+            <action android:name="org.androidaudioplugin.AudioPluginService" />
+        </intent>
+    </queries>
+</manifest>

@@ -3,3 +3,4 @@ include ':androidaudioplugin', ':aapbarebonepluginsample', ':aaphostsample', ':a
 project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepluginsample')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
 
+include ':androidaudioplugin-samples-host-engine'

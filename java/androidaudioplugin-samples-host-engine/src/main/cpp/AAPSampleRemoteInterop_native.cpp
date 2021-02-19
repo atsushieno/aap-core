@@ -1,5 +1,3 @@
-#if false
-
 #include <jni.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
@@ -13,7 +11,7 @@
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/AudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
-#include "aap/android-audio-plugin-host.hpp"
+#include "aap/audio-plugin-host.h"
 
 // FIXME: sort out final library header structures.
 namespace aap {
@@ -201,7 +199,7 @@ int runClientAAP(aidl::org::androidaudioplugin::IAudioPluginInterface* proxy, in
 extern "C" {
 
 
-int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR, jfloatArray jParameters)
+int Java_org_androidaudioplugin_samples_host_engine_AAPSampleInterop_runClientAAP(JNIEnv *env, jclass cls, jobject jBinder, jint sampleRate, jstring jPluginId, jbyteArray audioInL, jbyteArray audioInR, jbyteArray audioOutL, jbyteArray audioOutR, jfloatArray jParameters)
 {
 	// NOTE: setting a breakpoint in this method might cause SIGSEGV.
 	// That's of course non-user code issue but you would't like to waste your time on diagnosing it...
@@ -258,5 +256,3 @@ int Java_org_androidaudioplugin_aaphostsample_AAPSampleInterop_runClientAAP(JNIE
 }
 
 } // extern "C"
-
-#endif

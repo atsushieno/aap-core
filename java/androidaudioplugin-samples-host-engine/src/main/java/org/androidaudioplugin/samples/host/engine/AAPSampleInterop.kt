@@ -1,4 +1,4 @@
-package org.androidaudioplugin.aaphostsample
+package org.androidaudioplugin.samples.host.engine
 
 import android.os.IBinder
 import org.androidaudioplugin.PluginInformation

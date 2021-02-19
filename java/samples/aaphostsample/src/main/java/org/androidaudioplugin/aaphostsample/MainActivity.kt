@@ -3,7 +3,6 @@ package org.androidaudioplugin.aaphostsample
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -22,6 +21,7 @@ import org.androidaudioplugin.*
 import org.androidaudioplugin.aaphostsample.databinding.ActivityMainBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginParametersListItemBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginServiceListItemBinding
+import org.androidaudioplugin.samples.host.engine.AAPSampleInterop
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.time.ExperimentalTime
