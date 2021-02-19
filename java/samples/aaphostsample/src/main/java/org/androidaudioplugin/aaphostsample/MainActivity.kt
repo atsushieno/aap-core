@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 }
             })
-            var value = parameters[ports.indexOf(item)]
+            val value = parameters[ports.indexOf(item)]
             binding.audioPluginSeekbarParameterValue.progress = (100.0 * value).toInt()
 
             return binding.root

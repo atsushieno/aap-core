@@ -11,31 +11,25 @@ import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
-class PluginPreview {
+const val PROCESS_AUDIO_NATIVE = false
+const val FRAMES_PER_TICK = 100
+const val FRAMES_PER_SECOND = 44100
 
-    var PROCESS_AUDIO_NATIVE = false
+@ExperimentalUnsignedTypes
+class PluginPreview(context: Context) {
 
-    private var host : AudioPluginHost
+    private var host : AudioPluginHost = AudioPluginHost(context.applicationContext)
     var instance : AudioPluginInstance? = null
 
     val inBuf : ByteArray
     val outBuf : ByteArray
 
-    var FRAMES_PER_TICK = 100
-    var FRAMES_PER_SECOND = 44100
-
-    constructor(context: Context) {
-        host = AudioPluginHost(context.applicationContext)
-
+    init {
         val assets = context.applicationContext.assets
         val wavAsset = assets.open("sample.wav")
-        // read wave samples and and deinterleave into L/R
-        inBuf = wavAsset.readBytes().drop(88).toByteArray() // skip WAV header (80 bytes for this file) and data chunk ID + size (8 bytes)
+        inBuf = wavAsset.readBytes().drop(88).toByteArray()
         wavAsset.close()
-
         outBuf = ByteArray(inBuf.size)
     }
 
@@ -43,7 +37,6 @@ class PluginPreview {
         host.dispose()
     }
 
-    @ExperimentalTime
     fun applyPlugin(service: AudioPluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?)
     {
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
@@ -56,7 +49,7 @@ class PluginPreview {
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->
             this.instance = instance
-            var floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+            val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
             instance.prepare(host.sampleRate, floatCount)
 
             GlobalScope.launch {
@@ -88,26 +81,25 @@ class PluginPreview {
                 i++
             i++
             // message
-            var evPos = i
-            if (seq[evPos] == 0xF0u.toUByte())
-                i += seq.drop(i).indexOf(0xF7u) + 1
+            val evPos = i
+            i += if (seq[evPos] == 0xF0u.toUByte())
+                seq.drop(i).indexOf(0xF7u) + 1
             else
-                i += getFixedMidiEventLength(seq, i)
+                getFixedMidiEventLength(seq, i)
             yield(seq.slice(IntRange(cur, i - 1)))
             cur = i
         }
     }
 
     private fun groupMidi1EventsByTiming(events: Sequence<List<UByte>>) = sequence {
-        var i = 0
-        var iter = events.iterator()
+        val iter = events.iterator()
         var list = mutableListOf<List<UByte>>()
         while (iter.hasNext()) {
-            var ev = iter.next()
+            val ev = iter.next()
             if (getFirstMidi1EventDuration(ev) != 0) {
                 if (list.any())
                     yield(list.toList())
-                list = mutableListOf<List<UByte>>()
+                list = mutableListOf()
             }
             list.add(ev)
         }
@@ -120,7 +112,7 @@ class PluginPreview {
         var pos = 0
         var mul = 1
         while (pos < bytes.size) {
-            var b = bytes[pos]
+            val b = bytes[pos]
             len += (b.toInt() and 0x7F) * mul
             pos++
             if (b < 0x80u)
@@ -134,48 +126,48 @@ class PluginPreview {
 
     private fun Int.fromBCD() = ((this and 0xF0) shr 4) * 10 + (this and 0xF)
 
-    private fun toMidiTimeCode(frameRate: Int, framesPerSeconds: Int, frames: Int) : Array<UByte> {
-        var frameUnit = framesPerSeconds / frameRate
-        var seconds = frames / framesPerSeconds
-        var ticks = ((frames % framesPerSeconds) / frameUnit)
-        var ret = arrayOf(ticks.toUByte(),
+    private fun toMidiTimeCode(frameRate: Int, framesPerSeconds: Int, frames: Int): Array<UByte> {
+        val frameUnit = framesPerSeconds / frameRate
+        val seconds = frames / framesPerSeconds
+        val ticks = ((frames % framesPerSeconds) / frameUnit)
+        return arrayOf(
+            ticks.toUByte(),
             (seconds % 60).toBCD().toUByte(),
             (seconds / 60).toBCD().toUByte(),
-            (seconds / 3600).toBCD().toUByte())
-        return ret
+            (seconds / 3600).toBCD().toUByte()
+        )
     }
 
     private fun expandSMPTE(frameRate: Int, framesPerSeconds: Int, smpte: Int) : Int {
-        var ticks = smpte and 0xFF
-        var seconds = (smpte shr 8 and 0xFF).fromBCD()
-        var minutes = (smpte shr 16 and 0xFF).fromBCD()
-        var hours = (smpte shr 24 and 0xFF).fromBCD()
+        val ticks = smpte and 0xFF
+        val seconds = (smpte shr 8 and 0xFF).fromBCD()
+        val minutes = (smpte shr 16 and 0xFF).fromBCD()
+        val hours = (smpte shr 24 and 0xFF).fromBCD()
         return (hours * 3600 + minutes * 60 + seconds) * framesPerSeconds + ticks * frameRate
     }
 
-    @ExperimentalTime
-    fun processPluginOnce(parametersOnUI: FloatArray?) {
-        var instance = this.instance!!
-        var plugin = instance.pluginInfo
-        var parameters = parametersOnUI ?: (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
+    private fun processPluginOnce(parametersOnUI: FloatArray?) {
+        val instance = this.instance!!
+        val plugin = instance.pluginInfo
+        val parameters = parametersOnUI ?: (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
 
         // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
-        var noteOnSeq = arrayOf(
+        val noteOnSeq = arrayOf(
             110, 0x90, 0x39, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
             0, 0x90, 0x3D, 0x78,
             0, 0x90, 0x40, 0x78)
             .map {i -> i.toUByte() }
-        var noteOffSeq = arrayOf(
+        val noteOffSeq = arrayOf(
             110, 0x80, 0x39, 0,
             0, 0x80, 0x3D, 0,
             0, 0x80, 0x40, 0)
             .map {i -> i.toUByte() }
-        var noteSeq = noteOnSeq.plus(noteOffSeq)
-        var midiSeq = noteSeq
-        repeat(9, { midiSeq += noteSeq}) // repeat 10 times
+        val noteSeq = noteOnSeq.plus(noteOffSeq)
+        val midiSeq = noteSeq.toMutableList()
+        repeat(9) { midiSeq += noteSeq } // repeat 10 times
 
-        var midi1Events = splitMidi1Events(midiSeq.toUByteArray())
-        var midi1EventsGroups = groupMidi1EventsByTiming(midi1Events).toList()
+        val midi1Events = splitMidi1Events(midiSeq.toUByteArray())
+        val midi1EventsGroups = groupMidi1EventsByTiming(midi1Events).toList()
 
         // Kotlin version of audio/MIDI processing.
         if (!PROCESS_AUDIO_NATIVE) {
@@ -204,7 +196,7 @@ class PluginPreview {
                 }
             }
 
-            var bufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+            val bufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
 
             (0 until plugin.ports.count()).map { i ->
                 if (plugin.ports[i].direction == PortInformation.PORT_DIRECTION_OUTPUT)
@@ -214,19 +206,19 @@ class PluginPreview {
                 if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI)
                     return@map
                 else {
-                    var c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                    val c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                     c.position(0)
-                    var v = parameters[i]
-                    (0 until bufferFrameSize).forEach { c.put(v) }
+                    val v = parameters[i]
+                    (0 until bufferFrameSize).forEach { _ -> c.put(v) }
                 }
             }
 
             instance.activate()
 
             var currentFrame = 0
-            var midi1EventsGroupsIterator = midi1EventsGroups.iterator()
-            var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf<List<UByte>>()
-            var nextMidi1EventDeltaTime = if (nextMidi1Group.size > 0) getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
+            val midi1EventsGroupsIterator = midi1EventsGroups.iterator()
+            var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf()
+            val nextMidi1EventDeltaTime = if (nextMidi1Group.isNotEmpty()) getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
             var nextMidi1EventFrame = expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, nextMidi1EventDeltaTime)
 
             // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
@@ -237,11 +229,11 @@ class PluginPreview {
                 deinterleaveInput(currentFrame, bufferFrameSize)
 
                 if (audioInL >= 0) {
-                    var instanceInL = instance.getPortBuffer(audioInL)
+                    val instanceInL = instance.getPortBuffer(audioInL)
                     instanceInL.position(0)
                     instanceInL.put(host.audioInputs[0], 0, bufferFrameSize * 4)
                     if (audioInR > audioInL) {
-                        var instanceInR = instance.getPortBuffer(audioInR)
+                        val instanceInR = instance.getPortBuffer(audioInR)
                         instanceInR.position(0)
                         instanceInR.put(host.audioInputs[1], 0, bufferFrameSize * 4)
                     }
@@ -253,25 +245,25 @@ class PluginPreview {
                     // - i32 MIDI buffer size
                     // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
 
-                    var midiBuffer = instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN)
+                    val midiBuffer = instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN)
                     midiBuffer.position(0)
                     midiBuffer.position(resetMidiBuffer(midiBuffer))
                     var midiDataLengthInLoop = 0
 
                     while (nextMidi1EventFrame < currentFrame + bufferFrameSize) {
-                        var timedEvent = nextMidi1Group.first()
+                        val timedEvent = nextMidi1Group.first()
                         var deltaTimeTmp = getFirstMidi1EventDuration(timedEvent)
                         var deltaTimeBytes = 1
                         while (deltaTimeTmp > 0x80) {
                             deltaTimeBytes++
                             deltaTimeTmp /= 0x80
                         }
-                        var diffFrame = nextMidi1EventFrame % bufferFrameSize
-                        var diffMTC = toMidiTimeCode(FRAMES_PER_TICK, FRAMES_PER_SECOND, diffFrame)
-                        var b0 = 0.toUByte()
-                        var diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
-                        var updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
-                        var nextMidiEvents = updatedFirstEvent.plus(nextMidi1Group.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
+                        val diffFrame = nextMidi1EventFrame % bufferFrameSize
+                        val diffMTC = toMidiTimeCode(FRAMES_PER_TICK, FRAMES_PER_SECOND, diffFrame)
+                        val b0 = 0.toUByte()
+                        val diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
+                        val updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
+                        val nextMidiEvents = updatedFirstEvent.plus(nextMidi1Group.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
                         midiDataLengthInLoop += nextMidiEvents.size
                         midiBuffer.put(nextMidiEvents)
                         if (!midi1EventsGroupsIterator.hasNext())
@@ -279,26 +271,22 @@ class PluginPreview {
                         nextMidi1Group = midi1EventsGroupsIterator.next()
                         nextMidi1EventFrame += expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, getFirstMidi1EventDuration(nextMidi1Group.first()))
                     }
-                    var xz = midiBuffer.position()
                     midiBuffer.position(4)
                     midiBuffer.putInt(midiDataLengthInLoop)
                 }
 
-                var duration = measureTime {
-                    instance.process()
-                }
-                //Log.d("AAPHost Perf", "instance process time: " + duration.inNanoseconds)
+                instance.process()
 
                 if (audioOutL >= 0) {
-                    var instanceOutL = instance.getPortBuffer(audioOutL)
+                    val instanceOutL = instance.getPortBuffer(audioOutL)
                     instanceOutL.position(0)
                     instanceOutL.get(host.audioOutputs[0], 0, bufferFrameSize * 4)
                     if (audioOutR > audioOutL) {
-                        var instanceOutR = instance.getPortBuffer(audioOutR)
+                        val instanceOutR = instance.getPortBuffer(audioOutR)
                         instanceOutR.position(0)
                         instanceOutR.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
                     } else {
-                        // monoral output
+                        // mono output
                         instanceOutL.position(0)
                         instanceOutL.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
                     }
@@ -317,7 +305,7 @@ class PluginPreview {
 
             deinterleaveInput(0, host.audioInputs[0].size / 4) // 4 is sizeof(float)
             AAPSampleInterop.runClientAAP(
-                instance!!.service.binder!!, host.sampleRate, plugin.pluginId!!,
+                instance.service.binder!!, host.sampleRate, plugin.pluginId!!,
                 host.audioInputs[0],
                 host.audioInputs[1],
                 host.audioOutputs[0],
@@ -332,8 +320,8 @@ class PluginPreview {
 
     private fun resetMidiBuffer(mb: ByteBuffer) : Int
     {
-        var mbi = mb.asIntBuffer()
-        var ticksPerFrame : Short = (-1 * FRAMES_PER_TICK).toShort()
+        val mbi = mb.asIntBuffer()
+        val ticksPerFrame : Short = (-1 * FRAMES_PER_TICK).toShort()
         mbi.put(ticksPerFrame.toInt()) // 1 frame = 10 milliseconds
         mbi.put(0)
 
@@ -346,10 +334,10 @@ class PluginPreview {
     {
         val l = ByteBuffer.wrap(host.audioInputs[0]).asFloatBuffer()
         val r = ByteBuffer.wrap(host.audioInputs[1]).asFloatBuffer()
-        var inF = ByteBuffer.wrap(inBuf).asFloatBuffer()
+        val inF = ByteBuffer.wrap(inBuf).asFloatBuffer()
         inF.position(startInFloat * 2)
         var j = startInFloat * 2
-        var end = inBuf.size / 4
+        val end = inBuf.size / 4
         for (i in 0 until sizeInFloat) {
             if (j >= end)
                 break
@@ -362,10 +350,10 @@ class PluginPreview {
     {
         val outL = ByteBuffer.wrap(host.audioOutputs[0]).asFloatBuffer()
         val outR = ByteBuffer.wrap(host.audioOutputs[1]).asFloatBuffer()
-        var outF = ByteBuffer.wrap(outBuf).asFloatBuffer()
+        val outF = ByteBuffer.wrap(outBuf).asFloatBuffer()
         outF.position(startInFloat * 2)
         var j = startInFloat * 2
-        var end = outBuf.size / 4
+        val end = outBuf.size / 4
         for (i in 0 until sizeInFloat) {
             if (j >= end)
                 break
@@ -402,7 +390,7 @@ class PluginPreview {
         track.play()
         /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
         val fa = FloatArray(w.size / 4)
-        for (i in 0 .. fa.size - 1) {
+        for (i in fa.indices) {
             val bits = (w[i * 4 + 3].toUByte().toInt() shl 24) + (w[i * 4 + 2].toUByte().toInt() shl 16) + (w[i * 4 + 1].toUByte().toInt() shl 8) + w[i * 4].toUByte().toInt()
             fa[i] = Float.fromBits(bits)
         }
@@ -420,9 +408,9 @@ class PluginPreview {
 
     fun unbindHost()
     {
-        var instance = instance
+        val instance = instance
         if (instance != null) {
-            var serviceInfo = instance.service.serviceInfo
+            val serviceInfo = instance.service.serviceInfo
             host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
         }
     }
