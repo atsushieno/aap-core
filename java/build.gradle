@@ -13,7 +13,7 @@ buildscript {
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.0-alpha07'
+        classpath 'com.android.tools.build:gradle:7.0.0-alpha04'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.30"
         classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:$dokkaVersion"
         classpath "org.jetbrains.compose:compose-gradle-plugin:$compose_plugin_version"
