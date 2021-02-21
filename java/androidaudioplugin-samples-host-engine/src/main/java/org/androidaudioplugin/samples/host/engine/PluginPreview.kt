@@ -146,11 +146,7 @@ class PluginPreview(context: Context) {
         return (hours * 3600 + minutes * 60 + seconds) * framesPerSeconds + ticks * frameRate
     }
 
-    private fun processPluginOnce(parametersOnUI: FloatArray?) {
-        val instance = this.instance!!
-        val plugin = instance.pluginInfo
-        val parameters = parametersOnUI ?: (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
-
+    private fun getMidiSequence() : List<UByte> {
         // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
         val noteOnSeq = arrayOf(
             110, 0x90, 0x39, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
@@ -166,7 +162,16 @@ class PluginPreview(context: Context) {
         val midiSeq = noteSeq.toMutableList()
         repeat(9) { midiSeq += noteSeq } // repeat 10 times
 
-        val midi1Events = splitMidi1Events(midiSeq.toUByteArray())
+        return midiSeq
+    }
+
+    private fun processPluginOnce(parametersOnUI: FloatArray?) {
+        val instance = this.instance!!
+        val plugin = instance.pluginInfo
+        val parameters = parametersOnUI ?: (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
+
+        val midiSequence = getMidiSequence()
+        val midi1Events = splitMidi1Events(midiSequence.toUByteArray())
         val midi1EventsGroups = groupMidi1EventsByTiming(midi1Events).toList()
 
         // Kotlin version of audio/MIDI processing.
