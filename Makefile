@@ -1,9 +1,15 @@
 
 all: \
+	build-ktmidi \
 	build-desktop \
 	build-java
 
-all-no-desktop: build-java
+all-no-desktop: \
+	build-ktmidi \
+	build-java
+
+build-ktmidi:
+	cd external/ktmidi && ./gradlew publishToMavenLocal
 
 build-desktop:
 	mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=dist -DCMAKE_BUILD_TYPE=Debug .. && make && make install

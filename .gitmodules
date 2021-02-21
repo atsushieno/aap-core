@@ -2,5 +2,8 @@
 	path = dependencies/cerbero-artifacts/cerbero
 	url = https://github.com/atsushieno/cerbero.git
 [submodule "dependencies/googletest"]
-	path = dependencies/googletest
+	path = external/googletest
 	url = https://github.com/google/googletest.git
+[submodule "external/ktmidi"]
+	path = external/ktmidi
+	url = https://github.com/atsushieno/ktmidi.git
