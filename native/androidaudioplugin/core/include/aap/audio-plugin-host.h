@@ -332,10 +332,12 @@ public:
     SharedMemoryExtension() {}
     ~SharedMemoryExtension() {
         for (int32_t fd : port_buffer_fds)
-            close(fd);
+        	if (fd)
+	            close(fd);
         port_buffer_fds.clear();
 		for (int32_t fd : extension_fds)
-			close(fd);
+			if (fd)
+				close(fd);
 		extension_fds.clear();
     }
 
