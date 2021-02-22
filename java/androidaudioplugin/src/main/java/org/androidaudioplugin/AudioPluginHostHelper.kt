@@ -109,6 +109,10 @@ class AudioPluginHostHelper {
             val packageName = serviceInfo.packageName
             val className = serviceInfo.name
             val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
+            if (serviceInfo.icon != 0)
+                plugin.icon = serviceInfo.loadIcon(context.packageManager)
+            if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
+                plugin.icon = serviceInfo.applicationInfo.loadIcon(context.packageManager)
             val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
             if (extensions != null)
                 plugin.extensions = extensions.toString().split(',').toMutableList()

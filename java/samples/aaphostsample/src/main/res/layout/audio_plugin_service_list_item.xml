@@ -10,13 +10,13 @@
             android:layout_height="match_parent">
 
         <TextView
-                android:text="serviceName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:id="@+id/audio_plugin_service_name"
-                android:textSize="12sp"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="4dp"
-                app:layout_constraintBottom_toBottomOf="@+id/audio_plugin_name"/>
+            android:id="@+id/audio_plugin_service_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="serviceName"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@+id/audio_plugin_name"
+            app:layout_constraintStart_toEndOf="@+id/icon_image_view" />
         <TextView
                 android:text="TextView"
                 android:layout_width="wrap_content"
@@ -24,14 +24,25 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/audio_plugin_service_name" android:layout_marginTop="4dp"
                 android:layout_marginStart="4dp"/>
+
         <TextView
-                android:text="TextView"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:id="@+id/audio_plugin_list_identifier"
-                app:layout_constraintTop_toBottomOf="@+id/audio_plugin_name"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginEnd="8dp" android:textSize="12sp"/>
+            android:id="@+id/audio_plugin_list_identifier"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="TextView"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/icon_image_view"
+            app:layout_constraintTop_toBottomOf="@+id/audio_plugin_name" />
+
+        <ImageView
+            android:id="@+id/icon_image_view"
+            android:layout_width="39dp"
+            android:layout_height="48dp"
+            app:layout_constraintBottom_toBottomOf="@+id/audio_plugin_list_identifier"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@android:drawable/sym_def_app_icon" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </LinearLayout>

@@ -26,10 +26,7 @@ class MainActivity : AppCompatActivity() {
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val binding =
-                if (convertView != null)
-                    AudioPluginServiceListItemBinding.bind(convertView)
-                else AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(context))
+            val binding = AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(context))
             val item = getItem(position)
             val view = binding.root
             if (item == null)
@@ -43,6 +40,8 @@ class MainActivity : AppCompatActivity() {
             binding.audioPluginServiceName.text = item.first.label
             binding.audioPluginName.text = item.second.displayName
             binding.audioPluginListIdentifier.text = item.second.pluginId
+            if (item.first.icon != null)
+                binding.iconImageView.setImageDrawable(item.first.icon)
 
             view.setOnClickListener {
                 portsAdapter = PortViewAdapter(this@MainActivity, R.layout.audio_plugin_parameters_list_item, plugin.ports)
