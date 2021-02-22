@@ -44,6 +44,8 @@ A Remote plugin client is actually implemented just as a plugin, when it is used
 
 ### Shared memory and fixed pointers
 
+This is about the internal implementation details, not about the plugin API.
+
 LADSPA and LV2 has somewhat unique characteristics - their port connection is established through raw I/O pointers in prior to processing buffers. Since we support LV2 as one of the backends, the host at least gives hint on "initial" pointers to each port, which we can change at run time later but basically only by setting changes (e.g. `connectPort()` for LV2), not at procecss time (e.g. `run()` for LV2). AAP expects plugin developers to deal with dynamically changed pointers at run time. We plugin bridge implementors have no control over host implementations or plugin implementations. So we have to deal with them within the bridged APIs (e.g. call `connectPort()` every time AAP `process()` is invoked with different pointers).
 
 In any case, to pass direct pointers, Android [SharedMemory](https://developer.android.com/ndk/reference/group/memory) plays an important role here. There wouldn't be binary array transmits over binder IPC so far. This is also what AudioRoute does too.
