@@ -17,7 +17,6 @@ import org.androidaudioplugin.aaphostsample.databinding.ActivityMainBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginParametersListItemBinding
 import org.androidaudioplugin.aaphostsample.databinding.AudioPluginServiceListItemBinding
 import org.androidaudioplugin.samples.host.engine.PluginPreview
-import kotlin.time.ExperimentalTime
 
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity() {
@@ -112,7 +111,6 @@ class MainActivity : AppCompatActivity() {
         preview.dispose()
     }
 
-    @ExperimentalTime
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
