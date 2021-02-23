@@ -70,7 +70,6 @@ class AudioPluginInstance
     fun destroy() {
         proxy.destroy(instanceId)
         shm_list.forEach { shm ->
-            AudioPluginNatives.closeSharedMemoryFD(shm.fd)
             shm.shm.close()
         }
     }

@@ -1,87 +1,39 @@
 package org.androidaudioplugin.aaphostsample
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.rule.ServiceTestRule
+import org.androidaudioplugin.AudioPluginHost
 import org.androidaudioplugin.AudioPluginHostHelper
-import org.androidaudioplugin.AudioPluginInterface
 import org.junit.Rule
 import org.junit.Test
+import java.lang.Thread.sleep
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
-//
-// This test assumes that aappluginsample is installed and in-sync.
-//
 class AudioPluginServiceTest {
-    @get:Rule
-    val serviceRule = ServiceTestRule()
+    val applicationContext = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
-    fun basicDirectServiceOperationsMDA() {
-        val pluginId = "lv2:http://drobilla.net/plugins/mda/Delay"
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val serviceInfos = AudioPluginHostHelper.queryAudioPluginServices(context)
-        val serviceInfo = serviceInfos.first { c -> c.label == "MDA-LV2 Plugins" }
-        val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
+    fun basicServiceOperations() {
+        val pluginInfo = AudioPluginHostHelper.queryAudioPlugins(applicationContext).first {
+                s -> s.pluginId == "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" }
+        val host = AudioPluginHost(applicationContext)
 
-        val portInfo = pluginInfo.getPort(0);
-        assert(portInfo.name == "L Delay");
-        assert(portInfo.default == 0.5f);
-        assert(portInfo.minimum == 0f);
-        assert(portInfo.maximum == 1.0f);
+        // we should come up with appropriate locks...
+        var passed = false
+        host.pluginInstantiatedListeners.add { instance ->
+            val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+            instance.prepare(host.sampleRate, floatCount)
 
-        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
-        val binder = serviceRule.bindService(intent)
-        val iface = AudioPluginInterface.Stub.asInterface(binder)
+            instance.activate()
+            instance.process()
+            instance.deactivate()
+            instance.destroy()
+            passed = true
+        }
+        host.instantiatePlugin(pluginInfo)
 
-        val instanceId = iface.beginCreate(pluginId, 44100)
-        assert(instanceId >= 0)
-        val instanceId2 = iface.beginCreate(pluginId, 44100) // can create multiple times
-        assert(instanceId2 >= 0)
-        assert(instanceId != instanceId2)
-
-        iface.destroy(instanceId2)
-        iface.destroy(instanceId)
-
-        serviceRule.unbindService()
-    }
-
-    @Test
-    fun basicDirectServiceOperations() {
-        val pluginId = "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter"
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val serviceInfos = AudioPluginHostHelper.queryAudioPluginServices(context)
-        val serviceInfo = serviceInfos.first { c -> c.label == "AAPBareBoneSamplePlugin" }
-        val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
-
-        val portInfo = pluginInfo.getPort(0);
-        assert(portInfo.name == "Left In");
-
-        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
-        val binder = serviceRule.bindService(intent)
-        val iface = AudioPluginInterface.Stub.asInterface(binder)
-
-        val instanceId = iface.beginCreate(pluginId, 44100)
-        assert(instanceId >= 0)
-        val instanceId2 = iface.beginCreate(pluginId, 44100) // can create multiple times
-        assert(instanceId2 >= 0)
-        assert(instanceId != instanceId2)
-
-        iface.endCreate(instanceId)
-        iface.endCreate(instanceId2)
-
-        iface.destroy(instanceId2)
-        iface.destroy(instanceId)
-
-        serviceRule.unbindService()
-    }
-
-    @Test
-    fun repeatDirectServieOperations() {
-        for (i in 0..5)
-            basicDirectServiceOperations()
+        while (!passed)
+            sleep(1)
     }
 }
