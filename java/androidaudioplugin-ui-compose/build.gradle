@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
+    id 'maven-publish'
 }
 
 android {
@@ -11,7 +12,7 @@ android {
         minSdkVersion 29
         targetSdkVersion 30
         versionCode 1
-        versionName "0.6.6"
+        versionName "0.6.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -40,6 +41,36 @@ android {
     }
     lintOptions {
         abortOnError false
+    }
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                groupId = 'org.androidaudioplugin'
+                version = android.defaultConfig.versionName
+                from components.release
+                artifactId = 'androidaudioplugin-ui-compose'
+            }
+            // Creates a Maven publication called "debug".
+            debug(MavenPublication) {
+                // Applies the component for the debug build variant.
+                groupId = 'org.androidaudioplugin'
+                version = android.defaultConfig.versionName
+                from components.debug
+                artifactId = 'androidaudioplugin-ui-compose'
+            }
+        }
+        repositories {
+            maven {
+                def releasesRepoUrl = "$buildDir/repos/releases"
+                def snapshotsRepoUrl = "$buildDir/repos/snapshots"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            }
+        }
     }
 }
 

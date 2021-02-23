@@ -13,7 +13,7 @@ android {
         minSdkVersion 29
         targetSdkVersion 30
         versionCode 1
-        versionName "0.6.6"
+        versionName "0.6.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
@@ -88,12 +88,13 @@ afterEvaluate {
                 // Applies the component for the release build variant.
                 groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
-                from components.release
+                // FIXME: "release build" is known as broken. See issue #68
+                from components.debug
                 artifactId = 'androidaudioplugin'
             }
             // Creates a Maven publication called "debug".
             debug(MavenPublication) {
-                // Applies the component for the release build variant.
+                // Applies the component for the debug build variant.
                 groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
                 from components.debug
