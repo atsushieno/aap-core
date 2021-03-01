@@ -23,9 +23,7 @@ class LocalPluginListActivity : AppCompatActivity() {
         : ArrayAdapter<Pair<AudioPluginServiceInformation,PluginInformation>>(ctx, layout, array)
     {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            var binding =
-                if (convertView != null) AudioPluginServiceListItemBinding.bind(convertView)
-                else AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(this@LocalPluginListActivity))
+            var binding = AudioPluginServiceListItemBinding.inflate(LayoutInflater.from(this@LocalPluginListActivity))
             val item = getItem(position)
             var view = binding.root
             if (item == null)
@@ -66,10 +64,10 @@ class LocalPluginListActivity : AppCompatActivity() {
         }
 
         // Show permissions dialog if any of them are required.
-        var readExtStorage = android.Manifest.permission.READ_EXTERNAL_STORAGE
-        if (packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
-                        .requestedPermissions.contains(readExtStorage) &&
-                checkSelfPermission(readExtStorage) == PackageManager.PERMISSION_DENIED)
+        val readExtStorage = android.Manifest.permission.READ_EXTERNAL_STORAGE
+        val permissions = packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+        if (permissions != null && permissions.requestedPermissions.contains(readExtStorage) &&
+            checkSelfPermission(readExtStorage) == PackageManager.PERMISSION_DENIED)
             requestPermissions(arrayOf(readExtStorage), 0)
     }
 }
