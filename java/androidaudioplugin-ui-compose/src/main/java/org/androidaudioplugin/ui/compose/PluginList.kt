@@ -49,10 +49,10 @@ fun Header(text: String) {
 
 @Composable
 fun PluginDetails(plugin: PluginInformation) {
-    rememberScrollState(0f)
+    rememberScrollState(0)
     Column {
         Row {
-            Text(text = plugin.displayName, fontSize = TextUnit(20))
+            Text(text = plugin.displayName, fontSize = 20.sp)
         }
         Row {
             Header("package: ")
@@ -94,7 +94,7 @@ fun PluginDetails(plugin: PluginInformation) {
             Column {
             }
         }
-        Text(text = "Ports", fontSize = TextUnit(20))
+        Text(text = "Ports", fontSize = 20.sp)
         Column {
             for (port in plugin.ports) {
                 Row {

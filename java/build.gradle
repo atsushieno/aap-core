@@ -3,7 +3,7 @@
 buildscript {
     ext.kotlin_version = '1.4.30'
     ext.dokkaVersion = '0.9.18'
-    ext.compose_version = '1.0.0-alpha11'
+    ext.compose_version = '1.0.0-beta01'
     ext.compose_plugin_version = '0.1.0-dev97'
 
     repositories {
@@ -14,7 +14,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:7.0.0-alpha04'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.30"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:$dokkaVersion"
         classpath "org.jetbrains.compose:compose-gradle-plugin:$compose_plugin_version"
         // NOTE: Do not place your application dependencies here; they belong

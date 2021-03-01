@@ -2,7 +2,6 @@ package org.androidaudioplugin.ui.compose
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.contentColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -92,14 +91,11 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Plugins in this Plugin Service",
-                        style = MaterialTheme.typography.subtitle2.copy(color = contentColor())
-                    )
+                    Text(text = "Plugins in this Plugin Service")
                 }
             )
         },
-        bodyContent = {
+        content = {
             AvailablePlugins(onItemClick = { p ->
                 pluginListViewModel.onSelectedPluginDetailsChanged(p)
                 pluginListViewModel.onModalStateChanged(ModalPanelState.ShowPluginDetails)
