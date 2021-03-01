@@ -1,16 +1,15 @@
 package org.androidaudioplugin.ui.compose
 
-import com.arkivanov.decompose.value.MutableValue
-import com.arkivanov.decompose.value.Value
-import com.arkivanov.decompose.value.reduce
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.MutableLiveData
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 
 class PluginListViewModel {
-    private val _value = MutableValue(State(ModalPanelState.None,
-        mutableListOf(), null))
-
-    val state: Value<State> = _value
+    var items by mutableStateOf(State(ModalPanelState.None, mutableListOf(), null))
+        private set
 
     data class State(
         val modalState: ModalPanelState,
@@ -19,15 +18,15 @@ class PluginListViewModel {
     )
 
     fun setAvailablePluginServices(services: List<AudioPluginServiceInformation>) {
-        _value.reduce { it.copy(availablePluginServices = services.toMutableList()) }
+        items = State(items.modalState,  services.toMutableList(), items.selectedPluginDetails)
     }
 
     fun onModalStateChanged(newState: ModalPanelState) {
-        _value.reduce { it.copy(modalState = newState) }
+        items = State(newState, items.availablePluginServices ?: mutableListOf(), items.selectedPluginDetails)
     }
 
     fun onSelectedPluginDetailsChanged(plugin: PluginInformation?) {
-        _value.reduce { it.copy(selectedPluginDetails = plugin) }
+        items = State(items.modalState,  items.availablePluginServices ?: mutableListOf(), plugin)
     }
 }
 

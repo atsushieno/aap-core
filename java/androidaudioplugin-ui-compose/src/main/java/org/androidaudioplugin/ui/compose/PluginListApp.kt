@@ -14,10 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.unit.dp
-import com.arkivanov.decompose.extensions.compose.jetpack.asState
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.PluginServiceConnection
 
 @Composable
 fun PluginListApp() {
@@ -27,12 +25,13 @@ fun PluginListApp() {
 @Composable
 fun PluginListAppContent() {
     Surface {
-        val state = pluginListViewModel.state.asState()
+        val state = pluginListViewModel.items
+
         ModalPanelLayout(
-            bodyContent = { HomeScreen(state.value.availablePluginServices) },
-            modalState = state.value.modalState,
+            bodyContent = { HomeScreen(state.availablePluginServices) },
+            modalState = state.modalState,
             onModalStateChanged = { modalState -> pluginListViewModel.onModalStateChanged(modalState) },
-            plugin = state.value.selectedPluginDetails
+            plugin = state.selectedPluginDetails
         )
     }
 }
