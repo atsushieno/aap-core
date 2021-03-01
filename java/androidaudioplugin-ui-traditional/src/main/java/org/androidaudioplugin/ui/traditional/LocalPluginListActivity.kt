@@ -66,7 +66,7 @@ class LocalPluginListActivity : AppCompatActivity() {
         // Show permissions dialog if any of them are required.
         val readExtStorage = android.Manifest.permission.READ_EXTERNAL_STORAGE
         val permissions = packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
-        if (permissions != null && permissions.requestedPermissions.contains(readExtStorage) &&
+        if (permissions?.requestedPermissions?.contains(readExtStorage) == true &&
             checkSelfPermission(readExtStorage) == PackageManager.PERMISSION_DENIED)
             requestPermissions(arrayOf(readExtStorage), 0)
     }
