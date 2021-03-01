@@ -1,5 +1,6 @@
 package org.androidaudioplugin.ui.compose
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,9 +9,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +57,7 @@ fun Header(text: String) {
 @Composable
 fun PluginDetails(plugin: PluginInformation) {
     rememberScrollState(0)
-    Column {
+    Column(modifier = Modifier.padding(8.dp)) {
         Row {
             Text(text = plugin.displayName, fontSize = 20.sp)
         }
@@ -57,13 +65,13 @@ fun PluginDetails(plugin: PluginInformation) {
             Header("package: ")
         }
         Row {
-            Text(plugin.packageName)
+            Text(plugin.packageName, fontSize = 14.sp)
         }
         Row {
             Header("classname: ")
         }
         Row {
-            Text(plugin.localName)
+            Text(plugin.localName, fontSize = 14.sp)
         }
         if (plugin.author != null) {
             Row {
@@ -93,24 +101,41 @@ fun PluginDetails(plugin: PluginInformation) {
             Column {
             }
         }
-        Text(text = "Ports", fontSize = 20.sp)
+        Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
             for (port in plugin.ports) {
-                Row {
+                Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                    Column {
+                        Text(
+                            fontSize = 14.sp,
+                            text = when (port.content) {
+                                PortInformation.PORT_CONTENT_TYPE_AUDIO -> "Audio"
+                                PortInformation.PORT_CONTENT_TYPE_MIDI -> "MIDI"
+                                else -> "-"
+                            },
+                            modifier = Modifier.width(50.dp)
+                        )
+                        Text(
+                            fontSize = 14.sp,
+                            text = when (port.direction) {
+                                PortInformation.PORT_DIRECTION_INPUT -> "In"
+                                else -> "Out"
+                            },
+                            modifier = Modifier.width(30.dp)
+                        )
+                    }
                     Header(port.name)
+                    var sliderPosition by remember { mutableStateOf(port.default) }
                     Text(
-                        text = when (port.content) {
-                            PortInformation.PORT_CONTENT_TYPE_AUDIO -> "Audio"
-                            PortInformation.PORT_CONTENT_TYPE_MIDI -> "MIDI"
-                            else -> "-"
-                        }, modifier = Modifier.width(50.dp)
+                        fontSize = 10.sp,
+                        text = sliderPosition.toString(),
+                        modifier = Modifier.width(40.dp).align(Alignment.CenterVertically)
                     )
-                    Text(
-                        text = when (port.direction) {
-                            PortInformation.PORT_DIRECTION_INPUT -> "In"
-                            else -> "Out"
-                        }, modifier = Modifier.width(30.dp)
-                    )
+                    Slider(
+                        value = sliderPosition,
+                        valueRange = port.minimum .. port.maximum,
+                        steps = 10,
+                        onValueChange = { sliderPosition = it })
                 }
             }
         }
