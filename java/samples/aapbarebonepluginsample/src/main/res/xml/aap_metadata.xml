@@ -5,6 +5,7 @@
       <port direction="input" content="audio" name="Right In" />
       <port direction="output" content="audio" name="Left Out" />
       <port direction="output" content="audio" name="Right Out" />
+      <port direction="input" content="audio" name="Dummy Parameter" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
     </ports>
   </plugin>
 </plugins>

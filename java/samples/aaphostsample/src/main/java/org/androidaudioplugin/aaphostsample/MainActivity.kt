@@ -67,37 +67,34 @@ class MainActivity : AppCompatActivity() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View
         {
             val item = getItem(position)
-            val binding =
-                if (convertView != null)
-                    AudioPluginParametersListItemBinding.bind(convertView)
-                else AudioPluginParametersListItemBinding.inflate(LayoutInflater.from(context))
+            val binding = AudioPluginParametersListItemBinding.inflate(LayoutInflater.from(context))
             if (item == null)
                 throw UnsupportedOperationException()
 
             binding.audioPluginParameterContentType.text = if(item.content == 1) "Audio" else if(item.content == 2) "Midi" else "Other"
             binding.audioPluginParameterDirection.text = if(item.direction == 0) "In" else "Out"
             binding.audioPluginParameterName.text = item.name
-            binding.audioPluginSeekbarParameterValue.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (!fromUser)
-                        return
-                    parameters[position] = progress / 100.0f
-                    binding.audioPluginEditTextParameterValue.text.clear()
-                    binding.audioPluginEditTextParameterValue.text.insert(0, parameters[position].toString())
-                }
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                }
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                }
-            })
+            binding.audioPluginParameterValue.addOnChangeListener { _, value, _ ->
+                parameters[position] = value
+                binding.audioPluginEditTextParameterValue.text.clear()
+                binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
+            }
             val value = parameters[ports.indexOf(item)]
-            binding.audioPluginSeekbarParameterValue.progress = (100.0 * value).toInt()
+            binding.audioPluginEditTextParameterValue.text.clear()
+            binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
+            binding.audioPluginParameterValue.valueFrom = item.minimum
+            binding.audioPluginParameterValue.valueTo = item.maximum
+            binding.audioPluginParameterValue.value = value
 
             return binding.root
         }
 
         val parameters = ports.map { p -> p.default }.toFloatArray()
+
+        init {
+            for (i in parameters.indices)
+                parameters[i] = if (ports[i].default > ports[i].minimum) ports[i].default else ports[i].minimum
+        }
     }
 
     private lateinit var binding : ActivityMainBinding

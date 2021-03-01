@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import org.androidaudioplugin.AudioPluginHostHelper
@@ -26,11 +25,11 @@ class LocalPluginDetailsActivity : AppCompatActivity() {
 
         binding.wavePostPlugin.sample = arrayOf(0).toIntArray() // dummy
 
-        var pluginId = intent.getStringExtra("pluginId")
+        val pluginId = intent.getStringExtra("pluginId")
 
         plugin = AudioPluginHostHelper.queryAudioPlugins(this).first { p -> p.pluginId == pluginId }
 
-        var portsAdapter = PortViewAdapter(this, R.layout.audio_plugin_parameters_list_item, plugin.ports)
+        val portsAdapter = PortViewAdapter(this, R.layout.audio_plugin_parameters_list_item, plugin.ports)
         binding.audioPluginParametersListView.adapter = portsAdapter
 
         binding.pluginNameLabel.text = plugin.displayName
@@ -39,46 +38,47 @@ class LocalPluginDetailsActivity : AppCompatActivity() {
         binding.applyToggleButton.isVisible = false
         binding.playPostPluginLabel.isVisible = false
         binding.wavePostPlugin.isVisible = false
+
     }
 
-    lateinit var plugin : PluginInformation
+    private lateinit var plugin : PluginInformation
 
-    inner class PortViewAdapter(ctx: Context, layout: Int, private var ports: List<PortInformation>)
-        : ArrayAdapter<PortInformation>(ctx, layout, ports) {
+    inner class PortViewAdapter(
+        ctx: Context,
+        layout: Int,
+        private val ports: List<PortInformation>
+    ) : ArrayAdapter<PortInformation>(ctx, layout, ports) {
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            // lint warns about this saying I should not inflate this every time, but that results in
-            // reusing binding root
-            val binding =
-                if (convertView != null) AudioPluginParametersListItemBinding.bind(convertView)
-                else AudioPluginParametersListItemBinding.inflate(LayoutInflater.from(this@LocalPluginDetailsActivity))
+            val binding = AudioPluginParametersListItemBinding.inflate(LayoutInflater.from(this@LocalPluginDetailsActivity))
             val item = getItem(position)
-            var view = binding.root
+            val view = binding.root
             if (item == null)
                 throw UnsupportedOperationException("item not available!?")
 
             binding.audioPluginParameterContentType.text = if (item.content == 1) "Audio" else if (item.content == 2) "Midi" else "Other"
             binding.audioPluginParameterDirection.text = if (item.direction == 0) "In" else "Out"
             binding.audioPluginParameterName.text = item.name
-            binding.audioPluginSeekbarParameterValue.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    parameters[position] = progress / 100.0f
+            binding.audioPluginParameterValue.addOnChangeListener{ _, value, _ ->
+                    parameters[position] = value
                     binding.audioPluginEditTextParameterValue.text.clear()
-                    binding.audioPluginEditTextParameterValue.text.insert(0, parameters[position].toString())
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                }
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                }
-            })
-            var value = parameters[ports.indexOf(item)]
-            binding.audioPluginSeekbarParameterValue.progress = (100.0 * value).toInt()
+                    binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
+            }
+            val value = parameters[ports.indexOf(item)]
+            binding.audioPluginEditTextParameterValue.text.clear()
+            binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
+            binding.audioPluginParameterValue.value = value
+            binding.audioPluginParameterValue.valueFrom = item.minimum
+            binding.audioPluginParameterValue.valueTo = item.maximum
 
             return view
         }
 
-        val parameters = ports.map { p -> p.default }.toFloatArray()
+        private val parameters = ports.map { p -> p.default }.toFloatArray()
+
+        init {
+            for (i in parameters.indices)
+                parameters[i] = ports[i].default
+        }
     }
 }
