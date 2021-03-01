@@ -1,20 +1,16 @@
 package org.androidaudioplugin.ui.compose
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Surface
+import androidx.compose.material.TopAppBar
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
-import androidx.compose.ui.unit.dp
-import org.androidaudioplugin.AudioPluginServiceInformation
-import org.androidaudioplugin.PluginInformation
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigate
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.navArgument
 
 @Composable
 fun PluginListApp() {
@@ -24,83 +20,35 @@ fun PluginListApp() {
 @Composable
 fun PluginListAppContent() {
     Surface {
+        val navController = rememberNavController()
         val state = pluginListViewModel.items
 
-        ModalPanelLayout(
-            bodyContent = { HomeScreen(state.availablePluginServices) },
-            modalState = state.modalState,
-            onModalStateChanged = { modalState -> pluginListViewModel.onModalStateChanged(modalState) },
-            plugin = state.selectedPluginDetails
-        )
-    }
-}
-
-@Composable
-fun ModalPanelLayout(
-    bodyContent: @Composable() () -> Unit,
-    modalState: ModalPanelState = ModalPanelState.None,
-    onModalStateChanged: (ModalPanelState) -> Unit,
-    plugin: PluginInformation? = null
-) {
-    Box(Modifier.fillMaxSize()) {
-        bodyContent()
-
-        val panelContent = @Composable() {
-            when (modalState) {
-                ModalPanelState.ShowPluginDetails -> {
-                    if (plugin != null)
-                        PluginDetails(plugin)
-                }
+        NavHost(navController, startDestination="plugin_list") {
+            composable("plugin_list") {
+                Scaffold(
+                    topBar = { TopAppBar(title = { Text(text = "Plugins in this Plugin Service") }) },
+                    content = {
+                        AvailablePlugins(onItemClick = { p ->
+                            navController.navigate("plugin_details/" + p.pluginId)
+                        }, pluginServices = state.availablePluginServices)
+                    }
+                )
             }
-        }
 
-        if (modalState != ModalPanelState.None) {
-            // Taken from Drawer.kt in androidx.ui/ui-material and modified.
-            // begin
-            val ScrimDefaultOpacity = 0.32f
-            val PluginListPanelPadding = 24.dp
-            Surface(Modifier.clickable(onClick = { onModalStateChanged(ModalPanelState.None) })) {
-                val paint = remember { Paint().apply { style = PaintingStyle.Fill } }
-                val color = MaterialTheme.colors.onSurface
-                Canvas(Modifier.fillMaxSize()) {
-                    drawRect(color.copy(alpha = ScrimDefaultOpacity))
-                }
-            }
-            // end
-
-            Box(Modifier.padding(PluginListPanelPadding)) {
-                // remove Container when we will support multiply children
-                Surface {
-                    Box(Modifier.fillMaxSize(), Alignment.CenterStart) { panelContent() }
+            composable("plugin_details/{pluginId}",
+                arguments = listOf(navArgument("pluginId", {}))) { navBackStackEntry ->
+                val pluginId = navBackStackEntry.arguments?.getString("pluginId")
+                if (pluginId != null) {
+                    val plugin = state.availablePluginServices.flatMap { s -> s.plugins }
+                        .firstOrNull { p -> p.pluginId == pluginId }
+                    if (plugin != null) {
+                        Scaffold(
+                            topBar = { TopAppBar(title = { Text(text = plugin.displayName) }) },
+                            content = { PluginDetails(plugin) })
+                    }
                 }
             }
         }
     }
 }
 
-enum class ModalPanelState {
-    None,
-    ShowPluginDetails
-}
-
-@Composable
-fun HomeScreen(
-    pluginServices: List<AudioPluginServiceInformation>
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = "Plugins in this Plugin Service")
-                }
-            )
-        },
-        content = {
-            AvailablePlugins(onItemClick = { p ->
-                pluginListViewModel.onSelectedPluginDetailsChanged(p)
-                pluginListViewModel.onModalStateChanged(ModalPanelState.ShowPluginDetails)
-                },
-                pluginServices = pluginServices)
-        }
-    )
-}
