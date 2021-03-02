@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.Button
 import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -59,9 +60,15 @@ fun Header(text: String) {
     Text(modifier = headerModifier, fontWeight = FontWeight.Bold, text = text)
 }
 
+@ExperimentalUnsignedTypes
 @Composable
 fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     rememberScrollState(0)
+
+    val parameters = FloatArray(plugin.getPortCount())
+    var pluginAppliedState by remember { mutableStateOf(false) }
+    var waveData by remember { mutableStateOf(state.preview.inBuf) }
+
     Column(modifier = Modifier.padding(8.dp)) {
         Row {
             Text(text = plugin.displayName, fontSize = 20.sp)
@@ -106,7 +113,23 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
             Column {
             }
         }
-        WaveformDrawable(waveData = state.preview.inBuf)
+        WaveformDrawable(waveData = waveData)
+        Row {
+            Button(onClick = {
+                if (!pluginAppliedState) {
+                    state.preview.processAudioCompleted = {
+                        waveData = state.preview.outBuf
+                        pluginAppliedState = true
+                    }
+                    state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
+                } else {
+                    waveData = state.preview.inBuf
+                    pluginAppliedState = false
+                }
+            }) { Text(if (pluginAppliedState) "On" else "Off") }
+            Button(onClick = {}) { Text("UI") }
+            Button(onClick = { state.preview.playSound(pluginAppliedState) }) { Text("Play") }
+        }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
             for (port in plugin.ports) {
@@ -141,7 +164,10 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         value = sliderPosition,
                         valueRange = if (port.minimum < port.maximum) port.minimum .. port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
                         steps = 10,
-                        onValueChange = { sliderPosition = it })
+                        onValueChange = {
+                            parameters[plugin.ports.indexOf(port)] = it
+                            sliderPosition = it
+                        })
                 }
             }
         }
