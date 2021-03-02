@@ -3,6 +3,8 @@ package org.androidaudioplugin.ui.compose
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.Button
 import androidx.compose.material.Slider
 import androidx.compose.material.Text
@@ -63,13 +64,13 @@ fun Header(text: String) {
 @ExperimentalUnsignedTypes
 @Composable
 fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
-    rememberScrollState(0)
+    val scrollState = rememberScrollState(0)
 
     val parameters = FloatArray(plugin.getPortCount())
     var pluginAppliedState by remember { mutableStateOf(false) }
     var waveData by remember { mutableStateOf(state.preview.inBuf) }
 
-    Column(modifier = Modifier.padding(8.dp)) {
+    Column(modifier = Modifier.padding(8.dp).verticalScroll(scrollState)) {
         Row {
             Text(text = plugin.displayName, fontSize = 20.sp)
         }
@@ -180,7 +181,7 @@ fun WaveformDrawable(waveData: ByteArray) {
     val floatBuffer = ByteBuffer.wrap(waveData).asFloatBuffer()
     val fa = FloatArray(waveData.size / 4)
     floatBuffer.get(fa)
-    val max = fa.max() ?: 0f
+    val max = fa.maxOrNull() ?: 0f
     Canvas(modifier = Modifier.fillMaxWidth().height(64.dp).border(width = 1.dp, color = Color.Gray),
         onDraw = {
             val width = this.size.width.toInt()
