@@ -67,10 +67,11 @@ class LocalPluginDetailsActivity : AppCompatActivity() {
             val value = parameters[ports.indexOf(item)]
             binding.audioPluginEditTextParameterValue.text.clear()
             binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
-            binding.audioPluginParameterValue.value = value
-            binding.audioPluginParameterValue.valueFrom = item.minimum
-            binding.audioPluginParameterValue.valueTo = item.maximum
-
+            if (item.minimum < item.maximum) {
+                binding.audioPluginParameterValue.value = value
+                binding.audioPluginParameterValue.valueFrom = item.minimum
+                binding.audioPluginParameterValue.valueTo = item.maximum
+            }
             return view
         }
 

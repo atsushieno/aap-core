@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import kotlin.Float.Companion
 
 
 @Composable
@@ -133,7 +134,7 @@ fun PluginDetails(plugin: PluginInformation) {
                     )
                     Slider(
                         value = sliderPosition,
-                        valueRange = port.minimum .. port.maximum,
+                        valueRange = if (port.minimum < port.maximum) port.minimum .. port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
                         steps = 10,
                         onValueChange = { sliderPosition = it })
                 }

@@ -82,9 +82,13 @@ class MainActivity : AppCompatActivity() {
             val value = parameters[ports.indexOf(item)]
             binding.audioPluginEditTextParameterValue.text.clear()
             binding.audioPluginEditTextParameterValue.text.insert(0, value.toString())
-            binding.audioPluginParameterValue.valueFrom = item.minimum
-            binding.audioPluginParameterValue.valueTo = item.maximum
-            binding.audioPluginParameterValue.value = value
+            if (item.minimum < item.maximum) {
+                binding.audioPluginParameterValue.valueFrom = item.minimum
+                binding.audioPluginParameterValue.valueTo = item.maximum
+                binding.audioPluginParameterValue.value = value
+            }
+            else
+                binding.audioPluginParameterValue.isEnabled = false
 
             return binding.root
         }
