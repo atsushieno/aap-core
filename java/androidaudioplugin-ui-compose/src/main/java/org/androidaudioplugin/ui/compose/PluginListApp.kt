@@ -44,7 +44,7 @@ fun PluginListAppContent() {
                     if (plugin != null) {
                         Scaffold(
                             topBar = { TopAppBar(title = { Text(text = plugin.displayName) }) },
-                            content = { PluginDetails(plugin) })
+                            content = { PluginDetails(plugin, state) })
                     }
                 }
             }

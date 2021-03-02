@@ -1,11 +1,14 @@
 package org.androidaudioplugin.ui.compose
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
-import kotlin.Float.Companion
+import java.nio.ByteBuffer
 
 
 @Composable
@@ -56,7 +60,7 @@ fun Header(text: String) {
 }
 
 @Composable
-fun PluginDetails(plugin: PluginInformation) {
+fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     rememberScrollState(0)
     Column(modifier = Modifier.padding(8.dp)) {
         Row {
@@ -102,6 +106,7 @@ fun PluginDetails(plugin: PluginInformation) {
             Column {
             }
         }
+        WaveformDrawable(waveData = state.preview.inBuf)
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
             for (port in plugin.ports) {
@@ -141,4 +146,26 @@ fun PluginDetails(plugin: PluginInformation) {
             }
         }
     }
+}
+
+@Composable
+fun WaveformDrawable(waveData: ByteArray) {
+    // FIXME: this is awful to some extent; it does not distinguish L/R channels. Hopefully it does not matter much.
+    val floatBuffer = ByteBuffer.wrap(waveData).asFloatBuffer()
+    val fa = FloatArray(waveData.size / 4)
+    floatBuffer.get(fa)
+    val max = fa.max() ?: 0f
+    Canvas(modifier = Modifier.fillMaxWidth().height(64.dp).border(width = 1.dp, color = Color.Gray),
+        onDraw = {
+            val width = this.size.width.toInt()
+            val height = this.size.height
+            val delta = waveData.size / 4 / width
+            for (i in 0..width) {
+                val fr = floatBuffer[delta * i] / max
+                val h = fr * height
+                drawLine(
+                    Color.Black, Offset(i.toFloat(), height), Offset((i + 1).toFloat(), h)
+                )
+            }
+        })
 }
