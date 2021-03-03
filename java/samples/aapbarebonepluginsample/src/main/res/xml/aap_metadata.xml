@@ -5,9 +5,10 @@
       <port direction="input" content="audio" name="Right In" />
       <port direction="output" content="audio" name="Left Out" />
       <port direction="output" content="audio" name="Right Out" />
-      <port direction="input" content="control" name="Dummy Parameter 1" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
-      <port direction="input" content="control" name="Dummy Parameter 2" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
-      <port direction="input" content="control" name="Dummy Parameter 3" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
+      <port direction="input" content="control" name="Output Volume L" pp:default="0.5" pp:minimum="0" pp:maximum="1" />
+      <port direction="input" content="control" name="Output Volume R" pp:default="0.5" pp:minimum="0" pp:maximum="1" />
+      <port direction="input" content="control" name="Delay L" pp:default="0" pp:minimum="0" pp:maximum="2048" pp:type="integer" />
+      <port direction="input" content="control" name="Delay R" pp:default="256" pp:minimum="0" pp:maximum="2048" pp:type="integer" />
       <port direction="input" content="control" name="Dummy Parameter 4" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
       <port direction="input" content="control" name="Dummy Parameter 5" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
       <port direction="input" content="control" name="Dummy Parameter 6" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
