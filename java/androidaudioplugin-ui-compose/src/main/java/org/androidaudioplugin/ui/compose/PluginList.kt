@@ -66,7 +66,7 @@ fun Header(text: String) {
 fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     val scrollState = rememberScrollState(0)
 
-    val parameters = FloatArray(plugin.getPortCount())
+    var parameters by remember { mutableStateOf(plugin.ports.map { p -> p.default }.toFloatArray()) }
     var pluginAppliedState by remember { mutableStateOf(false) }
     var waveData by remember { mutableStateOf(state.preview.inBuf) }
 
@@ -121,6 +121,7 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                     state.preview.processAudioCompleted = {
                         waveData = state.preview.outBuf
                         pluginAppliedState = true
+                        state.preview.unbindHost()
                     }
                     state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
                 } else {
