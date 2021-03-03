@@ -27,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.androidaudioplugin.AudioPluginServiceInformation
@@ -68,7 +69,8 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
 
     var parameters by remember { mutableStateOf(plugin.ports.map { p -> p.default }.toFloatArray()) }
     var pluginAppliedState by remember { mutableStateOf(false) }
-    var waveData by remember { mutableStateOf(state.preview.inBuf) }
+    var waveViewSource = state.preview.inBuf
+    var waveState by remember { mutableStateOf(waveViewSource) }
 
     Column(modifier = Modifier.padding(8.dp).verticalScroll(scrollState)) {
         Row {
@@ -114,23 +116,27 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
             Column {
             }
         }
-        WaveformDrawable(waveData = waveData)
+        WaveformDrawable(waveData = waveState)
         Row {
             Button(onClick = {
                 if (!pluginAppliedState) {
                     state.preview.processAudioCompleted = {
-                        waveData = state.preview.outBuf
+                        waveState = state.preview.outBuf
                         pluginAppliedState = true
                         state.preview.unbindHost()
                     }
                     state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
                 } else {
-                    waveData = state.preview.inBuf
+                    waveState = state.preview.inBuf
                     pluginAppliedState = false
                 }
             }) { Text(if (pluginAppliedState) "On" else "Off") }
             Button(onClick = {}) { Text("UI") }
-            Button(onClick = { state.preview.playSound(pluginAppliedState) }) { Text("Play") }
+            Button(onClick = {
+                state.preview.playSound(pluginAppliedState)
+                }) {
+                Text("Play")
+            }
         }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
@@ -162,14 +168,15 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         text = sliderPosition.toString(),
                         modifier = Modifier.width(40.dp).align(Alignment.CenterVertically)
                     )
-                    Slider(
-                        value = sliderPosition,
-                        valueRange = if (port.minimum < port.maximum) port.minimum .. port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
-                        steps = 10,
-                        onValueChange = {
-                            parameters[plugin.ports.indexOf(port)] = it
-                            sliderPosition = it
-                        })
+                    if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO && port.content != PortInformation.PORT_CONTENT_TYPE_MIDI)
+                        Slider(
+                            value = sliderPosition,
+                            valueRange = if (port.minimum < port.maximum) port.minimum .. port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
+                            steps = 10,
+                            onValueChange = {
+                                parameters[plugin.ports.indexOf(port)] = it
+                                sliderPosition = it
+                            })
                 }
             }
         }
@@ -177,23 +184,36 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
 }
 
 @Composable
-fun WaveformDrawable(waveData: ByteArray) {
-    // FIXME: this is awful to some extent; it does not distinguish L/R channels. Hopefully it does not matter much.
+fun WaveformDrawable(waveData: ByteArray,
+                     canvasModifier : Modifier = Modifier.fillMaxWidth().height(64.dp).border(width = 1.dp, color = Color.Gray)) {
     val floatBuffer = ByteBuffer.wrap(waveData).asFloatBuffer()
+
+    // Is there any way to get max() from FloatBuffer?
     val fa = FloatArray(waveData.size / 4)
     floatBuffer.get(fa)
     val max = fa.maxOrNull() ?: 0f
-    Canvas(modifier = Modifier.fillMaxWidth().height(64.dp).border(width = 1.dp, color = Color.Gray),
-        onDraw = {
-            val width = this.size.width.toInt()
-            val height = this.size.height
-            val delta = waveData.size / 4 / width
-            for (i in 0..width) {
-                val fr = floatBuffer[delta * i] / max
-                val h = fr * height
-                drawLine(
-                    Color.Black, Offset(i.toFloat(), height), Offset((i + 1).toFloat(), h)
-                )
-            }
-        })
+
+    Canvas(modifier = canvasModifier, onDraw = {
+        val width = this.size.width.toInt()
+        val height = this.size.height
+        val delta = (waveData.size / 4 / width).and(Int.MAX_VALUE - 1) // - mod 2
+        for (wp in 0..width / 2) {
+            var i = wp * 2
+            val frL = floatBuffer[delta * i] / max
+            val hL = frL * height / 2
+            drawLine(
+                Color.Black,
+                Offset(i.toFloat(), height / 2),
+                Offset((i + 1).toFloat(), height / 2 - hL)
+            )
+            i = wp * 2 + 1
+            val frR = floatBuffer[delta * i] / max
+            val hR = frR * height / 2
+            drawLine(
+                Color.Black,
+                Offset(i.toFloat(), height / 2),
+                Offset((i + 1).toFloat(), height / 2 + hR)
+            )
+        }
+    })
 }
