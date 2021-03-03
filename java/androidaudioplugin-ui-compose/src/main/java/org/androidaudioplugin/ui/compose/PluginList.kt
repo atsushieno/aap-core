@@ -184,8 +184,7 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
 }
 
 @Composable
-fun WaveformDrawable(waveData: ByteArray,
-                     canvasModifier : Modifier = Modifier.fillMaxWidth().height(64.dp).border(width = 1.dp, color = Color.Gray)) {
+fun WaveformDrawable(waveData: ByteArray, height : Dp = 64.dp) {
     val floatBuffer = ByteBuffer.wrap(waveData).asFloatBuffer()
 
     // Is there any way to get max() from FloatBuffer?
@@ -193,7 +192,7 @@ fun WaveformDrawable(waveData: ByteArray,
     floatBuffer.get(fa)
     val max = fa.maxOrNull() ?: 0f
 
-    Canvas(modifier = canvasModifier, onDraw = {
+    Canvas(modifier = Modifier.fillMaxWidth().height(height).border(width = 1.dp, color = Color.Gray), onDraw = {
         val width = this.size.width.toInt()
         val height = this.size.height
         val delta = (waveData.size / 4 / width).and(Int.MAX_VALUE - 1) // - mod 2
