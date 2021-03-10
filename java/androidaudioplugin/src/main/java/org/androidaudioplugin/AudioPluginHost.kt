@@ -124,7 +124,7 @@ class AudioPluginHost(private var applicationContext: Context) {
         }
     private fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
 
-    var inputControlBus = AudioBusPresets.monoral
+    var inputControlBus = AudioBusPresets.mono
         set(value) {
             throwIfRunning()
             field = value
@@ -163,7 +163,7 @@ class AudioBus(var name : String, var map : Map<String,Int>)
 class AudioBusPresets
 {
     companion object {
-        val monoral = AudioBus("Monoral", mapOf(Pair("center", 0)))
+        val mono = AudioBus("Mono", mapOf(Pair("center", 0)))
         val stereo = AudioBus("Stereo", mapOf(Pair("Left", 0), Pair("Right", 1)))
         val surround50 = AudioBus(
             "5.0 Surrounded", mapOf(
