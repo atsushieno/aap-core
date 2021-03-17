@@ -4,12 +4,6 @@
 
 cmake_minimum_required(VERSION 3.6.0)
 
-# it is not usable until cmake 3.14...
-#target_link_directories(aapbarebonepluginsample
-link_directories(
-        "../../androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
-)
-
 # Specifies a library name, specifies whether the library is STATIC or
 # SHARED, and provides relative paths to the source code. You can
 # define multiple libraries by adding multiple add_library() commands,
@@ -50,10 +44,9 @@ if (ANDROID)
             log
             androidaudioplugin::androidaudioplugin)
 else (ANDROID)
-    set (aapbarebonepluginsample_LIBS
-            androidaudioplugin)
+    set (aapbarebonepluginsample_LIBS)
 endif (ANDROID)
 target_link_libraries(aapbarebonepluginsample ${aapbarebonepluginsample_LIBS})
 else ()
-target_link_libraries(aapbarebonepluginsample android log androidaudioplugin)
+target_link_libraries(aapbarebonepluginsample android log)
 endif ()
