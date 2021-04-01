@@ -120,10 +120,10 @@ class PluginInformation
 
 public:
 
-	/* In VST3 world, they are like "Effect", "Synth", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
+	/* In VST3 world, they are like "Effect", "Instrument", "Instrument|Synth", "Fx|Delay" ... can be anything. Here we list typical-looking ones */
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
-	const char * PRIMARY_CATEGORY_SYNTH = "Synth";
-	
+	const char * PRIMARY_CATEGORY_INSTRUMENT = "Instrument";
+
 	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath)
 		: is_out_process(isOutProcess),
 		  plugin_package_name(pluginPackageName),
