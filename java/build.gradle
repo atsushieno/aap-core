@@ -1,9 +1,9 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.4.31'
+    ext.kotlin_version = '1.4.30'
     ext.dokkaVersion = '0.9.18'
-    ext.compose_version = '1.0.0-beta02'
+    ext.compose_version = '1.0.0-beta03'
     ext.compose_plugin_version = '0.1.0-build113'
 
     repositories {
@@ -13,7 +13,7 @@ buildscript {
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.0-alpha10'
+        classpath 'com.android.tools.build:gradle:7.0.0-alpha12'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.dokka:dokka-android-gradle-plugin:$dokkaVersion"
         classpath "org.jetbrains.compose:compose-gradle-plugin:$compose_plugin_version"
@@ -29,7 +29,6 @@ allprojects {
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://jitpack.io" }
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
-        jcenter() // FIXME: remove this once kotlinx-collections-immutable-jvm is deployed somewhere else
     }
 }
 
