@@ -5,6 +5,11 @@ class PluginInformation(var packageName: String, var localName: String, var disp
                         var pluginId: String?, var sharedLibraryName: String?,
                         var libraryEntryPoint: String?, var assets: String?, var uiActivity : String?, var uiWeb : String?, var isOutProcess: Boolean)
 {
+    companion object {
+        const val PRIMARY_CATEGORY_EFFECT = "Effect"
+        const val PRIMARY_CATEGORY_INSTRUMENT = "Instrument"
+    }
+
     var ports = mutableListOf<PortInformation>()
 
     // These obvious members are for use in C interop.
