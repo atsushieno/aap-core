@@ -9,11 +9,34 @@
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/audio-plugin-host.h"
-#include "audio-plugin-host-android.h"
+#include "aap/audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "aap/android-context.h"
 
 namespace aap {
+
+std::vector<std::string> AndroidPluginHostPAL::getPluginPaths() {
+    // Due to the way how Android service query works (asynchronous),
+    // it has to wait until AudioPluginHost service query completes.
+    for (int i = 0; i < SERVICE_QUERY_TIMEOUT_IN_SECONDS; i++)
+        if (plugin_list_cache.empty())
+            sleep(1);
+    std::vector<std::string> ret{};
+    for (auto p : plugin_list_cache) {
+        if (std::find(ret.begin(), ret.end(), p->getPluginPackageName()) == ret.end())
+            ret.emplace_back(p->getPluginPackageName());
+    }
+    return ret;
+}
+
+std::vector<PluginInformation*> AndroidPluginHostPAL::getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) {
+    std::vector<PluginInformation *> results{};
+    for (auto p : plugin_list_cache)
+        if (std::find(aapMetadataPaths.begin(), aapMetadataPaths.end(),
+                      p->getPluginPackageName()) != aapMetadataPaths.end())
+            results.emplace_back(p);
+    return results;
+}
 
 AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string packageName, std::string className)
 {

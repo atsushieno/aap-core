@@ -6,9 +6,9 @@
 #define ANDROIDAUDIOPLUGINFRAMEWORK_ANDROID_AUDIO_PLUGIN_HOST_ANDROID_HPP
 #ifdef ANDROID
 
-#include <jni.h>
-#include <android/binder_ibinder.h>
-#include "aap/audio-plugin-host.h"
+#include "../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/jni.h"
+#include "../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/android/binder_ibinder.h"
+#include "../../../core/include/aap/audio-plugin-host.h"
 
 #define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
 
@@ -32,33 +32,15 @@ class AndroidPluginHostPAL : public PluginHostPAL
 
 public:
 	std::string getRemotePluginEntrypoint() override { return "GetAndroidAudioPluginFactoryClientBridge"; }
-	std::vector<std::string> getPluginPaths() override {
-		// Due to the way how Android service query works (asynchronous),
-		// it has to wait until AudioPluginHost service query completes.
-		for (int i = 0; i < SERVICE_QUERY_TIMEOUT_IN_SECONDS; i++)
-			if (plugin_list_cache.size() == 0)
-				sleep(1);
-		std::vector<std::string> ret{};
-    	for (auto p : plugin_list_cache) {
-			if (std::find(ret.begin(), ret.end(), p->getPluginPackageName()) == ret.end())
-				ret.emplace_back(p->getPluginPackageName());
-    	}
-		return ret;
-    }
+	std::vector<std::string> getPluginPaths() override;
 
-    void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override {
+    inline void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override {
         // On Android there is no access to directories for each service. Only service identifier is passed.
         // Therefore, we simply add "path" which actually is a service identifier, to the results.
         results.emplace_back(path);
     }
 
-    std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override {
-        std::vector<PluginInformation*> results{};
-        for (auto p : plugin_list_cache)
-            if (std::find(aapMetadataPaths.begin(), aapMetadataPaths.end(), p->getPluginPackageName()) != aapMetadataPaths.end())
-                results.emplace_back(p);
-        return results;
-    }
+    std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override;
 
 	std::vector<AudioPluginServiceConnection> serviceConnections{};
 

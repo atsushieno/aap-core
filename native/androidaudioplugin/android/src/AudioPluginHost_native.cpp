@@ -7,7 +7,7 @@
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/audio-plugin-host.h"
-#include "audio-plugin-host-android.h"
+#include "aap/audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "aap/android-context.h"
 
