@@ -6,30 +6,23 @@ import android.content.Intent
 import android.util.Log
 import java.lang.UnsupportedOperationException
 
-// This class is not to endorse any official API for hosting AAP.
+// These classes are not to endorse any official API for hosting AAP.
 // Its implementation is hacky and not really with decent API design.
 // It is to provide usable utilities for plugin developers as a proof of concept.
-class AudioPluginHost(private var applicationContext: Context) {
 
-    // Service connection
+class AudioPluginServiceConnector(private val applicationContext: Context) : AutoCloseable {
+    val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
+    val connectedServices = mutableListOf<PluginServiceConnection>()
 
-    internal var serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
-    var pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
-
-    internal var connectedServices = mutableListOf<PluginServiceConnection>()
-    var instantiatedPlugins = mutableListOf<AudioPluginInstance>()
-
-    val extensions = mutableListOf<AudioPluginExtensionData>()
-
-    fun bindAudioPluginService(service: AudioPluginServiceInformation) {
-        var intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
+    fun bindAudioPluginService(service: AudioPluginServiceInformation, sampleRate: Int) {
+        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(
             service.packageName,
             service.className
         )
-        intent.putExtra("sampleRate", this.sampleRate)
+        intent.putExtra("sampleRate", sampleRate)
 
-        var conn = PluginServiceConnection(service, { c -> onBindAudioPluginService(c) })
+        val conn = PluginServiceConnection(service) { c -> onBindAudioPluginService(c) }
 
         Log.d("AudioPluginHost", "bindAudioPluginService: ${service.packageName} | ${service.className}")
         applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)
@@ -40,45 +33,56 @@ class AudioPluginHost(private var applicationContext: Context) {
         connectedServices.add(conn)
 
         // avoid conflicting concurrent updates
-        var currentListeners = serviceConnectedListeners.toTypedArray()
+        val currentListeners = serviceConnectedListeners.toTypedArray()
         currentListeners.forEach { f -> f(conn) }
     }
 
-    private fun findExistingServiceConnection(packageName: String, className: String) : PluginServiceConnection? {
-        var svc = connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == className }
-        return svc
-    }
+    fun findExistingServiceConnection(packageName: String, className: String) =
+        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == className }
 
     fun unbindAudioPluginService(packageName: String, localName: String) {
-        var conn = findExistingServiceConnection(packageName, localName)
-        if (conn == null)
-            return
+        val conn = findExistingServiceConnection(packageName, localName) ?: return
         connectedServices.remove(conn)
         AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
     }
 
-    fun dispose() {
+    override fun close() {
         while (connectedServices.any()) {
-            var list = connectedServices.toTypedArray()
+            val list = connectedServices.toTypedArray()
             for (conn in list)
                 AudioPluginNatives.removeBinderForHost(conn.serviceInfo.packageName, conn.serviceInfo.className)
         }
+    }
+}
+
+class AudioPluginHost(private var applicationContext: Context) {
+
+    // Service connection
+    val serviceConnector = AudioPluginServiceConnector(applicationContext)
+
+    val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
+
+    val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
+
+    val extensions = mutableListOf<AudioPluginExtensionData>()
+
+    fun dispose() {
     }
 
     // Plugin instancing
 
     fun instantiatePlugin(pluginInfo: PluginInformation)
     {
-        var conn = findExistingServiceConnection(pluginInfo.packageName, pluginInfo.localName)
+        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName, pluginInfo.localName)
         if (conn == null) {
             var serviceConnectedListener: (PluginServiceConnection) -> Unit ={}
             serviceConnectedListener = { c ->
-                serviceConnectedListeners.remove(serviceConnectedListener)
+                serviceConnector.serviceConnectedListeners.remove(serviceConnectedListener)
                 instantiatePlugin(pluginInfo, c)
             }
-            serviceConnectedListeners.add(serviceConnectedListener)
-            var service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext).first { c -> c.plugins.any { p -> p.pluginId == pluginInfo.pluginId }}
-            bindAudioPluginService(service)
+            serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
+            val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext).first { c -> c.plugins.any { p -> p.pluginId == pluginInfo.pluginId }}
+            serviceConnector.bindAudioPluginService(service, sampleRate)
         }
         else
             instantiatePlugin(pluginInfo, conn)
@@ -86,7 +90,7 @@ class AudioPluginHost(private var applicationContext: Context) {
 
     private fun instantiatePlugin(pluginInfo: PluginInformation, conn: PluginServiceConnection)
     {
-        var instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
+        val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
         instantiatedPlugins.add(instance)
         pluginInstantiatedListeners.forEach { l -> l (instance) }
     }
@@ -158,6 +162,7 @@ class AudioPluginHost(private var applicationContext: Context) {
     }
 }
 
+// FIXME: We are still unsure if they will be kept alive or not.
 class AudioBus(var name : String, var map : Map<String,Int>)
 
 class AudioBusPresets

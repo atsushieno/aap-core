@@ -416,7 +416,7 @@ class PluginPreview(context: Context) {
         val instance = instance
         if (instance != null) {
             val serviceInfo = instance.service.serviceInfo
-            host.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
+            host.serviceConnector.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
         }
     }
 }

@@ -7,7 +7,6 @@ import android.os.ParcelFileDescriptor
 import android.os.SharedMemory
 import android.util.Log
 
-// FIXME: make it internal
 class PluginServiceConnection(var serviceInfo: AudioPluginServiceInformation, var onConnectedCallback: (conn: PluginServiceConnection) -> Unit) :
     ServiceConnection {
 

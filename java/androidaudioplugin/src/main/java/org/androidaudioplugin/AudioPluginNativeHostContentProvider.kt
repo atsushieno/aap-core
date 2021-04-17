@@ -29,18 +29,18 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
     override fun attachInfo(context: Context?, info: ProviderInfo?) {
         AudioPluginNatives.setApplicationContext(context!!)
         AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPlugins(context))
-        var host = AudioPluginHost(context)
+        val host = AudioPluginHost(context)
         // FIXME: it is brutal, but is the only way for fully-native JUCE apps to prepare
         // audio plugin service connections beforehand so far.
-        var services = AudioPluginHostHelper.queryAudioPluginServices(context)
+        val services = AudioPluginHostHelper.queryAudioPluginServices(context)
         for (service in services) {
-            host.bindAudioPluginService(
+            host.serviceConnector.bindAudioPluginService(
                 AudioPluginServiceInformation(
                     service.label,
                     service.packageName,
                     service.className
-                )
-            )
+                ),
+                host.sampleRate)
         }
         // FIXME: it should add callback to wait for bindService() result otherwise app don't
         //  actually get those services in the end.
