@@ -3,6 +3,7 @@ package org.androidaudioplugin
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.util.Log
 import java.lang.UnsupportedOperationException
 
@@ -104,7 +105,7 @@ class AudioPluginHost(private var applicationContext: Context) {
     private var isConfigured = false
     private var isActive = false
 
-    var sampleRate = 44100
+    var sampleRate : Int
 
     var audioBufferSizeInBytes = 4096 * 4
         set(value) {
@@ -159,6 +160,9 @@ class AudioPluginHost(private var applicationContext: Context) {
         AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPluginServices(applicationContext).flatMap { s -> s.plugins }.toTypedArray())
         inputAudioBus = AudioBusPresets.stereo
         outputAudioBus = AudioBusPresets.stereo
+
+        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
     }
 }
 
