@@ -1,3 +1,7 @@
+
+#ifndef ANDROIDAUDIOPLUGINFRAMEWORK_ANDROID_LOGGING_H_DEFINED
+#define ANDROIDAUDIOPLUGINFRAMEWORK_ANDROID_LOGGING_H_DEFINED 1
+
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -5,10 +9,10 @@
 #include <android/log.h>
 #endif
 
+#define logged_android_app_name "AAPHostNative"
+
 namespace aap
 {
-
-const char* logged_android_app_name = "AAPHostNative";
 
 static inline int avprintf(const char *fmt, va_list ap)
 {
@@ -38,3 +42,5 @@ static inline void aputs(const char* s)
 }
 
 }
+
+#endif // ANDROIDAUDIOPLUGINFRAMEWORK_ANDROID_LOGGING_H_DEFINED
