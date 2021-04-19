@@ -16,7 +16,7 @@ build-desktop:
 	cd docs/native && doxygen && cd ../..
 
 build-java: setup-dummy-prefab-headers-dir
-	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokka publishToMavenLocal
+	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokkaHtml publishToMavenLocal
 
 # FIXME: remove this target once https://issuetracker.google.com/issues/172105145 is supported.
 # (NOTE: we can even skip this right now, as prefab is not enabled due to other couple of Google issues)
