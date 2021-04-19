@@ -48,7 +48,7 @@ class PortInformation
 	std::map<std::string, std::string> properties{};
 	
 public:
-	PortInformation(const char *portName, ContentType content, PortDirection portDirection)
+	PortInformation(std::string portName, ContentType content, PortDirection portDirection)
 			: name(portName), content_type(content), direction(portDirection)
 	{
 	}
@@ -361,9 +361,9 @@ public:
 
 	void updateKnownPlugins(std::vector<PluginInformation*> plugins);
 
-	bool isPluginAlive (const char *identifier);
+	bool isPluginAlive (std::string identifier);
 
-	bool isPluginUpToDate (const char *identifier, int64_t lastInfoUpdated);
+	bool isPluginUpToDate (std::string identifier, int64_t lastInfoUpdated);
 
 	size_t getNumPluginInformation()
 	{
@@ -375,7 +375,7 @@ public:
 		return plugin_infos[(size_t) index];
 	}
 
-	const PluginInformation* getPluginInformation(const char *identifier)
+	const PluginInformation* getPluginInformation(std::string identifier)
 	{
 		size_t n = getNumPluginInformation();
 		for(size_t i = 0; i < n; i++) {
@@ -404,7 +404,7 @@ public:
 	{
 	}
 
-	int createInstance(const char* identifier, int sampleRate);
+	int createInstance(std::string identifier, int sampleRate);
 	void destroyInstance(PluginInstance* instance);
 	size_t getInstanceCount() { return instances.size(); }
 	PluginInstance* getInstance(int32_t instanceId) { return instances[(size_t) instanceId]; }
@@ -525,14 +525,14 @@ public:
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it, but resets all parameters.
 	}
-	
-	const char * getProgramName(int index)
+
+	std::string getProgramName(int index)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 		return nullptr;
 	}
 	
-	void changeProgramName(int index, const char * newName)
+	void changeProgramName(int index, std::string newName)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 	}

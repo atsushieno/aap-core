@@ -34,7 +34,7 @@ void PluginHostManager::updateKnownPlugins(std::vector<PluginInformation*> plugi
 		plugin_infos.emplace_back(entry);
 }
 
-bool PluginHostManager::isPluginAlive (const char *identifier)
+bool PluginHostManager::isPluginAlive (std::string identifier)
 {
 	auto desc = getPluginInformation(identifier);
 	if (!desc)
@@ -51,7 +51,7 @@ bool PluginHostManager::isPluginAlive (const char *identifier)
 	return true;
 }
 
-bool PluginHostManager::isPluginUpToDate (const char *identifier, int64_t lastInfoUpdatedTimeInMilliseconds)
+bool PluginHostManager::isPluginUpToDate (std::string identifier, int64_t lastInfoUpdatedTimeInMilliseconds)
 {
 	auto desc = getPluginInformation(identifier);
 	if (!desc)
@@ -62,7 +62,7 @@ bool PluginHostManager::isPluginUpToDate (const char *identifier, int64_t lastIn
 
 char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.SharedMemoryExtension";
 
-int PluginHost::createInstance(const char *identifier, int sampleRate)
+int PluginHost::createInstance(std::string identifier, int sampleRate)
 {
 	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
