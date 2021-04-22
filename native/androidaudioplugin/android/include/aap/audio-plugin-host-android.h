@@ -31,6 +31,8 @@ class AndroidPluginHostPAL : public PluginHostPAL
 	std::vector<PluginInformation*> queryInstalledPlugins();
 
 public:
+	virtual inline ~AndroidPluginHostPAL() {}
+
 	std::string getRemotePluginEntrypoint() override { return "GetAndroidAudioPluginFactoryClientBridge"; }
 	std::vector<std::string> getPluginPaths() override;
 

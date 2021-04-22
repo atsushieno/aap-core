@@ -6,6 +6,8 @@
 #include <android/log.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+
+#include <memory>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/audio-plugin-host.h"
@@ -86,11 +88,13 @@ std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins
     return convertPluginList(queryInstalledPluginsJNI());
 }
 
-AndroidPluginHostPAL android_pal_instance{};
+std::unique_ptr<AndroidPluginHostPAL> android_pal_instance{};
 
 PluginHostPAL* getPluginHostPAL()
 {
-    return &android_pal_instance;
+    if (android_pal_instance == nullptr)
+        android_pal_instance = std::make_unique<AndroidPluginHostPAL>();
+    return android_pal_instance.get();
 }
 
 JNIEnv* AndroidPluginHostPAL::getJNIEnv()

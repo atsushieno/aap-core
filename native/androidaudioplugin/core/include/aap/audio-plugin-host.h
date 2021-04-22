@@ -341,7 +341,9 @@ public:
 		extension_fds.clear();
     }
 
+    // Stores clone of port buffer FDs passed from client via Binder.
     std::vector<int32_t>& getPortBufferFDs() { return port_buffer_fds; }
+    // Stores clone of extension data FDs passed from client via Binder.
 	std::vector<int32_t>& getExtensionFDs() { return extension_fds; }
 };
 
