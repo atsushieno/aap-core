@@ -14,7 +14,10 @@ import java.nio.ByteOrder
 
 const val PROCESS_AUDIO_NATIVE = false
 const val FRAMES_PER_TICK = 100
-const val FRAMES_PER_SECOND = 44100
+// In this Plugin preview example engine, we don't really use the best sampling rate for the device
+// as it only performs static audio processing and does not involve device audio inputs.
+// We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
+const val PCM_DATA_SAMPLERATE = 44100
 
 @ExperimentalUnsignedTypes
 class PluginPreview(context: Context) {
@@ -44,7 +47,7 @@ class PluginPreview(context: Context) {
             service.packageName,
             service.className
         )
-        intent.putExtra("sampleRate", host.sampleRate)
+        intent.putExtra("sampleRate", PCM_DATA_SAMPLERATE)
 
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->
@@ -224,7 +227,7 @@ class PluginPreview(context: Context) {
             val midi1EventsGroupsIterator = midi1EventsGroups.iterator()
             var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf()
             val nextMidi1EventDeltaTime = if (nextMidi1Group.isNotEmpty()) getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
-            var nextMidi1EventFrame = expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, nextMidi1EventDeltaTime)
+            var nextMidi1EventFrame = expandSMPTE(FRAMES_PER_TICK, host.sampleRate, nextMidi1EventDeltaTime)
 
             // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
             // the input sample data. Note that it does not involve any real tiem processing.
@@ -264,7 +267,7 @@ class PluginPreview(context: Context) {
                             deltaTimeTmp /= 0x80
                         }
                         val diffFrame = nextMidi1EventFrame % bufferFrameSize
-                        val diffMTC = toMidiTimeCode(FRAMES_PER_TICK, FRAMES_PER_SECOND, diffFrame)
+                        val diffMTC = toMidiTimeCode(FRAMES_PER_TICK, host.sampleRate, diffFrame)
                         val b0 = 0.toUByte()
                         val diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
                         val updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
@@ -274,7 +277,7 @@ class PluginPreview(context: Context) {
                         if (!midi1EventsGroupsIterator.hasNext())
                             break
                         nextMidi1Group = midi1EventsGroupsIterator.next()
-                        nextMidi1EventFrame += expandSMPTE(FRAMES_PER_TICK, FRAMES_PER_SECOND, getFirstMidi1EventDuration(nextMidi1Group.first()))
+                        nextMidi1EventFrame += expandSMPTE(FRAMES_PER_TICK, host.sampleRate, getFirstMidi1EventDuration(nextMidi1Group.first()))
                     }
                     midiBuffer.position(4)
                     midiBuffer.putInt(midiDataLengthInLoop)
@@ -371,7 +374,7 @@ class PluginPreview(context: Context) {
 
     fun playSound(postApplied: Boolean)
     {
-        val sampleRate = host.sampleRate
+        val sampleRate = PCM_DATA_SAMPLERATE
 
         val w = if(postApplied) outBuf else inBuf
 
