@@ -24,7 +24,7 @@ class AudioPluginInstance
 
     fun getPortBuffer(port: Int) = shm_list[port].buffer
 
-    fun prepare(sampleRate: Int, samplesPerBlock: Int) {
+    fun prepare(samplesPerBlock: Int) {
         (0 until pluginInfo.getPortCount()).forEach { i ->
             var shm = SharedMemory.create(null, samplesPerBlock * 4)
             var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)

@@ -50,7 +50,7 @@ class PluginPreview(context: Context) {
         host.pluginInstantiatedListeners.add { instance ->
             this.instance = instance
             val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-            instance.prepare(host.sampleRate, floatCount)
+            instance.prepare(floatCount)
 
             GlobalScope.launch {
                 processPluginOnce(parametersOnUI)
