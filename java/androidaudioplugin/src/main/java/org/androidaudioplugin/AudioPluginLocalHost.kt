@@ -3,8 +3,8 @@ package org.androidaudioplugin
 import android.content.Context
 import android.util.Log
 
-// It is used only by AudioPluginService to process client (plugin host) requests.
-internal class AudioPluginLocalHost {
+// It is used only by AudioPluginService and some plugin extensions (such as AudioPluginLv2ServiceExtension) to process client (plugin host) requests.
+class AudioPluginLocalHost {
     companion object {
         var initialized: Boolean = false
         var extensions = mutableListOf<AudioPluginService.Extension>()
