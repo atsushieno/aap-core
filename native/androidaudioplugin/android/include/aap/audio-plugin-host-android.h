@@ -6,9 +6,9 @@
 #define ANDROIDAUDIOPLUGINFRAMEWORK_ANDROID_AUDIO_PLUGIN_HOST_ANDROID_HPP
 #ifdef ANDROID
 
-#include "../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/jni.h"
-#include "../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/android/binder_ibinder.h"
-#include "../../../core/include/aap/audio-plugin-host.h"
+#include <jni.h>
+#include <android/binder_ibinder.h>
+#include "aap/audio-plugin-host.h"
 
 #define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
 
