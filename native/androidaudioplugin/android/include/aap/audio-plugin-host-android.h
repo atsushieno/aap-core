@@ -19,9 +19,9 @@ public:
 	AudioPluginServiceConnection(std::string packageName, std::string className, AIBinder *aibinder)
 			: packageName(packageName), className(className), aibinder(aibinder) {}
 
-	std::string packageName{};
-	std::string className{};
-	AIBinder *aibinder{nullptr};
+	std::string packageName;
+	std::string className;
+	AIBinder *aibinder;
 };
 
 class AndroidPluginHostPAL : public PluginHostPAL
@@ -43,7 +43,7 @@ public:
 
     std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) override;
 
-	std::vector<AudioPluginServiceConnection> serviceConnections{};
+	std::vector<std::unique_ptr<AudioPluginServiceConnection>> serviceConnections{};
 
 	JNIEnv* getJNIEnv();
 

@@ -43,9 +43,9 @@ std::vector<PluginInformation*> AndroidPluginHostPAL::getPluginsFromMetadataPath
 AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string packageName, std::string className)
 {
     for (int i = 0; i < serviceConnections.size(); i++) {
-        auto &s = serviceConnections[i];
-        if (s.packageName == packageName && s.className == className)
-            return serviceConnections[i].aibinder;
+        auto s = serviceConnections[i].get();
+        if (s->packageName == packageName && s->className == className)
+            return serviceConnections[i]->aibinder;
     }
     return nullptr;
 }

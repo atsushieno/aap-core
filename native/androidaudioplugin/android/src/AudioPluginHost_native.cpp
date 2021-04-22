@@ -212,7 +212,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jcl
 	const char *classNameDup = strdup_fromJava(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(packageNameDup, classNameDup, aiBinder));
+    apal->serviceConnections.push_back(std::make_unique<aap::AudioPluginServiceConnection>(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
 }
@@ -222,12 +222,13 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
                                                                    jstring packageName, jstring className) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	auto c = apal->serviceConnections.begin();
-	while (c != apal->serviceConnections.end()) {
-		c = std::next(c);
-		if (c->packageName == packageNameDup && c->className == classNameDup)
-			apal->serviceConnections.erase(c);
+	auto pal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
+	auto &conns = pal->serviceConnections;
+	for (int i = 0; i < conns.size(); i++) {
+		auto &c = pal->serviceConnections[i];
+		if (c->packageName == packageNameDup && c->className == classNameDup) {
+			conns[i].release();
+		}
 	}
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
