@@ -180,9 +180,9 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHost(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
     // FIXME: enable later code once queryInstalledPluginsJNI() is fixed.
-    assert(jPluginInfos != nullptr);
-	//if (jPluginInfos == nullptr)
-	//	jPluginInfos = aap::queryInstalledPluginsJNI();
+    //assert(jPluginInfos != nullptr);
+	if (jPluginInfos == nullptr)
+		jPluginInfos = queryInstalledPluginsJNI();
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
 	apal->initializeKnownPlugins(jPluginInfos);
 }
@@ -210,10 +210,9 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jcl
                                                                 jstring packageName, jstring className, jobject binder) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
-	auto binderRef = env->NewGlobalRef(binder);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(packageNameDup, classNameDup, binderRef, aiBinder));
+    apal->serviceConnections.push_back(aap::AudioPluginServiceConnection(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
 }

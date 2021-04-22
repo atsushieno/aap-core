@@ -16,12 +16,11 @@ namespace aap {
 
 class AudioPluginServiceConnection {
 public:
-	AudioPluginServiceConnection(std::string packageName, std::string className, jobject jbinder, AIBinder *aibinder)
+	AudioPluginServiceConnection(std::string packageName, std::string className, AIBinder *aibinder)
 			: packageName(packageName), className(className), aibinder(aibinder) {}
 
 	std::string packageName{};
 	std::string className{};
-	jobject jbinder{nullptr};
 	AIBinder *aibinder{nullptr};
 };
 
