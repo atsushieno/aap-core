@@ -35,6 +35,7 @@ void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char*
                 auto uid = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("unique-id"), nullptr));
                 auto library = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("library"), nullptr));
                 auto entrypoint = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("entrypoint"), nullptr));
+                auto category = std::unique_ptr<xmlChar>(xmlGetNsProp(pluginElem, XC("category"), nullptr));
                 auto plugin = new PluginInformation(false,
                                             pluginPackageName ? pluginPackageName : "",
                                             pluginLocalName ? pluginLocalName : "",
@@ -44,6 +45,7 @@ void aap_parse_plugin_descriptor_into(const char* pluginPackageName, const char*
                                             uid ? C(uid.get()) : "",
                                             library ? C(library.get()) : "",
                                             entrypoint ? C(entrypoint.get()) : "",
+                                            category ? C(category.get()) : "",
                                             xmlfile);
                 for (xmlNode* pluginChild = pluginElem->children; pluginChild; pluginChild = pluginChild->next) {
                     if (pluginChild->type != XML_ELEMENT_NODE ||
