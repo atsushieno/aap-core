@@ -60,8 +60,6 @@ bool PluginHostManager::isPluginUpToDate (std::string identifier, int64_t lastIn
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdatedTimeInMilliseconds;
 }
 
-char const* SharedMemoryExtension::URI = "aap-extension:org.androidaudioplugin.SharedMemoryExtension";
-
 int PluginHost::createInstance(std::string identifier, int sampleRate)
 {
 	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
@@ -119,7 +117,7 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
 	auto instance = new PluginInstance(this, descriptor, pluginFactory, sampleRate);
-	AndroidAudioPluginExtension ext{aap::SharedMemoryExtension::URI, 0, new aap::SharedMemoryExtension()};
+	AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, 0, new aap::SharedMemoryExtension()};
 	instance->addExtension (ext);
 	return instance;
 }

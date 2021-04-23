@@ -322,6 +322,7 @@ public:
 
 PluginHostPAL* getPluginHostPAL();
 
+#define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
 
 class SharedMemoryExtension
 {
@@ -329,8 +330,6 @@ class SharedMemoryExtension
 	std::vector<int32_t> extension_fds{};
 
 public:
-    static char const *URI;
-
     SharedMemoryExtension() {}
     ~SharedMemoryExtension() {
         for (int32_t fd : port_buffer_fds)
@@ -475,7 +474,7 @@ public:
 		return nullptr;
 	}
 
-	inline SharedMemoryExtension* getSharedMemoryExtension() { return (SharedMemoryExtension*) getExtension(SharedMemoryExtension::URI); }
+	inline SharedMemoryExtension* getSharedMemoryExtension() { return (SharedMemoryExtension*) getExtension(AAP_SHARED_MEMORY_EXTENSION_URI); }
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
