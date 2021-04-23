@@ -177,6 +177,23 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
+
+	for (int i = 0; extensions[i] != nullptr; i++) {
+		auto ext = extensions[i];
+		// skip copying SharedMemoryExtension itself.
+		if (strcmp(ext->uri, AAP_SHARED_MEMORY_EXTENSION_URI) == 0)
+			continue;
+
+		// for other extensions, create asharedmem and add as an extension FD, keep it until it is destroyed.
+		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
+		ctx->shared_memory_extension->getExtensionFDs().emplace_back(fd);
+		void* shm = mmap(nullptr, ext->transmit_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		memcpy(shm, ext->data, ext->transmit_size);
+
+		ndk::ScopedFileDescriptor sfd{fd};
+		ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->transmit_size);
+	}
+
     ctx->proxy->endCreate(ctx->instance_id);
 
 	return new AndroidAudioPlugin {
