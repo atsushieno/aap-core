@@ -37,6 +37,7 @@ static jmethodID
 		j_method_get_plugin_id,
 		j_method_get_shared_library_filename,
 		j_method_get_library_entrypoint,
+		j_method_get_category,
 		j_method_get_port_count,
 		j_method_get_port,
 		j_method_port_get_name,
@@ -73,6 +74,9 @@ void initializeJNIMetadata(JNIEnv *env)
 															"()Ljava/lang/String;");
 	j_method_get_library_entrypoint = env->GetMethodID(java_plugin_information_class,
 													   "getLibraryEntryPoint",
+													   "()Ljava/lang/String;");
+	j_method_get_category = env->GetMethodID(java_plugin_information_class,
+													   "getCategory",
 													   "()Ljava/lang/String;");
 	j_method_get_port_count = env->GetMethodID(java_plugin_information_class,
 											   "getPortCount", "()I");
@@ -122,7 +126,9 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 																 j_method_get_shared_library_filename))),
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
 																 j_method_get_library_entrypoint))),
-			"" // no use on Android
+			"", // metadataFullPath, no use on Android
+			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+																 j_method_get_category)))
 	);
 	for (auto p : freeList)
 		free((void*) p);

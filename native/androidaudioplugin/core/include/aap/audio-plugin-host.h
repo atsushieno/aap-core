@@ -34,6 +34,7 @@ enum PortDirection {
 };
 
 enum PluginInstantiationState {
+	PLUGIN_INSTANTIATION_STATE_INITIAL,
 	PLUGIN_INSTANTIATION_STATE_UNPREPARED,
 	PLUGIN_INSTANTIATION_STATE_INACTIVE,
 	PLUGIN_INSTANTIATION_STATE_ACTIVE,
@@ -109,7 +110,7 @@ class PluginInformation
 	std::string metadata_full_path{};
 	int64_t last_info_updated_unixtime_milliseconds;
 
-	/* NULL-terminated list of categories */
+	/* NULL-terminated list of categories, separate by | */
 	std::string primary_category{};
 	/* NULL-terminated list of ports */
 	std::vector<const PortInformation*> ports;
@@ -124,7 +125,7 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_INSTRUMENT = "Instrument";
 
-	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath)
+	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath, std::string primaryCategory)
 		: is_out_process(isOutProcess),
 		  plugin_package_name(pluginPackageName),
 		  plugin_local_name(pluginLocalName),
@@ -134,7 +135,8 @@ public:
 		  shared_library_filename(sharedLibraryFilename),
 		  library_entrypoint(libraryEntrypoint),
 		  plugin_id(pluginID),
-		  metadata_full_path(metadataFullPath)
+		  metadata_full_path(metadataFullPath),
+		  primary_category(primaryCategory)
 	{
 	    struct tm epoch{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         last_info_updated_unixtime_milliseconds = (int64_t) (1000.0 * difftime(time(nullptr), mktime(&epoch)));
@@ -431,8 +433,10 @@ class PluginInstance
 		  pluginInfo(pluginInformation),
 		  plugin_factory(loadedPluginFactory),
 		  plugin(nullptr),
-		  instantiation_state(PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL)
 	{
+		assert(pluginInformation);
+		assert(loadedPluginFactory);
 	}
 	
 public:
@@ -451,11 +455,16 @@ public:
 
 	void completeInstantiation()
 	{
+		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
+
 		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
 		for (size_t i = 0; i < extensions.size(); i++)
 			extArr[i] = &extensions[i];
 		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
+		assert(plugin);
 		free(extArr);
+
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 	}
 
 	const void* getExtension(const char* uri)
