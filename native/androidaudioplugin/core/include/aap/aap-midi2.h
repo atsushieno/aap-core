@@ -7,7 +7,7 @@ namespace aap {
 
 class MidiCIExtension {
 public:
-    int32_t protocol{0}; // 0: MIDI1 / 1: MIDI2
+    int32_t protocol{0}; // 0: Unspecified / 1: MIDI1 / 2: MIDI2
     int32_t protocolVersion{0}; // MIDI1 = 0, MIDI2_V1 = 0
 };
 
