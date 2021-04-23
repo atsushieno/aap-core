@@ -456,12 +456,15 @@ public:
 	{
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
 
-		auto extArr = (AndroidAudioPluginExtension**) calloc(sizeof(AndroidAudioPluginExtension*), extensions.size());
+		AndroidAudioPluginExtension extArr[extensions.size()];
 		for (size_t i = 0; i < extensions.size(); i++)
-			extArr[i] = &extensions[i];
-		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extArr);
+			extArr[i] = extensions[i];
+		AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
+		for (size_t i = 0; i < extensions.size(); i++)
+			extPtrArr[i] = &extArr[i];
+		extPtrArr[extensions.size()] = nullptr;
+		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extPtrArr);
 		assert(plugin);
-		free(extArr);
 
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 	}
