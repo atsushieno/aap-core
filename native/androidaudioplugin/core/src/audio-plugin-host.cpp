@@ -107,12 +107,16 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return new PluginInstance(this, descriptor, pluginFactory, sampleRate);
 }
 
+extern "C" AndroidAudioPluginFactory* (GetAndroidAudioPluginFactoryClientBridge)();
+extern "C" AndroidAudioPluginFactory* (GetDesktopAudioPluginFactoryClientBridge)();
+
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
-	dlerror(); // clean up any previous error state
-	auto dl = dlopen("libandroidaudioplugin.so", RTLD_LAZY);
-	assert (dl != nullptr);
-	auto factoryGetter = (aap_factory_t) dlsym(dl, getPluginHostPAL()->getRemotePluginEntrypoint().c_str());
+#if ANDROID
+	auto factoryGetter = GetAndroidAudioPluginFactoryClientBridge;
+#else
+	auto factoryGetter = GetDesktopAudioPluginFactoryClientBridge;
+#endif
 	assert (factoryGetter != nullptr);
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
