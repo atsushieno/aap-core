@@ -192,7 +192,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 
     for (int i = 0; extensions[i] != nullptr; i++) {
         auto ext = extensions[i];
-        if (strcmp(ext->uri, aap::SharedMemoryExtension::URI) == 0) {
+        if (strcmp(ext->uri, AAP_SHARED_MEMORY_EXTENSION_URI) == 0) {
             ctx->shared_memory_extension = (aap::SharedMemoryExtension *) ext->data;
             break;
         }

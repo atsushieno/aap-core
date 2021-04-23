@@ -32,7 +32,7 @@ public:
         response->set_instance_id(instanceId);
         auto shm = new SharedMemoryExtension();
         shm->getPortBufferFDs().resize(instance->getPluginInformation()->getNumPorts());
-        AndroidAudioPluginExtension ext{SharedMemoryExtension::URI, 0, shm};
+        AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, 0, shm};
         instance->addExtension(ext);
         buffers.resize(instanceId + 1);
         auto & buffer = buffers[instanceId];
