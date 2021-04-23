@@ -234,6 +234,8 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 		auto &c = pal->serviceConnections[i];
 		if (c->packageName == packageNameDup && c->className == classNameDup) {
 			conns[i].release();
+			pal->serviceConnections.erase(pal->serviceConnections.begin() + i);
+			break;
 		}
 	}
 	free((void*) packageNameDup);
