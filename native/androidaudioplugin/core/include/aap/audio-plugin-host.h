@@ -414,6 +414,28 @@ public:
 };
 
 
+// This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
+class PluginExtension {
+public:
+    inline PluginExtension(AndroidAudioPluginExtension src) {
+        uri.reset(strdup(src.uri));
+        data = std::make_unique<void *>(calloc(1, src.transmit_size));
+        memcpy(this->data.get(), src.data, src.transmit_size);
+    }
+
+    std::unique_ptr<char> uri;
+    int32_t dataSize;
+    std::unique_ptr<void *> data;
+
+    inline AndroidAudioPluginExtension asTransient() {
+        AndroidAudioPluginExtension ret;
+        ret.uri = uri.get();
+        ret.data = data.get();
+        ret.transmit_size = dataSize;
+        return ret;
+    }
+};
+
 class PluginInstance
 {
 	friend class PluginHost;
@@ -423,7 +445,7 @@ class PluginInstance
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
 	AndroidAudioPlugin *plugin;
-	std::vector<AndroidAudioPluginExtension> extensions{};
+	std::vector<std::unique_ptr<PluginExtension>> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 
@@ -449,7 +471,7 @@ public:
 
 	void addExtension(AndroidAudioPluginExtension ext)
 	{
-		extensions.emplace_back(ext);
+		extensions.emplace_back(std::make_unique<PluginExtension>(ext));
 	}
 
 	void completeInstantiation()
@@ -458,7 +480,7 @@ public:
 
 		AndroidAudioPluginExtension extArr[extensions.size()];
 		for (size_t i = 0; i < extensions.size(); i++)
-			extArr[i] = extensions[i];
+			extArr[i] = extensions[i]->asTransient();
 		AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
 		for (size_t i = 0; i < extensions.size(); i++)
 			extPtrArr[i] = &extArr[i];
@@ -471,9 +493,9 @@ public:
 
 	const void* getExtension(const char* uri)
 	{
-		for (auto ext : extensions)
-			if (strcmp(ext.uri, uri) == 0)
-				return ext.data;
+		for (auto& ext : extensions)
+			if (strcmp(ext->uri.get(), uri) == 0)
+				return ext->data.get();
 		return nullptr;
 	}
 

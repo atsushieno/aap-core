@@ -57,7 +57,8 @@ public:
         auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
         assert(shmExt != nullptr);
         auto dfd = dup(in_sharedMemoryFD.get());
-        shmExt->getExtensionFDs().emplace_back(dfd);
+        // FIXME: enable this line back otherwise we leak shm file descriptor!!
+        //shmExt->getExtensionFDs().emplace_back(dfd);
         extension.transmit_size = in_size;
         extension.data = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         host->getInstance(in_instanceID)->addExtension(extension);
