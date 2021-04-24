@@ -54,8 +54,8 @@ public:
         assert(in_instanceID < host->getInstanceCount());
         AndroidAudioPluginExtension extension;
         extension.uri = in_uri.c_str();
-        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
-        assert(shmExt != nullptr);
+        //auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        //assert(shmExt != nullptr);
         auto dfd = dup(in_sharedMemoryFD.get());
         // FIXME: enable this line back otherwise we leak shm file descriptor!!
         //shmExt->getExtensionFDs().emplace_back(dfd);
