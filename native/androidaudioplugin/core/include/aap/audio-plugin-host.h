@@ -326,26 +326,26 @@ PluginHostPAL* getPluginHostPAL();
 
 class SharedMemoryExtension
 {
-    std::vector<int32_t> port_buffer_fds{};
-	std::vector<int32_t> extension_fds{};
+	std::unique_ptr<std::vector<int32_t>> port_buffer_fds{nullptr};
+	std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
 
 public:
-    SharedMemoryExtension() {}
+    SharedMemoryExtension();
     ~SharedMemoryExtension() {
-        for (int32_t fd : port_buffer_fds)
+        for (int32_t fd : *port_buffer_fds)
         	if (fd)
 	            close(fd);
-        port_buffer_fds.clear();
-		for (int32_t fd : extension_fds)
+        port_buffer_fds->clear();
+		for (int32_t fd : *extension_fds)
 			if (fd)
 				close(fd);
-		extension_fds.clear();
+		extension_fds->clear();
     }
 
     // Stores clone of port buffer FDs passed from client via Binder.
-    std::vector<int32_t>& getPortBufferFDs() { return port_buffer_fds; }
+    std::vector<int32_t>* getPortBufferFDs() { return port_buffer_fds.get(); }
     // Stores clone of extension data FDs passed from client via Binder.
-	std::vector<int32_t>& getExtensionFDs() { return extension_fds; }
+	std::vector<int32_t>* getExtensionFDs() { return extension_fds.get(); }
 };
 
 
@@ -420,6 +420,7 @@ public:
     inline PluginExtension(AndroidAudioPluginExtension src) {
         uri.reset(strdup(src.uri));
         data = std::make_unique<void *>(calloc(1, src.transmit_size));
+        dataSize = src.transmit_size;
         memcpy(this->data.get(), src.data, src.transmit_size);
     }
 

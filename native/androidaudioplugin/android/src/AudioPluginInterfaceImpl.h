@@ -38,8 +38,8 @@ public:
         *_aidl_return = host->createInstance(in_pluginId, in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
         auto shm = new SharedMemoryExtension();
-        shm->getPortBufferFDs().resize(instance->getPluginInformation()->getNumPorts());
-        AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, 0, shm};
+        shm->getPortBufferFDs()->resize(instance->getPluginInformation()->getNumPorts());
+        AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, sizeof(shm), shm};
         instance->addExtension(ext);
         buffers.resize(*_aidl_return + 1);
         auto & buffer = buffers[*_aidl_return];
@@ -85,7 +85,7 @@ public:
         assert(in_instanceID < host->getInstanceCount());
         auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
         assert(shmExt != nullptr);
-        shmExt->getPortBufferFDs()[in_shmFDIndex] = dup(in_sharedMemoryFD.get());
+        shmExt->getPortBufferFDs()->at(in_shmFDIndex) = dup(in_sharedMemoryFD.get());
         return ndk::ScopedAStatus::ok();
     }
 
@@ -101,7 +101,7 @@ public:
     void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
     {
         if (buffer.buffers)
-            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs().size(); i++)
+            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs()->size(); i++)
                 if (buffer.buffers[i])
                     munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
@@ -120,10 +120,10 @@ public:
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto& FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
-        if (FDs.size() != nPorts) {
+        auto FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
+        if (FDs->size() != nPorts) {
             freeBuffers(instance, buffer);
-            FDs.resize(nPorts, 0);
+            FDs->resize(nPorts, 0);
         }
 
         buffer.num_buffers = nPorts;
@@ -135,7 +135,7 @@ public:
             if (buffer.buffers[i])
                 munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
             buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float), PROT_READ | PROT_WRITE,
-                                     MAP_SHARED, FDs[i], 0);
+                                     MAP_SHARED, FDs->at(i), 0);
             if (buffer.buffers[i] == MAP_FAILED) {
                 int err = errno; // FIXME : define error codes
                 __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",

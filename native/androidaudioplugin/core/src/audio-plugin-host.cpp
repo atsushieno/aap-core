@@ -14,6 +14,13 @@ namespace aap
 
 //-----------------------------------
 
+SharedMemoryExtension::SharedMemoryExtension() {
+	port_buffer_fds = std::make_unique<std::vector<int32_t>>();
+	extension_fds = std::make_unique<std::vector<int32_t>>();
+}
+
+//-----------------------------------
+
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
 	auto shmExt = instance->getSharedMemoryExtension();

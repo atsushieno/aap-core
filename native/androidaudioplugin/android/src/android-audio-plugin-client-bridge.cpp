@@ -65,23 +65,24 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto &fds = ctx->shared_memory_extension->getPortBufferFDs();
+	auto fds = ctx->shared_memory_extension->getPortBufferFDs();
+	
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
     if (prevBuf != nullptr) {
         int nPrev = prevBuf->num_buffers;
         for (int i = prevBuf->num_frames < buffer->num_frames ? 0 : n; i < nPrev; i++) {
-            close(fds[i]);
-            fds[i] = 0;
+            close(fds->at(i));
+            fds->at(i) = 0;
         }
     }
-    fds.resize(n, 0);
+    fds->resize(n, 0);
 
     // allocate shm FDs, first locally, then remotely.
     for (int i = 0; i < n; i++) {
-        assert(fds[i] != 0);
+        assert(fds->at(i) != 0);
         ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(fds[i]);
+        sfd.set(fds->at(i));
         auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         assert(pmStatus.isOk());
     }
@@ -186,7 +187,7 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 
 		// for other extensions, create asharedmem and add as an extension FD, keep it until it is destroyed.
 		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
-		ctx->shared_memory_extension->getExtensionFDs().emplace_back(fd);
+		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
 		void* shm = mmap(nullptr, ext->transmit_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 		memcpy(shm, ext->data, ext->transmit_size);
 
