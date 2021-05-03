@@ -63,24 +63,24 @@ void resetBuffers(DesktopClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto &fds = ctx->shared_memory_extension->getPortBufferFDs();
+	auto fds = ctx->shared_memory_extension->getPortBufferFDs();
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
     if (prevBuf != nullptr) {
         int nPrev = prevBuf->num_buffers;
         for (int i = prevBuf->num_frames < buffer->num_frames ? 0 : n; i < nPrev; i++) {
-            close(fds[i]);
-            fds[i] = 0;
+            close(fds->at(i));
+            fds->assign(i, 0);
         }
     }
-    fds.resize(n, 0);
+    fds->resize(n, 0);
 
     org::androidaudioplugin::PrepareRequest request;
 
     // allocate shm FDs, first locally, then remotely.
     for (int i = 0; i < n; i++) {
-        assert(fds[i] != 0);
-        request.set_shared_memory_fds(i, fds[i]);
+        assert(fds->at(i) != 0);
+        request.set_shared_memory_fds(i, fds->at(i));
     }
 
     request.set_instance_id(ctx->instance_id);

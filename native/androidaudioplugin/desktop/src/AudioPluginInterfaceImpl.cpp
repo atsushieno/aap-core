@@ -31,7 +31,7 @@ public:
         auto instance =host->getInstance(instanceId);
         response->set_instance_id(instanceId);
         auto shm = new SharedMemoryExtension();
-        shm->getPortBufferFDs().resize(instance->getPluginInformation()->getNumPorts());
+        shm->getPortBufferFDs()->resize(instance->getPluginInformation()->getNumPorts());
         AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, 0, shm};
         instance->addExtension(ext);
         buffers.resize(instanceId + 1);
@@ -87,7 +87,7 @@ public:
     void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
     {
         if (buffer.buffers)
-            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs().size(); i++)
+            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs()->size(); i++)
                 if (buffer.buffers[i])
                     munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
@@ -114,10 +114,10 @@ public:
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto& FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
-        if (FDs.size() != nPorts) {
+        auto FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
+        if (FDs->size() != nPorts) {
             freeBuffers(instance, buffer);
-            FDs.resize(nPorts, 0);
+            FDs->resize(nPorts, 0);
         }
 
         buffer.num_buffers = nPorts;
@@ -129,7 +129,7 @@ public:
             if (buffer.buffers[i])
                 munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
             buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float), PROT_READ | PROT_WRITE,
-                                     MAP_SHARED, FDs[i], 0);
+                                     MAP_SHARED, FDs->at(i), 0);
             if (buffer.buffers[i] == MAP_FAILED) {
                 int err = errno; // FIXME : define error codes
                 // FIXME: error reporting
