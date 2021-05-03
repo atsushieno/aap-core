@@ -419,14 +419,15 @@ class PluginExtension {
 public:
     inline PluginExtension(AndroidAudioPluginExtension src) {
         uri.reset(strdup(src.uri));
-        data = std::make_unique<void *>(calloc(1, src.transmit_size));
+        auto dataMem = calloc(1, src.transmit_size);
+        memcpy(dataMem, src.data, src.transmit_size);
+        data.reset((uint8_t*) dataMem);
         dataSize = src.transmit_size;
-        memcpy(this->data.get(), src.data, src.transmit_size);
     }
 
     std::unique_ptr<char> uri;
     int32_t dataSize;
-    std::unique_ptr<void *> data;
+    std::unique_ptr<uint8_t> data; // pointer to void does not work...
 
     inline AndroidAudioPluginExtension asTransient() {
         AndroidAudioPluginExtension ret;

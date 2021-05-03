@@ -117,6 +117,8 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 extern "C" AndroidAudioPluginFactory* (GetAndroidAudioPluginFactoryClientBridge)();
 extern "C" AndroidAudioPluginFactory* (GetDesktopAudioPluginFactoryClientBridge)();
 
+SharedMemoryExtension shmExt{};
+
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
 #if ANDROID
@@ -128,7 +130,10 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
 	auto instance = new PluginInstance(this, descriptor, pluginFactory, sampleRate);
-	AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, 0, new aap::SharedMemoryExtension()};
+	AndroidAudioPluginExtension ext;
+	ext.uri = AAP_SHARED_MEMORY_EXTENSION_URI;
+	ext.transmit_size = sizeof(SharedMemoryExtension);
+	ext.data = &shmExt;
 	instance->addExtension (ext);
 	return instance;
 }
