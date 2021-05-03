@@ -34,6 +34,8 @@ target_compile_options(aapbarebonepluginsample
         -Wextra-semi
         -Wshadow
         -Wshadow-field
+        # uncomment this if you want to enable AddressSanitizer
+        #-fsanitize=address -fno-omit-frame-pointer
         )
 
 if (BUILD_WITH_PREFAB)
@@ -50,3 +52,7 @@ target_link_libraries(aapbarebonepluginsample ${aapbarebonepluginsample_LIBS})
 else ()
 target_link_libraries(aapbarebonepluginsample android log)
 endif ()
+
+# uncomment this if you want to enable AddressSanitizer
+#set_target_properties(aapbarebonepluginsample PROPERTIES LINK_FLAGS -fsanitize=address)
+

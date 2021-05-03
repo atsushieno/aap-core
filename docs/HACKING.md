@@ -56,22 +56,14 @@ It usually does not matter, but sometimes it does - when you would like to debug
 
 ## Build with AddressSanitizer
 
-When debugging AAP framework itself (and probably plugins too), AddressSanitizer (asan) is very helpful to investigate the native code issues. To enable asan, we have additional lines in `build.gradle` wherever NDK-based native builds are involved:
+When debugging AAP framework itself (and probably plugins too), AddressSanitizer (asan) is very helpful to investigate the native code issues.
 
-```
-android {
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
-                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
-            }
-        }
-    }
-```
+To enable asan in this project, there are three things to do:
 
-Depending on the development stage they are either enabled or not. Stable releases should have these lines commented out.
+- run `./setup-asan-for-debugging.sh` to copy asan runtime shared libraries from NDK. You might have to adjust some variables.
+- uncomment some lines in `CMakeLists.txt` (search for "AddressSanitizer" to find the corresponding lines.)
+- Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
 
-Note that the ASAN options are specified only for libandroidaudioplugin.so and libaaphostsample.so. To enable ASAN in dependencies, pass appropriate build arguments to them as well.
+Note that this description is not equivalent to what [NDK documentation](https://developer.android.com/ndk/guides/asan) says; its `wrap.sh` is broken and you'd stuck at unresponsive debugging.
 
-
+Note that the ASAN options are specified only for `libandroidaudioplugin.so` and `libaapbareboneplugin.so`. To enable ASAN in other projects and their dependencies, pass appropriate build arguments to them as well.

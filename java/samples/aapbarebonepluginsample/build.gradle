@@ -29,6 +29,17 @@ android {
             path "CMakeLists.txt"
         }
     }
+    buildTypes {
+        debug {
+            packagingOptions {
+                doNotStrip "**/*.so"
+            }
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
 }
 
 dependencies {

@@ -146,6 +146,8 @@ target_compile_options (androidaudioplugin
         -std=c++17
         -Wall
         -Wshadow
+        # uncomment this if you want to enable AddressSanitizer
+        #-fsanitize=address -fno-omit-frame-pointer
         )
 
 target_link_directories(androidaudioplugin
@@ -157,3 +159,6 @@ target_link_directories(androidaudioplugin
 target_link_libraries (androidaudioplugin
 		${androidaudioplugin_LIBS}
 		)
+
+# uncomment this if you want to enable AddressSanitizer
+#set_target_properties(androidaudioplugin PROPERTIES LINK_FLAGS -fsanitize=address)
