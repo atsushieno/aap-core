@@ -75,8 +75,10 @@ AndroidAudioPlugin *sample_plugin_new(
     };
 }
 
+AndroidAudioPluginFactory factory{sample_plugin_new, sample_plugin_delete};
+
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactory() {
-    return new AndroidAudioPluginFactory{sample_plugin_new, sample_plugin_delete};
+    return &factory;
 }
 
 }
