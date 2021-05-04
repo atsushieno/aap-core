@@ -10,6 +10,7 @@ class PortInformation(var name: String, var direction: Int, var content: Int, de
         const val PORT_CONTENT_TYPE_GENERAL = 0
         const val PORT_CONTENT_TYPE_AUDIO = 1
         const val PORT_CONTENT_TYPE_MIDI = 2
+        const val PORT_CONTENT_TYPE_MIDI2 = 3
     }
 
     var hasValueRange : Boolean = false
