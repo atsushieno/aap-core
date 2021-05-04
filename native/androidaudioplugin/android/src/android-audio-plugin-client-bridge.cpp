@@ -65,24 +65,24 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto fds = ctx->shared_memory_extension->getPortBufferFDs();
-	
+	auto shmExt = ctx->shared_memory_extension;
+
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
     if (prevBuf != nullptr) {
         int nPrev = prevBuf->num_buffers;
         for (int i = prevBuf->num_frames < buffer->num_frames ? 0 : n; i < nPrev; i++) {
-            close(fds->at(i));
-            fds->at(i) = 0;
+            close(shmExt->getPortBufferFD(i));
+            shmExt->setPortBufferFD(i, 0);
         }
     }
-    fds->resize(n, 0);
+    shmExt->resizePortBuffer(n);
 
     // allocate shm FDs, first locally, then remotely.
     for (int i = 0; i < n; i++) {
-        assert(fds->at(i) != 0);
+        assert(shmExt->getPortBufferFD(i) != 0);
         ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(fds->at(i));
+        sfd.set(shmExt->getPortBufferFD(i));
         auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         assert(pmStatus.isOk());
     }

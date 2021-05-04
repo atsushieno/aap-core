@@ -343,9 +343,15 @@ public:
     }
 
     // Stores clone of port buffer FDs passed from client via Binder.
-    std::vector<int32_t>* getPortBufferFDs() { return port_buffer_fds.get(); }
+    inline void resizePortBuffer(size_t newSize) { port_buffer_fds->resize(newSize); }
+    inline int32_t getPortBufferFD(size_t index) { return port_buffer_fds->at(index); }
+    inline void setPortBufferFD(size_t index, int32_t fd) {
+    	if (port_buffer_fds->size() <= index)
+    		port_buffer_fds->resize(index + 1);
+    	port_buffer_fds->at(index) = fd;
+    }
     // Stores clone of extension data FDs passed from client via Binder.
-	std::vector<int32_t>* getExtensionFDs() { return extension_fds.get(); }
+	inline std::vector<int32_t>* getExtensionFDs() { return extension_fds.get(); }
 };
 
 

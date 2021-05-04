@@ -38,8 +38,11 @@ public:
         *_aidl_return = host->createInstance(in_pluginId, in_sampleRate);
         auto instance = host->getInstance(*_aidl_return);
         auto shm = new SharedMemoryExtension();
-        shm->getPortBufferFDs()->resize(instance->getPluginInformation()->getNumPorts());
-        AndroidAudioPluginExtension ext{AAP_SHARED_MEMORY_EXTENSION_URI, sizeof(shm), shm};
+        shm->resizePortBuffer(instance->getPluginInformation()->getNumPorts());
+        AndroidAudioPluginExtension ext;
+        ext.uri = AAP_SHARED_MEMORY_EXTENSION_URI;
+        ext.transmit_size = sizeof(typeid(SharedMemoryExtension));
+        ext.data = shm;
         instance->addExtension(ext);
         buffers.resize(*_aidl_return + 1);
         auto & buffer = buffers[*_aidl_return];
@@ -54,11 +57,10 @@ public:
         assert(in_instanceID < host->getInstanceCount());
         AndroidAudioPluginExtension extension;
         extension.uri = in_uri.c_str();
-        //auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
-        //assert(shmExt != nullptr);
+        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        assert(shmExt != nullptr);
         auto dfd = dup(in_sharedMemoryFD.get());
-        // FIXME: enable this line back otherwise we leak shm file descriptor!!
-        //shmExt->getExtensionFDs().emplace_back(dfd);
+        shmExt->getExtensionFDs()->emplace_back(dfd);
         extension.transmit_size = in_size;
         extension.data = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         host->getInstance(in_instanceID)->addExtension(extension);
@@ -85,7 +87,7 @@ public:
         assert(in_instanceID < host->getInstanceCount());
         auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
         assert(shmExt != nullptr);
-        shmExt->getPortBufferFDs()->at(in_shmFDIndex) = dup(in_sharedMemoryFD.get());
+        shmExt->setPortBufferFD(in_shmFDIndex, dup(in_sharedMemoryFD.get()));
         return ndk::ScopedAStatus::ok();
     }
 
@@ -101,7 +103,7 @@ public:
     void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
     {
         if (buffer.buffers)
-            for (int i = 0; i < instance->getSharedMemoryExtension()->getPortBufferFDs()->size(); i++)
+            for (int i = 0; i < buffer.num_buffers; i++)
                 if (buffer.buffers[i])
                     munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
@@ -120,11 +122,11 @@ public:
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto FDs = instance->getSharedMemoryExtension()->getPortBufferFDs();
-        if (FDs->size() != nPorts) {
+        auto shmExt = instance->getSharedMemoryExtension();
+        shmExt->resizePortBuffer(nPorts);
+        if (buffer.num_buffers != nPorts)
             freeBuffers(instance, buffer);
-            FDs->resize(nPorts, 0);
-        }
+        shmExt->resizePortBuffer(nPorts);
 
         buffer.num_buffers = nPorts;
         buffer.num_frames = frameCount;
@@ -135,7 +137,7 @@ public:
             if (buffer.buffers[i])
                 munmap(buffer.buffers[i], buffer.num_frames * sizeof(float));
             buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float), PROT_READ | PROT_WRITE,
-                                     MAP_SHARED, FDs->at(i), 0);
+                                     MAP_SHARED, shmExt->getPortBufferFD(i), 0);
             if (buffer.buffers[i] == MAP_FAILED) {
                 int err = errno; // FIXME : define error codes
                 __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",
