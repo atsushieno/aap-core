@@ -113,7 +113,7 @@ class ApplicationModel(private val packageName: String, context: Context) {
             if (useMidi2Protocol) {
                 midiInput.send(byteArrayOf(0x40, 0x90.toByte(), 60, 0, 100, 0, 0, 0), 0, 8)
                 delay(1000)
-                midiInput.send(byteArrayOf(0x40, 0x80.toByte(), 60, 0, 100, 0, 0, 0), 0, 8)
+                midiInput.send(byteArrayOf(0x40, 0x80.toByte(), 60, 0, 0, 0, 0, 0), 0, 8)
             } else {
                 midiInput.send(byteArrayOf(0x90.toByte(), 60, 100), 0, 3)
                 delay(1000)

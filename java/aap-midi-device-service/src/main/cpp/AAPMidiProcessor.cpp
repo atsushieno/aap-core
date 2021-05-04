@@ -266,6 +266,7 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::callPluginProcess() {
         for (auto &data : instance_data_list) {
             host->getInstance(data->instance_id)->process(data->plugin_buffer.get(), 1000000000);
+            // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
             if (data->instance_id == instrument_instance_id) {
                 if (data->midi1_in_port >= 0)
                     memset((void *) data->plugin_buffer->buffers[data->midi1_in_port], 0,
@@ -374,11 +375,13 @@ namespace aapmidideviceservice {
             auto dst = (uint8_t *) getAAPMidiInputBuffer();
             if (dst != nullptr) {
                 auto intBuffer = (int32_t *) (void *) dst;
-                intBuffer[0] = length;
+                auto byteBuffer = (uint8_t *) (void *) dst;
+                int32_t currentOffset = intBuffer[0];
+                intBuffer[0] += length;
                 intBuffer[1] = 0; // reserved
                 intBuffer[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
                 intBuffer[3] = 0; // reserved
-                memcpy(dst + 32, bytes + offset, length);
+                memcpy(byteBuffer + currentOffset + 32, bytes + offset, length);
             }
         } else {
             int ticks = getTicksFromNanoseconds(192, actualTimestamp);
