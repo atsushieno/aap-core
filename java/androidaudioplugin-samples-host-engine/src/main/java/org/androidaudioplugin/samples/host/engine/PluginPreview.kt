@@ -198,7 +198,8 @@ class PluginPreview(context: Context) {
                         else
                             audioOutR = i
                     }
-                } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
+                } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI ||
+                           p.content == PortInformation.PORT_CONTENT_TYPE_MIDI2) {
                     if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
                         midiIn = i
                 }
@@ -212,6 +213,8 @@ class PluginPreview(context: Context) {
                 if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
                     return@map
                 if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI)
+                    return@map
+                if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI2)
                     return@map
                 else {
                     val c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()

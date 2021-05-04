@@ -148,6 +148,7 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                             text = when (port.content) {
                                 PortInformation.PORT_CONTENT_TYPE_AUDIO -> "Audio"
                                 PortInformation.PORT_CONTENT_TYPE_MIDI -> "MIDI"
+                                PortInformation.PORT_CONTENT_TYPE_MIDI2 -> "MIDI2"
                                 else -> "-"
                             },
                             modifier = Modifier.width(50.dp)
@@ -168,15 +169,19 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         text = sliderPosition.toString(),
                         modifier = Modifier.width(40.dp).align(Alignment.CenterVertically)
                     )
-                    if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO && port.content != PortInformation.PORT_CONTENT_TYPE_MIDI)
-                        Slider(
-                            value = sliderPosition,
-                            valueRange = if (port.minimum < port.maximum) port.minimum .. port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
-                            steps = 10,
-                            onValueChange = {
-                                parameters[plugin.ports.indexOf(port)] = it
-                                sliderPosition = it
-                            })
+                    when (port.content) {
+                        PortInformation.PORT_CONTENT_TYPE_AUDIO, PortInformation.PORT_CONTENT_TYPE_MIDI, PortInformation.PORT_CONTENT_TYPE_MIDI2 -> {}
+                        else -> {
+                            Slider(
+                                value = sliderPosition,
+                                valueRange = if (port.minimum < port.maximum) port.minimum..port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
+                                steps = 10,
+                                onValueChange = {
+                                    parameters[plugin.ports.indexOf(port)] = it
+                                    sliderPosition = it
+                                })
+                        }
+                    }
                 }
             }
         }
