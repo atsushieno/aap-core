@@ -1,5 +1,5 @@
 rootProject.name = 'aap-core'
-include ':androidaudioplugin', ':aapbarebonepluginsample', ':aaphostsample', ':androidaudioplugin-ui-traditional', ':androidaudioplugin-ui-compose'
+include ':androidaudioplugin', ':aapbarebonepluginsample', ':aaphostsample', ':androidaudioplugin-ui-traditional', ':androidaudioplugin-ui-compose', ':aap-midi-device-service'
 project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepluginsample')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
 

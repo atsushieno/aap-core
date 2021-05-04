@@ -122,3 +122,10 @@ Everything here is only for development purpose yet.
 [DESIGN_NOTES.md](docs/DESIGN_NOTES.md) contains some technical background and design decisions that we have made in this framework.
 
 
+## Licenses
+
+Android Audio Plugin Framework is released under the MIT License.
+
+In aap-midi-device-service, there are some sources copied from [jalv](https://gitlab.com/drobilla/jalv) project included in aap-midi-device-service module, namely those files under `zix` directory, and they are distributed under the ISC license.
+
+aap-miid-device-service also imports [google/oboe](https://github.com/google/oboe) which is released under Apache V2 License.
