@@ -67,14 +67,14 @@ bool PluginHostManager::isPluginUpToDate (std::string identifier, int64_t lastIn
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdatedTimeInMilliseconds;
 }
 
-int PluginHost::createInstance(std::string identifier, int sampleRate)
+int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
 {
 	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
-	auto instance = descriptor->isOutProcess() ?
+	auto instance = isRemoteExplicit || descriptor->isOutProcess() ?
 			instantiateRemotePlugin(descriptor, sampleRate) :
 			instantiateLocalPlugin(descriptor, sampleRate);
 	instances.emplace_back(instance);

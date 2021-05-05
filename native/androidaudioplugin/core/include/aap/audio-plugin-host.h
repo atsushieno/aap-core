@@ -413,7 +413,7 @@ public:
 	{
 	}
 
-	int createInstance(std::string identifier, int sampleRate);
+	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false);
 	void destroyInstance(PluginInstance* instance);
 	size_t getInstanceCount() { return instances.size(); }
 	PluginInstance* getInstance(int32_t instanceId) { return instances[(size_t) instanceId]; }
