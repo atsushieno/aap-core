@@ -12,7 +12,7 @@ android {
         minSdkVersion 29
         targetSdkVersion 30
         versionCode 1
-        versionName "0.6.11"
+        versionName "0.6.12"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -40,28 +40,13 @@ android {
 afterEvaluate {
     publishing {
         publications {
-            // Creates a Maven publication called "release".
             release(MavenPublication) {
-                // Applies the component for the release build variant.
-                groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
                 from components.release
-                artifactId = 'androidaudioplugin-ui-traditional'
             }
-            // Creates a Maven publication called "debug".
             debug(MavenPublication) {
-                // Applies the component for the debug build variant.
-                groupId = 'org.androidaudioplugin'
                 version = android.defaultConfig.versionName
                 from components.debug
-                artifactId = 'androidaudioplugin-ui-traditional'
-            }
-        }
-        repositories {
-            maven {
-                def releasesRepoUrl = "$buildDir/repos/releases"
-                def snapshotsRepoUrl = "$buildDir/repos/snapshots"
-                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             }
         }
     }
