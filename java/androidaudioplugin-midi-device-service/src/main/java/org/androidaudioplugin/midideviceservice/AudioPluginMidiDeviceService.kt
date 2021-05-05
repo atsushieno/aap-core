@@ -17,7 +17,7 @@ private const val MIDI2_PROTOCOL_TYPE = 2
 open class AudioPluginMidiDeviceService : MidiDeviceService() {
 
     private val serviceInfo : ServiceInfo
-        get() = packageManager.getServiceInfo(ComponentName(this, javaClass), PackageManager.GET_SERVICES or PackageManager.GET_META_DATA)
+        get() = packageManager.getServiceInfo(ComponentName(packageName, AudioPluginService::class.java.name), PackageManager.GET_META_DATA)
     internal val pluginService : AudioPluginServiceInformation
         get() = AudioPluginHostHelper.createAudioPluginServiceInformation(applicationContext, serviceInfo)!!
 

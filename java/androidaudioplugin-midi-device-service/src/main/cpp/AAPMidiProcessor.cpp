@@ -129,7 +129,7 @@ namespace aapmidideviceservice {
     }
 
     void AAPMidiProcessor::registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service) {
-        auto pal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
+        auto pal = (aap::AndroidPluginHostPAL*) aap::getPluginHostPAL();
         pal->serviceConnections.emplace_back(std::move(service));
     }
 
@@ -154,7 +154,7 @@ namespace aapmidideviceservice {
                 return;
             }
 
-        auto instanceId = host->createInstance(pluginId, sample_rate);
+        auto instanceId = host->createInstance(pluginId, sample_rate, true);
         auto instance = host->getInstance(instanceId);
 
         if (pluginInfo->isInstrument())
