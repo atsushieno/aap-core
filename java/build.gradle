@@ -22,6 +22,7 @@ buildscript {
 }
 
 allprojects {
+    group 'org.androidaudioplugin'
     repositories {
         google()
         mavenCentral()

@@ -4,15 +4,14 @@ plugins {
 }
 
 android {
-    compileSdk 30
-    buildToolsVersion "30.0.3"
+    compileSdkVersion 30
 
     defaultConfig {
         applicationId "org.androidaudioplugin.aap_midi_device_service.app"
         minSdk 29
         targetSdk 30
         versionCode 1
-        versionName "0.6.11"
+        versionName "0.6.12"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
