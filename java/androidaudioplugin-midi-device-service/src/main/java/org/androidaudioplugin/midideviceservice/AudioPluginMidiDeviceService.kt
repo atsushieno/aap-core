@@ -1,21 +1,34 @@
 package org.androidaudioplugin.midideviceservice
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.media.AudioManager
 import android.media.midi.MidiDeviceService
 import android.media.midi.MidiDeviceStatus
 import android.media.midi.MidiReceiver
 import android.os.IBinder
-import androidx.preference.Preference
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
-import kotlin.properties.Delegates
 
 private const val MIDI1_PROTOCOL_TYPE = 1
 private const val MIDI2_PROTOCOL_TYPE = 2
 
-class AudioPluginMidiDeviceService : MidiDeviceService() {
+open class AudioPluginMidiDeviceService : MidiDeviceService() {
+
+    private val serviceInfo : ServiceInfo
+        get() = packageManager.getServiceInfo(ComponentName(this, javaClass), PackageManager.GET_SERVICES or PackageManager.GET_META_DATA)
+    internal val pluginService : AudioPluginServiceInformation
+        get() = AudioPluginHostHelper.createAudioPluginServiceInformation(applicationContext, serviceInfo)!!
+
+    open val plugins: List<PluginInformation>
+        get() = pluginService.plugins
+
+    private fun isInstrument(info: PluginInformation) =
+        info.category?.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) ?: info.category?.contains("Synth") ?: false
+
+    open val instrument: PluginInformation
+        get() = plugins.first { p -> isInstrument(p) }
 
     // The number of ports is not simply adjustable in one code. device_info.xml needs updates too.
     private var midiReceivers: Array<AudioPluginMidiReceiver> = arrayOf(AudioPluginMidiReceiver(this))
@@ -27,7 +40,6 @@ class AudioPluginMidiDeviceService : MidiDeviceService() {
         super.onCreate()
 
         host = AudioPluginHost(applicationContext)
-        applicationContextForModel = applicationContext
     }
 
     override fun onGetInputPortReceivers(): Array<MidiReceiver> = midiReceivers.map { e -> e as MidiReceiver }.toTypedArray()
@@ -43,7 +55,7 @@ class AudioPluginMidiDeviceService : MidiDeviceService() {
     }
 }
 
-class AudioPluginMidiReceiver(private val service: AudioPluginMidiDeviceService) : MidiReceiver(), AutoCloseable {
+class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDeviceService) : MidiReceiver(), AutoCloseable {
     companion object {
         init {
             System.loadLibrary("aapmidideviceservice")
@@ -62,11 +74,11 @@ class AudioPluginMidiReceiver(private val service: AudioPluginMidiDeviceService)
     private var aapFrameSize = 512
 
     fun initialize() {
-        val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = ownerService.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
         oboeFrameSize = (audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024)
 
-        serviceConnector = AudioPluginServiceConnector(service.applicationContext)
+        serviceConnector = AudioPluginServiceConnector(ownerService.applicationContext)
 
         serviceConnector.serviceConnectedListeners.add { connection ->
             registerPluginService(
@@ -75,7 +87,7 @@ class AudioPluginMidiReceiver(private val service: AudioPluginMidiDeviceService)
                 connection.serviceInfo.className
             )
 
-            if (model.useMidi2Protocol) // In this app, it must be set before createInstance().
+            if (ownerService.instrument.ports.any { p -> p.content == PortInformation.PORT_CONTENT_TYPE_MIDI2 && p.direction == PortInformation.PORT_DIRECTION_INPUT })
                 setMidiProtocol(MIDI2_PROTOCOL_TYPE)
 
             for (i in pendingInstantiationList)
@@ -84,7 +96,7 @@ class AudioPluginMidiReceiver(private val service: AudioPluginMidiDeviceService)
 
             activate()
         }
-        initializeReceiverNative(service.applicationContext, model.pluginServices.flatMap { s -> s.plugins}.toTypedArray(), sampleRate!!, oboeFrameSize!!, audioOutChannelCount, aapFrameSize)
+        initializeReceiverNative(ownerService.applicationContext, ownerService.plugins.toTypedArray(), sampleRate!!, oboeFrameSize!!, audioOutChannelCount, aapFrameSize)
 
         setupDefaultPlugins()
     }
@@ -107,7 +119,7 @@ class AudioPluginMidiReceiver(private val service: AudioPluginMidiDeviceService)
     }
 
     private fun setupDefaultPlugins() {
-        val plugin = model.instrument
+        val plugin = ownerService.instrument
         if (plugin != null) {
             pendingInstantiationList.add(plugin)
             connectService(plugin.packageName, plugin.localName)

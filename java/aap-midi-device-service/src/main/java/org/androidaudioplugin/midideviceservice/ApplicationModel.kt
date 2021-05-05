@@ -71,10 +71,9 @@ class ApplicationModel(private val packageName: String, context: Context) {
 
     private val allPlugins: Array<PluginInformation> = AudioPluginHostHelper.queryAudioPlugins(context)
 
-    val instrument: PluginInformation
+    val instrument: PluginInformation?
         get() = specifiedInstrument ?:
-            allPlugins.firstOrNull { p -> p.packageName == packageName && isInstrument(p) } ?:
-            allPlugins.first { p -> isInstrument(p) }
+            allPlugins.firstOrNull { p -> p.packageName == packageName && isInstrument(p) }
 
     private fun isInstrument(info: PluginInformation) =
         info.category?.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) ?: info.category?.contains("Synth") ?: false

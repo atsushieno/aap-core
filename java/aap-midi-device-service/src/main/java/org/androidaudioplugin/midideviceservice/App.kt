@@ -103,7 +103,7 @@ fun AvailablePlugins(onItemClick: (PluginInformation) -> Unit = {}, instrumentPl
     val small = TextStyle(fontSize = 12.sp)
 
     val state by remember { mutableStateOf(LazyListState()) }
-    var selectedIndex by remember { mutableStateOf(if (model.instrument != null) instrumentPlugnis.indexOf(model.instrument) else -1) }
+    var selectedIndex by remember { mutableStateOf(if (model.instrument != null) instrumentPlugnis.indexOf(model.instrument!!) else -1) }
 
     LazyColumn(state = state) {
         itemsIndexed(instrumentPlugnis, itemContent = { index, plugin ->
