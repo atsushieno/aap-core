@@ -57,8 +57,8 @@ target_compile_options (aapmidideviceservice
         -std=c++17
         -Wall
         -Wshadow
-		# uncomment this if you want to enable AddressSanitizer
-		#-fsanitize=address -fno-omit-frame-pointer
+        # uncomment this if you want to enable AddressSanitizer
+        #-fsanitize=address -fno-omit-frame-pointer
         )
 
 target_link_directories(aapmidideviceservice
