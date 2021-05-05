@@ -8,7 +8,7 @@ android {
     buildToolsVersion "30.0.3"
 
     defaultConfig {
-        applicationId "org.androidaudioplugin.aap_midi_device_service"
+        applicationId "org.androidaudioplugin.aap_midi_device_service.app"
         minSdk 29
         targetSdk 30
         versionCode 1
