@@ -5,9 +5,11 @@ include ':androidaudioplugin-ui-traditional'
 include ':androidaudioplugin-ui-compose'
 include ':androidaudioplugin-samples-host-engine'
 include ':aapbarebonepluginsample'
+include ':aapinstrumentsample'
 include ':aaphostsample'
 include ':aap-midi-device-service'
 
 project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepluginsample')
+project(':aapinstrumentsample').projectDir = new File('samples/aapinstrumentsample')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
 

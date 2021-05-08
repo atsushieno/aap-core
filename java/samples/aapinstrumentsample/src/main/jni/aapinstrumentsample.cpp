@@ -1,11 +1,13 @@
 
 #include <aap/android-audio-plugin.h>
 #include <cstring>
+#include <math.h>
 
 extern "C" {
 
 typedef struct {
     /* any kind of extension information, which will be passed as void* */
+    int sample_rate;
 } SamplePluginSpecific;
 
 void sample_plugin_delete(
@@ -21,35 +23,26 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer 
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
 
+int32_t start_offset{0};
+int32_t current_freq = 440;
+
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
 
-    // apply super-simple delay processing
-    int size = buffer->num_frames * sizeof(float);
+    auto context = (SamplePluginSpecific*) plugin->plugin_specific;
 
-    auto modL = ((float *) buffer->buffers[4])[0];
-    auto modR = ((float *) buffer->buffers[5])[0];
-    auto delayL = (int) ((float *) buffer->buffers[6])[0];
-    auto delayR = (int) ((float *) buffer->buffers[7])[0];
-    auto fIL = (float *) buffer->buffers[0];
-    auto fIR = (float *) buffer->buffers[1];
-    auto fOL = (float *) buffer->buffers[2];
-    auto fOR = (float *) buffer->buffers[3];
-    for (int i = 0; i < size / sizeof(float); i++) {
-        if (i >= delayL)
-            fOL[i] = (float) (fIL[i - delayL] * modL);
-        if (i >= delayR)
-            fOR[i] = (float) (fIR[i - delayR] * modR);
+    auto sampleRate = context->sample_rate;
+
+    auto outL = (float*) buffer->buffers[1];
+    auto outR = (float*) buffer->buffers[2];
+    int32_t start = 0;
+    int32_t end = buffer->num_frames;
+    for (int i = start; i < end; i++) {
+        auto sampleFreq = sampleRate / (float) current_freq;
+        outL[i] = outR[i] = (float) sin((i + start_offset) / (sampleFreq / (M_PI * 2)));
     }
-
-    /* do anything. In this example, inputs (0,1) are directly copied to outputs (2,3) */
-    /*
-    memcpy(buffer->buffers[2], buffer->buffers[0], size);
-    memcpy(buffer->buffers[3], buffer->buffers[1], size);
-    */
-
-    // skip dummy parameter (buffers[4])
+    start_offset = (start_offset + end - start) % sampleRate;
 }
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
@@ -68,7 +61,7 @@ AndroidAudioPlugin *sample_plugin_new(
         int sampleRate,
         AndroidAudioPluginExtension **extensions) {
     return new AndroidAudioPlugin{
-            new SamplePluginSpecific{},
+            new SamplePluginSpecific{sampleRate},
             sample_plugin_prepare,
             sample_plugin_activate,
             sample_plugin_process,

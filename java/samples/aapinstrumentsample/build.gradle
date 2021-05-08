@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+android {
+    compileSdkVersion 30
+    defaultConfig {
+        applicationId "org.androidaudioplugin.aapinstrumentsample"
+        minSdkVersion 29
+        targetSdkVersion 30
+        versionCode 1
+        versionName "0.6.12"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+    }
+    // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
+    /*
+    buildFeatures {
+        prefab true
+    }
+    */
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+    buildTypes {
+        debug {
+            packagingOptions {
+                doNotStrip "**/*.so"
+            }
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation project(':androidaudioplugin')
+    implementation project(':androidaudioplugin-ui-compose')
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.core:core-ktx:1.3.2'
+}
+
+// Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
+// This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
+gradle.projectsEvaluated {
+    tasks['buildCMakeDebug'].dependsOn(rootProject.project("androidaudioplugin").mergeDebugNativeLibs)
+    // It is super awkward in AGP or Android Studio, but gradlew --tasks does not list
+    // `buildCMakeRelease` while `buildCMakeDebug` is there!
+    // Fortunately(?) we can rely on another awkwardness that we reference *debug* version of
+    //  -;androidaudioplugin in CMakeLists.txt for target_link_directories() so we can skip
+    //  release dependency here (technically we need debug build *always* happen before
+    //  release builds, but it always seems to happen.
+//    tasks['buildCMakeRelease'].dependsOn(rootProject.project("androidaudioplugin").mergeReleaseNativeLibs)
+}

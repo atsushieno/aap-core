@@ -28,15 +28,8 @@ class PluginPreview(context: Context) {
     val inBuf : ByteArray
     val outBuf : ByteArray
 
-    init {
-        val assets = context.applicationContext.assets
-        val wavAsset = assets.open("sample.wav")
-        inBuf = wavAsset.readBytes().drop(88).toByteArray()
-        wavAsset.close()
-        outBuf = ByteArray(inBuf.size)
-    }
-
     fun dispose() {
+        track.release()
         host.dispose()
     }
 
@@ -369,35 +362,18 @@ class PluginPreview(context: Context) {
             if (j >= end)
                 break
             outF.put(outL[i])
-            j++
             outF.put(outR[i])
-            j++
+            j += 2
         }
     }
 
+    val track: AudioTrack
+    val audioTrackBufferSizeInBytes: Int
+
     fun playSound(postApplied: Boolean)
     {
-        val sampleRate = PCM_DATA_SAMPLERATE
-
         val w = if(postApplied) outBuf else inBuf
 
-        val bufferSize = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT)
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build())
-            .setAudioFormat(
-                AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                .build())
-            .setBufferSizeInBytes(bufferSize)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-        track.setVolume(5.0f)
         track.play()
         /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
         val fa = FloatArray(w.size / 4)
@@ -407,14 +383,13 @@ class PluginPreview(context: Context) {
         }
         var i = 0
         while (i < w.size) {
-            val ret = track.write(fa, i, bufferSize / 4, AudioTrack.WRITE_BLOCKING)
+            val ret = track.write(fa, i, audioTrackBufferSizeInBytes / 4, AudioTrack.WRITE_BLOCKING)
             if (ret <= 0)
                 break
             i += ret
         }
         track.flush()
         track.stop()
-        track.release()
     }
 
     fun unbindHost()
@@ -424,5 +399,44 @@ class PluginPreview(context: Context) {
             val serviceInfo = instance.service.serviceInfo
             host.serviceConnector.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
         }
+    }
+
+    init {
+        val assets = context.applicationContext.assets
+        val wavAsset = assets.open("sample.wav")
+        inBuf = wavAsset.readBytes().drop(88).toByteArray()
+        wavAsset.close()
+        outBuf = ByteArray(inBuf.size)
+
+        // set up AudioTrack
+        // FIXME: once we support resampling then support platform audio configuration.
+        val sampleRate = PCM_DATA_SAMPLERATE
+        audioTrackBufferSizeInBytes = AudioTrack.getMinBufferSize(
+            PCM_DATA_SAMPLERATE,
+            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.ENCODING_PCM_FLOAT
+        )
+        track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                    .build()
+            )
+            .setBufferSizeInBytes(audioTrackBufferSizeInBytes)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build()
+        track.setVolume(2.0f)
+
+        val fa = FloatArray(1024)
+        for (i in 0 .. 10)
+            track.write(fa, 0, 1024, AudioTrack.WRITE_BLOCKING)
     }
 }
