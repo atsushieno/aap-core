@@ -77,6 +77,7 @@ int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRe
 	auto instance = isRemoteExplicit || descriptor->isOutProcess() ?
 			instantiateRemotePlugin(descriptor, sampleRate) :
 			instantiateLocalPlugin(descriptor, sampleRate);
+	assert(instance != nullptr);
 	instances.emplace_back(instance);
 	return instances.size() - 1;
 }
