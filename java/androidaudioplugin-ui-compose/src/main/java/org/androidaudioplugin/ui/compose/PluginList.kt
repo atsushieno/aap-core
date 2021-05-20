@@ -34,6 +34,8 @@ import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
 
 
 @Composable
@@ -188,22 +190,50 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     }
 }
 
+private fun getSampleVisualizationData(floats: FloatBuffer, size: Int, slots: Int) : Sequence<Pair<Float,Float>> {
+    return sequence {
+        val sizePerGroup = size / slots
+        for (y in 0 until slots) {
+            var min = Float.MAX_VALUE
+            var max = -Float.MIN_VALUE
+            for (i in 0 until size / slots / 2) {
+                val idx = y * sizePerGroup + i * 2
+                val l = floats[idx]
+                if (max < l)
+                    max = l
+                val r = floats[idx + 1]
+                if (min > r)
+                    min = r
+            }
+            yield(Pair(max, min))
+        }
+    }
+}
+
 @Composable
 fun WaveformDrawable(waveData: ByteArray, height : Dp = 64.dp) {
-    val floatBuffer = ByteBuffer.wrap(waveData).asFloatBuffer()
-
-    // Is there any way to get max() from FloatBuffer?
-    val fa = FloatArray(waveData.size / 4)
-    floatBuffer.get(fa)
-    val max = fa.maxOrNull() ?: 0f
+    val floatBuffer = ByteBuffer.wrap(waveData).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
 
     Canvas(modifier = Modifier.fillMaxWidth().height(height).border(width = 1.dp, color = Color.Gray), onDraw = {
         val width = this.size.width.toInt()
         val height = this.size.height
-        val delta = (waveData.size / 4 / width).and(Int.MAX_VALUE - 1) // - mod 2
-        for (wp in 0..width / 2) {
+
+        val visualizationData = getSampleVisualizationData(floatBuffer, waveData.size / 4, width).toList()
+        var vMin = Float.MAX_VALUE
+        var vMax = -Float.MIN_VALUE
+        for (pair in visualizationData) {
+            val l = pair.first
+            if (vMax < l)
+                vMax = l
+            val r = pair.second
+            if (vMin > r)
+                vMin = r
+        }
+
+        for (wp in visualizationData.indices) {
             var i = wp * 2
-            val frL = floatBuffer[delta * i] / max
+            val pair = visualizationData[wp]
+            val frL = pair.first / vMax
             val hL = frL * height / 2
             drawLine(
                 Color.Black,
@@ -211,7 +241,7 @@ fun WaveformDrawable(waveData: ByteArray, height : Dp = 64.dp) {
                 Offset((i + 1).toFloat(), height / 2 - hL)
             )
             i = wp * 2 + 1
-            val frR = floatBuffer[delta * i] / max
+            val frR = pair.second / vMin
             val hR = frR * height / 2
             drawLine(
                 Color.Black,
