@@ -34,8 +34,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     auto sampleRate = context->sample_rate;
 
-    auto outL = (float*) buffer->buffers[1];
-    auto outR = (float*) buffer->buffers[2];
+    auto outL = (float*) buffer->buffers[2];
+    auto outR = (float*) buffer->buffers[3];
     int32_t start = 0;
     int32_t end = buffer->num_frames;
     for (int i = start; i < end; i++) {
