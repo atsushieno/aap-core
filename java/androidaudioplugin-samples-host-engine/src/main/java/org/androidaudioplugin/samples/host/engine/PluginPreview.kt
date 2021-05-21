@@ -336,9 +336,9 @@ class PluginPreview(context: Context) {
 
     private fun deinterleaveInput(startInFloat: Int, sizeInFloat: Int)
     {
-        val l = ByteBuffer.wrap(host.audioInputs[0]).asFloatBuffer()
-        val r = ByteBuffer.wrap(host.audioInputs[1]).asFloatBuffer()
-        val inF = ByteBuffer.wrap(inBuf).asFloatBuffer()
+        val l = ByteBuffer.wrap(host.audioInputs[0]).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val r = ByteBuffer.wrap(host.audioInputs[1]).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val inF = ByteBuffer.wrap(inBuf).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
         inF.position(startInFloat * 2)
         var j = startInFloat * 2
         val end = inBuf.size / 4
@@ -352,9 +352,9 @@ class PluginPreview(context: Context) {
 
     private fun interleaveOutput(startInFloat: Int, sizeInFloat: Int)
     {
-        val outL = ByteBuffer.wrap(host.audioOutputs[0]).asFloatBuffer()
-        val outR = ByteBuffer.wrap(host.audioOutputs[1]).asFloatBuffer()
-        val outF = ByteBuffer.wrap(outBuf).asFloatBuffer()
+        val outL = ByteBuffer.wrap(host.audioOutputs[0]).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val outR = ByteBuffer.wrap(host.audioOutputs[1]).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val outF = ByteBuffer.wrap(outBuf).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
         outF.position(startInFloat * 2)
         var j = startInFloat * 2
         val end = outBuf.size / 4
