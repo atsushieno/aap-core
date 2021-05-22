@@ -21,23 +21,25 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     private fun testInstancingAndProcessing(pluginInfo: PluginInformation) {
         val host = AudioPluginHost(applicationContext)
 
-        // we should come up with appropriate locks...
-        var passed = false
+        for (i in 0..3) {
+            // we should come up with appropriate locks...
+            var passed = false
 
-        host.pluginInstantiatedListeners.add { instance ->
-            val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-            instance.prepare(floatCount)
+            host.pluginInstantiatedListeners.add { instance ->
+                passed = true
+            }
+            host.instantiatePlugin(pluginInfo)
 
-            instance.activate()
-            instance.process()
-            instance.deactivate()
-            instance.destroy()
-            passed = true
+            while (!passed)
+                Thread.sleep(1)
         }
-        host.instantiatePlugin(pluginInfo)
 
-        while (!passed)
-            Thread.sleep(1)
+        val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+        host.instantiatedPlugins.forEach { instance -> instance.prepare(floatCount) }
+        host.instantiatedPlugins.forEach { instance -> instance.activate() }
+        host.instantiatedPlugins.forEach { instance -> instance.process() }
+        host.instantiatedPlugins.forEach { instance -> instance.deactivate() }
+        host.instantiatedPlugins.forEach { instance -> instance.destroy() }
 
         host.dispose()
     }
