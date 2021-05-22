@@ -4,9 +4,6 @@
 [submodule "dependencies/googletest"]
 	path = external/googletest
 	url = https://github.com/google/googletest.git
-[submodule "external/ktmidi"]
-	path = external/ktmidi
-	url = https://github.com/atsushieno/ktmidi.git
 [submodule "external/oboe"]
 	path = external/oboe
 	url = https://github.com/google/oboe.git
