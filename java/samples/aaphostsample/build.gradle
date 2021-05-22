@@ -13,7 +13,8 @@ android {
         minSdkVersion 29
         targetSdkVersion 30
         versionCode 1
-        versionName "0.6.12"
+        versionName '0.6.13'
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
