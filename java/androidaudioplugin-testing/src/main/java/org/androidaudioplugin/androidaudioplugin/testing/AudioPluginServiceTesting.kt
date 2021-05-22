@@ -23,6 +23,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
         // we should come up with appropriate locks...
         var passed = false
+
         host.pluginInstantiatedListeners.add { instance ->
             val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
             instance.prepare(floatCount)
@@ -37,5 +38,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
         while (!passed)
             Thread.sleep(1)
+
+        host.dispose()
     }
 }

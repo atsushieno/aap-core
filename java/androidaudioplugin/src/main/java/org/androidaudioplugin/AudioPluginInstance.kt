@@ -6,6 +6,13 @@ import java.nio.ByteBuffer
 
 class AudioPluginInstance
 {
+    enum class InstanceState {
+        UNPREPARED,
+        INACTIVE,
+        ACTIVE,
+        DESTROYED
+    }
+
     private class SharedMemoryBuffer (var shm : SharedMemory, var fd : Int, var buffer: ByteBuffer)
 
     private var shm_list = mutableListOf<SharedMemoryBuffer>()
@@ -14,6 +21,7 @@ class AudioPluginInstance
     var instanceId: Int
     var pluginInfo: PluginInformation
     var service: PluginServiceConnection
+    var state = InstanceState.UNPREPARED
 
     internal constructor (instanceId: Int, pluginInfo: PluginInformation, service: PluginServiceConnection) {
         this.instanceId = instanceId
@@ -33,10 +41,14 @@ class AudioPluginInstance
             proxy.prepareMemory(instanceId, i, ParcelFileDescriptor.adoptFd(shmFD))
         }
         proxy.prepare(instanceId, samplesPerBlock, pluginInfo.ports.size)
+
+        state = InstanceState.INACTIVE
     }
 
     fun activate() {
         proxy.activate(instanceId)
+
+        state = InstanceState.ACTIVE
     }
 
     fun process() {
@@ -45,6 +57,8 @@ class AudioPluginInstance
 
     fun deactivate() {
         proxy.deactivate(instanceId)
+
+        state = InstanceState.INACTIVE
     }
 
     fun getState() : ByteArray {
@@ -68,9 +82,15 @@ class AudioPluginInstance
     }
 
     fun destroy() {
-        proxy.destroy(instanceId)
-        shm_list.forEach { shm ->
-            shm.shm.close()
+        if (state == InstanceState.ACTIVE)
+            deactivate()
+        if (state == InstanceState.INACTIVE) {
+            proxy.destroy(instanceId)
+            shm_list.forEach { shm ->
+                shm.shm.close()
+            }
+
+            state = InstanceState.DESTROYED
         }
     }
 }

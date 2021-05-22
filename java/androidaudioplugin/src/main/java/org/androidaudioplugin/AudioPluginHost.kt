@@ -20,6 +20,8 @@ class AudioPluginHost(private var applicationContext: Context) {
     val extensions = mutableListOf<AudioPluginExtensionData>()
 
     fun dispose() {
+        for (instance in instantiatedPlugins)
+            instance.destroy()
     }
 
     // Plugin instancing

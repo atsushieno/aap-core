@@ -423,25 +423,13 @@ public:
 // This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
 class PluginExtension {
 public:
-    inline PluginExtension(AndroidAudioPluginExtension src) {
-        uri.reset(strdup(src.uri));
-        auto dataMem = calloc(1, src.transmit_size);
-        memcpy(dataMem, src.data, src.transmit_size);
-        data.reset((uint8_t*) dataMem);
-        dataSize = src.transmit_size;
-    }
+	PluginExtension(AndroidAudioPluginExtension src);
 
-    std::unique_ptr<char> uri;
+    std::unique_ptr<char> uri{nullptr};
     int32_t dataSize;
-    std::unique_ptr<uint8_t> data; // pointer to void does not work...
+    std::unique_ptr<uint8_t> data{nullptr}; // pointer to void does not work...
 
-    inline AndroidAudioPluginExtension asTransient() {
-        AndroidAudioPluginExtension ret;
-        ret.uri = uri.get();
-        ret.data = data.get();
-        ret.transmit_size = dataSize;
-        return ret;
-    }
+    AndroidAudioPluginExtension asTransient() const;
 };
 
 class PluginInstance

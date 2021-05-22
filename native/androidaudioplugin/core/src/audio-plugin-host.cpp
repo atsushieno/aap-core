@@ -23,9 +23,6 @@ SharedMemoryExtension::SharedMemoryExtension() {
 
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
-	auto shmExt = instance->getSharedMemoryExtension();
-	if (shmExt != nullptr)
-		delete shmExt;
 	delete instance;
 }
 
@@ -137,6 +134,22 @@ PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *des
 	ext.data = &shmExt;
 	instance->addExtension (ext);
 	return instance;
+}
+
+PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {
+	uri.reset(strdup(src.uri));
+	auto dataMem = calloc(1, src.transmit_size);
+	memcpy(dataMem, src.data, src.transmit_size);
+	data.reset((uint8_t*) dataMem);
+	dataSize = src.transmit_size;
+}
+
+AndroidAudioPluginExtension PluginExtension::asTransient() const {
+	AndroidAudioPluginExtension ret;
+	ret.uri = uri.get();
+	ret.data = data.get();
+	ret.transmit_size = dataSize;
+	return ret;
 }
 
 } // namespace
