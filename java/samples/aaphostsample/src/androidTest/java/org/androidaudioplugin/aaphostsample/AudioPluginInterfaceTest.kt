@@ -44,41 +44,4 @@ class AudioPluginInterfaceTest {
 
         serviceRule.unbindService()
     }
-
-    @Test
-    fun basicDirectServiceOperations() {
-        val pluginId = "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter"
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val serviceInfos = AudioPluginHostHelper.queryAudioPluginServices(context)
-        val serviceInfo = serviceInfos.first { c -> c.label == "AAPBareBoneSamplePlugin" }
-        val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
-
-        val portInfo = pluginInfo.getPort(0);
-        assert(portInfo.name == "Left In");
-
-        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        intent.component = ComponentName(pluginInfo.packageName, pluginInfo.localName)
-        val binder = serviceRule.bindService(intent)
-        val iface = AudioPluginInterface.Stub.asInterface(binder)
-
-        val instanceId = iface.beginCreate(pluginId, 44100)
-        assert(instanceId >= 0)
-        val instanceId2 = iface.beginCreate(pluginId, 44100) // can create multiple times
-        assert(instanceId2 >= 0)
-        assert(instanceId != instanceId2)
-
-        iface.endCreate(instanceId)
-        iface.endCreate(instanceId2)
-
-        iface.destroy(instanceId2)
-        iface.destroy(instanceId)
-
-        serviceRule.unbindService()
-    }
-
-    @Test
-    fun repeatDirectServieOperations() {
-        for (i in 0..5)
-            basicDirectServiceOperations()
-    }
 }

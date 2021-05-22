@@ -158,5 +158,12 @@ class AudioPluginHostHelper {
                 intent.putExtra("instanceId", instanceId.toInt())
             context.startActivity(intent, bundle)
         }
+
+        @JvmStatic
+        fun getLocalAudioPluginService(context: Context) : AudioPluginServiceInformation {
+            val componentName = ComponentName(context.packageName, AudioPluginService::class.java.name)
+            val serviceInfo = context.packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
+            return createAudioPluginServiceInformation(context, serviceInfo)!!
+        }
     }
 }

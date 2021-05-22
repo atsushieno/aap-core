@@ -13,3 +13,4 @@ project(':aapbarebonepluginsample').projectDir = new File('samples/aapbarebonepl
 project(':aapinstrumentsample').projectDir = new File('samples/aapinstrumentsample')
 project(':aaphostsample').projectDir = new File('samples/aaphostsample')
 
+include ':androidaudioplugin-testing'
