@@ -32,8 +32,6 @@ jobs:
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
     - name: stupid NDK setup workaround for GitHub Actions
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
-    - name: workaround for https://github.com/actions/virtual-environments/issues/2228
-      run: echo cmake.dir=/usr > java/local.properties
     - name: build
       run: make
     - name: upload artifact
