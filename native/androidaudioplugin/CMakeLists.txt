@@ -18,10 +18,10 @@ if (ANDROID)
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
-	"android/src/android-audio-plugin-client-bridge.cpp"
+	"android/src/binder-client-as-plugin.cpp"
 	"android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
-	"android/src/android-context.cpp"
-	"android/src/AudioPluginHost_native.cpp"
+	"android/src/android-application-context.cpp"
+	"android/src/AudioPluginNatives_jni.cpp"
 	"android/src/audio-plugin-host-android.cpp"
 	)
 

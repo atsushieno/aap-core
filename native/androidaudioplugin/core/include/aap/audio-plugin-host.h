@@ -125,30 +125,8 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_INSTRUMENT = "Instrument";
 
-	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath, std::string primaryCategory)
-		: is_out_process(isOutProcess),
-		  plugin_package_name(pluginPackageName),
-		  plugin_local_name(pluginLocalName),
-		  display_name(displayName),
-		  manufacturer_name(manufacturerName),
-		  version(versionString),
-		  shared_library_filename(sharedLibraryFilename),
-		  library_entrypoint(libraryEntrypoint),
-		  plugin_id(pluginID),
-		  metadata_full_path(metadataFullPath),
-		  primary_category(primaryCategory)
-	{
-	    struct tm epoch{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        last_info_updated_unixtime_milliseconds = (int64_t) (1000.0 * difftime(time(nullptr), mktime(&epoch)));
+	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath, std::string primaryCategory);
 
-		char *cp;
-		size_t len = (size_t) snprintf(nullptr, 0, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
-		cp = (char*) calloc(len, 1);
-		snprintf(cp, len, "%s+%s+%s", display_name.c_str(), plugin_id.c_str(), version.c_str());
-		identifier_string = cp;
-        free(cp);
-	}
-	
 	~PluginInformation()
 	{
 	}
@@ -308,16 +286,7 @@ public:
     		plugin_list_cache.emplace_back(p);
     }
 
-	std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr) {
-		auto& ret = plugin_list_cache;
-		if (ret.size() > 0)
-			return ret;
-		std::vector<std::string> aapPaths{};
-		for (auto path : getPluginPaths())
-			getAAPMetadataPaths(path, aapPaths);
-		ret = getPluginsFromMetadataPaths(aapPaths);
-		return ret;
-	}
+	std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
 };
 
 PluginHostPAL* getPluginHostPAL();

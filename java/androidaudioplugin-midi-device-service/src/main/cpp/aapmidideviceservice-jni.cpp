@@ -5,7 +5,7 @@
 
 #include <aap/audio-plugin-host.h>
 #include <aap/audio-plugin-host-android.h>
-#include <aap/android-context.h>
+#include <aap/android-application-context.h>
 #include <aap/logging.h>
 #include "AAPMidiProcessor.h"
 

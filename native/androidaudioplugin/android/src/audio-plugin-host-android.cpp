@@ -13,7 +13,7 @@
 #include "aap/audio-plugin-host.h"
 #include "aap/audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
-#include "aap/android-context.h"
+#include "aap/android-application-context.h"
 
 namespace aap {
 

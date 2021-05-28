@@ -9,6 +9,8 @@
 #include "aap/audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
 
+// AAP plugin implementation that performs actual work via AAP binder client.
+
 class AAPClientContext {
 
 public:
@@ -93,20 +95,20 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	ctx->previous_buffer = buffer;
 }
 
-void aap_bridge_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
+void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	resetBuffers(ctx, buffer);
 }
 
-void aap_bridge_plugin_activate(AndroidAudioPlugin *plugin)
+void aap_client_as_plugin_activate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
     auto status = ctx->proxy->activate(ctx->instance_id);
     assert (status.isOk());
 }
 
-void aap_bridge_plugin_process(AndroidAudioPlugin *plugin,
+void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* buffer,
 	long timeoutInNanoseconds)
 {
@@ -117,14 +119,14 @@ void aap_bridge_plugin_process(AndroidAudioPlugin *plugin,
     assert (status.isOk());
 }
 
-void aap_bridge_plugin_deactivate(AndroidAudioPlugin *plugin)
+void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	auto status = ctx->proxy->deactivate(ctx->instance_id);
     assert (status.isOk());
 }
 
-void aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
+void aap_client_as_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	int size;
@@ -140,7 +142,7 @@ void aap_bridge_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
     result->raw_data = ctx->state.raw_data;
 }
 
-void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
+void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	// we have to ensure that the pointer is shared memory, so use state buffer inside ctx.
@@ -152,7 +154,7 @@ void aap_bridge_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginS
     assert (status.isOk());
 }
 
-AndroidAudioPlugin* aap_bridge_plugin_new(
+AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
 	int aapSampleRate,
@@ -200,16 +202,16 @@ AndroidAudioPlugin* aap_bridge_plugin_new(
 
 	return new AndroidAudioPlugin {
 		ctx,
-		aap_bridge_plugin_prepare,
-		aap_bridge_plugin_activate,
-		aap_bridge_plugin_process,
-		aap_bridge_plugin_deactivate,
-		aap_bridge_plugin_get_state,
-		aap_bridge_plugin_set_state
+		aap_client_as_plugin_prepare,
+		aap_client_as_plugin_activate,
+		aap_client_as_plugin_process,
+		aap_client_as_plugin_deactivate,
+		aap_client_as_plugin_get_state,
+		aap_client_as_plugin_set_state
 		};
 }
 
-void aap_bridge_plugin_delete(
+void aap_client_as_plugin_delete(
 		AndroidAudioPluginFactory *pluginFactory,	// unused
 		AndroidAudioPlugin *instance)
 {
@@ -223,7 +225,7 @@ void aap_bridge_plugin_delete(
 extern "C" {
 
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge() {
-	return new AndroidAudioPluginFactory{aap_bridge_plugin_new, aap_bridge_plugin_delete};
+	return new AndroidAudioPluginFactory{aap_client_as_plugin_new, aap_client_as_plugin_delete};
 }
 
 }
