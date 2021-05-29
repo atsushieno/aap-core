@@ -60,8 +60,8 @@ jobs:
         path: java/samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk
     - name: prepare GitHub Pages
       run: |
-        ln -s docs/native/html gh-pages/native
-        ln -s java/androidaudioplugin/build/dokka/html gh-pages/kotlin/androidaudioplugin
+        cp -R docs/native/html gh-pages/native
+        cp -R java/androidaudioplugin/build/dokka/html gh-pages/kotlin/androidaudioplugin
     - name: deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@4.1.2
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
