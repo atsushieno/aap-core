@@ -8,7 +8,7 @@ set (androidaudioplugin_SOURCES
 	)
 
 set (androidaudioplugin_INCLUDES
-	"../plugin-api/include"
+	"../plugin-api/include/"
 	"core/include"
 	"android/include"
 	"android/src/gen/include"
