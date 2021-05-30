@@ -1,10 +1,13 @@
 
-all: \
-	build-desktop \
-	build-java
+# Targets that are used externally
 
-all-no-desktop: \
-	build-java
+all: build-desktop build-java
+
+publish-global: build-desktop publish-global-java
+
+all-no-desktop: build-java
+
+# internals
 
 build-desktop:
 	mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=dist -DCMAKE_BUILD_TYPE=Debug .. && make && make install
@@ -12,6 +15,10 @@ build-desktop:
 
 build-java: setup-dummy-prefab-headers-dir
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokkaHtml publishToMavenLocal
+
+publish-global-java:
+	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokkaHtml publish
+	
 
 # FIXME: remove this target once https://issuetracker.google.com/issues/172105145 is supported.
 # (NOTE: we can even skip this right now, as prefab is not enabled due to other couple of Google issues)

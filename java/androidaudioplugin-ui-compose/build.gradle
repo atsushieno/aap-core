@@ -38,6 +38,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion '1.0.0-beta05'
     }
+
+    apply from: "${rootDir}/publish-root.gradle"
+
+    // keep it as is. It is replaced by CI release builds
+    signing {}
 }
 
 afterEvaluate {

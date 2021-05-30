@@ -31,6 +31,11 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
+    apply from: "${rootDir}/publish-root.gradle"
+
+    // keep it as is. It is replaced by CI release builds
+    signing {}
 }
 
 afterEvaluate {

@@ -35,6 +35,11 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    apply from: "${rootDir}/publish-root.gradle"
+
+    // keep it as is. It is replaced by CI release builds
+    signing {}
 }
 
 afterEvaluate {
