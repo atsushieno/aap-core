@@ -33,8 +33,6 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
-
-    apply from: "${rootDir}/publish-root.gradle"
 }
 
 apply from: "${rootDir}/publish-pom.gradle"

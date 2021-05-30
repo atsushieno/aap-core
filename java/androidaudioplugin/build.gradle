@@ -78,8 +78,6 @@ android {
         }
     }
     */
-
-    apply from: "${rootDir}/publish-root.gradle"
 }
 
 apply from: "${rootDir}/publish-pom.gradle"

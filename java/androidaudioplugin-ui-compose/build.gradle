@@ -40,8 +40,6 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion '1.0.0-beta05'
     }
-
-    apply from: "${rootDir}/publish-root.gradle"
 }
 
 apply from: "${rootDir}/publish-pom.gradle"
