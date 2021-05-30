@@ -39,7 +39,7 @@ jobs:
         SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
     - name: rewrite build.gradle to require signing
       run: |
-        sed -i "s/signing {}/signing { sign publishing.publications }/" java/androidaudioplugin*/build.gradle
+        sed -i "s/signing {}/signing { sign (publishing.publications) }/" java/publish-pom.gradle
     - name: publish
       run: make publish-global
       env:

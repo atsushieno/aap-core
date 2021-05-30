@@ -51,9 +51,6 @@ android {
     }
 
     apply from: "${rootDir}/publish-root.gradle"
-
-    // keep it as is. It is replaced by CI release builds
-    signing {}
 }
 
 apply from: "${rootDir}/publish-pom.gradle"

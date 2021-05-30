@@ -1,4 +1,13 @@
 afterEvaluate {
+
+    tasks.register('javadocJar', Jar) {
+        archiveClassifier.set('javadoc')
+    }
+    tasks.register('sourceJar', Jar) {
+        from android.sourceSets.main.java.srcDirs
+        archiveClassifier.set('sources')
+    }
+
     publishing {
         publications {
             release(MavenPublication) {
@@ -11,6 +20,9 @@ afterEvaluate {
             }
 
             all {
+                artifact(javadocJar)
+                artifact(sourceJar)
+
                 pom {
                     description.set(android.ext.description)
                     url.set("https://github.com/atsushieno/android-audio-plugin-framework")
@@ -35,3 +47,6 @@ afterEvaluate {
         }
     }
 }
+
+// keep it as is. It is replaced by CI release builds
+signing {}
