@@ -21,6 +21,23 @@ buildscript {
     }
 }
 
+plugins {
+    id 'maven-publish'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "OSSRH"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = System.getenv("OSSRH_USERNAME")
+                password = System.getenv("OSSRH_PASSWORD")
+            }
+        }
+    }
+}
+
 allprojects {
     group 'org.androidaudioplugin'
     repositories {
@@ -29,6 +46,15 @@ allprojects {
         maven { url "https://plugins.gradle.org/m2/" }
         maven { url "https://jitpack.io" }
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
+    }
+
+    publishing {
+        publications {
+            all {
+                pom {
+                }
+            }
+        }
     }
 }
 

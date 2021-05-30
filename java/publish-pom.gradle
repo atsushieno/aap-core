@@ -1,0 +1,37 @@
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                version = android.defaultConfig.versionName
+                from components.release
+            }
+            debug(MavenPublication) {
+                version = android.defaultConfig.versionName
+                from components.debug
+            }
+
+            all {
+                pom {
+                    description.set(android.ext.description)
+                    url.set("https://github.com/atsushieno/android-audio-plugin-framework")
+                    scm {
+                        url.set("https://github.com/atsushieno/android-audio-plugin-framework")
+                    }
+                    licenses {
+                        license {
+                            name.set("the MIT License")
+                            url.set("https://github.com/atsushieno/android-audio-plugin-framework/blob/main/LICENSE")
+                        }
+                    }
+                    developers {
+                        developer {
+                            id.set("atsushieno")
+                            name.set("Atsushi Eno")
+                            email.set("atsushieno@gmail.com")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

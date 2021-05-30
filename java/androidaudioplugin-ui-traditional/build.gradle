@@ -3,10 +3,12 @@ plugins {
     id 'kotlin-android'
     id 'org.jetbrains.dokka'
     id 'maven-publish'
+    id 'signing'
 }
 
 android {
     compileSdkVersion 30
+    ext.description = "AndroidAudioPlugin - UI (Traditional)"
 
     defaultConfig {
         minSdkVersion 29
@@ -42,20 +44,7 @@ android {
     signing {}
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                version = android.defaultConfig.versionName
-                from components.release
-            }
-            debug(MavenPublication) {
-                version = android.defaultConfig.versionName
-                from components.debug
-            }
-        }
-    }
-}
+apply from: "${rootDir}/publish-pom.gradle"
 
 dependencies {
     implementation project(':androidaudioplugin')
