@@ -33,13 +33,17 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 **Basically declarative parameter meta data** : like LV2, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports.
 
-**C/C++ and Kotlin supported**: C/C++ is supported for plugin and hosting, Kotlin for hosting.
+**C/C++ and Kotlin supported**: C/C++ is supported for developing plugin and hosting, Kotlin for hosting.
 
 **Permissive licensing** : It is released under the MIT license. Similar to LV2 (ISC), unlike VST3 or JUCE (GPLv3).
 
 **API unstability** : unlike other audio plugin frameworks, we don't really offer API stability. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP. AAP will be API stable "at some stage", but that is not planned.
 
+There are some supplemental features that has not been in quality yet.
+
 **Linux desktop builds** : developing plugins on Android targets can be annoying, so we also provide the way to develop plugins on Linux desktop too. It may be extended to Mac and even Windows perhaps. However it is for development purpose; we don't aim to replace existing plugin frameworks like LV2 or VST3.
+
+**MIDI Device Service** : AAP has ability to turn an instrument plugin into a MidiDeviceService.
 
 
 ## How AAPs work: technical background
@@ -87,6 +91,16 @@ It is supposed to contain code to achieve basic plugin listing.
 It can be used as your plugin's main launcher activity.
 
 The former is based on traditional constraint layout, and the latter is based on Jetpack Compose.
+
+(They depend on `androidaudioplugin-samples-host-engine` internal component to provide in-app plugin preview (tryout) feature which will be rewritten at some stage.)
+
+### androidaudioplugin-midi-device-service and aap-midi-device-service
+
+AAP instrument plugins can be extended to work as a virtual MIDI device service (software MIDI device).
+
+`aap-midi-device-service` is an example application that turns any instrument plugins into MIDI device services (since it is simply possible).
+
+At this state the audio generation feature not in usable quality at all.
 
 ### aaphostsample and aapbarebonepluginsample
 
