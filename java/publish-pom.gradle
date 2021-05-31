@@ -36,6 +36,7 @@ afterEvaluate {
                 artifact(sourceJar)
 
                 pom {
+                    name.set(project.name)
                     description.set(android.ext.description)
                     url.set("https://github.com/atsushieno/android-audio-plugin-framework")
                     scm {
