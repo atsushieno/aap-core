@@ -98,7 +98,7 @@ namespace aapmidideviceservice {
         for (auto& data : instance_data_list) {
             int numBuffers = data->plugin_buffer->num_buffers;
             for (int n = 0; n < numBuffers; n++) {
-                // NOTE: I used to call munmap() here too, but it rather caused fdsan error. It was thus removed.
+                munmap(data->buffer_pointers.get()[n], data->plugin_buffer->num_frames * sizeof(float));
                 int fd = data->getPortSharedMemoryFD(n);
                 if (fd != 0)
                     close(fd);
