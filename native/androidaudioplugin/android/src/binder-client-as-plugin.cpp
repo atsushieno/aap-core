@@ -216,6 +216,7 @@ void aap_client_as_plugin_delete(
 		AndroidAudioPlugin *instance)
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
+	ctx->proxy->destroy(ctx->instance_id);
 	releaseStateBuffer(ctx);
 
 	delete ctx;
