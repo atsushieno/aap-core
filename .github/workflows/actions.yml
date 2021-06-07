@@ -25,8 +25,8 @@ jobs:
       env:
         cache-name: cache-ndk
       with:
-        path: /usr/local/lib/android/sdk/ndk/21.2.6472646
-        key: ndk_r21c_linux
+        path: /usr/local/lib/android/sdk/ndk/21.3.6528147
+        key: ndk_r21d_linux
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
@@ -76,8 +76,8 @@ jobs:
       env:
         cache-name: cache-ndk
       with:
-        path: /Users/runner/Library/Android/sdk/ndk/21.2.6472646
-        key: ndk_r21c_osx
+        path: /Users/runner/Library/Android/sdk/ndk/21.3.6528147
+        key: ndk_r21d_osx
     - name: install deps
       run: |
         brew tap grpc/grpc && brew install doxygen libxml2 ninja graphviz openssl grpc
