@@ -66,14 +66,14 @@ namespace aapmidideviceservice {
         return oboe::DataCallbackResult::Continue;
     }
 
-    void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t oboeFrameSize, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+    void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t audioOutChannelCount, int32_t aapFrameSize) {
         // AAP settings
         host = std::make_unique<aap::PluginHost>(&host_manager);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
 
-        aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // twice as much as aap buffer size
+        aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 4); // x4 as much as aap buffer size
         zix_ring_mlock(aap_input_ring_buffer);
         interleave_buffer = (float*) calloc(sizeof(float), aapFrameSize * audioOutChannelCount);
 
@@ -83,8 +83,9 @@ namespace aapmidideviceservice {
         builder.setSharingMode(oboe::SharingMode::Exclusive);
         builder.setFormat(oboe::AudioFormat::Float);
         builder.setChannelCount(channel_count);
-        builder.setBufferCapacityInFrames(oboeFrameSize);
-        builder.setContentType(oboe::ContentType::Music);
+        builder.setBufferCapacityInFrames(oboeBurstFrameSize * 4);
+        builder.setFramesPerCallback(aapFrameSize);
+        builder.setFramesPerDataCallback(aapFrameSize);
 
         callback = std::make_unique<OboeCallback>(this);
         builder.setDataCallback(callback.get());
@@ -96,9 +97,12 @@ namespace aapmidideviceservice {
         // FIXME: shouldn't androidaudioplugin implement this functionality so that we don't have
         //  to manage it everywhere? It is also super error prone.
         for (auto& data : instance_data_list) {
+            host->getInstance(data->instance_id)->dispose();
+
             int numBuffers = data->plugin_buffer->num_buffers;
+            size_t memSize = data->plugin_buffer->num_frames * sizeof(float);
             for (int n = 0; n < numBuffers; n++) {
-                munmap(data->buffer_pointers.get()[n], data->plugin_buffer->num_frames * sizeof(float));
+                munmap(data->buffer_pointers.get()[n], memSize);
                 int fd = data->getPortSharedMemoryFD(n);
                 if (fd != 0)
                     close(fd);
@@ -284,6 +288,8 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::fillAudioOutput() {
         // FIXME: the final processing result should not be the instrument instance output buffer
         //  but should be chained output result. Right now we don't support chaining.
+
+        memset(interleave_buffer, 0, channel_count * aap_frame_size * sizeof(float));
 
         for (auto &data : instance_data_list) {
             if (data->instance_id == instrument_instance_id) {

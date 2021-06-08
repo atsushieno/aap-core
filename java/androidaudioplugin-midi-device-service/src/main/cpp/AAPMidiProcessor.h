@@ -81,7 +81,7 @@ namespace aapmidideviceservice {
         static AAPMidiProcessor* getInstance();
         static void resetInstance();
 
-        void initialize(int32_t sampleRate, int32_t oboeFrameSize, int32_t channelCount, int32_t aapFrameSize);
+        void initialize(int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize);
 
         static void registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service);
 
