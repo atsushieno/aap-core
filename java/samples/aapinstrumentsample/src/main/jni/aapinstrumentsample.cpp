@@ -38,9 +38,12 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     auto outR = (float*) buffer->buffers[3];
     int32_t start = 0;
     int32_t end = buffer->num_frames;
+    uint8_t note = 60;
     for (int i = start; i < end; i++) {
-        auto sampleFreq = sampleRate / (float) current_freq;
-        outL[i] = outR[i] = (float) sin((i + start_offset) / (sampleFreq / (M_PI * 2)));
+        auto sampleFreqL = (pow(2.0, ((note - 57) / 12.0))) * current_freq;
+        auto sampleFreqR = (pow(2.0, ((note - 24 - 57) / 12.0))) * current_freq;
+        outL[i] = (float) sin((i + start_offset) / (sampleFreqL / (M_PI * 2)));
+        outR[i] = (float) sin((i + start_offset) / (sampleFreqR / (M_PI * 2)));
     }
     start_offset = (start_offset + end - start) % sampleRate;
 }
