@@ -51,7 +51,7 @@ android {
     }
 }
 
-apply from: "${rootDir}/publish-pom.gradle"
+apply from: "../publish-pom.gradle"
 
 dependencies {
 
