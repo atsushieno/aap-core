@@ -31,23 +31,31 @@ class MidiHelper {
             return (hours * 3600 + minutes * 60 + seconds) * framesPerSeconds + ticks * frameRate
         }
 
-        internal fun getMidiSequence() : List<UByte> {
-            // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
+        private fun getNoteSeq(note1: Int, note2: Int, note3: Int) : MutableList<UByte> {
             val noteOnSeq = arrayOf(
-                110, 0x90, 0x39, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
-                0, 0x90, 0x3D, 0x78,
-                0, 0x90, 0x40, 0x78)
+                110, 0x90, note1, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
+                0, 0x90, note2, 0x78,
+                0, 0x90, note3, 0x78)
                 .map {i -> i.toUByte() }
             val noteOffSeq = arrayOf(
-                110, 0x80, 0x39, 0,
-                0, 0x80, 0x3D, 0,
-                0, 0x80, 0x40, 0)
+                110, 0x80, note1, 0,
+                0, 0x80, note2, 0,
+                0, 0x80, note3, 0)
                 .map {i -> i.toUByte() }
-            val noteSeq = noteOnSeq.plus(noteOffSeq)
-            val midiSeq = noteSeq.toMutableList()
-            repeat(9) { midiSeq += noteSeq } // repeat 10 times
+            return noteOnSeq.plus(noteOffSeq).toMutableList()
+        }
 
-            return midiSeq
+        internal fun getMidiSequence() : List<UByte> {
+            // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
+            val seq1 = getNoteSeq(0x39, 0x3D, 0x40)
+            val seq2 = getNoteSeq(0x3B, 0x3F, 0x42)
+            val seq3 = getNoteSeq(0x3D, 0x41, 0x44)
+            val seq4 = getNoteSeq(0x3E, 0x42, 0x45)
+            val seq5 = getNoteSeq(0x40, 0x44, 0x47)
+            val seq6 = getNoteSeq(0x42, 0x46, 0x49)
+            val seq7 = getNoteSeq(0x44, 0x48, 0x4B)
+            val seq8 = getNoteSeq(0x45, 0x49, 0x4C)
+            return seq1 + seq2 + seq3 + seq4 + seq5 + seq5 + seq5 + seq6 + seq7 + seq8
         }
 
         internal fun groupMidi1EventsByTiming(events: Sequence<List<UByte>>) = sequence {
