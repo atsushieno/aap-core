@@ -219,6 +219,14 @@ public:
 		// The purpose of this function seems to be based on hacky premise. So do we.
 		return strstr(getPrimaryCategory().c_str(), "Instrument") != nullptr;
 	}
+
+	bool hasMidi2Ports() const
+    {
+	    for (auto port : ports)
+	        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2)
+	            return true;
+        return false;
+    }
 	
 	bool hasSharedContainer() const
 	{
