@@ -497,86 +497,85 @@ static inline void cmidi2_ump_mds_process(uint8_t group, uint8_t mdsId, void* da
 // I kind of think those getters are overkill, so I would collect almost use `cmidi2_ump_get_xxx()`
 // as those strongly typed functions, so that those who don't want them can safely ignore them.
 
-typedef struct cmidi2_ump_tag {
-    // type and group
-    uint8_t type_byte;
-    // status and 
-    uint8_t status_byte;
-} cmidi2_ump;
+typedef uint32_t cmidi2_ump;
 
-#ifdef _PACKET_
-#define _BACKUP_PACKET_ _PACKET_
-#endif
-#define _PACKET_(index) ((uint8_t*) ump)[index]
+static inline uint8_t cmidi2_ump_get_byte_at(cmidi2_ump *ump, uint8_t at) {
+    switch (at) {
+    case 0: return (*ump & 0xFF000000) >> 24;
+    case 1: return (*ump & 0xFF0000) >> 16;
+    case 2: return (*ump & 0xFF00) >> 8;
+    case 3: return *ump & 0xFF;
+    }
+    return 0; // This is unexpected.
+}
 
 static inline uint8_t cmidi2_ump_get_message_type(cmidi2_ump* ump) {
-    return (ump->type_byte & 0xF0) >> 4;
+    return *ump >> 28;
 }
 
 static inline uint8_t cmidi2_ump_get_group(cmidi2_ump* ump) {
-    return ump->type_byte & 0xF;
+    return (*ump >> 24) & 0xF;
 }
 
 static inline uint8_t cmidi2_ump_get_status_code(cmidi2_ump* ump) {
-    return ump->status_byte & 0xF0;
+    return (*ump >> 16) & 0xF0;
 }
 
 static inline uint8_t cmidi2_ump_get_channel(cmidi2_ump* ump) {
-    return ump->status_byte & 0xF;
+    return (*ump >> 16) & 0xF;
 }
 
 static inline uint32_t cmidi2_ump_get_32_to_64(cmidi2_ump* ump) {
-    uint8_t* p8 = (uint8_t*) ump;
-    return (uint32_t) (p8[4] << 24) + (p8[5] << 16) + (p8[6] << 8) + p8[7];
+    return *(ump + 1);
 }
 
 static inline uint16_t cmidi2_ump_get_jr_clock_time(cmidi2_ump* ump) {
-    return (_PACKET_(2) << 8) + _PACKET_(3);
+    return (cmidi2_ump_get_byte_at(ump, 2) << 8) + cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint16_t cmidi2_ump_get_jr_timestamp_timestamp(cmidi2_ump* ump) {
-    return (_PACKET_(2) << 8) + _PACKET_(3);
+    return (cmidi2_ump_get_byte_at(ump, 2) << 8) + cmidi2_ump_get_byte_at(ump, 3);
 }
 
 static inline uint8_t cmidi2_ump_get_system_message_byte2(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_system_message_byte3(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 
 static inline uint8_t cmidi2_ump_get_midi1_byte2(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi1_byte3(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 
 static inline uint8_t cmidi2_ump_get_midi1_note_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi1_note_velocity(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint8_t cmidi2_ump_get_midi1_paf_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi1_paf_data(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint8_t cmidi2_ump_get_midi1_cc_index(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi1_cc_data(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint8_t cmidi2_ump_get_midi1_program_program(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi1_caf_data(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint16_t cmidi2_ump_get_midi1_pitch_bend_data(cmidi2_ump* ump) {
-    return _PACKET_(2) + _PACKET_(3) * 0x80;
+    return cmidi2_ump_get_byte_at(ump, 2) + cmidi2_ump_get_byte_at(ump, 3) * 0x80;
 }
 
 static inline uint8_t cmidi2_ump_get_sysex7_num_bytes(cmidi2_ump* ump) {
@@ -584,60 +583,60 @@ static inline uint8_t cmidi2_ump_get_sysex7_num_bytes(cmidi2_ump* ump) {
 }
 
 static inline uint8_t cmidi2_ump_get_midi2_note_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi2_note_attribute_type(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint16_t cmidi2_ump_get_midi2_note_velocity(cmidi2_ump* ump) {
-    return (_PACKET_(4) << 8) + _PACKET_(5);
+    return (cmidi2_ump_get_byte_at(ump, 4) << 8) + (cmidi2_ump_get_byte_at(ump, 5));
 }
 static inline uint16_t cmidi2_ump_get_midi2_note_attribute_data(cmidi2_ump* ump) {
-    return (_PACKET_(6) << 8) + _PACKET_(7);
+    return (cmidi2_ump_get_byte_at(ump, 6) << 8) + (cmidi2_ump_get_byte_at(ump, 7));
 }
 static inline uint8_t cmidi2_ump_get_midi2_paf_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint32_t cmidi2_ump_get_midi2_paf_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 static inline uint8_t cmidi2_ump_get_midi2_pnrcc_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi2_pnrcc_index(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint32_t cmidi2_ump_get_midi2_pnrcc_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 static inline uint8_t cmidi2_ump_get_midi2_pnacc_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_midi2_pnacc_index(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint32_t cmidi2_ump_get_midi2_pnacc_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 static inline uint32_t cmidi2_ump_get_midi2_pn_management_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint32_t cmidi2_ump_get_midi2_pn_management_options(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint8_t cmidi2_ump_get_midi2_cc_index(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint32_t cmidi2_ump_get_midi2_cc_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 // absolute RPN or relative RPN
 static inline uint8_t cmidi2_ump_get_midi2_rpn_msb(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 // absolute RPN or relative RPN
 static inline uint8_t cmidi2_ump_get_midi2_rpn_lsb(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 // absolute RPN or relative RPN
 static inline uint32_t cmidi2_ump_get_midi2_rpn_data(cmidi2_ump* ump) {
@@ -645,27 +644,27 @@ static inline uint32_t cmidi2_ump_get_midi2_rpn_data(cmidi2_ump* ump) {
 }
 // absolute NRPN or relative NRPN
 static inline uint8_t cmidi2_ump_get_midi2_nrpn_msb(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 // absolute NRPN or relative NRPN
 static inline uint8_t cmidi2_ump_get_midi2_nrpn_lsb(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 // absolute NRPN or relative NRPN
 static inline uint32_t cmidi2_ump_get_midi2_nrpn_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 static inline uint8_t cmidi2_ump_get_midi2_program_options(cmidi2_ump* ump) {
-    return _PACKET_(3);
+    return cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint8_t cmidi2_ump_get_midi2_program_program(cmidi2_ump* ump) {
-    return _PACKET_(4);
+    return cmidi2_ump_get_byte_at(ump, 4);
 }
 static inline uint8_t cmidi2_ump_get_midi2_program_bank_msb(cmidi2_ump* ump) {
-    return _PACKET_(6);
+    return (cmidi2_ump_get_byte_at(ump, 6));
 }
 static inline uint8_t cmidi2_ump_get_midi2_program_bank_lsb(cmidi2_ump* ump) {
-    return _PACKET_(7);
+    return (cmidi2_ump_get_byte_at(ump, 7));
 }
 static inline uint32_t cmidi2_ump_get_midi2_caf_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
@@ -675,44 +674,39 @@ static inline uint32_t cmidi2_ump_get_midi2_pitch_bend_data(cmidi2_ump* ump) {
     return cmidi2_ump_get_32_to_64(ump);
 }
 static inline uint8_t cmidi2_ump_get_midi2_pn_pitch_bend_note(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 
 static inline uint8_t cmidi2_ump_get_sysex8_num_bytes(cmidi2_ump* ump) {
     return cmidi2_ump_get_channel(ump); // same bits
 }
 static inline uint8_t cmidi2_ump_get_sysex8_stream_id(cmidi2_ump* ump) {
-    return _PACKET_(2);
+    return cmidi2_ump_get_byte_at(ump, 2);
 }
 static inline uint8_t cmidi2_ump_get_mds_mds_id(cmidi2_ump* ump) {
     return cmidi2_ump_get_channel(ump); // same bits
 }
 static inline uint16_t cmidi2_ump_get_mds_num_chunk_bytes(cmidi2_ump* ump) {
-    return (_PACKET_(2) << 8) + _PACKET_(3);
+    return (cmidi2_ump_get_byte_at(ump, 2) << 8) + cmidi2_ump_get_byte_at(ump, 3);
 }
 static inline uint16_t cmidi2_ump_get_mds_num_chunks(cmidi2_ump* ump) {
-    return (_PACKET_(4) << 8) + _PACKET_(5);
+    return (cmidi2_ump_get_byte_at(ump, 4) << 8) + cmidi2_ump_get_byte_at(ump, 5);
 }
 static inline uint16_t cmidi2_ump_get_mds_chunk_index(cmidi2_ump* ump) {
-    return (_PACKET_(6) << 8) + _PACKET_(7);
+    return (cmidi2_ump_get_byte_at(ump, 6) << 8) + cmidi2_ump_get_byte_at(ump, 7);
 }
 static inline uint16_t cmidi2_ump_get_mds_manufacturer_id(cmidi2_ump* ump) {
-    return (_PACKET_(8) << 8) + _PACKET_(9);
+    return (cmidi2_ump_get_byte_at(ump, 8) << 8) + cmidi2_ump_get_byte_at(ump, 9);
 }
 static inline uint16_t cmidi2_ump_get_mds_device_id(cmidi2_ump* ump) {
-    return (_PACKET_(10) << 8) + _PACKET_(11);
+    return (cmidi2_ump_get_byte_at(ump, 10) << 8) + cmidi2_ump_get_byte_at(ump, 11);
 }
 static inline uint16_t cmidi2_ump_get_mds_sub_id_1(cmidi2_ump* ump) {
-    return (_PACKET_(12) << 8) + _PACKET_(13);
+    return (cmidi2_ump_get_byte_at(ump, 12) << 8) + cmidi2_ump_get_byte_at(ump, 13);
 }
 static inline uint16_t cmidi2_ump_get_mds_sub_id_2(cmidi2_ump* ump) {
-    return (_PACKET_(14) << 8) + _PACKET_(15);
+    return (cmidi2_ump_get_byte_at(ump, 14) << 8) + cmidi2_ump_get_byte_at(ump, 15);
 }
-
-#ifdef _BACKUP_PACKET_
-#define _PACKET_ _BACKUP_PACKET_
-#undef _BACKUP_PACKET_
-#endif
 
 // sequence iterator
 
