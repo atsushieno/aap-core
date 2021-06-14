@@ -386,7 +386,8 @@ namespace aapmidideviceservice {
                 intBuffer[0] += length;
                 intBuffer[1] = 0; // reserved
                 intBuffer[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
-                intBuffer[3] = 0; // reserved
+                for (int i = 3; i < 8; i++)
+                    intBuffer[i] = 0; // reserved
                 memcpy(byteBuffer + currentOffset + 32, bytes + offset, length);
             }
         } else {
