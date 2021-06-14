@@ -104,15 +104,19 @@ class ApplicationModel(private val packageName: String, context: Context) {
         }, null)
     }
 
+    // reorder bytes in Little Endian
+    private fun getBytes(i: Int) : List<Byte> =
+        arrayOf(i % 0x100, i / 0x100 % 0x100, i / 0x10000 % 0x100, i / 0x1000000).map { it.toByte() }
+
     fun playNote() {
         if (!midiManagerInitialized)
             return
 
         GlobalScope.launch {
             if (useMidi2Protocol) {
-                midiInput.send(byteArrayOf(0x40, 0x90.toByte(), 60, 0, 100, 0, 0, 0), 0, 8)
+                midiInput.send((getBytes(0x40903B00) + getBytes(0x64000000)).toByteArray(), 0, 8)
                 delay(1000)
-                midiInput.send(byteArrayOf(0x40, 0x80.toByte(), 60, 0, 0, 0, 0, 0), 0, 8)
+                midiInput.send((getBytes(0x40803B00) + getBytes(0)).toByteArray(), 0, 8)
             } else {
                 midiInput.send(byteArrayOf(0x90.toByte(), 60, 100), 0, 3)
                 delay(1000)
