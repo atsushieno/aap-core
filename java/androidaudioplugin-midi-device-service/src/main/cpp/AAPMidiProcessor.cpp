@@ -336,7 +336,10 @@ namespace aapmidideviceservice {
     void* AAPMidiProcessor::getAAPMidiInputBuffer() {
         for (auto &data : instance_data_list)
             if (data->instance_id == instrument_instance_id) {
-                int portIndex = (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ? data->midi2_in_port : data->midi1_in_port;
+                // MIDI2 port if If MIDI2 port exists and MIDI2 protocol is specified.
+                // MIDI1 port unless MIDI1 port does not exist.
+                // MIDI2 port (or -1 if none exists).
+                int portIndex = (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ? data->midi2_in_port : data->midi1_in_port >= 0 ? data->midi1_in_port : data->midi2_in_port;
                 return data->plugin_buffer->buffers[portIndex];
             }
         return nullptr;
@@ -351,6 +354,85 @@ namespace aapmidideviceservice {
         }
 
         midi_protocol = midiProtocol;
+    }
+
+    int32_t convertMidi1ToMidi2(int32_t* dst, uint8_t* src, size_t srcLength) {
+        int32_t si = 0;
+        int32_t di = 0;
+        while (si < srcLength) {
+            uint8_t srcStatusByte = src[si++];
+            switch (srcStatusByte) {
+                case 0xFF: { // META
+                    uint8_t metaType = src[si++];
+                    switch (metaType) {
+                    case 0x00: si += 2; break; // sequence number
+                    case 0x20: si++; break; // channel prefix
+                    case 0x2F: break; // end of track
+                    case 0x51: si += 3; break; // tempo
+                    case 0x54: si += 5; break; // SMTPE offset
+                    case 0x58: si += 4; break; // time signature
+                    case 0x59: si += 2; break; // key signature
+                    default: // length-prefixed data, where length is 7bit-encoded integer
+                        uint8_t lengthSpecCount = 0;
+                        int32_t length = 0;
+                        while (src[si] >= 0x80) {
+                            length += (src[si] - 0x80) << (7 * lengthSpecCount++);
+                            si++;
+                        }
+                        length += src[si++]; // last length
+                        si += length;
+                        break;
+                    }
+                    // FIXME: for now we skip all META events, but it might be wanted at some stage.
+                }
+                    break;
+                case 0xF0: { // Sysex
+                    int32_t sysexStart = si;
+                    while (src[si] != 0xF7) // hacky way to reach the end of sysex.
+                        si++;
+                    int32_t sysexLength = si - sysexStart;
+                    si++; // F7
+                    for (int i = 0; i < sysexLength; i += 6) {
+                        uint8_t status =
+                                sysexLength < 6 ? CMIDI2_SYSEX_IN_ONE_UMP :
+                                i == 0 ? CMIDI2_SYSEX_START :
+                                i + 6 >= sysexLength ? CMIDI2_SYSEX_END :
+                                CMIDI2_SYSEX_CONTINUE;
+                        bool isLastPacket =
+                                status == CMIDI2_SYSEX_IN_ONE_UMP || status == CMIDI2_SYSEX_END;
+                        uint8_t packetLength = isLastPacket ? sysexLength % 6 : 6;
+                        // looking stupid, but simple enough to get required arguments!
+                        uint8_t sd0 = src[si++];
+                        uint8_t sd1 = packetLength <= 1 ? 0 : src[si++];
+                        uint8_t sd2 = packetLength <= 2 ? 0 : src[si++];
+                        uint8_t sd3 = packetLength <= 3 ? 0 : src[si++];
+                        uint8_t sd4 = packetLength <= 4 ? 0 : src[si++];
+                        uint8_t sd5 = packetLength <= 5 ? 0 : src[si++];
+                        uint64_t v = cmidi2_ump_sysex7_direct(0, status, packetLength, sd0, sd1, sd2,
+                                                              sd3, sd4, sd5);
+                        dst[di++] = (int32_t) (v >> 32);
+                        dst[di++] = (int32_t) (v & 0xFFFFFFFF);
+                    }
+                }
+                    break;
+                default: {
+                    uint8_t msb = src[si++];
+                    uint8_t lsb = 0;
+                    switch (srcStatusByte & 0xF0) {
+                        case 0xC0:
+                        case 0xD0:
+                            break; // Program Change and CAf
+                        default:
+                            lsb = src[si++];
+                            break;
+                    }
+                    dst[di++] = cmidi2_ump_midi1_message(
+                            0, srcStatusByte & 0xF0, srcStatusByte & 0xF, msb, lsb);
+                }
+                    break;
+            }
+        }
+        return di;
     }
 
     void AAPMidiProcessor::processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {
@@ -373,36 +455,27 @@ namespace aapmidideviceservice {
             actualTimestamp = (timestampInNanoseconds + diff) % nanosecondsPerCycle;
         }
 
-        // FIXME: we need complete revamp to support MIDI buffering between process() calls, for
-        //  both MIDI 2.0 and 1.0 messages.
-
-        if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
-            // process MIDI 2.0 data
-            auto dst = (uint8_t *) getAAPMidiInputBuffer();
-            if (dst != nullptr) {
-                auto intBuffer = (int32_t *) (void *) dst;
-                auto byteBuffer = (uint8_t *) (void *) dst;
-                int32_t currentOffset = intBuffer[0];
+        auto dst = (uint8_t *) getAAPMidiInputBuffer();
+        if (dst != nullptr) {
+            auto intBuffer = (int32_t *) (void *) dst;
+            int32_t currentOffset = intBuffer[0];
+            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250) {
+                intBuffer[8 + currentOffset / 4] = (int32_t) cmidi2_ump_jr_timestamp_direct(
+                        0, ticks > 31250 ? 31250 : ticks);
+                currentOffset += 4;
+            }
+            if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+                // process MIDI 2.0 data
+                memcpy(intBuffer + 8 + currentOffset / 4, bytes + offset, length);
                 intBuffer[0] += length;
-                intBuffer[1] = 0; // reserved
-                intBuffer[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
-                for (int i = 3; i < 8; i++)
-                    intBuffer[i] = 0; // reserved
-                memcpy(byteBuffer + currentOffset + 32, bytes + offset, length);
+            } else {
+                // convert MIDI 1.0 buffer to UMP
+                intBuffer[0] += convertMidi1ToMidi2((int32_t*) (((uint8_t*) intBuffer) + currentOffset), bytes + offset, length);
             }
-        } else {
-            int ticks = getTicksFromNanoseconds(192, actualTimestamp);
-
-            auto dst = (uint8_t *) getAAPMidiInputBuffer();
-            if (dst != nullptr) {
-                auto intBuffer = (int32_t *) (void *) dst;
-                intBuffer[0] = 192; // FIXME: assign DeltaTimeSpec from somewhere.
-                int aapBufferOffset = sizeof(int) + sizeof(int);
-                int lengthLength = set7BitEncodedLength(dst + aapBufferOffset, ticks);
-                aapBufferOffset += lengthLength;
-                intBuffer[1] = length + lengthLength;
-                memcpy(dst + aapBufferOffset, bytes + offset, length);
-            }
+            intBuffer[1] = 0; // reserved
+            intBuffer[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
+            for (int i = 3; i < 8; i++)
+                intBuffer[i] = 0; // reserved
         }
     }
 }
