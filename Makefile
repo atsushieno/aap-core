@@ -1,17 +1,12 @@
-
 # Targets that are used externally
 
-all: build-desktop build-java
+all: build-java
 
-publish-global: build-desktop publish-global-java
+publish-global: publish-global-java
 
 all-no-desktop: build-java
 
 # internals
-
-build-desktop:
-	mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=dist -DCMAKE_BUILD_TYPE=Debug .. && make && make install
-	cd docs/native && doxygen && cd ../..
 
 build-java: setup-dummy-prefab-headers-dir
 	cd java && ANDROID_SDK_ROOT=$(ANDROID_SDK_ROOT) ./gradlew build dokkaHtml publishToMavenLocal

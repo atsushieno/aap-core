@@ -41,8 +41,6 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 There are some supplemental features that has not been in quality yet.
 
-**Linux desktop builds** : developing plugins on Android targets can be annoying, so we also provide the way to develop plugins on Linux desktop too. It may be extended to Mac and even Windows perhaps. However it is for development purpose; we don't aim to replace existing plugin frameworks like LV2 or VST3.
-
 **MIDI Device Service** : AAP has ability to turn an instrument plugin into a MidiDeviceService.
 
 
@@ -73,12 +71,12 @@ We have a dedicated plugin development guide for (1) [building from scratch](PLU
  
 ## Code in this repo, and build instructions
 
-There are Android Gradle projects and some desktop build scripts.
+There are Android Gradle projects.
 
 You can open `java` directory in Android Studio (Arctic Fox 2020.3.1 Canary is required) as the top-level project directory and build it.
 Or run `./gradlew` there from your terminal.
 
-There is Makefile to build desktop bits, build all those Android modules, and install `*.aar`s to local m2 repository. It is used by our CI builds too, including derived projects such as aap-lv2, aap-juce, and further derivative works.
+There is Makefile to build all those Android modules, and install `*.aar`s to local m2 repository. It is used by our CI builds too, including derived projects such as aap-lv2, aap-juce, and further derivative works.
 
 ### androidaudioplugin
 
@@ -109,21 +107,6 @@ At this state the audio generation feature not in usable quality at all.
 `aapbarebonepluginsample` is a sample AAP (plugin) that does "nothing". It can be rather used as a plugin template project.
 
 The waveform rendering in `aaphostsample` is done thanks to [waveformSeekBar](https://github.com/massoudss/waveformSeekBar).
-
-### desktop builds
-
-This repository also contains basic setup for desktop builds. Although note that there is not much code yet.
-
-The top-level CMakeLists.txt is for desktop build, so you can use it like:
-
-```
-mkdir build
-cd build
-cmake ..
-make
-```
-
-Everything here is only for development purpose yet.
 
 ## Further documentation
 
