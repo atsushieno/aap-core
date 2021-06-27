@@ -1,6 +1,10 @@
 package org.androidaudioplugin.midideviceservice
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.media.midi.MidiDeviceInfo
+import android.webkit.*
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,10 +18,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.midideviceservice.ui.theme.AAPMidiDeviceServiceTheme
 
 interface Updater {
@@ -55,45 +63,19 @@ fun App() {
     val plugins: List<PluginInformation> = model.pluginServices.flatMap { s -> s.plugins }.toList()
         .filter { p -> p.category?.contains("Instrument") ?: false || p.category?.contains("Synth") ?: false }
 
-    AAPMidiDeviceServiceTheme {
-        // FIXME: maybe we should remove this hacky state variable
-        var midiManagerInitializedState by remember { mutableStateOf(model.midiManagerInitialized) }
-        var useMidi2ProtocolState by remember { mutableStateOf(model.useMidi2Protocol) }
+    var pluginViewShown by remember { mutableStateOf(false) }
 
+    AAPMidiDeviceServiceTheme {
         Surface(color = MaterialTheme.colors.background) {
             Column {
                 AvailablePlugins(onItemClick = { plugin -> updater.setInstrumentPlugin(plugin) }, plugins)
-                Row {
-                    if (midiManagerInitializedState)
-                        Button(modifier = Modifier.padding(2.dp),
-                            onClick = {
-                                updater.terminateMidi()
-                                midiManagerInitializedState = false
-                            }) {
-                            Text("Stop MIDI Service")
-                        }
-                    else
-                        Button(modifier = Modifier.padding(2.dp),
-                            onClick = {
-                                updater.initializeMidi()
-                                midiManagerInitializedState = true
-                            }) {
-                            Text("Start MIDI Service")
-                        }
-                }
-                Row {
-                    Checkbox(checked = useMidi2ProtocolState, onCheckedChange = { value ->
-                        updater.setMidi2Enabled(value)
-                        useMidi2ProtocolState = value
-                    })
-                    Text("Use MIDI 2.0 Protocol")
-                    Button(modifier = Modifier.padding(2.dp),
-                        onClick = { updater.playNote() }) {
-                        Text("Play")
-                    }
-                    
+                PluginInstanceControllerUI()
+                Button(onClick = { pluginViewShown = !pluginViewShown }) {
+                    Text(if (pluginViewShown) "hide WebUI" else "show WebUI")
                 }
             }
+            if (pluginViewShown)
+                PluginWebUI()
         }
     }
 }
@@ -125,5 +107,107 @@ fun AvailablePlugins(onItemClick: (PluginInformation) -> Unit = {}, instrumentPl
                 }
             }
         })
+    }
+}
+
+@Composable
+fun PluginInstanceControllerUI() {
+    // FIXME: maybe we should remove this hacky state variable
+    var midiManagerInitializedState by remember { mutableStateOf(model.midiManagerInitialized) }
+    var useMidi2ProtocolState by remember { mutableStateOf(model.useMidi2Protocol) }
+
+    Row {
+        if (midiManagerInitializedState)
+            Button(modifier = Modifier.padding(2.dp),
+                onClick = {
+                    updater.terminateMidi()
+                    midiManagerInitializedState = false
+                }) {
+                Text("Stop MIDI Service")
+            }
+        else
+            Button(modifier = Modifier.padding(2.dp),
+                onClick = {
+                    updater.initializeMidi()
+                    midiManagerInitializedState = true
+                }) {
+                Text("Start MIDI Service")
+            }
+    }
+    Row {
+        Checkbox(checked = useMidi2ProtocolState, onCheckedChange = { value ->
+            updater.setMidi2Enabled(value)
+            useMidi2ProtocolState = value
+        })
+        Text("Use MIDI 2.0 Protocol")
+        Button(modifier = Modifier.padding(2.dp),
+            onClick = { updater.playNote() }) {
+            Text("Play")
+        }
+
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun PluginWebUI() {
+    Column {
+        AndroidView(
+            modifier = Modifier.padding(40.dp).border(2.dp, Color.Black),
+            factory = { ctx: Context ->
+                WebView(ctx).also { webView -> with(webView) {
+                    val assetLoader = WebViewAssetLoader.Builder().addPathHandler(
+                        "/assets/",
+                        WebViewAssetLoader.AssetsPathHandler(ctx)
+                    ).build()
+                    webViewClient = object : WebViewClient() {
+                        @RequiresApi(21)
+                        override fun shouldInterceptRequest(
+                            view: WebView,
+                            request: WebResourceRequest
+                        ): WebResourceResponse? {
+                            return assetLoader.shouldInterceptRequest(request.url)
+                        }
+                    }
+                    settings.javaScriptEnabled = true
+                    addJavascriptInterface(AAPScriptInterface(), "AAPInterop")
+
+                    var html = "<html><head></head><body onLoad='AAPInterop.initialize()'><p>(parameters are read only so far)<table>"
+                    for (port in model.instrument!!.ports) {
+                        when (port.content) {
+                            PortInformation.PORT_CONTENT_TYPE_AUDIO,
+                            PortInformation.PORT_CONTENT_TYPE_MIDI,
+                            PortInformation.PORT_CONTENT_TYPE_MIDI2 -> continue
+                        }
+                        html += "<tr><th>${port.name}</th><td><input type='range' min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' class='slider' id='port_${port.index}' onChange='AAPInterop.controlChange(\"${port.index}\", port_${port.index}.value)'></td><tr>"
+                    }
+                    html += "</table></body></html>"
+
+                    loadData(html, "text/html", null)
+                }
+            }
+        })
+    }
+}
+
+class AAPScriptInterface {
+    @JavascriptInterface
+    fun onInitialized() {
+    }
+
+    @JavascriptInterface
+    fun onControlChange(controlId: Int, value: Int) {
+    }
+
+    @JavascriptInterface
+    fun onNote(state: Int, key: Int) {
+    }
+
+    @JavascriptInterface
+    fun onChangeProgram(sfz: String) {
+    }
+
+    @JavascriptInterface
+    fun onGetLocalInstruments() {
     }
 }
