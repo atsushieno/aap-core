@@ -54,6 +54,7 @@ jobs:
         SONATYPE_STAGING_PROFILE_ID: ${{ secrets.SONATYPE_STAGING_PROFILE_ID }}
     - name: prepare GitHub Pages
       run: |
+        cd docs/native && doxygen && cd ../..
         cp -R docs/native/html gh-pages/native
         cp -R java/androidaudioplugin/build/dokka/html gh-pages/kotlin/androidaudioplugin
     - name: deploy to GitHub Pages
