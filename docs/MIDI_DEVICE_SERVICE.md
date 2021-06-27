@@ -1,6 +1,10 @@
+!!! DRAFT DRAFT DRAFT !!!
+
 # Using AAP as MIDI Device Service
 
-AAP Instrument plugin can be used as a MIDI device service if it is set up to behave so. It can be externally done outside the plugin application itself. An example is demonstrated as `aap-midi-device-service` application module.
+AAP Instrument plugin can be used as a MIDI device service if it is set up to behave so. It is implemented by a class called `AudioPluginMidiDeviceService`.
+
+It is usually packaged within the same instrument service app, but it can also be externally done outside the plugin application itself (the MidiDeviceService instantiates the plugin in the same manner regardless of whether it is in-app plugin or out of app plugin). An example is demonstrated as `aap-midi-device-service` application module.
 
 AAP Effect plugins do not work with this feature (there is no point of making them so).
 
@@ -38,3 +42,14 @@ The file name must match the one specified in `AndroidManifest.xml`.
 
 It is just compliant to Android MIDI API. The metadata should be modified to match the product you want to turn into a MIDI device service.
 
+## MIDI 1.0/2.0 protocols
+
+AudioPluginMidiDeviceService internally uses MIDI 2.0 UMP to send MIDI input messages to the instrument plugin, and the instrument plugin is supposed to downconvert to MIDI 1.0 stream if it cannot handle UMPs. aap-lv2 does this automatically. aap-juce plugins do not.
+
+AudioPluginMidiDeviceService is instantiated without protocol information, and it receives MIDI inputs without being given the protocol.
+
+Ideally it would consume some MIDI CI Protocol messages to switch those message types, but at this state there is no correlated feedback channel to send MIDI CI responses to the client.
+
+### MIDI 1.0 or 2.0 between app and MidiDeviceService
+
+`aap-midi-device-service` app has a checkbox that says "Use MIDI 2.0 Protocol". Its scope is limited to determine whether it sends UMP messages or traditional MIDI 1.0 bytes, not to control whether the MidiDeviceService should use MIDI 2.0 Protocols or not for its internal interaction with AAP instrument. For the reason explained above, a MIDI client has no control over which MIDI protocol `AudioPluginMidiDeviceService` uses.
