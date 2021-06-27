@@ -43,17 +43,19 @@ enum PluginInstantiationState {
 
 class PortInformation
 {
+	uint32_t index{0};
 	std::string name{};
 	ContentType content_type;
 	PortDirection direction;
 	std::map<std::string, std::string> properties{};
 	
 public:
-	PortInformation(std::string portName, ContentType content, PortDirection portDirection)
-			: name(portName), content_type(content), direction(portDirection)
+	PortInformation(uint32_t portIndex, std::string portName, ContentType content, PortDirection portDirection)
+			: index(portIndex), name(portName), content_type(content), direction(portDirection)
 	{
 	}
 
+	uint32_t getIndex() const { return index; }
 	const char* getName() const { return name.c_str(); }
 	ContentType getContentType() const { return content_type; }
 	PortDirection getPortDirection() const { return direction; }

@@ -1,6 +1,6 @@
 package org.androidaudioplugin
 
-class PortInformation(var name: String, var direction: Int, var content: Int, defaultValue: Float = 0.0f, minimumValue: Float = 0.0f, maximumValue: Float = 1.0f)
+class PortInformation(var index: Int, var name: String, var direction: Int, var content: Int, defaultValue: Float = 0.0f, minimumValue: Float = 0.0f, maximumValue: Float = 1.0f)
 {
     companion object {
         const val PORT_DIRECTION_INPUT = 0

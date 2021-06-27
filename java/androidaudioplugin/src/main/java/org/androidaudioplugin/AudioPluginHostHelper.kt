@@ -63,6 +63,7 @@ class AudioPluginHostHelper {
                         aapServiceInfo.plugins.add(currentPlugin)
                     } else if (xp.name == "port" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                         if (currentPlugin != null) {
+                            val index = xp.getAttributeValue(null, "index")
                             val name = xp.getAttributeValue(null, "name")
                             val direction = xp.getAttributeValue(null, "direction")
                             val content = xp.getAttributeValue(null, "content")
@@ -76,7 +77,7 @@ class AudioPluginHostHelper {
                                 "audio" -> PortInformation.PORT_CONTENT_TYPE_AUDIO
                                 else -> PortInformation.PORT_CONTENT_TYPE_GENERAL
                             }
-                            val port = PortInformation(name, directionInt, contentInt)
+                            val port = PortInformation(index?.toInt() ?: currentPlugin.ports.size, name, directionInt, contentInt)
                             if (default != null)
                                 port.default = default.toFloat()
                             if (minimum != null)

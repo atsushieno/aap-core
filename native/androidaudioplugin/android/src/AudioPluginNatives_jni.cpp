@@ -40,6 +40,7 @@ static jmethodID
 		j_method_get_category,
 		j_method_get_port_count,
 		j_method_get_port,
+		j_method_port_get_index,
 		j_method_port_get_name,
 		j_method_port_get_direction,
 		j_method_port_get_content,
@@ -82,6 +83,8 @@ void initializeJNIMetadata(JNIEnv *env)
 											   "getPortCount", "()I");
 	j_method_get_port = env->GetMethodID(java_plugin_information_class, "getPort",
 										 "(I)Lorg/androidaudioplugin/PortInformation;");
+	j_method_port_get_index = env->GetMethodID(java_port_information_class, "getIndex",
+											  "()I");
 	j_method_port_get_name = env->GetMethodID(java_port_information_class, "getName",
 											  "()Ljava/lang/String;");
 	j_method_port_get_direction = env->GetMethodID(java_port_information_class,
@@ -136,10 +139,11 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_port_count);
 	for (int i = 0; i < nPorts; i++) {
 		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_port, i);
+		auto index = (uint32_t) env->CallIntMethod(port, j_method_port_get_index);
 		auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(port, j_method_port_get_name));
 		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
 		auto direction = (aap::PortDirection) (int) env->CallIntMethod(port, j_method_port_get_direction);
-		auto nativePort = new aap::PortInformation(name, content, direction);
+		auto nativePort = new aap::PortInformation(index, name, content, direction);
 		if (env->CallBooleanMethod(port, j_method_port_has_value_range)) {
 			nativePort->setPropertyValueString(AAP_PORT_DEFAULT, std::to_string(env->CallFloatMethod(port, j_method_port_get_default)));
 			nativePort->setPropertyValueString(AAP_PORT_MINIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_minimum)));

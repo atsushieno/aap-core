@@ -73,10 +73,10 @@ This is the entire content for bare bone project:
 <plugins>
   <plugin name="Flat Filter" category="Effect" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbareboneplugin.so">
     <ports>
-      <port direction="input" content="audio" name="Left In" />
-      <port direction="input" content="audio" name="Right In" />
-      <port direction="output" content="audio" name="Left Out" />
-      <port direction="output" content="audio" name="Right Out" />
+      <port index="0" direction="input" content="audio" name="Left In" />
+      <port index="1" direction="input" content="audio" name="Right In" />
+      <port index="2" direction="output" content="audio" name="Left Out" />
+      <port index="3" direction="output" content="audio" name="Right Out" />
     </ports>
   </plugin>
 </plugins>

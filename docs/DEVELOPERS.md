@@ -107,6 +107,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 - `<ports>` element - defines port group (can be nested)
   - `name`: attribute: port group name. An `xs:NMTOKEN` in XML Schema datatypes is expected.
   - `<port>` element
+    - `index` attribute: the port index integer that is supposed to not change as long as parameter compatibility is kept. Indices don't have to be in order.
     - `name` attribute: a name string. An `xs:NMTOKEN` in XML Schema datatypes is expected.
     - `direction` attribute: either `input` or `output`.
     - `content` attribute: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
@@ -306,26 +307,3 @@ interface AudioPluginInterface {
 ```
 
 Due to [AIDL tool limitation or framework limitation](https://issuetracker.google.com/issues/144204660), we cannot use `List<ParcelFileDescriptor>`, therefore `prepareMemory()` is added apart from `prepare()` to workaround this issue.
-
-
-## Hacking on desktop
-
-android-audio-plugin-framework is (against the name) designed to be kind of cross-platform so that it is hackable on desktop too. It is often much easier if we can diagnose the issues on desktop natively, without resorting to remote debugging on Android targets.
-
-We have top-level `CMakeLists.txt` which can be used to build desktop development bits with cmake. Therefore you can build the desktop version as:
-
-```
-mkdir build
-cd build
-cmake ..
-make
-```
-
-There are useful bits for AAP desktop builds:
-
-- `build/native/tools/aap-list/aap-list` : lists locally installed AAPs. (similar to `lv2ls` from lilv tools package.)
-- `build/native/tools/aap-info/aap-info` : describes the details for the argument AAP (plugin ID). (similar to `lv2info` from lilv tools package.)
-
-For practical AAP host on desktop, juce-aap builds AudioPluginHost with AAP support on Linux during its build (it is mostly because we need desktop metadata generator for plugins; AudioPluginHost is not a plugin though). Note that it is a side effect kind of stuff and we may not maintain the build. Currently it successfully lists AAPs but fails to instantiate them.
-
-
