@@ -11,7 +11,7 @@ android {
         minSdk 29
         targetSdk 30
         versionCode 1
-        versionName '0.6.16'
+        versionName "$aap_version"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -61,7 +61,7 @@ dependencies {
     implementation "androidx.compose.material:material:$compose_version"
     implementation "androidx.compose.ui:ui-tooling:$compose_version"
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
-    implementation 'androidx.activity:activity-compose:1.3.0-beta01'
+    implementation 'androidx.activity:activity-compose:1.3.0-beta02'
     implementation 'androidx.webkit:webkit:1.4.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
