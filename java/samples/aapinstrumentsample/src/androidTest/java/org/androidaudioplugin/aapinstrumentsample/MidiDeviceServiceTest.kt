@@ -16,14 +16,15 @@ class MidiDeviceServiceTest {
     val serviceRule = ServiceTestRule()
 
     @Test
-    fun basicServiceOperationsForAllPlugins() {
-        testing.basicServiceOperationsForAllPlugins()
+    fun basicServiceOperations() {
+        // Replace plugin name after copy-pasting this code.
+        testing.basicServiceOperations("InstrumentAPISample")
     }
 
-    //@Test
+    @Test
     fun repeatDirectServieOperations() {
         for (i in 0 until 5)
-            basicServiceOperationsForAllPlugins()
+            basicServiceOperations()
     }
 
 }
