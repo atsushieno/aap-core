@@ -27,6 +27,7 @@ import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.midideviceservice.ui.theme.AAPMidiDeviceServiceTheme
+import java.nio.ByteBuffer
 
 interface Updater {
     fun setInstrumentPlugin(plugin: PluginInformation)
@@ -172,14 +173,31 @@ fun PluginWebUI() {
                     settings.javaScriptEnabled = true
                     addJavascriptInterface(AAPScriptInterface(), "AAPInterop")
 
-                    var html = "<html><head></head><body onLoad='AAPInterop.initialize()'><p>(parameters are read only so far)<table>"
+                    var html = """<html>
+<head>
+<script type='text/javascript'>
+</script>
+</head>
+<body
+  onLoad='AAPInterop.onInitialize(); AAPInterop.onShow()'
+  onUnload='AAPInterop.onHide();AAPInterop.onCleanup()'>
+  <p>(parameters are read only so far)
+  <table>
+"""
                     for (port in model.instrument!!.ports) {
                         when (port.content) {
                             PortInformation.PORT_CONTENT_TYPE_AUDIO,
                             PortInformation.PORT_CONTENT_TYPE_MIDI,
                             PortInformation.PORT_CONTENT_TYPE_MIDI2 -> continue
                         }
-                        html += "<tr><th>${port.name}</th><td><input type='range' min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' class='slider' id='port_${port.index}' onChange='AAPInterop.controlChange(\"${port.index}\", port_${port.index}.value)'></td><tr>"
+                        html += """
+  <tr>
+    <th>${port.name}</th>
+    <td>
+      <input type='range' class='slider' id='port_${port.index}' min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' oninput='AAPInterop.write(${port.index}, this.value)' />
+    </td>
+  </tr>
+  """
                     }
                     html += "</table></body></html>"
 
@@ -192,22 +210,48 @@ fun PluginWebUI() {
 
 class AAPScriptInterface {
     @JavascriptInterface
-    fun onInitialized() {
+    fun log(s: String) {
+        println(s)
     }
 
     @JavascriptInterface
-    fun onControlChange(controlId: Int, value: Int) {
+    fun onInitialize() {
+        println("!!!!!!!!!!!!!!! onInitialize")
     }
 
     @JavascriptInterface
-    fun onNote(state: Int, key: Int) {
+    fun onCleanup() {
+        println("!!!!!!!!!!!!!!! onCleanup")
     }
 
     @JavascriptInterface
-    fun onChangeProgram(sfz: String) {
+    fun onShow() {
+        println("!!!!!!!!!!!!!!! onShow")
     }
 
     @JavascriptInterface
-    fun onGetLocalInstruments() {
+    fun onHide() {
+        println("!!!!!!!!!!!!!!! onHide")
+    }
+
+    @JavascriptInterface
+    fun onNotify(port: Int, data: ByteArray, offset: Int, length: Int) {
+        println("!!!!!!!!!!!!!!! onNotify")
+    }
+
+    @JavascriptInterface
+    fun listen(port: Int) {
+    }
+
+    @JavascriptInterface
+    fun write(port: Int, value: String) {
+        tmpBuffer.asFloatBuffer().put(0, value.toFloat())
+        write(port, tmpBuffer.array(), 0, 4)
+    }
+    private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
+
+    @JavascriptInterface
+    fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
+        println("!!!!!!!!!!!!!!! write($port, ${ByteBuffer.wrap(data).asFloatBuffer().get(offset)})")
     }
 }
