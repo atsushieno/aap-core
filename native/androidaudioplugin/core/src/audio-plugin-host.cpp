@@ -1,13 +1,11 @@
+
+// As a principle, there must not be Android-specific references in this code.
+// Anything Android specific must to into `android` directory.
 #include <sys/stat.h>
 #include "../include/aap/audio-plugin-host.h"
 #include "../include/aap/logging.h"
 #include <vector>
 
-#if ANDROID
-#include <jni.h>
-#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
-#include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
-#endif
 
 namespace aap
 {
