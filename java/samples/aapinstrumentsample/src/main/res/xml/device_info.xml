@@ -1,0 +1,6 @@
+<devices>
+    <device name="InstrumentAPISample" manufacturer="androidaudioplugin.org" product="InstrumentSampleMidiDeviceService">
+        <input-port name="input" />
+    </device>
+</devices>
+
