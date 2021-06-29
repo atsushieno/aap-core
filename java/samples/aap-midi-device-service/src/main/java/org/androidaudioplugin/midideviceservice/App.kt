@@ -149,109 +149,12 @@ fun PluginInstanceControllerUI() {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun PluginWebUI() {
     Column {
         AndroidView(
             modifier = Modifier.padding(40.dp).border(2.dp, Color.Black),
-            factory = { ctx: Context ->
-                WebView(ctx).also { webView -> with(webView) {
-                    val assetLoader = WebViewAssetLoader.Builder().addPathHandler(
-                        "/assets/",
-                        WebViewAssetLoader.AssetsPathHandler(ctx)
-                    ).build()
-                    webViewClient = object : WebViewClient() {
-                        @RequiresApi(21)
-                        override fun shouldInterceptRequest(
-                            view: WebView,
-                            request: WebResourceRequest
-                        ): WebResourceResponse? {
-                            return assetLoader.shouldInterceptRequest(request.url)
-                        }
-                    }
-                    settings.javaScriptEnabled = true
-                    addJavascriptInterface(AAPScriptInterface(), "AAPInterop")
-
-                    var html = """<html>
-<head>
-<script type='text/javascript'>
-</script>
-</head>
-<body
-  onLoad='AAPInterop.onInitialize(); AAPInterop.onShow()'
-  onUnload='AAPInterop.onHide();AAPInterop.onCleanup()'>
-  <p>(parameters are read only so far)
-  <table>
-"""
-                    for (port in model.instrument!!.ports) {
-                        when (port.content) {
-                            PortInformation.PORT_CONTENT_TYPE_AUDIO,
-                            PortInformation.PORT_CONTENT_TYPE_MIDI,
-                            PortInformation.PORT_CONTENT_TYPE_MIDI2 -> continue
-                        }
-                        html += """
-  <tr>
-    <th>${port.name}</th>
-    <td>
-      <input type='range' class='slider' id='port_${port.index}' min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' oninput='AAPInterop.write(${port.index}, this.value)' />
-    </td>
-  </tr>
-  """
-                    }
-                    html += "</table></body></html>"
-
-                    loadData(html, "text/html", null)
-                }
-            }
-        })
-    }
-}
-
-class AAPScriptInterface {
-    @JavascriptInterface
-    fun log(s: String) {
-        println(s)
-    }
-
-    @JavascriptInterface
-    fun onInitialize() {
-        println("!!!!!!!!!!!!!!! onInitialize")
-    }
-
-    @JavascriptInterface
-    fun onCleanup() {
-        println("!!!!!!!!!!!!!!! onCleanup")
-    }
-
-    @JavascriptInterface
-    fun onShow() {
-        println("!!!!!!!!!!!!!!! onShow")
-    }
-
-    @JavascriptInterface
-    fun onHide() {
-        println("!!!!!!!!!!!!!!! onHide")
-    }
-
-    @JavascriptInterface
-    fun onNotify(port: Int, data: ByteArray, offset: Int, length: Int) {
-        println("!!!!!!!!!!!!!!! onNotify")
-    }
-
-    @JavascriptInterface
-    fun listen(port: Int) {
-    }
-
-    @JavascriptInterface
-    fun write(port: Int, value: String) {
-        tmpBuffer.asFloatBuffer().put(0, value.toFloat())
-        write(port, tmpBuffer.array(), 0, 4)
-    }
-    private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
-
-    @JavascriptInterface
-    fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
-        println("!!!!!!!!!!!!!!! write($port, ${ByteBuffer.wrap(data).asFloatBuffer().get(offset)})")
+            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, model.instrument!!) }
+        )
     }
 }
