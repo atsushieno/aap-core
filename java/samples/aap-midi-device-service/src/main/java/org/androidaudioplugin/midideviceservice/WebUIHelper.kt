@@ -44,6 +44,9 @@ class WebUIHelper {
         fun getHtml(plugin: PluginInformation): String {
             var html = """<html>
 <head>
+<style type='text/css'>
+webaudio-knob { padding: 5px; }
+</style>
 <script type='text/javascript'><!--
 
   function initialize() {
@@ -69,28 +72,35 @@ class WebUIHelper {
 <script type='text/javascript' src='webaudio-controls.js'></script>
 </head>
 <body onLoad='initialize()' onUnload='terminate()'>
-  <p>(parameters are read only so far)
+  <p>(parameters are read only so far)</p>
+  <webaudio-keyboard width="300" height="50" keys="24"></webaudio-keyboard>
   <table>
 """
-            for (port in plugin.ports) {
-                when (port.content) {
+            val nCols = 2
+            val ports = plugin.ports.filter { p ->
+                when (p.content) {
                     PortInformation.PORT_CONTENT_TYPE_AUDIO,
                     PortInformation.PORT_CONTENT_TYPE_MIDI,
-                    PortInformation.PORT_CONTENT_TYPE_MIDI2 -> continue
+                    PortInformation.PORT_CONTENT_TYPE_MIDI2 -> false
+                    else -> true
                 }
+            }
+            for (i in ports.indices) {
+                val port = ports[i]
+                if (i % nCols == 0)
+                    html += "<tr>"
+                else println("SAME COLUMN")
                 html += """
-  <tr>
     <th>${port.name}</th>
     <td>
-      <!-- input type='range' class='slider' id='port_${port.index}' min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' oninput='sendInput(${port.index}, this.value)' / -->
       <webaudio-knob min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' index_='${port.index}' src='bright_life.png' />
     </td>
-  </tr>
   """
+                if (i % nCols == nCols - 1)
+                    html += "</tr>"
             }
             html += "</table></body></html>"
 
-            println(html)
             return html
         }
     }

@@ -128,7 +128,6 @@ class WebUIHostHelper {
                 webView.settings.javaScriptEnabled = true
                 webView.addJavascriptInterface(AAPScriptInterface(), "AAPInterop")
 
-                //webView.loadData(WebUIHelper.getHtml(plugin), "text/html", null)
                 webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
             }
         }
