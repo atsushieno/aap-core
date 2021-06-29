@@ -125,4 +125,7 @@ Android Audio Plugin Framework is released under the MIT License.
 
 In aap-midi-device-service, there are some sources copied from [jalv](https://gitlab.com/drobilla/jalv) project included in aap-midi-device-service module, namely those files under `zix` directory, and they are distributed under the ISC license.
 
-aap-miid-device-service also imports [google/oboe](https://github.com/google/oboe) which is released under Apache V2 License.
+aap-miid-device-service also imports the following code:
+
+- [google/oboe](https://github.com/google/oboe) which is released under Apache V2 License.
+- [g200kg/webaudio-controls](https://github.com/g200kg/webaudio-controls/) which is released under Apache V2 License.
