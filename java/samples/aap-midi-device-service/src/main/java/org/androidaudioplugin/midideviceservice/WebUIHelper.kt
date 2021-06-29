@@ -48,11 +48,19 @@ class WebUIHelper {
 webaudio-knob { padding: 5px; }
 </style>
 <script type='text/javascript'><!--
-
+  var midiChannel = 0;
+  var octave = 4;
+  var noteVelocity = 100;
+  
   function initialize() {
     for (el of document.getElementsByTagName('webaudio-knob')) {
       el.addEventListener('input', function(e) {
         sendInput(e.target.getAttribute('index_'), e.target.value);
+      });
+    }
+    for (el of document.getElementsByTagName('webaudio-keyboard')) {
+      el.addEventListener('change', function(e) {
+        sendNote(e.note[0], e.note[1] + octave * 12);
       });
     }
     AAPInterop.onInitialize();
@@ -66,6 +74,10 @@ webaudio-knob { padding: 5px; }
 
   function sendInput(i, v) {
     AAPInterop.write(i, v);
+  }
+  
+  function sendNote(state, note) {
+    AAPInterop.writeMidi(state ? [0x90 + midiChannel, note, noteVelocity] : [0x80 + midiChannel, note, 0]);
   }
 //--></script>
 <script type='text/javascript' src='webcoomponents-lite.js'></script>

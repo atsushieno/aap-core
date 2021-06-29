@@ -86,6 +86,11 @@ class WebUIHostHelper {
         }
 
         @JavascriptInterface
+        fun writeMidi(data: ByteArray) {
+            println("!!!!!!!!!!!!!!! writeMidi(${data[0]}, ${data[1]}, ${data[2]})")
+        }
+
+        @JavascriptInterface
         fun write(port: Int, value: String) {
             tmpBuffer.asFloatBuffer().put(0, value.toFloat())
             write(port, tmpBuffer.array(), 0, 4)
