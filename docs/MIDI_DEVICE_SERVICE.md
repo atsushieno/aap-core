@@ -42,6 +42,12 @@ The file name must match the one specified in `AndroidManifest.xml`.
 
 It is just compliant to Android MIDI API. The metadata should be modified to match the product you want to turn into a MIDI device service.
 
+## Design limitations
+
+We cannot dynamically add or remove `<device>`s in the meta-data XML. Therefore, whenever you want to instantiate an arbitrary AAP instrument, there is no way to designate particular AAP in the `<device>` element.
+
+For that reason, we have leave `<device>` elements AAP-agnostic. On the other hand, we also have to provide ways to associate an AAP to a `<device>` element in case there are more than one instrument plugins in a service (consider aap-mda-lv2).
+
 ## MIDI 1.0/2.0 protocols
 
 AudioPluginMidiDeviceService internally uses MIDI 2.0 UMP to send MIDI input messages to the instrument plugin, and the instrument plugin is supposed to downconvert to MIDI 1.0 stream if it cannot handle UMPs. aap-lv2 does this automatically. aap-juce plugins do not.

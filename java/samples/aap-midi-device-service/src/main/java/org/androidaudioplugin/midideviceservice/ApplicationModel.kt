@@ -69,12 +69,6 @@ class ApplicationModel(private val packageName: String, context: Context) {
         return null
     }
 
-    private val allPlugins: Array<PluginInformation> = AudioPluginHostHelper.queryAudioPlugins(context)
-
-    val instrument: PluginInformation?
-        get() = specifiedInstrument ?:
-            allPlugins.firstOrNull { p -> p.packageName == packageName && isInstrument(p) }
-
     private fun isInstrument(info: PluginInformation) =
         info.category?.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) ?: info.category?.contains("Synth") ?: false
 
@@ -92,7 +86,7 @@ class ApplicationModel(private val packageName: String, context: Context) {
 
         val deviceInfo: MidiDeviceInfo = midiManager.devices.first { d ->
             d.properties.getString(MidiDeviceInfo.PROPERTY_MANUFACTURER) == "androidaudioplugin.org" &&
-                    d.properties.getString(MidiDeviceInfo.PROPERTY_NAME) == "AAPMidi"
+                    d.properties.getString(MidiDeviceInfo.PROPERTY_NAME) == "AAPMidiDemo"
         }
         midiManager.openDevice(deviceInfo, object: OnDeviceOpenedListener {
             override fun onDeviceOpened(device: MidiDevice?) {
