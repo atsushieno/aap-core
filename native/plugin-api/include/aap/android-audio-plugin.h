@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;
@@ -85,4 +87,6 @@ AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
 
 typedef AndroidAudioPluginFactory* (*aap_factory_t) ();
 
+#ifdef __cplusplus
 } // extern "C"
+#endif
