@@ -10,7 +10,6 @@ The most important and difficult mission for an audio plugin framework is to get
 
 There is some complexity on how those files are packaged. At the "AAP package helpers" section we describe how things are packaged for each migration pattern.
 
-
 ### Queryable service manifest for plugin lookup
 
 Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
@@ -40,8 +39,6 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
   </application>
 </manifest>
 ```
-
-It should be noted that `AudioPluginService` works as a foreground service, which is required for this kind of audio apps for Android 8.0 or later. Therefore an additional `<uses-permission>` is required for `FOREGROUND_SERVICE`.
 
 The `<service>` element comes up with two `<meta-data>` elements.
 
