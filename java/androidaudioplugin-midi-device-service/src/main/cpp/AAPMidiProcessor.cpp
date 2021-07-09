@@ -166,7 +166,7 @@ namespace aapmidideviceservice {
 
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
-        aap::MidiCIExtension midiCIExtData{};
+        MidiCIExtension midiCIExtData{};
         if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
             AndroidAudioPluginExtension midiCIExtension;
             midiCIExtension.uri = AAP_MIDI_CI_EXTENSION_URI;
