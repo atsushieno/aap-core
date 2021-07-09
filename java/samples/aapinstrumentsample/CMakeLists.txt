@@ -17,7 +17,8 @@ add_library( # Specifies the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        "src/main/jni/aapinstrumentsample.cpp"
+        "src/main/cpp/aapinstrumentsample.cpp"
+        "src/main/cpp/ayumi.c"
         )
 
 target_include_directories(aapinstrumentsample
@@ -29,7 +30,6 @@ target_include_directories(aapinstrumentsample
 
 target_compile_options(aapinstrumentsample
         PRIVATE
-        -std=c++17
         -Wall
         -Wextra-semi
         -Wshadow
