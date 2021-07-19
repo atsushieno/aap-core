@@ -63,6 +63,114 @@ typedef struct cmidi2_ci_protocol_tag {
     uint8_t reserved2;
 } cmidi2_ci_protocol;
 
+enum cmidi2_cc {
+    CMIDI2_CC_BANK_SELECT = 0x00,
+    CMIDI2_CC_MODULATION = 0x01,
+    CMIDI2_CC_BREATH = 0x02,
+    CMIDI2_CC_FOOT = 0x04,
+    CMIDI2_CC_PORTAMENTO_TIME = 0x05,
+    CMIDI2_CC_DTE_MSB = 0x06,
+    CMIDI2_CC_VOLUME = 0x07,
+    CMIDI2_CC_BALANCE = 0x08,
+    CMIDI2_CC_PAN = 0x0A,
+    CMIDI2_CC_EXPRESSION = 0x0B,
+    CMIDI2_CC_EFFECT_CONTROL_1 = 0x0C,
+    CMIDI2_CC_EFFECT_CONTROL_2 = 0x0D,
+    CMIDI2_CC_GENERAL_1 = 0x10,
+    CMIDI2_CC_GENERAL_2 = 0x11,
+    CMIDI2_CC_GENERAL_3 = 0x12,
+    CMIDI2_CC_GENERAL_4 = 0x13,
+    CMIDI2_CC_BANK_SELECT_LSB = 0x20,
+    CMIDI2_CC_MODULATION_LSB = 0x21,
+    CMIDI2_CC_BREATH_LSB = 0x22,
+    CMIDI2_CC_FOOT_LSB = 0x24,
+    CMIDI2_CC_PORTAMENTO_TIME_LSB = 0x25,
+    CMIDI2_CC_DTE_LSB = 0x26,
+    CMIDI2_CC_VOLUME_LSB = 0x27,
+    CMIDI2_CC_BALANCE_LSB = 0x28,
+    CMIDI2_CC_PAN_LSB = 0x2A,
+    CMIDI2_CC_EXPRESSION_LSB = 0x2B,
+    CMIDI2_CC_EFFECT1_LSB = 0x2C,
+    CMIDI2_CC_EFFECT2_LSB = 0x2D,
+    CMIDI2_CC_GENERAL_1_LSB = 0x30,
+    CMIDI2_CC_GENERAL_2_LSB = 0x31,
+    CMIDI2_CC_GENERAL_3_LSB = 0x32,
+    CMIDI2_CC_GENERAL_4_LSB = 0x33,
+    CMIDI2_CC_HOLD = 0x40,
+    CMIDI2_CC_PORTAMENTO_SWITCH = 0x41,
+    CMIDI2_CC_SOSTENUTO = 0x42,
+    CMIDI2_CC_SOFT_PEDAL = 0x43,
+    CMIDI2_CC_LEGATO = 0x44,
+    CMIDI2_CC_HOLD_2 = 0x45,
+    CMIDI2_CC_SOUND_CONTROLLER_1 = 0x46,
+    CMIDI2_CC_SOUND_CONTROLLER_2 = 0x47,
+    CMIDI2_CC_SOUND_CONTROLLER_3 = 0x48,
+    CMIDI2_CC_SOUND_CONTROLLER_4 = 0x49,
+    CMIDI2_CC_SOUND_CONTROLLER_5 = 0x4A,
+    CMIDI2_CC_SOUND_CONTROLLER_6 = 0x4B,
+    CMIDI2_CC_SOUND_CONTROLLER_7 = 0x4C,
+    CMIDI2_CC_SOUND_CONTROLLER_8 = 0x4D,
+    CMIDI2_CC_SOUND_CONTROLLER_9 = 0x4E,
+    CMIDI2_CC_SOUND_CONTROLLER_10 = 0x4F,
+    CMIDI2_CC_GENERAL_5 = 0x50,
+    CMIDI2_CC_GENERAL_6 = 0x51,
+    CMIDI2_CC_GENERAL_7 = 0x52,
+    CMIDI2_CC_GENERAL_8 = 0x53,
+    CMIDI2_CC_PORTAMENTO_CONTROL = 0x54,
+    CMIDI2_CC_RSD = 0x5B,
+    CMIDI2_CC_EFFECT_1 = 0x5B,
+    CMIDI2_CC_TREMOLO = 0x5C,
+    CMIDI2_CC_EFFECT_2 = 0x5C,
+    CMIDI2_CC_CSD = 0x5D,
+    CMIDI2_CC_EFFECT_3 = 0x5D,
+    CMIDI2_CC_CELESTE = 0x5E,
+    CMIDI2_CC_EFFECT_4 = 0x5E,
+    CMIDI2_CC_PHASER = 0x5F,
+    CMIDI2_CC_EFFECT_5 = 0x5F,
+    CMIDI2_CC_DTE_INCREMENT = 0x60,
+    CMIDI2_CC_DTE_DECREMENT = 0x61,
+    CMIDI2_CC_NRPN_LSB = 0x62,
+    CMIDI2_CC_NRPN_MSB = 0x63,
+    CMIDI2_CC_RPN_LSB = 0x64,
+    CMIDI2_CC_RPN_MSB = 0x65,
+    // CHANNEL MODE MESSAGES
+    CMIDI2_CC_ALL_SOUND_OFF = 0x78,
+    CMIDI2_CC_RESET_ALL_CONTROLLERS = 0x79,
+    CMIDI2_CC_LOCAL_CONTROL = 0x7A,
+    CMIDI2_CC_ALL_NOTES_OFF = 0x7B,
+    CMIDI2_CC_OMNI_MODE_OFF = 0x7C,
+    CMIDI2_CC_OMNI_MODE_ON = 0x7D,
+    CMIDI2_CC_POLY_MODE_ON_OFF = 0x7E,
+    CMIDI2_CC_POLY_MODE_ON = 0x7F,
+};
+
+enum cmidi2_rpn {
+    CMIDI2_RPN_PITCH_BEND_SENSITIVITY = 0,
+    CMIDI2_RPN_FINE_TUNING = 1,
+    CMIDI2_RPN_COARSE_TUNING = 2,
+    CMIDI2_RPN_TUNING_PROGRAM = 3,
+    CMIDI2_RPN_TUNING_BANK_SELECT = 4,
+    CMIDI2_RPN_MODULATION_DEPTH = 5,
+};
+
+enum cmidi2_meta_event_type {
+    CMIDI2_META_SEQUENCE_NUMBER = 0X00,
+    CMIDI2_META_TEXT = 0X01,
+    CMIDI2_META_COPYRIGHT = 0X02,
+    CMIDI2_META_TRACK_NAME = 0X03,
+    CMIDI2_META_INSTRUMENT_NAME = 0X04,
+    CMIDI2_META_LYRIC = 0X05,
+    CMIDI2_META_MARKER = 0X06,
+    CMIDI2_META_CUE = 0X07,
+    CMIDI2_META_CHANNEL_PREFIX = 0X20,
+    CMIDI2_META_END_OF_TRACK = 0X2F,
+    CMIDI2_META_TEMPO = 0X51,
+    CMIDI2_META_SMPTE_OFFSET = 0X54,
+    CMIDI2_META_TIME_SIGNATURE = 0X58,
+    CMIDI2_META_KEY_SIGNATURE = 0X59,
+    CMIDI2_META_SEQUENCER_SPECIFIC = 0X7F,
+};
+
 enum cmidi2_per_note_management_flags {
     CMIDI2_PER_NOTE_MANAGEMENT_RESET = 1,
     CMIDI2_PER_NOTE_MANAGEMENT_DETACH = 2,
@@ -500,7 +608,8 @@ static inline void cmidi2_ump_mds_process(uint8_t group, uint8_t mdsId, void* da
 typedef uint32_t cmidi2_ump;
 
 static inline uint8_t cmidi2_ump_get_byte_at(cmidi2_ump *ump, uint8_t at) {
-    switch (at) {
+    ump += at / 4;
+    switch (at % 4) {
     case 0: return (*ump & 0xFF000000) >> 24;
     case 1: return (*ump & 0xFF0000) >> 16;
     case 2: return (*ump & 0xFF00) >> 8;
@@ -725,3 +834,284 @@ static inline void* cmidi2_ump_sequence_next(void* ptr) {
 #ifdef __cplusplus
 }
 #endif
+
+
+// MIDI CI support.
+
+#define CMIDI2_CI_SUB_ID 0xD
+#define CMIDI2_CI_SUB_ID_2_DISCOVERY_INQUIRY 0x70
+#define CMIDI2_CI_SUB_ID_2_DISCOVERY_REPLY 0x71
+#define CMIDI2_CI_SUB_ID_2_INVALIDATE_MUID 0x7E
+#define CMIDI2_CI_SUB_ID_2_NAK 0x7F
+#define CMIDI2_CI_SUB_ID_2_PROTOCOL_NEGOTIATION_INQUIRY 0x10
+#define CMIDI2_CI_SUB_ID_2_PROTOCOL_NEGOTIATION_REPLY 0x11
+#define CMIDI2_CI_SUB_ID_2_SET_NEW_PROTOCOL 0x12
+#define CMIDI2_CI_SUB_ID_2_TEST_NEW_PROTOCOL_I2R 0x13
+#define CMIDI2_CI_SUB_ID_2_TEST_NEW_PROTOCOL_R2I 0x14
+#define CMIDI2_CI_SUB_ID_2_CONFIRM_NEW_PROTOCOL_ESTABLISHED 0x15
+#define CMIDI2_CI_SUB_ID_2_PROFILE_INQUIRY 0x20
+#define CMIDI2_CI_SUB_ID_2_PROFILE_INQUIRY_REPLY 0x21
+#define CMIDI2_CI_SUB_ID_2_SET_PROFILE_ON 0x22
+#define CMIDI2_CI_SUB_ID_2_SET_PROFILE_OFF 0x23
+#define CMIDI2_CI_SUB_ID_2_PROFILE_ENABLED_REPORT 0x24
+#define CMIDI2_CI_SUB_ID_2_PROFILE_DISABLED_REPORT 0x25
+#define CMIDI2_CI_SUB_ID_2_PROFILE_SPECIFIC_DATA 0x2F
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_CAPABILITIES_INQUIRY 0x30
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_CAPABILITIES_REPLY 0x31
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_HAS_DATA_INQUIRY 0x32
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_HAS_DATA_REPLY 0x33
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_GET_DATA_INQUIRY 0x34
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_GET_DATA_REPLY 0x35
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_SET_DATA_INQUIRY 0x36
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_SET_DATA_REPLY 0x37
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_SUBSCRIBE 0x38
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_SUBSCRIBE_REPLY 0x39
+#define CMIDI2_CI_SUB_ID_2_PROPERTY_NOTIFY 0x3F
+
+typedef struct {
+    uint8_t type;
+    uint8_t version;
+    uint8_t extensions;
+    uint8_t reserved1;
+    uint8_t reserved2;
+} cmidi2_ci_protocol_type_info;
+
+typedef struct {
+    uint8_t fixed_7e; // 0x7E
+    uint8_t bank;
+    uint8_t number;
+    uint8_t version;
+    uint8_t level;
+} cmidi2_profile_id;
+
+// Assumes the input value is already 7-bit encoded if required.
+static inline void cmidi2_ci_direct_uint16_at(uint8_t* buf, uint16_t v) {
+    buf[0] = v & 0xFF;
+    buf[1] = (v >> 8) & 0xFF;
+}
+
+// Assumes the input value is already 7-bit encoded if required.
+static inline void cmidi2_ci_direct_uint32_at(uint8_t* buf, uint32_t v) {
+    buf[0] = v & 0xFF;
+    buf[1] = (v >> 8) & 0xFF;
+    buf[2] = (v >> 16) & 0xFF;
+    buf[3] = (v >> 24) & 0xFF;
+}
+
+static inline void cmidi2_ci_7bit_int14_at(uint8_t* buf, uint16_t v) {
+    buf[0] = v & 0x7F;
+    buf[1] = (v >> 7) & 0x7F;
+}
+
+static inline void cmidi2_ci_7bit_int21_at(uint8_t* buf, uint32_t v) {
+    buf[0] = v & 0x7F;
+    buf[1] = (v >> 7) & 0x7F;
+    buf[2] = (v >> 14) & 0x7F;
+}
+
+static inline void cmidi2_ci_7bit_int28_at(uint8_t* buf, uint32_t v) {
+    buf[0] = v & 0x7F;
+    buf[1] = (v >> 7) & 0x7F;
+    buf[2] = (v >> 14) & 0x7F;
+    buf[3] = (v >> 21) & 0x7F;
+}
+
+static inline void cmidi2_ci_message_common(uint8_t* buf,
+        uint8_t destination, uint8_t sysexSubId2, uint8_t versionAndFormat, uint32_t sourceMUID, uint32_t destinationMUID) {
+    buf[0] = 0x7E;
+    buf[1] = destination;
+    buf[2] = 0xD;
+    buf[3] = sysexSubId2;
+    buf[4] = versionAndFormat;
+    cmidi2_ci_direct_uint32_at(buf + 5, sourceMUID);
+    cmidi2_ci_direct_uint32_at(buf + 9, destinationMUID);
+}
+
+// Discovery
+
+static inline void cmidi2_ci_discovery_common(uint8_t* buf, uint8_t sysexSubId2,
+    uint8_t versionAndFormat, uint32_t sourceMUID, uint32_t destinationMUID,
+    uint32_t deviceManufacturer3Bytes, uint16_t deviceFamily, uint16_t deviceFamilyModelNumber,
+    uint32_t softwareRevisionLevel, uint8_t ciCategorySupported, uint32_t receivableMaxSysExSize) {
+    cmidi2_ci_message_common(buf, 0x7F, sysexSubId2, versionAndFormat, sourceMUID, destinationMUID);
+    cmidi2_ci_direct_uint32_at(buf + 13, deviceManufacturer3Bytes); // the last byte is extraneous, but will be overwritten next.
+    cmidi2_ci_direct_uint16_at(buf + 16, deviceFamily);
+    cmidi2_ci_direct_uint16_at(buf + 18, deviceFamilyModelNumber);
+    // LAMESPEC: Software Revision Level does not mention in which endianness this field is stored.
+    cmidi2_ci_direct_uint32_at(buf + 20, softwareRevisionLevel);
+    buf[24] = ciCategorySupported;
+    cmidi2_ci_direct_uint32_at(buf + 25, receivableMaxSysExSize);
+}
+
+static inline void cmidi2_ci_discovery(uint8_t* buf,
+    uint8_t versionAndFormat, uint32_t sourceMUID,
+    uint32_t deviceManufacturer, uint16_t deviceFamily, uint16_t deviceFamilyModelNumber,
+    uint32_t softwareRevisionLevel, uint8_t ciCategorySupported, uint32_t receivableMaxSysExSize) {
+    cmidi2_ci_discovery_common(buf, CMIDI2_CI_SUB_ID_2_DISCOVERY_INQUIRY,
+        versionAndFormat, sourceMUID, 0x7F7F7F7F,
+        deviceManufacturer, deviceFamily, deviceFamilyModelNumber,
+        softwareRevisionLevel, ciCategorySupported, receivableMaxSysExSize);
+}
+
+static inline void cmidi2_ci_discovery_reply(uint8_t* buf,
+    uint8_t versionAndFormat, uint32_t sourceMUID, uint32_t destinationMUID,
+    uint32_t deviceManufacturer, uint16_t deviceFamily, uint16_t deviceFamilyModelNumber,
+    uint32_t softwareRevisionLevel, uint8_t ciCategorySupported, uint32_t receivableMaxSysExSize) {
+    cmidi2_ci_discovery_common(buf, CMIDI2_CI_SUB_ID_2_DISCOVERY_REPLY,
+        versionAndFormat, sourceMUID, destinationMUID,
+        deviceManufacturer, deviceFamily, deviceFamilyModelNumber,
+        softwareRevisionLevel, ciCategorySupported, receivableMaxSysExSize);
+}
+
+static inline void cmidi2_ci_discovery_invalidate_muid(uint8_t* buf,
+    uint8_t versionAndFormat, uint32_t sourceMUID, uint32_t targetMUID) {
+    cmidi2_ci_message_common(buf, 0x7F, 0x7E, versionAndFormat, sourceMUID, 0x7F7F7F7F);
+    cmidi2_ci_direct_uint32_at(buf + 13, targetMUID);
+}
+
+static inline void cmidi2_ci_discovery_nak(uint8_t* buf, uint8_t deviceId,
+    uint8_t versionAndFormat, uint32_t sourceMUID, uint32_t destinationMUID) {
+    cmidi2_ci_message_common(buf, deviceId, 0x7F, versionAndFormat, sourceMUID, destinationMUID);
+}
+
+// Protocol Negotiation
+
+static inline void cmidi2_ci_protocol_info(uint8_t* buf, cmidi2_ci_protocol_type_info info) {
+    buf[0] = info.type;
+    buf[1] = info.version;
+    buf[2] = info.extensions;
+    buf[3] = info.reserved1;
+    buf[4] = info.reserved2;
+}
+
+static inline void cmidi2_ci_protocols(uint8_t* buf, uint8_t numSupportedProtocols, cmidi2_ci_protocol_type_info* protocolTypes) {
+    buf[0] = numSupportedProtocols;
+    for (int i = 0; i < numSupportedProtocols; i++)
+        cmidi2_ci_protocol_info(buf + 1 + i * 5, protocolTypes[i]);
+}
+
+static inline void cmidi2_ci_protocol_negotiation(uint8_t* buf, bool isReply,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t authorityLevel,
+    uint8_t numSupportedProtocols, cmidi2_ci_protocol_type_info* protocolTypes) {
+    cmidi2_ci_message_common(buf, 0x7F,
+        isReply ? CMIDI2_CI_SUB_ID_2_PROTOCOL_NEGOTIATION_REPLY : CMIDI2_CI_SUB_ID_2_PROTOCOL_NEGOTIATION_INQUIRY,
+        1, sourceMUID, destinationMUID);
+    buf[13] = authorityLevel;
+    cmidi2_ci_protocols(buf + 14, numSupportedProtocols, protocolTypes);
+}
+
+static inline void cmidi2_ci_protocol_set(uint8_t* buf,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t authorityLevel, cmidi2_ci_protocol_type_info newProtocolType) {
+    cmidi2_ci_message_common(buf, 0x7F,
+        CMIDI2_CI_SUB_ID_2_SET_NEW_PROTOCOL,
+        1, sourceMUID, destinationMUID);
+    buf[13] = authorityLevel;
+    cmidi2_ci_protocol_info(buf + 14, newProtocolType);
+}
+
+static inline void cmidi2_ci_protocol_test(uint8_t* buf,
+    bool isInitiatorToResponder,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t authorityLevel, uint8_t* testData48Bytes) {
+    cmidi2_ci_message_common(buf, 0x7F,
+        isInitiatorToResponder ? CMIDI2_CI_SUB_ID_2_TEST_NEW_PROTOCOL_I2R : CMIDI2_CI_SUB_ID_2_TEST_NEW_PROTOCOL_R2I,
+        1, sourceMUID, destinationMUID);
+    buf[13] = authorityLevel;
+    memcpy(buf + 14, testData48Bytes, 48);
+}
+
+static inline void cmidi2_ci_protocol_confirm_established(uint8_t* buf,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t authorityLevel) {
+    cmidi2_ci_message_common(buf, 0x7F,
+        CMIDI2_CI_SUB_ID_2_CONFIRM_NEW_PROTOCOL_ESTABLISHED,
+        1, sourceMUID, destinationMUID);
+    buf[13] = authorityLevel;
+}
+
+// Profile Configuration
+
+static inline void cmidi2_ci_profile(uint8_t* buf, cmidi2_profile_id info) {
+    buf[0] = info.fixed_7e;
+    buf[1] = info.bank;
+    buf[2] = info.number;
+    buf[3] = info.version;
+    buf[4] = info.level;
+}
+
+static inline void cmidi2_ci_profile_inquiry(uint8_t* buf, uint8_t source,
+    uint32_t sourceMUID, uint32_t destinationMUID) {
+    cmidi2_ci_message_common(buf, source,
+        CMIDI2_CI_SUB_ID_2_PROFILE_INQUIRY,
+        1, sourceMUID, destinationMUID);
+}
+
+static inline void cmidi2_ci_profile_inquiry_reply(uint8_t* buf, uint8_t source,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t numEnabledProfiles, cmidi2_profile_id* enabledProfiles,
+    uint8_t numDisabledProfiles, cmidi2_profile_id* disabledProfiles) {
+    cmidi2_ci_message_common(buf, source,
+        CMIDI2_CI_SUB_ID_2_PROFILE_INQUIRY_REPLY,
+        1, sourceMUID, destinationMUID);
+    buf[13] = numEnabledProfiles;
+    for (int i = 0; i < numEnabledProfiles; i++)
+        cmidi2_ci_profile(buf + 14 + i * 5, enabledProfiles[i]);
+    uint32_t pos = 14 + numEnabledProfiles * 5;
+    buf[pos++] = numDisabledProfiles;
+    for (int i = 0; i < numDisabledProfiles; i++)
+        cmidi2_ci_profile(buf + pos + i * 5, disabledProfiles[i]);
+}
+
+static inline void cmidi2_ci_profile_set(uint8_t* buf, uint8_t destination, bool turnOn,
+    uint32_t sourceMUID, uint32_t destinationMUID, cmidi2_profile_id profile) {
+    cmidi2_ci_message_common(buf, destination,
+        turnOn ? CMIDI2_CI_SUB_ID_2_SET_PROFILE_ON : CMIDI2_CI_SUB_ID_2_SET_PROFILE_OFF,
+        1, sourceMUID, destinationMUID);
+    cmidi2_ci_profile(buf + 13, profile);
+}
+
+static inline void cmidi2_ci_profile_report(uint8_t* buf, uint8_t source, bool isEnabledReport,
+    uint32_t sourceMUID, cmidi2_profile_id profile) {
+    cmidi2_ci_message_common(buf, source,
+        isEnabledReport ? CMIDI2_CI_SUB_ID_2_PROFILE_ENABLED_REPORT : CMIDI2_CI_SUB_ID_2_PROFILE_DISABLED_REPORT,
+        1, sourceMUID, 0x7F7F7F7F);
+    cmidi2_ci_profile(buf + 13, profile);
+}
+
+static inline void cmidi2_ci_profile_specific_data(uint8_t* buf, uint8_t source,
+    uint32_t sourceMUID, uint32_t destinationMUID, cmidi2_profile_id profile, uint32_t dataSize, void* data) {
+    cmidi2_ci_message_common(buf, source,
+        CMIDI2_CI_SUB_ID_2_PROFILE_SPECIFIC_DATA,
+        1, sourceMUID, destinationMUID);
+    cmidi2_ci_profile(buf + 13, profile);
+    cmidi2_ci_direct_uint32_at(buf + 18, dataSize);
+    memcpy(buf + 22, data, dataSize);
+}
+
+// Property Exchange
+
+static inline void cmidi2_ci_property_get_capabilities(uint8_t* buf, uint8_t destination, bool isReply,
+    uint32_t sourceMUID, uint32_t destinationMUID, uint8_t maxSupportedRequests) {
+    cmidi2_ci_message_common(buf, destination,
+        isReply ? CMIDI2_CI_SUB_ID_2_PROPERTY_CAPABILITIES_REPLY : CMIDI2_CI_SUB_ID_2_PROPERTY_CAPABILITIES_INQUIRY,
+        1, sourceMUID, destinationMUID);
+    buf[13] = maxSupportedRequests;
+}
+
+// common to all of: has data & reply, get data & reply, set data & reply, subscribe & reply, notify
+static inline void cmidi2_ci_property_common(uint8_t* buf, uint8_t destination, uint8_t messageTypeSubId2,
+    uint32_t sourceMUID, uint32_t destinationMUID,
+    uint8_t requestId, uint16_t headerSize, void* header,
+    uint16_t numChunks, uint16_t chunkIndex, uint16_t dataSize, void* data) {
+    cmidi2_ci_message_common(buf, destination, messageTypeSubId2, 1, sourceMUID, destinationMUID);
+    buf[13] = requestId;
+    cmidi2_ci_direct_uint16_at(buf + 14, headerSize);
+    memcpy(buf + 16, header, headerSize);
+    cmidi2_ci_direct_uint16_at(buf + 16 + headerSize, numChunks);
+    cmidi2_ci_direct_uint16_at(buf + 18 + headerSize, chunkIndex);
+    cmidi2_ci_direct_uint16_at(buf + 20 + headerSize, dataSize);
+    memcpy(buf + 22 + headerSize, data, dataSize);
+}
+

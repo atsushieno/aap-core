@@ -356,7 +356,14 @@ namespace aapmidideviceservice {
         midi_protocol = midiProtocol;
     }
 
-    int32_t convertMidi1ToMidi2(int32_t* dst, uint8_t* src, size_t srcLength) {
+    int32_t tryParseAsSetNewProtocol(uint8_t* src, int32_t length) {
+        if (length != 19 || src[0] != 0x7E || src[1] != 0x7F || src[2] != CMIDI2_CI_SUB_ID ||
+            src[3] != CMIDI2_CI_SUB_ID_2_SET_NEW_PROTOCOL || src[4] != 1)
+            return 0;
+        return src[14];
+    }
+
+    int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst, uint8_t* src, size_t srcLength) {
         int32_t si = 0;
         int32_t di = 0;
         while (si < srcLength) {
@@ -392,6 +399,12 @@ namespace aapmidideviceservice {
                         si++;
                     int32_t sysexLength = si - sysexStart;
                     si++; // F7
+
+                    // check if the message is Set New Protocol
+                    int32_t protocol = tryParseAsSetNewProtocol(src + sysexStart, sysexLength);
+                    if (protocol != 0)
+                        midi_protocol = protocol;
+
                     for (int i = 0; i < sysexLength; i += 6) {
                         uint8_t status =
                                 sysexLength < 6 ? CMIDI2_SYSEX_IN_ONE_UMP :
