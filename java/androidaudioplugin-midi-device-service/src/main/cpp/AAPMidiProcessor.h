@@ -78,7 +78,7 @@ namespace aapmidideviceservice {
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
 
-        int32_t convertMidi1ToMidi2(int32_t* dst, uint8_t* src, size_t srcLength);
+        int32_t convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength);
     public:
         static AAPMidiProcessor* getInstance();
         static void resetInstance();

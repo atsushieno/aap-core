@@ -363,14 +363,14 @@ namespace aapmidideviceservice {
         return src[14];
     }
 
-    int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst, uint8_t* src, size_t srcLength) {
+    int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength) {
         int32_t si = 0;
         int32_t di = 0;
         while (si < srcLength) {
-            uint8_t srcStatusByte = src[si++];
+            uint8_t srcStatusByte = src8[si++];
             switch (srcStatusByte) {
                 case 0xFF: { // META
-                    uint8_t metaType = src[si++];
+                    uint8_t metaType = src8[si++];
                     switch (metaType) {
                     case 0x00: si += 2; break; // sequence number
                     case 0x20: si++; break; // channel prefix
@@ -382,11 +382,11 @@ namespace aapmidideviceservice {
                     default: // length-prefixed data, where length is 7bit-encoded integer
                         uint8_t lengthSpecCount = 0;
                         int32_t length = 0;
-                        while (src[si] >= 0x80) {
-                            length += (src[si] - 0x80) << (7 * lengthSpecCount++);
+                        while (src8[si] >= 0x80) {
+                            length += (src8[si] - 0x80) << (7 * lengthSpecCount++);
                             si++;
                         }
-                        length += src[si++]; // last length
+                        length += src8[si++]; // last length
                         si += length;
                         break;
                     }
@@ -395,13 +395,13 @@ namespace aapmidideviceservice {
                     break;
                 case 0xF0: { // Sysex
                     int32_t sysexStart = si;
-                    while (src[si] != 0xF7) // hacky way to reach the end of sysex.
+                    while (src8[si] != 0xF7) // hacky way to reach the end of sysex.
                         si++;
                     int32_t sysexLength = si - sysexStart;
                     si++; // F7
 
                     // check if the message is Set New Protocol
-                    int32_t protocol = tryParseAsSetNewProtocol(src + sysexStart, sysexLength);
+                    int32_t protocol = tryParseAsSetNewProtocol(src8 + sysexStart, sysexLength);
                     if (protocol != 0)
                         midi_protocol = protocol;
 
@@ -415,31 +415,31 @@ namespace aapmidideviceservice {
                                 status == CMIDI2_SYSEX_IN_ONE_UMP || status == CMIDI2_SYSEX_END;
                         uint8_t packetLength = isLastPacket ? sysexLength % 6 : 6;
                         // looking stupid, but simple enough to get required arguments!
-                        uint8_t sd0 = src[si++];
-                        uint8_t sd1 = packetLength <= 1 ? 0 : src[si++];
-                        uint8_t sd2 = packetLength <= 2 ? 0 : src[si++];
-                        uint8_t sd3 = packetLength <= 3 ? 0 : src[si++];
-                        uint8_t sd4 = packetLength <= 4 ? 0 : src[si++];
-                        uint8_t sd5 = packetLength <= 5 ? 0 : src[si++];
+                        uint8_t sd0 = src8[si++];
+                        uint8_t sd1 = packetLength <= 1 ? 0 : src8[si++];
+                        uint8_t sd2 = packetLength <= 2 ? 0 : src8[si++];
+                        uint8_t sd3 = packetLength <= 3 ? 0 : src8[si++];
+                        uint8_t sd4 = packetLength <= 4 ? 0 : src8[si++];
+                        uint8_t sd5 = packetLength <= 5 ? 0 : src8[si++];
                         uint64_t v = cmidi2_ump_sysex7_direct(0, status, packetLength, sd0, sd1, sd2,
                                                               sd3, sd4, sd5);
-                        dst[di++] = (int32_t) (v >> 32);
-                        dst[di++] = (int32_t) (v & 0xFFFFFFFF);
+                        dst32[di++] = (int32_t) (v >> 32);
+                        dst32[di++] = (int32_t) (v & 0xFFFFFFFF);
                     }
                 }
                     break;
                 default: {
-                    uint8_t msb = src[si++];
+                    uint8_t msb = src8[si++];
                     uint8_t lsb = 0;
                     switch (srcStatusByte & 0xF0) {
                         case 0xC0:
                         case 0xD0:
                             break; // Program Change and CAf
                         default:
-                            lsb = src[si++];
+                            lsb = src8[si++];
                             break;
                     }
-                    dst[di++] = cmidi2_ump_midi1_message(
+                    dst32[di++] = cmidi2_ump_midi1_message(
                             0, srcStatusByte & 0xF0, srcStatusByte & 0xF, msb, lsb);
                 }
                     break;
@@ -468,27 +468,27 @@ namespace aapmidideviceservice {
             actualTimestamp = (timestampInNanoseconds + diff) % nanosecondsPerCycle;
         }
 
-        auto dst = (uint8_t *) getAAPMidiInputBuffer();
-        if (dst != nullptr) {
-            auto intBuffer = (int32_t *) (void *) dst;
-            int32_t currentOffset = intBuffer[0];
+        auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
+        if (dst8 != nullptr) {
+            auto dst32 = (int32_t *) (void *) dst8;
+            int32_t currentOffset = dst32[0];
             for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250) {
-                intBuffer[8 + currentOffset / 4] = (int32_t) cmidi2_ump_jr_timestamp_direct(
+                dst32[8 + currentOffset / 4] = (int32_t) cmidi2_ump_jr_timestamp_direct(
                         0, ticks > 31250 ? 31250 : ticks);
                 currentOffset += 4;
             }
             if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 // process MIDI 2.0 data
-                memcpy(intBuffer + 8 + currentOffset / 4, bytes + offset, length);
-                intBuffer[0] += length;
+                memcpy(dst32 + 8 + currentOffset / 4, bytes + offset, length);
+                dst32[0] += length;
             } else {
                 // convert MIDI 1.0 buffer to UMP
-                intBuffer[0] += convertMidi1ToMidi2((int32_t*) (((uint8_t*) intBuffer) + currentOffset), bytes + offset, length);
+                dst32[0] += convertMidi1ToMidi2((int32_t*) (((uint8_t*) dst32) + currentOffset), bytes + offset, length);
             }
-            intBuffer[1] = 0; // reserved
-            intBuffer[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
+            dst32[1] = 0; // reserved
+            dst32[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
             for (int i = 3; i < 8; i++)
-                intBuffer[i] = 0; // reserved
+                dst32[i] = 0; // reserved
         }
     }
 }
