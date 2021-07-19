@@ -167,7 +167,12 @@ namespace aapmidideviceservice {
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
         MidiCIExtension midiCIExtData{};
-        if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+
+        // It translates ALL the incoming messages to MIDI2 and send them to the plugins, so
+        // it is ALWAYS MIDI2 mode when instancing the plugin.
+        // Our midi_protocol field is to determine if we convert the incoming messages to MIDI2
+        // or not (send without transformation).
+        if (true) { // midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
             AndroidAudioPluginExtension midiCIExtension;
             midiCIExtension.uri = AAP_MIDI_CI_EXTENSION_URI;
             midiCIExtData.protocol = CMIDI2_PROTOCOL_TYPE_MIDI2;
@@ -345,24 +350,6 @@ namespace aapmidideviceservice {
         return nullptr;
     }
 
-    void AAPMidiProcessor::setMidiProtocol(int32_t midiProtocol) {
-        if (state != AAP_MIDI_PROCESSOR_STATE_CREATED) {
-            aap::aprintf("Unexpected call to setMidiProtocol() at %s state.",
-                         convertStateToText(state).c_str());
-            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
-            return;
-        }
-
-        midi_protocol = midiProtocol;
-    }
-
-    int32_t tryParseAsSetNewProtocol(uint8_t* src, int32_t length) {
-        if (length != 19 || src[0] != 0x7E || src[1] != 0x7F || src[2] != CMIDI2_CI_SUB_ID ||
-            src[3] != CMIDI2_CI_SUB_ID_2_SET_NEW_PROTOCOL || src[4] != 1)
-            return 0;
-        return src[14];
-    }
-
     int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength) {
         int32_t si = 0;
         int32_t di = 0;
@@ -401,7 +388,7 @@ namespace aapmidideviceservice {
                     si++; // F7
 
                     // check if the message is Set New Protocol
-                    int32_t protocol = tryParseAsSetNewProtocol(src8 + sysexStart, sysexLength);
+                    int32_t protocol = cmidi2_ci_try_parse_new_protocol(src8 + sysexStart, sysexLength);
                     if (protocol != 0)
                         midi_protocol = protocol;
 
@@ -470,25 +457,26 @@ namespace aapmidideviceservice {
 
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
         if (dst8 != nullptr) {
-            auto dst32 = (int32_t *) (void *) dst8;
-            int32_t currentOffset = dst32[0];
+            auto dstMBH = (AAPMidiBufferHeader*) dst8;
+            int32_t currentOffset = dstMBH->length;
             for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250) {
-                dst32[8 + currentOffset / 4] = (int32_t) cmidi2_ump_jr_timestamp_direct(
-                        0, ticks > 31250 ? 31250 : ticks);
+                *(int32_t*) (dst8 + 32 + currentOffset) =
+                        (int32_t) cmidi2_ump_jr_timestamp_direct(0, ticks > 31250 ? 31250 : ticks);
                 currentOffset += 4;
             }
             if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 // process MIDI 2.0 data
-                memcpy(dst32 + 8 + currentOffset / 4, bytes + offset, length);
-                dst32[0] += length;
+                memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
+                dstMBH->length += length;
             } else {
                 // convert MIDI 1.0 buffer to UMP
-                dst32[0] += convertMidi1ToMidi2((int32_t*) (((uint8_t*) dst32) + currentOffset), bytes + offset, length);
+                dstMBH->length += convertMidi1ToMidi2((int32_t*) (dst8 + currentOffset), bytes + offset, length);
             }
-            dst32[1] = 0; // reserved
-            dst32[2] = CMIDI2_PROTOCOL_TYPE_MIDI2; // MIDI 2.0 protocol. It is ignored by LV2 plugins so far though.
-            for (int i = 3; i < 8; i++)
-                dst32[i] = 0; // reserved
+            // MIDI 2.0 protocol. We always send data in MIDI2 protocol.
+            // It is ignored by LV2 plugins so far though.
+            dstMBH->time_options = 0; // reserved in MIDI2 mode
+            for (int i = 2; i < 8; i++)
+                dstMBH->reserved[i - 2] = 0; // reserved
         }
     }
 }

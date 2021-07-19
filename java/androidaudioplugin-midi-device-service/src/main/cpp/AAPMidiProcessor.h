@@ -93,8 +93,6 @@ namespace aapmidideviceservice {
 
         void processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds);
 
-        void setMidiProtocol(int32_t midiProtocol);
-
         void callPluginProcess();
 
         void fillAudioOutput();

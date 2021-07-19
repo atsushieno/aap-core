@@ -90,9 +90,4 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
             reinterpret_cast<uint8_t *>(jni_midi_buffer), 0, length, timestampInNanoseconds);
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_setMidiProtocol(
-        JNIEnv *env, jobject midiReceiver, jint midiProtocol) {
-    AAPMIDIDEVICE_INSTANCE->setMidiProtocol(midiProtocol);
-}
-
 } // extern "C"

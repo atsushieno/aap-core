@@ -122,7 +122,6 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
     // register Binder instance to native host
     private external fun registerPluginService(binder: IBinder, packageName: String, className: String)
     private external fun instantiatePlugin(pluginId: String)
-    private external fun setMidiProtocol(midiProtocol: Int)
     private external fun processMessage(msg: ByteArray?, offset: Int, count: Int, timestampInNanoseconds: Long)
     private external fun activate()
     private external fun deactivate()

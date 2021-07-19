@@ -189,6 +189,17 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             }
             midi1ptr++;
 
+            // Check if the message is Set New Protocol and promote Protocol.
+            if (midi1end - midi1ptr >= 19 && *midi1ptr == 0xF0) {
+                int32_t protocol = cmidi2_ci_try_parse_new_protocol(midi1ptr + 1, 19);
+                if (protocol != 0) {
+                    context->midi_protocol = protocol;
+                    // At this state, we discard any remaining buffer as Set New Protocol should be
+                    // sent only by itself.
+                    break;
+                }
+            }
+
             // process audio until current time (max)
             int max = currentFrame + deltaTime;
             max = max < buffer->num_frames ? max : buffer->num_frames;

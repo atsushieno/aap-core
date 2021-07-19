@@ -1031,6 +1031,11 @@ static inline void cmidi2_ci_protocol_confirm_established(uint8_t* buf,
     buf[13] = authorityLevel;
 }
 
+static inline int32_t cmidi2_ci_try_parse_new_protocol(uint8_t* buf, int32_t length) {
+    return (length != 19 || buf[0] != 0x7E || buf[1] != 0x7F || buf[2] != CMIDI2_CI_SUB_ID ||
+            buf[3] != CMIDI2_CI_SUB_ID_2_SET_NEW_PROTOCOL || buf[4] != 1) ? 0 : buf[14];
+}
+
 // Profile Configuration
 
 static inline void cmidi2_ci_profile(uint8_t* buf, cmidi2_profile_id info) {
@@ -1114,4 +1119,3 @@ static inline void cmidi2_ci_property_common(uint8_t* buf, uint8_t destination, 
     cmidi2_ci_direct_uint16_at(buf + 20 + headerSize, dataSize);
     memcpy(buf + 22 + headerSize, data, dataSize);
 }
-
