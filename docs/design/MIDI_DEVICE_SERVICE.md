@@ -4,6 +4,8 @@
 
 AAP Instrument plugin can be used as a MIDI device service if it is set up to behave so. It is implemented by a class called `AudioPluginMidiDeviceService`.
 
+It internally instantiates `AudioPluginMidiReceiver` as its MIDI output port `MidiReceiver` (Note: In Android MIDI Device Service API, "output" is implemented as `MidiReceiver`. Everything is flipped, just like `javax.sound.midi` API).
+
 It is usually packaged within the same instrument service app, but it can also be externally done outside the plugin application itself (the MidiDeviceService instantiates the plugin in the same manner regardless of whether it is in-app plugin or out of app plugin). An example is demonstrated as `aap-midi-device-service` application module.
 
 AAP Effect plugins do not work with this feature (there is no point of making them so).
@@ -50,7 +52,11 @@ For that reason, we have leave `<device>` elements AAP-agnostic. On the other ha
 
 ## MIDI 1.0/2.0 protocols
 
-AudioPluginMidiDeviceService internally uses MIDI 2.0 UMP to send MIDI input messages to the instrument plugin, and the instrument plugin is supposed to downconvert to MIDI 1.0 stream if it cannot handle UMPs. aap-lv2 does this automatically. aap-juce plugins do not.
+On the public frontend, `AudioPluginMidiReceiver` assumes that the incoming MIDI messages conforms to MIDI 1.0 by default (which would be the most general assumption).
+It can promote to MIDI 2.0 protocol if it received MIDI CI "Set New Protocol" Universal SysEx message. It is the only way that an arbitrary application can tell AudioPluginMidiReceiver to tell the receiver that it will be sending MIDI 2.0 UMPs.
+
+Regardless of whether `AudioPluginMidiReceiver` receives the messages in MIDI1 or MIDI2 packets, it *internally* uses MIDI 2.0 UMP to send MIDI input messages to the instrument plugin i.e. it upconverts MIDI1 messages to MIDI2.
+And the instrument plugin is supposed to downconvert to MIDI 1.0 stream if it cannot handle UMPs. aap-lv2 does this automatically. aap-juce plugins do not yet.
 
 AudioPluginMidiDeviceService is instantiated without protocol information, and it receives MIDI inputs without being given the protocol.
 
