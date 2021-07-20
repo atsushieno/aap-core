@@ -10,6 +10,7 @@ import android.media.midi.MidiManager.OnDeviceOpenedListener
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 
@@ -93,6 +94,22 @@ class ApplicationModel(private val packageName: String, context: Context) {
                 if (device == null)
                     return
                 midiInput = device.openInputPort(0) ?: throw Exception("failed to open input port")
+
+                if (useMidi2Protocol) {
+                    // MIDI CI Set New Protocol Message
+                    val bytes = byteArrayOf(0xF0.toByte(), 0x7E, 0x7F, 0x0D, 0x12, 1,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        1,
+                        2, 0, 0, 0, 0,
+                        0xF7.toByte())
+                    midiInput.send(bytes, 0, bytes.size, 0)
+                    // S6.6 "After the Initiator sends this Set New Protocol message, it shall switch its
+                    // own Protocol while also waiting 100ms to allow the Responder to switch Protocol."
+                    runBlocking {
+                        delay(100)
+                    }
+                }
+
                 midiManagerInitialized = true
             }
         }, null)
