@@ -390,8 +390,10 @@ namespace aapmidideviceservice {
 
                     // check if the message is Set New Protocol
                     int32_t protocol = cmidi2_ci_try_parse_new_protocol(src8 + sysexStart, sysexLength);
-                    if (protocol != 0)
+                    if (protocol != 0) {
                         midi_protocol = protocol;
+                        aap::aprintf("AAPMidiProcessor: MIDI-CI Set New Protocol received: %d", protocol);
+                    }
 
                     for (int i = 0; i < sysexLength; i += 6) {
                         uint8_t status =
@@ -460,12 +462,13 @@ namespace aapmidideviceservice {
         if (dst8 != nullptr) {
             auto dstMBH = (AAPMidiBufferHeader*) dst8;
             uint32_t currentOffset = dstMBH->length;
-            int32_t titer = 0;
-            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250, titer++) {
-                *(int32_t*) (dst8 + 32 + currentOffset + titer * 4) =
+            int32_t tIter = 0;
+            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250, tIter++) {
+                *(int32_t*) (dst8 + 32 + currentOffset + tIter * 4) =
                         (int32_t) cmidi2_ump_jr_timestamp_direct(0, ticks > 31250 ? 31250 : ticks);
             }
-            currentOffset += titer * 4;
+            dstMBH->length += tIter * 4;
+            currentOffset += tIter * 4;
             if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 // process MIDI 2.0 data
                 memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
