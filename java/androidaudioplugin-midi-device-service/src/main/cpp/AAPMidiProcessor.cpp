@@ -350,6 +350,7 @@ namespace aapmidideviceservice {
         return nullptr;
     }
 
+    // returns converted number of UMPs in packet (int32)
     int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength) {
         int32_t si = 0;
         int32_t di = 0;
@@ -458,19 +459,20 @@ namespace aapmidideviceservice {
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
         if (dst8 != nullptr) {
             auto dstMBH = (AAPMidiBufferHeader*) dst8;
-            int32_t currentOffset = dstMBH->length;
-            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250) {
-                *(int32_t*) (dst8 + 32 + currentOffset) =
+            uint32_t currentOffset = dstMBH->length;
+            int32_t titer = 0;
+            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250, titer++) {
+                *(int32_t*) (dst8 + 32 + currentOffset + titer * 4) =
                         (int32_t) cmidi2_ump_jr_timestamp_direct(0, ticks > 31250 ? 31250 : ticks);
-                currentOffset += 4;
             }
+            currentOffset += titer * 4;
             if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 // process MIDI 2.0 data
                 memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
                 dstMBH->length += length;
             } else {
                 // convert MIDI 1.0 buffer to UMP
-                dstMBH->length += convertMidi1ToMidi2((int32_t*) (dst8 + currentOffset), bytes + offset, length);
+                dstMBH->length += convertMidi1ToMidi2((int32_t*) (dst8 + 32 + currentOffset), bytes + offset, length) * 4;
             }
             // MIDI 2.0 protocol. We always send data in MIDI2 protocol.
             // It is ignored by LV2 plugins so far though.
