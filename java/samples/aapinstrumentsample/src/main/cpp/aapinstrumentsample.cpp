@@ -253,7 +253,6 @@ static inline uint32_t cmidi2_convert_single_ump_to_midi1(uint8_t* dst, int32_t 
     return midiEventSize;
 }
 
-
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
@@ -298,14 +297,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         auto midi1end = midi1ptr + aapmb->length;
         while (midi1ptr < midi1end) {
             // get delta time
-            uint32_t deltaTime = 0;
-            for (int digits = 0;; digits++) {
-                deltaTime += (0x7F & (*midi1ptr)) << (digits * 7);
-                if (*midi1ptr < 0x80)
-                    break;
-                midi1ptr++;
-            }
-            midi1ptr++;
+            uint32_t deltaTime = cmidi2_midi1_get_7bit_encoded_int(midi1ptr, midi1end - midi1ptr);
+            midi1ptr += cmidi2_midi1_get_7bit_encoded_int_length(deltaTime);
 
             // Check if the message is Set New Protocol and promote Protocol.
             if (midi1end - midi1ptr >= 19 && *midi1ptr == 0xF0) {
@@ -314,6 +307,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     context->midi_protocol = protocol;
                     // At this state, we discard any remaining buffer as Set New Protocol should be
                     // sent only by itself.
+                    // MIDI-CI specification explicitly tells that there should be some intervals (100msec).
                     aap::aprintf("MIDI-CI Set New Protocol received: %d", protocol);
                     break;
                 }
@@ -332,6 +326,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
             // process next MIDI event
             ayumi_aap_process_midi_event(context, midi1ptr);
+            // progress midi1ptr
+            midi1ptr += cmidi2_midi1_get_message_size(midi1ptr, midi1end - midi1ptr);
         }
     }
 
