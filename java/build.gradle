@@ -3,7 +3,7 @@
 buildscript {
     ext.kotlin_version = '1.5.10'
     ext.dokkaVersion = '1.4.30'
-    ext.compose_version = '1.0.0-rc02'
+    ext.compose_version = '1.0.0'
     ext.aap_version = '0.6.17'
 
     repositories {
@@ -13,10 +13,10 @@ buildscript {
         maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.0-alpha05'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.10"
+        classpath 'com.android.tools.build:gradle:7.1.0-alpha06'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokkaVersion"
-        classpath "org.jetbrains.compose:compose-gradle-plugin:0.5.0-build270"
+        classpath "org.jetbrains.compose:compose-gradle-plugin:1.0.0-alpha1-rc1"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
@@ -24,7 +24,7 @@ buildscript {
 
 plugins {
     id 'maven-publish'
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+    //id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
 
 apply from: "${rootDir}/publish-root.gradle"

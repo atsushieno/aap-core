@@ -23,6 +23,7 @@ ext["signing.password"] = System.getenv('SIGNING_PASSWORD') ?: ext["signing.pass
 ext["signing.secretKeyRingFile"] = System.getenv('SIGNING_SECRET_KEY_RING_FILE') ?: ext["signing.secretKeyRingFile"]
 
 // Set up Sonatype repository
+/*
 nexusPublishing {
     repositories {
         sonatype {
@@ -34,3 +35,4 @@ nexusPublishing {
         }
     }
 }
+*/
