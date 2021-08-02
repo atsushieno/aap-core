@@ -262,9 +262,9 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         return;
 
     volatile auto aapmb = (AAPMidiBufferHeader*) buffer->buffers[AYUMI_AAP_MIDI2_IN_PORT];
-    uint32_t lengthUnit = aapmb->time_options;
+    int32_t lengthUnit = aapmb->time_options;
 
-    int currentFrame = 0;
+    uint32_t currentFrame = 0;
 
     auto outL = (float*) buffer->buffers[AYUMI_AAP_AUDIO_OUT_LEFT];
     auto outR = (float*) buffer->buffers[AYUMI_AAP_AUDIO_OUT_RIGHT];
@@ -314,9 +314,10 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             }
 
             // process audio until current time (max)
-            int max = currentFrame + deltaTime;
+            uint32_t deltaFrames = lengthUnit < 0 ? (uint32_t) (lengthUnit * -1) * deltaTime : deltaTime;
+            uint32_t max = currentFrame + deltaFrames;
             max = max < buffer->num_frames ? max : buffer->num_frames;
-            for (int i = currentFrame; i < max; i++) {
+            for (uint32_t i = currentFrame; i < max; i++) {
                 ayumi_process(context->impl);
                 ayumi_remove_dc(context->impl);
                 outL[i] = (float) context->impl->left;

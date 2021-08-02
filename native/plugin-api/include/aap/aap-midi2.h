@@ -18,7 +18,7 @@ public:
 } MidiCIExtension;
 
 typedef struct AAPMidiBufferHeader_tag {
-    uint32_t time_options;
+    int32_t time_options;
     uint32_t length;
     uint32_t reserved[6];
 } AAPMidiBufferHeader;
