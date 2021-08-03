@@ -314,7 +314,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             }
 
             // process audio until current time (max)
-            uint32_t deltaFrames = lengthUnit < 0 ? (uint32_t) (lengthUnit * -1) * deltaTime : deltaTime;
+            uint32_t deltaFrames = lengthUnit < 0 ? (uint32_t) (lengthUnit * -1) * deltaTime : deltaTime % 0x100 + (uint32_t) (context->sample_rate * (deltaTime / 0x100 % 60)); // assuming values beyond minute in SMPTE don't matter.
             uint32_t max = currentFrame + deltaFrames;
             max = max < buffer->num_frames ? max : buffer->num_frames;
             for (uint32_t i = currentFrame; i < max; i++) {
