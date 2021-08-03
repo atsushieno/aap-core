@@ -202,7 +202,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
             // process audio until current time (max)
             uint32_t deltaTicks = lengthUnit < 0 ?
-                    (uint32_t) (context->sample_rate / lengthUnit * -1) *  deltaTime % 0x100 + (uint32_t) (context->sample_rate * (deltaTime / 0x100 % 60)) :  // assuming values beyond minute in SMPTE don't matter.
+                    (uint32_t) ((context->sample_rate / -lengthUnit) * (deltaTime % 0x100)) + (uint32_t) (context->sample_rate * (deltaTime / 0x100 % 60)) :  // assuming values beyond minute in SMPTE don't matter.
                     (uint32_t) (1.0 * deltaTime / 240); // LAMESPEC: we should deprecate ticks specification.
             uint32_t max = currentTicks + deltaTicks;
             max = max < buffer->num_frames ? max : buffer->num_frames;
