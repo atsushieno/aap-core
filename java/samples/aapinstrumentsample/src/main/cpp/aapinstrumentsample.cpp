@@ -140,119 +140,6 @@ void ayumi_aap_process_midi_event(AyumiHandle *a, uint8_t *midi1Event) {
     }
 }
 
-// Convert one single UMP (without JR Timestamp) to MIDI 1.0 Message (without delta time)
-static inline uint32_t cmidi2_convert_single_ump_to_midi1(uint8_t* dst, int32_t maxBytes, cmidi2_ump* ump) {
-    uint32_t midiEventSize = 0;
-    uint64_t sysex7, sysex8_1, sysex8_2;
-
-    auto messageType = cmidi2_ump_get_message_type(ump);
-    auto statusCode = cmidi2_ump_get_status_code(ump); // may not apply, but won't break.
-
-    dst[0] = statusCode | cmidi2_ump_get_channel(ump);
-
-    switch (messageType) {
-        case CMIDI2_MESSAGE_TYPE_SYSTEM:
-            midiEventSize = 1;
-            switch (statusCode) {
-                case 0xF1:
-                case 0xF3:
-                case 0xF9:
-                    dst[1] = cmidi2_ump_get_system_message_byte2(ump);
-                    midiEventSize = 2;
-                    break;
-            }
-            break;
-        case CMIDI2_MESSAGE_TYPE_MIDI_1_CHANNEL:
-            midiEventSize = 3;
-            dst[1] = cmidi2_ump_get_midi1_byte2(ump);
-            switch (statusCode) {
-                case 0xC0:
-                case 0xD0:
-                    midiEventSize = 2;
-                    break;
-                default:
-                    dst[2] = cmidi2_ump_get_midi1_byte3(ump);
-                    break;
-            }
-            break;
-        case CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL:
-            // FIXME: convert MIDI2 to MIDI1 as long as possible
-            switch (statusCode) {
-                case CMIDI2_STATUS_NOTE_OFF:
-                case CMIDI2_STATUS_NOTE_ON:
-                    midiEventSize = 3;
-                    dst[1] = cmidi2_ump_get_midi2_note_note(ump);
-                    dst[2] = cmidi2_ump_get_midi2_note_velocity(ump) / 0x200;
-                    break;
-                case CMIDI2_STATUS_PAF:
-                    midiEventSize = 3;
-                    dst[1] = cmidi2_ump_get_midi2_paf_note(ump);
-                    dst[2] = cmidi2_ump_get_midi2_paf_data(ump) / 0x2000000;
-                    break;
-                case CMIDI2_STATUS_CC:
-                    midiEventSize = 3;
-                    dst[1] = cmidi2_ump_get_midi2_cc_index(ump);
-                    dst[2] = cmidi2_ump_get_midi2_cc_data(ump) / 0x2000000;
-                    break;
-                case CMIDI2_STATUS_PROGRAM:
-                    if (cmidi2_ump_get_midi2_program_options(ump) == 1) {
-                        midiEventSize = 8;
-                        dst[6] = dst[0]; // copy
-                        dst[7] = cmidi2_ump_get_midi2_program_program(ump);
-                        dst[0] = dst[6] & 0xF + CMIDI2_STATUS_CC;
-                        dst[1] = 0; // Bank MSB
-                        dst[2] = cmidi2_ump_get_midi2_program_bank_msb(ump);
-                        dst[3] = dst[6] & 0xF + CMIDI2_STATUS_CC;
-                        dst[4] = 32; // Bank LSB
-                        dst[5] = cmidi2_ump_get_midi2_program_bank_lsb(ump);
-                    } else {
-                        midiEventSize = 2;
-                        dst[1] = cmidi2_ump_get_midi2_program_program(ump);
-                    }
-                    break;
-                case CMIDI2_STATUS_CAF:
-                    midiEventSize = 2;
-                    dst[1] = cmidi2_ump_get_midi2_caf_data(ump);
-                    break;
-                case CMIDI2_STATUS_PITCH_BEND:
-                    midiEventSize = 3;
-                    auto pitchBendV1 = cmidi2_ump_get_midi2_pitch_bend_data(ump) / 0x40000;
-                    dst[1] = pitchBendV1 % 0x80;
-                    dst[2] = pitchBendV1 / 0x80;
-                    break;
-                    // skip for other status bytes; we cannot support them.
-            }
-            break;
-        case CMIDI2_MESSAGE_TYPE_SYSEX7:
-            // FIXME: process all sysex7 packets
-            midiEventSize = 1 + cmidi2_ump_get_sysex7_num_bytes(ump);
-            sysex7 = cmidi2_ump_read_uint64_bytes(ump);
-            for (int i = 0; i < midiEventSize - 1; i++)
-                dst[i] = cmidi2_ump_get_byte_from_uint64(sysex7, 2 + i);
-            break;
-        case CMIDI2_MESSAGE_TYPE_SYSEX8_MDS:
-            // FIXME: reject MDS.
-            // FIXME: process all sysex8 packets
-            // Note that sysex8 num_bytes contains streamId, which is NOT part of MIDI 1.0 sysex7.
-            midiEventSize = 1 + cmidi2_ump_get_sysex8_num_bytes(ump) - 1;
-            sysex8_1 = cmidi2_ump_read_uint64_bytes(ump);
-            sysex8_2 = cmidi2_ump_read_uint64_bytes(ump);
-            for (int i = 0; i < 5 && i < midiEventSize - 1; i++)
-                dst[i] = cmidi2_ump_get_byte_from_uint64(sysex8_1, 3 + i);
-            for (int i = 6; i < midiEventSize - 1; i++)
-                dst[i] = cmidi2_ump_get_byte_from_uint64(sysex8_2, i);
-            // verify 7bit compatibility and then SYSEX8 to SYSEX7
-            for (int i = 1; i < midiEventSize; i++) {
-                if (dst[i] > 0x80) {
-                    midiEventSize = 0;
-                    break;
-                }
-            }
-            break;
-    }
-    return midiEventSize;
-}
-
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
@@ -275,9 +162,9 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             auto ump = (cmidi2_ump *) ev;
             if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
                 cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
-                int max = currentTicks + cmidi2_ump_get_jr_timestamp_timestamp(ump);
+                uint32_t max = currentTicks + cmidi2_ump_get_jr_timestamp_timestamp(ump);
                 max = max < buffer->num_frames ? max : buffer->num_frames;
-                for (int i = currentTicks; i < max; i++) {
+                for (uint32_t i = currentTicks; i < max; i++) {
                     ayumi_process(context->impl);
                     ayumi_remove_dc(context->impl);
                     outL[i] = (float) context->impl->left;
