@@ -4,7 +4,7 @@ buildscript {
     ext.kotlin_version = '1.5.10'
     ext.dokkaVersion = '1.4.30'
     ext.compose_version = '1.0.0'
-    ext.aap_version = '0.6.17'
+    ext.aap_version = '0.6.18'
 
     repositories {
         google()
