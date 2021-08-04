@@ -13,8 +13,10 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
         get() = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins
             .filter { p -> isInstrument(p) }
 
-    private fun isInstrument(info: PluginInformation) =
-        info.category?.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) ?: info.category?.contains("Synth") ?: false
+    private fun isInstrument(info: PluginInformation) : Boolean {
+        val c = info.category
+        return c != null && (c.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) || c.contains("Synth"))
+    }
 
     // it does not really do any work but initializing native PAL.
     private lateinit var host: AudioPluginHost
