@@ -166,22 +166,6 @@ namespace aapmidideviceservice {
 
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
-        MidiCIExtension midiCIExtData{};
-
-        // It translates ALL the incoming messages to MIDI2 and send them to the plugins, so
-        // it is ALWAYS MIDI2 mode when instancing the plugin.
-        // Our midi_protocol field is to determine if we convert the incoming messages to MIDI2
-        // or not (send without transformation).
-        if (true) { // midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
-            AndroidAudioPluginExtension midiCIExtension;
-            midiCIExtension.uri = AAP_MIDI_CI_EXTENSION_URI;
-            midiCIExtData.protocol = CMIDI2_PROTOCOL_TYPE_MIDI2;
-            midiCIExtData.protocolVersion = 0;
-            midiCIExtension.data = &midiCIExtData;
-            midiCIExtension.transmit_size = sizeof(midiCIExtension);
-            instance->addExtension(midiCIExtension);
-        }
-
         instance->completeInstantiation();
 
         auto sharedMemoryExtension = (aap::SharedMemoryExtension*) instance->getExtension(AAP_SHARED_MEMORY_EXTENSION_URI);
@@ -448,7 +432,7 @@ namespace aapmidideviceservice {
         // 1) argument timestampInNanoseconds and 2) actual time passed from previous call to
         // this function.
         int64_t actualTimestamp = timestampInNanoseconds;
-        struct timespec curtime;
+        struct timespec curtime{};
         clock_gettime(CLOCK_REALTIME, &curtime);
         // it is 99.999... percent true since audio loop must have started before any MIDI events...
         if (last_aap_process_time.tv_sec > 0) {
@@ -459,29 +443,40 @@ namespace aapmidideviceservice {
         }
 
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
+        auto dstMBH = (AAPMidiBufferHeader*) dst8;
         if (dst8 != nullptr) {
-            auto dstMBH = (AAPMidiBufferHeader*) dst8;
             uint32_t currentOffset = dstMBH->length;
-            int32_t tIter = 0;
-            for (int32_t ticks = actualTimestamp / (1000000000 / 31250); ticks > 0; ticks -= 31250, tIter++) {
-                *(int32_t*) (dst8 + 32 + currentOffset + tIter * 4) =
-                        (int32_t) cmidi2_ump_jr_timestamp_direct(0, ticks > 31250 ? 31250 : ticks);
-            }
-            dstMBH->length += tIter * 4;
-            currentOffset += tIter * 4;
             if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+                int32_t tIter = 0;
+                for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
+                     ticks > 0; ticks -= 31250, tIter++) {
+                    *(int32_t *) (dst8 + 32 + currentOffset + tIter * 4) =
+                            (int32_t) cmidi2_ump_jr_timestamp_direct(0,
+                                                                     ticks > 31250 ? 31250 : ticks);
+                }
+                dstMBH->length += tIter * 4;
+                currentOffset += tIter * 4;
                 // process MIDI 2.0 data
                 memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
                 dstMBH->length += length;
+                dstMBH->time_options = 0; // reserved in MIDI2 mode
+                for (int i = 2; i < 8; i++)
+                    dstMBH->reserved[i - 2] = 0; // reserved
             } else {
-                // convert MIDI 1.0 buffer to UMP
-                dstMBH->length += convertMidi1ToMidi2((int32_t*) (dst8 + 32 + currentOffset), bytes + offset, length) * 4;
+                // See if it is MIDI-CI Set New Protocol (must be a standalone message).
+                // If so, update protocol and return immediately.
+                int32_t maybeNewProtocol;
+                if (bytes[offset] == 0xF0 && bytes[length - 1] == 0xF7 &&
+                        (maybeNewProtocol = cmidi2_ci_try_parse_new_protocol(bytes + offset + 1, length - 2)) > 0)
+                    midi_protocol = maybeNewProtocol;
+                // Note that Set New Protocol has to be also sent to the recipient too.
+
+                dstMBH->time_options = -100;
+                uint32_t ticks = timestampInNanoseconds / (44100 / -dstMBH->time_options);
+                size_t lengthSize = cmidi2_midi1_write_7bit_encoded_int(dst8 + 8 + currentOffset, ticks);
+                memcpy(dst8 + 8 + currentOffset + lengthSize, bytes + offset, length);
+                dstMBH->length += length + lengthSize;
             }
-            // MIDI 2.0 protocol. We always send data in MIDI2 protocol.
-            // It is ignored by LV2 plugins so far though.
-            dstMBH->time_options = 0; // reserved in MIDI2 mode
-            for (int i = 2; i < 8; i++)
-                dstMBH->reserved[i - 2] = 0; // reserved
         }
     }
 }
