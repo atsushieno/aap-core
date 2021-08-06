@@ -44,12 +44,6 @@ jobs:
       if: success()
       uses: actions/upload-artifact@v2
       with:
-        name: androidaudioplugin-ui-androix.aar
-        path: java/androidaudioplugin-ui-traditional/build/outputs/aar/androidaudioplugin-ui-traditional-debug.aar
-    - name: upload artifact
-      if: success()
-      uses: actions/upload-artifact@v2
-      with:
         name: aapbarebonepluginsample-debug.apk
         path: java/samples/aapbarebonepluginsample/build/outputs/apk/debug/aapbarebonepluginsample-debug.apk
     - name: upload artifact
