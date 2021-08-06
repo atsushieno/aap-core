@@ -82,15 +82,17 @@ There is Makefile to build all those Android modules, and install `*.aar`s to lo
 
 This library provides AudioPluginService which is mandatory for every AAP (plugin), as well as some hosting functionality.
 
-### androidaudioplugin-ui-traditional and androidaudioplugin-ui-compose
+### androidaudioplugin-ui-compose
 
-It is supposed to contain code to achieve basic plugin listing.
+`androidaudioplugin-ui-compose` module contains `PluginListActivity` which can be used as a launcher activity by any audio plugin application.
 
-It can be used as your plugin's main launcher activity.
+It lists the plugins within the package, and when selected it can perform applying it to either some MIDI sequence or some wave inputs.
 
-The former is based on traditional constraint layout, and the latter is based on Jetpack Compose.
+The UI is based on Jetpack Compose.
 
-(They depend on `androidaudioplugin-samples-host-engine` internal component to provide in-app plugin preview (tryout) feature which will be rewritten at some stage.)
+(It depends on `androidaudioplugin-samples-host-engine` internal component to provide in-app plugin preview (tryout) feature which will be rewritten at some stage.)
+
+It is also used by samples/aaphostsample that lists **all** plugins on the system.
 
 ### androidaudioplugin-midi-device-service and aap-midi-device-service
 
@@ -105,8 +107,6 @@ At this state the audio generation feature not in usable quality at all.
 `aaphostsample` lists existing AAPs (services) that are installed on the same device, and demonstrates how they work, using some raw audio data example as well as some example MIDI input messages. As of writing this, the app does not respect any audio format and processes in fixed size, and sends some fixed MIDI messages (note on/off-s) to AAP plugins.
 
 `aapbarebonepluginsample` is a sample AAP (plugin) that does "nothing". It can be rather used as a plugin template project.
-
-The waveform rendering in `aaphostsample` is done thanks to [waveformSeekBar](https://github.com/massoudss/waveformSeekBar).
 
 ## Further documentation
 

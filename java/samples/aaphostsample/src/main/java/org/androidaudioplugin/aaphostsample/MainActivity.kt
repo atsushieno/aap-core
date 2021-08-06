@@ -1,5 +1,14 @@
 package org.androidaudioplugin.aaphostsample
 
+import org.androidaudioplugin.ui.compose.PluginListActivity
+import org.androidaudioplugin.*
+
+class MainActivity() : PluginListActivity() {
+    override fun shouldListPlugin(info: AudioPluginServiceInformation) = true
+}
+
+/*
+
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -161,3 +170,5 @@ class MainActivity : AppCompatActivity() {
         preview.unbindHost()
     }
 }
+*/
+
