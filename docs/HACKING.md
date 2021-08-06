@@ -15,21 +15,24 @@ Once supplemental things are set up, Android Studio can be used for development 
 
 ### Source tree structure
 
--  `aidl` - contains common internal interface definitions for native and Kotlin modules.
--  `dependencies` - native source dependencies. (It used to contain various LV2 related dependencies, but now they have gone to `aap-lv2` repo.)
--  `native`
-  -  `plugin-api` (C include file; it is just for reference for plugin developers)
-  -  `core`
-    -  `include` - AAP C++ header files for native host developers. (Plugins don't have to reference anything. Packaging is another story though.)
-    -  `src` - AAP hosting reference implementation
-  -  `android` (Android-specific parts; NdkBinder etc.)
-  -  `desktop` (general Unix-y desktop specific parts; POSIX-IPC maybe)
+- `aidl` - contains common internal interface definitions for native and Kotlin modules.
+- `dependencies` - native source dependencies. (It used to contain various LV2 related dependencies, but now they have gone to `aap-lv2` repo.)
+- `native`
+  - `plugin-api` (C include file; it is just for reference for plugin developers)
+  - `core`
+    - `include` - AAP C++ header files for native host developers. (Plugins don't have to reference anything. Packaging is another story though.)
+    - `src` - AAP hosting reference implementation
+  - `android` (Android-specific parts; NdkBinder etc.)
 -  `java`
-  -  `androidaudioplugin` plugin framework and service implementation
-  -  `androidaudioplugin-ui-traditional` plugin UI implementation helper (not mandatory), based on traditional android.widget.
-  -  `samples`
-    -  `aaphostsample` - sample host app - follows the same AGP-modules structure
-    -  `aapbarebonepluginsample` - sample plugin project, which can be used as a template. Audio processing part is no-op.
+  - `androidaudioplugin` plugin framework and service implementation
+  - `androidaudioplugin-samples-host-engine' implements a plugin preview sample application that is also used as the default plugin preview template.
+  - `androidaudioplugin-ui-compose` implements the UI part of plugin preview template, based on the module above.
+  - `androidaudioplugin-midi-device-service` MidiDeviceService implementation that receives MIDI inputs and sends to the AAP instrument.
+  - `samples`
+    - `aaphostsample` - sample host app - follows the same AGP-modules structure
+    - `aapbarebonepluginsample` - sample plugin project, which can be used as a template. Audio processing part is no-op.
+    - `aapinstrumentsample` - sample plugin project, which works as a reference implementation for instrument. It makes use of [true-grue/ayumi](https://github.com/true-grue/ayumi).
+    - ` aap-midi-device-service` - sample MidiDeviceService project that lists all instruments.
 
  
 ### Running host sample app and plugin sample app
