@@ -30,6 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import org.androidaudioplugin.AudioPluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
@@ -127,7 +131,9 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         pluginAppliedState = true
                         state.preview.unbindHost()
                     }
-                    state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
+                    GlobalScope.launch {
+                        state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
+                    }
                 } else {
                     waveState = state.preview.inBuf
                     pluginAppliedState = false
@@ -135,7 +141,7 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
             }) { Text(if (pluginAppliedState) "On" else "Off") }
             Button(onClick = {}) { Text("UI") }
             Button(onClick = {
-                state.preview.playSound(pluginAppliedState)
+                GlobalScope.launch { state.preview.playSound(pluginAppliedState) }
                 }) {
                 Text("Play")
             }
