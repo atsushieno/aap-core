@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
     defaultConfig {
         applicationId "org.androidaudioplugin.aapinstrumentsample"
         minSdkVersion 29
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 1
         versionName "$aap_version"
 

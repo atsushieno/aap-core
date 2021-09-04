@@ -16,10 +16,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AAPMidiDeviceService"
-        tools:targetApi="r">
+        tools:targetApi="31">
         <activity
             android:name="org.androidaudioplugin.midideviceservice.MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/app_name"
             android:theme="@style/Theme.AAPMidiDeviceService.NoActionBar">
             <intent-filter>
