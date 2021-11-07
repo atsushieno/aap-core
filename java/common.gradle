@@ -1,0 +1,29 @@
+
+android {
+    compileSdkVersion 31
+    buildToolsVersion "31.0.0"
+
+    defaultConfig {
+        minSdkVersion 29
+        targetSdkVersion 31
+        versionCode 1
+        versionName "$aap_version"
+    }
+
+    // This should not be necessary in normal projects, but we specify c++_shared and thus
+    // ODR hits us. We specify ANDROID_STL=c++_shared in favor of prefab (which is not enabled
+    // yet but will be at some stage). This means, every AAP related project has to fix the
+    // NDK version in use. It is not realistic when it becomes for public uses, but so far
+    // we have to take this pill...
+    ndkVersion "21.3.6528147"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+        useIR = true
+    }
+}
+

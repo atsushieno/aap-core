@@ -3,16 +3,11 @@ plugins {
     id 'kotlin-android'
 }
 
-android {
-    compileSdkVersion 31
+apply from: "../../common.gradle"
 
+android {
     defaultConfig {
         applicationId "org.androidaudioplugin.aap_midi_device_service.app"
-        minSdk 29
-        targetSdk 31
-        versionCode 1
-        versionName "$aap_version"
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -26,14 +21,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
-        useIR = true
     }
     buildFeatures {
         compose true

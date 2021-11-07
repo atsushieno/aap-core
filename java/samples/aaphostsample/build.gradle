@@ -3,18 +3,14 @@ plugins {
     id 'kotlin-android'
 }
 
+apply from: "../../common.gradle"
+
 android {
-    compileSdkVersion 31
     buildFeatures {
         viewBinding true
     }
     defaultConfig {
         applicationId "org.androidaudioplugin.aaphostsample"
-        minSdkVersion 29
-        targetSdkVersion 31
-        versionCode 1
-        versionName "$aap_version"
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.

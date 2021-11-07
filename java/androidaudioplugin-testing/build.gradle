@@ -5,16 +5,12 @@ plugins {
     id 'signing'
 }
 
+apply from: "../common.gradle"
+
 android {
-    compileSdk 31
     ext.description = "AndroidAudioPlugin - testing"
 
     defaultConfig {
-        minSdk 29
-        targetSdk 31
-        versionCode 1
-        versionName "$aap_version"
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
@@ -24,13 +20,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
     }
 }
 
