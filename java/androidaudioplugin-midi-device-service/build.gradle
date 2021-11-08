@@ -47,7 +47,7 @@ android {
 apply from: "../publish-pom.gradle"
 
 dependencies {
-    implementation "androidx.core:core-ktx:1.6.0"
+    implementation "androidx.core:core-ktx:1.7.0"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation project(':androidaudioplugin')
     testImplementation 'junit:junit:4.13.2'
