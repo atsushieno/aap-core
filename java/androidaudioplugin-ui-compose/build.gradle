@@ -24,9 +24,6 @@ android {
     buildFeatures {
         compose true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion "$compose_version"
-    }
 }
 
 apply from: "../publish-pom.gradle"
