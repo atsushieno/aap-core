@@ -73,7 +73,7 @@ namespace aapmidideviceservice {
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
 
-        aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 4); // x4 as much as aap buffer size
+        aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
         zix_ring_mlock(aap_input_ring_buffer);
         interleave_buffer = (float*) calloc(sizeof(float), aapFrameSize * audioOutChannelCount);
 
@@ -82,10 +82,12 @@ namespace aapmidideviceservice {
         builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
         builder.setSharingMode(oboe::SharingMode::Exclusive);
         builder.setFormat(oboe::AudioFormat::Float);
-        builder.setChannelCount(channel_count);
-        builder.setBufferCapacityInFrames(oboeBurstFrameSize * 4);
-        builder.setFramesPerCallback(aapFrameSize);
+        // FIXME: this is incorrect. It should be possible to process stereo outputs from the MIDI synths
+        // but need to figure out why it fails to generate valid outputs for the target device.
+        builder.setChannelCount(1);// channel_count);
+        builder.setBufferCapacityInFrames(oboeBurstFrameSize);
         builder.setFramesPerDataCallback(aapFrameSize);
+        builder.setChannelConversionAllowed(false);
 
         callback = std::make_unique<OboeCallback>(this);
         builder.setDataCallback(callback.get());
