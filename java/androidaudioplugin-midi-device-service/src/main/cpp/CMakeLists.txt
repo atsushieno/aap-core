@@ -14,6 +14,7 @@ include_directories (${OBOE_DIR}/include)
 set (aapmidideviceservice_SOURCES
 	"aapmidideviceservice-jni.cpp"
 	"AAPMidiProcessor.cpp"
+	"AAPMidiProcessor_android.cpp"
 	"zix/ring.cpp"
 	)
 

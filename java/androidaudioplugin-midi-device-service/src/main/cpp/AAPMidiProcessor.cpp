@@ -6,28 +6,15 @@
 #include "AAPMidiProcessor.h"
 
 namespace aapmidideviceservice {
-
-    std::unique_ptr<AAPMidiProcessor> processor{};
-
-    AAPMidiProcessor* AAPMidiProcessor::getInstance() {
-        return processor.get();
-    }
-
-    void AAPMidiProcessor::resetInstance() {
-        processor = std::make_unique<AAPMidiProcessor>();
-    }
-
     long last_delay_value = 0, worst_delay_value = 0;
     long success_count = 0, failure_count = 0;
 
-    oboe::DataCallbackResult AAPMidiProcessor::OboeCallback::onAudioReady(
-            oboe::AudioStream *audioStream, void *audioData, int32_t oboeNumFrames) {
-
-        if (owner->state != AAP_MIDI_PROCESSOR_STATE_ACTIVE)
+    int32_t AAPMidiProcessor::onAudioReady(void *audioData, int32_t numFrames) {
+        if (state != AAP_MIDI_PROCESSOR_STATE_ACTIVE)
             // it is not supposed to process audio at this state.
             // It is still possible that it gets called between Oboe requestStart()
             // and updating the state, so do not error out here.
-            return oboe::DataCallbackResult::Continue;
+            return AudioCallbackResult::Continue;
 
         // Oboe audio buffer request can be extremely small (like < 10 frames).
         //  Therefore we don't call plugin process() every time (as it could cost hundreds
@@ -37,14 +24,14 @@ namespace aapmidideviceservice {
         //  Each plugin process is still expected to fit within a callback time slice,
         //  so we still call plugin process() within the callback.
 
-        if (zix_ring_read_space(owner->aap_input_ring_buffer) < oboeNumFrames * sizeof(float)) {
+        if (zix_ring_read_space(aap_input_ring_buffer) < numFrames * sizeof(float)) {
             // observer performance. (start)
-            struct timespec ts_start, ts_end;
+            struct timespec ts_start{}, ts_end{};
             clock_gettime(CLOCK_REALTIME, &ts_start);
 
-            owner->callPluginProcess();
+            callPluginProcess();
             // recorded for later reference at MIDI message buffering.
-            clock_gettime(CLOCK_REALTIME, &owner->last_aap_process_time);
+            clock_gettime(CLOCK_REALTIME, &last_aap_process_time);
 
             // observer performance. (end)
             clock_gettime(CLOCK_REALTIME, &ts_end);
@@ -56,17 +43,16 @@ namespace aapmidideviceservice {
                 failure_count++;
             } else success_count++;
 
-            owner->fillAudioOutput();
-
+            fillAudioOutput();
         }
 
-        zix_ring_read(owner->aap_input_ring_buffer, audioData, oboeNumFrames * sizeof(float));
+        zix_ring_read(aap_input_ring_buffer, audioData, numFrames * sizeof(float));
 
         // FIXME: can we terminate it when it goes quiet?
-        return oboe::DataCallbackResult::Continue;
+        return AudioCallbackResult::Continue;
     }
 
-    void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+    void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
         // AAP settings
         host = std::make_unique<aap::PluginHost>(&host_manager);
         sample_rate = sampleRate;
@@ -78,19 +64,7 @@ namespace aapmidideviceservice {
         interleave_buffer = (float*) calloc(sizeof(float), aapFrameSize * audioOutChannelCount);
 
         // Oboe configuration
-        builder.setDirection(oboe::Direction::Output);
-        builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
-        builder.setSharingMode(oboe::SharingMode::Exclusive);
-        builder.setFormat(oboe::AudioFormat::Float);
-        // FIXME: this is incorrect. It should be possible to process stereo outputs from the MIDI synths
-        // but need to figure out why it fails to generate valid outputs for the target device.
-        builder.setChannelCount(1);// channel_count);
-        builder.setBufferCapacityInFrames(oboeBurstFrameSize);
-        builder.setFramesPerDataCallback(aapFrameSize);
-        builder.setChannelConversionAllowed(false);
-
-        callback = std::make_unique<OboeCallback>(this);
-        builder.setDataCallback(callback.get());
+        pal()->setupStream();
     }
 
     void AAPMidiProcessor::terminate() {
@@ -132,11 +106,6 @@ namespace aapmidideviceservice {
                 return "ERROR";
         }
         return "(UNKNOWN)";
-    }
-
-    void AAPMidiProcessor::registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service) {
-        auto pal = (aap::AndroidPluginHostPAL*) aap::getPluginHostPAL();
-        pal->serviceConnections.emplace_back(std::move(service));
     }
 
     // Instantiate AAP plugin and proceed up to prepare().
@@ -220,14 +189,10 @@ namespace aapmidideviceservice {
                 return;
         }
 
-        oboe::Result result = builder.openStream(stream);
-        if (result != oboe::Result::OK) {
-            aap::aprintf("Failed to create Oboe stream: %s", oboe::convertToText(result));
+        if (pal()->startStreaming()) {
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
-
-        stream->requestStart();
 
         // activate instances
         for (int i = 0; i < host->getInstanceCount(); i++)
@@ -249,10 +214,7 @@ namespace aapmidideviceservice {
         for (int i = 0; i < host->getInstanceCount(); i++)
             host->getInstance(i)->deactivate();
 
-        // close Oboe stream.
-        stream->stop();
-        stream->close();
-        stream.reset();
+        pal()->stopStreaming();
 
         state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
     }

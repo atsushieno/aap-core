@@ -7,7 +7,7 @@
 #include <aap/audio-plugin-host-android.h>
 #include <aap/android-application-context.h>
 #include <aap/logging.h>
-#include "AAPMidiProcessor.h"
+#include "AAPMidiProcessor_android.h"
 
 
 // JNI entrypoints
@@ -26,14 +26,26 @@ const char* dupFromJava(JNIEnv *env, jstring s) {
 
 extern "C" {
 
-#define AAPMIDIDEVICE_INSTANCE aapmidideviceservice::AAPMidiProcessor::getInstance()
+aapmidideviceservice::AAPMidiProcessorAndroid *processor{nullptr};
+
+void resetInstance() {
+    processor = new aapmidideviceservice::AAPMidiProcessorAndroid();
+}
+
+aapmidideviceservice::AAPMidiProcessorAndroid* getInstance() {
+    if (!processor)
+        resetInstance();
+    return processor;
+}
+
+#define AAPMIDIDEVICE_INSTANCE getInstance()
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_initializeReceiverNative(
         JNIEnv *env, jobject midiReceiver, jobject applicationContext, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize, jint midiProtocol) {
     aap::set_application_context(env, applicationContext);
     ((aap::AndroidPluginHostPAL*) aap::getPluginHostPAL())->initializeKnownPlugins(plugins);
 
-    aapmidideviceservice::AAPMidiProcessor::resetInstance();
+    resetInstance();
 
     AAPMIDIDEVICE_INSTANCE->initialize(sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize);
 }
@@ -57,7 +69,7 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->terminate();
 
-    aapmidideviceservice::AAPMidiProcessor::resetInstance();
+    resetInstance();
 }
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_activate(

@@ -2,11 +2,24 @@
 #ifndef AAP_MIDI_DEVICE_SERVICE_AAPMIDIPROCESSOR_H
 #define AAP_MIDI_DEVICE_SERVICE_AAPMIDIPROCESSOR_H
 
-#include <oboe/Oboe.h>
+#include <vector>
 #include <zix/ring.h>
 #include <cmidi2.h>
+#include <aap/audio-plugin-host.h>
 
 namespace aapmidideviceservice {
+    // keep it compatible with Oboe
+    enum AudioCallbackResult : int32_t {
+        Continue = 0,
+        Stop = 1
+    };
+
+    class AAPMidiProcessorPAL {
+    public:
+        virtual int32_t setupStream() = 0;
+        virtual int32_t startStreaming() = 0;
+        virtual int32_t stopStreaming() = 0;
+    };
 
     enum AAPMidiProcessorState {
         AAP_MIDI_PROCESSOR_STATE_CREATED,
@@ -42,17 +55,9 @@ namespace aapmidideviceservice {
         std::unique_ptr<void*> buffer_pointers{nullptr};
     };
 
+    class AAPMidiProcessor;
+
     class AAPMidiProcessor {
-
-        class OboeCallback : public oboe::AudioStreamDataCallback {
-        public:
-            OboeCallback(AAPMidiProcessor *owner) : owner(owner) {}
-
-            AAPMidiProcessor *owner;
-            oboe::DataCallbackResult
-            onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
-        };
-
         static std::string convertStateToText(AAPMidiProcessorState state);
 
         // AAP
@@ -68,24 +73,19 @@ namespace aapmidideviceservice {
         PluginInstanceData* getAAPMidiInputData();
         void* getAAPMidiInputBuffer();
 
-        // Oboe
-        oboe::AudioStreamBuilder builder{};
-        std::unique_ptr<oboe::AudioStreamDataCallback> callback{};
-        std::shared_ptr<oboe::AudioStream> stream{};
-        AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
-
+        // Outputs
         ZixRing *aap_input_ring_buffer{nullptr};
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
 
         int32_t convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength);
+
+    protected:
+        AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
+        virtual AAPMidiProcessorPAL* pal() = 0;
+
     public:
-        static AAPMidiProcessor* getInstance();
-        static void resetInstance();
-
-        void initialize(int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize);
-
-        static void registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service);
+        void initialize(int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize);
 
         void instantiatePlugin(std::string pluginId);
 
@@ -100,6 +100,8 @@ namespace aapmidideviceservice {
         void deactivate();
 
         void terminate();
+
+        int32_t onAudioReady(void *audioData, int32_t numFrames);
     };
 }
 
