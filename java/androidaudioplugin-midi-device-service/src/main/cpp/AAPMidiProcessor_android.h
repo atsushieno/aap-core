@@ -20,6 +20,8 @@ public:
     oboe::DataCallbackResult
     onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames) override;
 
+    int32_t createSharedMemory(size_t size) override;
+
     int32_t setupStream() override;
     int32_t startStreaming() override;
     int32_t stopStreaming() override;

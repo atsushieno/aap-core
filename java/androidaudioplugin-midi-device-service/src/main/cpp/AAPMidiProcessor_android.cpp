@@ -1,3 +1,4 @@
+#include <android/sharedmem.h>
 #include "AAPMidiProcessor_android.h"
 #include <aap/logging.h>
 
@@ -10,6 +11,10 @@ oboe::DataCallbackResult AAPMidiProcessorAndroidPAL::onAudioReady(
 void AAPMidiProcessorAndroid::registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service) {
     auto pal = (aap::AndroidPluginHostPAL*) aap::getPluginHostPAL();
     pal->serviceConnections.emplace_back(std::move(service));
+}
+
+int32_t AAPMidiProcessorAndroidPAL::createSharedMemory(size_t memSize) {
+    return ASharedMemory_create(nullptr, memSize);
 }
 
 int32_t AAPMidiProcessorAndroidPAL::setupStream() {

@@ -1,7 +1,5 @@
 #include <sys/mman.h>
-#include <android/sharedmem.h>
 #include <aap/logging.h>
-#include <aap/audio-plugin-host-android.h>
 #include <aap/aap-midi2.h>
 #include "AAPMidiProcessor.h"
 
@@ -153,7 +151,7 @@ namespace aapmidideviceservice {
 
 
         for (int i = 0; i < numPorts; i++) {
-            int fd = ASharedMemory_create(nullptr, memSize);
+            int32_t fd = pal()->createSharedMemory(memSize);
             data->setPortSharedMemoryFD(i, fd);
             sharedMemoryExtension->setPortBufferFD(i, fd);
             data->plugin_buffer->buffers[i] = mmap(nullptr, memSize,

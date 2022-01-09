@@ -16,6 +16,7 @@ namespace aapmidideviceservice {
 
     class AAPMidiProcessorPAL {
     public:
+        virtual int32_t createSharedMemory(size_t memSize) = 0;
         virtual int32_t setupStream() = 0;
         virtual int32_t startStreaming() = 0;
         virtual int32_t stopStreaming() = 0;
