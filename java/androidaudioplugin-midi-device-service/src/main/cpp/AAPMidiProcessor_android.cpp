@@ -1,9 +1,8 @@
-#include <android/sharedmem.h>
 #include "AAPMidiProcessor_android.h"
 #include <aap/logging.h>
 
 namespace aapmidideviceservice {
-oboe::DataCallbackResult AAPMidiProcessorAndroidPAL::onAudioReady(
+oboe::DataCallbackResult AAPMidiProcessorOboePAL::onAudioReady(
         oboe::AudioStream *audioStream, void *audioData, int32_t oboeNumFrames) {
     return (oboe::DataCallbackResult) owner->onAudioReady(audioData, oboeNumFrames);
 }
@@ -13,11 +12,7 @@ void AAPMidiProcessorAndroid::registerPluginService(std::unique_ptr<aap::AudioPl
     pal->serviceConnections.emplace_back(std::move(service));
 }
 
-int32_t AAPMidiProcessorAndroidPAL::createSharedMemory(size_t memSize) {
-    return ASharedMemory_create(nullptr, memSize);
-}
-
-int32_t AAPMidiProcessorAndroidPAL::setupStream() {
+int32_t AAPMidiProcessorOboePAL::setupStream() {
 
     builder.setDirection(oboe::Direction::Output);
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
@@ -33,7 +28,7 @@ int32_t AAPMidiProcessorAndroidPAL::setupStream() {
     return 0;
 }
 
-int32_t AAPMidiProcessorAndroidPAL::startStreaming() {
+int32_t AAPMidiProcessorOboePAL::startStreaming() {
     oboe::Result result = builder.openStream(stream);
     if (result != oboe::Result::OK) {
         aap::aprintf("Failed to create Oboe stream: %s", oboe::convertToText(result));
@@ -43,7 +38,7 @@ int32_t AAPMidiProcessorAndroidPAL::startStreaming() {
     return (int32_t) stream->requestStart();
 }
 
-int32_t AAPMidiProcessorAndroidPAL::stopStreaming() {
+int32_t AAPMidiProcessorOboePAL::stopStreaming() {
 
     // close Oboe stream.
     stream->stop();
