@@ -127,45 +127,50 @@ public:
 	const char * PRIMARY_CATEGORY_EFFECT = "Effect";
 	const char * PRIMARY_CATEGORY_INSTRUMENT = "Instrument";
 
-	PluginInformation(bool isOutProcess, std::string pluginPackageName, std::string pluginLocalName, std::string displayName, std::string manufacturerName, std::string versionString, std::string pluginID, std::string sharedLibraryFilename, std::string libraryEntrypoint, std::string metadataFullPath, std::string primaryCategory);
+	PluginInformation(bool isOutProcess, const char* pluginPackageName,
+					  const char* pluginLocalName, const char* displayName,
+					  const char* manufacturerName, const char* versionString,
+					  const char* pluginID, const char* sharedLibraryFilename,
+					  const char* libraryEntrypoint, const char* metadataFullPath,
+					  const char* primaryCategory);
 
 	~PluginInformation()
 	{
 	}
 
-	const std::string getPluginPackageName() const
+	const std::string& getPluginPackageName() const
 	{
 		return plugin_package_name;
 	}
 
-	const std::string getPluginLocalName() const
+	const std::string& getPluginLocalName() const
 	{
 		return plugin_local_name;
 	}
 
-	const std::string getDisplayName() const
+	const std::string& getDisplayName() const
 	{
 		return display_name;
 	}
 	
-	const std::string getManufacturerName() const
+	const std::string& getManufacturerName() const
 	{
 		return manufacturer_name;
 	}
 	
-	const std::string getVersion() const
+	const std::string& getVersion() const
 	{
 		return version;
 	}
 	
 	/* locally identifiable string.
 	 * It is combination of name+unique_id+version, to support plugin debugging. */
-	const std::string getStrictIdentifier() const
+	const std::string& getStrictIdentifier() const
 	{
 		return identifier_string;
 	}
 	
-	const std::string getPrimaryCategory() const
+	const std::string& getPrimaryCategory() const
 	{
 		return primary_category;
 	}
@@ -206,12 +211,12 @@ public:
 	}
 	
 	/* unique identifier across various environment */
-	const std::string getPluginID() const
+	const std::string& getPluginID() const
 	{
 		return plugin_id;
 	}
 
-	const std::string getMetadataFullPath() const
+	const std::string& getMetadataFullPath() const
 	{
 		return metadata_full_path;
 	}
@@ -243,7 +248,7 @@ public:
 		return false;
 	}
 
-	const std::string getLocalPluginSharedLibrary() const
+	const std::string& getLocalPluginSharedLibrary() const
 	{
 		// By metadata or inferred.
 		// Since Android expects libraries stored in `lib` directory,
@@ -251,7 +256,7 @@ public:
 		return shared_library_filename;
 	}
 
-	const std::string getLocalPluginLibraryEntryPoint() const
+	const std::string& getLocalPluginLibraryEntryPoint() const
 	{
 		// can be null. "GetAndroidAudioPluginFactory" is used by default.
 		return library_entrypoint;
@@ -281,7 +286,8 @@ public:
 			delete plugin;
 	}
 
-	virtual std::string getRemotePluginEntrypoint() = 0;
+	virtual int32_t createSharedMemory(size_t size) = 0;
+
 	virtual std::vector<std::string> getPluginPaths() = 0;
 	virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
 	virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
@@ -302,38 +308,6 @@ public:
 PluginHostPAL* getPluginHostPAL();
 
 #define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
-
-class SharedMemoryExtension
-{
-	std::unique_ptr<std::vector<int32_t>> port_buffer_fds{nullptr};
-	std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
-
-public:
-    SharedMemoryExtension();
-    ~SharedMemoryExtension() {
-        for (int32_t fd : *port_buffer_fds)
-        	if (fd)
-	            close(fd);
-        port_buffer_fds->clear();
-		for (int32_t fd : *extension_fds)
-			if (fd)
-				close(fd);
-		extension_fds->clear();
-    }
-
-    // Stores clone of port buffer FDs passed from client via Binder.
-    inline void resizePortBuffer(size_t newSize) { port_buffer_fds->resize(newSize); }
-    inline int32_t getPortBufferFD(size_t index) { return port_buffer_fds->at(index); }
-    inline void setPortBufferFD(size_t index, int32_t fd) {
-    	if (port_buffer_fds->size() <= index)
-    		port_buffer_fds->resize(index + 1);
-    	port_buffer_fds->at(index) = fd;
-    }
-    // Stores clone of extension data FDs passed from client via Binder.
-	inline std::vector<int32_t>* getExtensionFDs() { return extension_fds.get(); }
-};
-
-
 
 class PluginHostManager
 {
@@ -411,6 +385,8 @@ public:
     AndroidAudioPluginExtension asTransient() const;
 };
 
+class PluginSharedMemoryBuffer;
+
 class PluginInstance
 {
 	friend class PluginHost;
@@ -423,21 +399,17 @@ class PluginInstance
 	std::vector<std::unique_ptr<PluginExtension>> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
+	std::unique_ptr<PluginSharedMemoryBuffer> shm_buffer{nullptr};
 
-	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-		: sample_rate(sampleRate),
-		  pluginInfo(pluginInformation),
-		  plugin_factory(loadedPluginFactory),
-		  plugin(nullptr),
-		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL)
-	{
-		assert(pluginInformation);
-		assert(loadedPluginFactory);
-	}
-	
+	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+	int32_t allocateSharedMemoryBuffer(size_t numPorts, size_t numFrames);
+
 public:
 
-    ~PluginInstance() { dispose(); }
+    virtual ~PluginInstance();
+
+	AndroidAudioPluginBuffer* getSharedMemoryBuffer(size_t numPorts, size_t numFrames);
 
 	const PluginInformation* getPluginInformation()
 	{
@@ -474,8 +446,6 @@ public:
 		return nullptr;
 	}
 
-	inline SharedMemoryExtension* getSharedMemoryExtension() { return (SharedMemoryExtension*) getExtension(AAP_SHARED_MEMORY_EXTENSION_URI); }
-
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
 		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
@@ -506,10 +476,10 @@ public:
 	
 	void dispose()
 	{
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 		if (plugin != nullptr)
 			plugin_factory->release(plugin_factory, plugin);
 		plugin = nullptr;
-		instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	}
 	
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)

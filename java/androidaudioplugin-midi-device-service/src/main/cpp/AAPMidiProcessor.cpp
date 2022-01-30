@@ -67,22 +67,8 @@ namespace aapmidideviceservice {
 
     void AAPMidiProcessor::terminate() {
 
-        // free shared memory buffers and close FDs for the instances.
-        // FIXME: shouldn't androidaudioplugin implement this functionality so that we don't have
-        //  to manage it everywhere? It is also super error prone.
-        for (auto& data : instance_data_list) {
+        for (auto& data : instance_data_list)
             host->getInstance(data->instance_id)->dispose();
-
-            int numBuffers = data->plugin_buffer->num_buffers;
-            size_t memSize = data->plugin_buffer->num_frames * sizeof(float);
-            for (int n = 0; n < numBuffers; n++) {
-                munmap(data->buffer_pointers.get()[n], memSize);
-                int fd = data->getPortSharedMemoryFD(n);
-                if (fd != 0)
-                    close(fd);
-                data->setPortSharedMemoryFD(n, 0);
-            }
-        }
 
         zix_ring_free(aap_input_ring_buffer);
         free(interleave_buffer);
@@ -137,26 +123,11 @@ namespace aapmidideviceservice {
 
         instance->completeInstantiation();
 
-        auto sharedMemoryExtension = (aap::SharedMemoryExtension*) instance->getExtension(AAP_SHARED_MEMORY_EXTENSION_URI);
-
-        auto buffer = std::make_unique<AndroidAudioPluginBuffer>();
-        buffer->num_buffers = numPorts;
-        buffer->num_frames = aap_frame_size;
-
-        size_t memSize = buffer->num_frames * sizeof(float);
-
         data->instance_id = instanceId;
-        data->plugin_buffer = std::move(buffer);
-        data->plugin_buffer->buffers = data->buffer_pointers.get();
+        data->plugin_buffer = instance->getSharedMemoryBuffer(numPorts, aap_frame_size);
 
 
         for (int i = 0; i < numPorts; i++) {
-            int32_t fd = pal()->createSharedMemory(memSize);
-            data->setPortSharedMemoryFD(i, fd);
-            sharedMemoryExtension->setPortBufferFD(i, fd);
-            data->plugin_buffer->buffers[i] = mmap(nullptr, memSize,
-                                                         PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
             auto port = pluginInfo->getPort(i);
             if (port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO && port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT)
                 data->getAudioOutPorts()->emplace_back(i);
@@ -168,7 +139,7 @@ namespace aapmidideviceservice {
                 *((float*) data->plugin_buffer->buffers[i]) = port->getDefaultValue();
         }
 
-        instance->prepare(aap_frame_size, data->plugin_buffer.get());
+        instance->prepare(aap_frame_size, data->plugin_buffer);
 
         instance_data_list.emplace_back(std::move(data));
     }
@@ -220,7 +191,7 @@ namespace aapmidideviceservice {
     // Called by Oboe audio callback implementation. It calls process.
     void AAPMidiProcessor::callPluginProcess() {
         for (auto &data : instance_data_list) {
-            host->getInstance(data->instance_id)->process(data->plugin_buffer.get(), 1000000000);
+            host->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
             // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
             if (data->instance_id == instrument_instance_id) {
                 if (data->midi1_in_port >= 0)
@@ -294,94 +265,6 @@ namespace aapmidideviceservice {
                 return data->plugin_buffer->buffers[portIndex];
             }
         return nullptr;
-    }
-
-    // returns converted number of UMPs in packet (int32)
-    int32_t AAPMidiProcessor::convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength) {
-        int32_t si = 0;
-        int32_t di = 0;
-        while (si < srcLength) {
-            uint8_t srcStatusByte = src8[si++];
-            switch (srcStatusByte) {
-                case 0xFF: { // META
-                    uint8_t metaType = src8[si++];
-                    switch (metaType) {
-                    case 0x00: si += 2; break; // sequence number
-                    case 0x20: si++; break; // channel prefix
-                    case 0x2F: break; // end of track
-                    case 0x51: si += 3; break; // tempo
-                    case 0x54: si += 5; break; // SMTPE offset
-                    case 0x58: si += 4; break; // time signature
-                    case 0x59: si += 2; break; // key signature
-                    default: // length-prefixed data, where length is 7bit-encoded integer
-                        uint8_t lengthSpecCount = 0;
-                        int32_t length = 0;
-                        while (src8[si] >= 0x80) {
-                            length += (src8[si] - 0x80) << (7 * lengthSpecCount++);
-                            si++;
-                        }
-                        length += src8[si++]; // last length
-                        si += length;
-                        break;
-                    }
-                    // FIXME: for now we skip all META events, but it might be wanted at some stage.
-                }
-                    break;
-                case 0xF0: { // Sysex
-                    int32_t sysexStart = si;
-                    while (src8[si] != 0xF7) // hacky way to reach the end of sysex.
-                        si++;
-                    int32_t sysexLength = si - sysexStart;
-                    si++; // F7
-
-                    // check if the message is Set New Protocol
-                    int32_t protocol = cmidi2_ci_try_parse_new_protocol(src8 + sysexStart, sysexLength);
-                    if (protocol != 0) {
-                        midi_protocol = protocol;
-                        aap::aprintf("AAPMidiProcessor: MIDI-CI Set New Protocol received: %d", protocol);
-                    }
-
-                    for (int i = 0; i < sysexLength; i += 6) {
-                        uint8_t status =
-                                sysexLength < 6 ? CMIDI2_SYSEX_IN_ONE_UMP :
-                                i == 0 ? CMIDI2_SYSEX_START :
-                                i + 6 >= sysexLength ? CMIDI2_SYSEX_END :
-                                CMIDI2_SYSEX_CONTINUE;
-                        bool isLastPacket =
-                                status == CMIDI2_SYSEX_IN_ONE_UMP || status == CMIDI2_SYSEX_END;
-                        uint8_t packetLength = isLastPacket ? sysexLength % 6 : 6;
-                        // looking stupid, but simple enough to get required arguments!
-                        uint8_t sd0 = src8[si++];
-                        uint8_t sd1 = packetLength <= 1 ? 0 : src8[si++];
-                        uint8_t sd2 = packetLength <= 2 ? 0 : src8[si++];
-                        uint8_t sd3 = packetLength <= 3 ? 0 : src8[si++];
-                        uint8_t sd4 = packetLength <= 4 ? 0 : src8[si++];
-                        uint8_t sd5 = packetLength <= 5 ? 0 : src8[si++];
-                        uint64_t v = cmidi2_ump_sysex7_direct(0, status, packetLength, sd0, sd1, sd2,
-                                                              sd3, sd4, sd5);
-                        dst32[di++] = (int32_t) (v >> 32);
-                        dst32[di++] = (int32_t) (v & 0xFFFFFFFF);
-                    }
-                }
-                    break;
-                default: {
-                    uint8_t msb = src8[si++];
-                    uint8_t lsb = 0;
-                    switch (srcStatusByte & 0xF0) {
-                        case 0xC0:
-                        case 0xD0:
-                            break; // Program Change and CAf
-                        default:
-                            lsb = src8[si++];
-                            break;
-                    }
-                    dst32[di++] = cmidi2_ump_midi1_message(
-                            0, srcStatusByte & 0xF0, srcStatusByte & 0xF, msb, lsb);
-                }
-                    break;
-            }
-        }
-        return di;
     }
 
     void AAPMidiProcessor::processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {

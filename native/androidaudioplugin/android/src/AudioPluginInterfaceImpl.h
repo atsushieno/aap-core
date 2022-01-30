@@ -14,6 +14,7 @@
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
 #include "aap/audio-plugin-host.h"
+#include "../../core/src/shared-memory-extension.h"
 
 namespace aap {
 
@@ -57,7 +58,7 @@ public:
         assert(in_instanceID < host->getInstanceCount());
         AndroidAudioPluginExtension extension;
         extension.uri = in_uri.c_str();
-        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        auto shmExt = getSharedMemoryExtension(host->getInstance(in_instanceID));
         assert(shmExt != nullptr);
         auto dfd = dup(in_sharedMemoryFD.get());
         shmExt->getExtensionFDs()->emplace_back(dfd);
@@ -85,7 +86,7 @@ public:
     ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
         assert(in_instanceID < host->getInstanceCount());
-        auto shmExt = host->getInstance(in_instanceID)->getSharedMemoryExtension();
+        auto shmExt = getSharedMemoryExtension(host->getInstance(in_instanceID));
         assert(shmExt != nullptr);
         shmExt->setPortBufferFD(in_shmFDIndex, dup(in_sharedMemoryFD.get()));
         return ndk::ScopedAStatus::ok();
@@ -122,7 +123,7 @@ public:
     int resetBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer, int frameCount)
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto shmExt = instance->getSharedMemoryExtension();
+        auto shmExt = getSharedMemoryExtension(instance);
         shmExt->resizePortBuffer(nPorts);
         if (buffer.num_buffers != nPorts)
             freeBuffers(instance, buffer);

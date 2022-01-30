@@ -15,8 +15,6 @@ public:
 
     virtual void setBufferCapacityInFrames(int32_t size) = 0;
     virtual void setFramesPerDataCallback(int32_t size) = 0;
-
-    inline int32_t createSharedMemory(size_t size) override { return ASharedMemory_create(nullptr, size); }
 };
 
 class AAPMidiProcessorAndroidStubPAL : public AAPMidiProcessorAndroidPAL {

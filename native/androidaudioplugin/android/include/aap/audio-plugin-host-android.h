@@ -8,6 +8,7 @@
 
 #include <jni.h>
 #include <android/binder_ibinder.h>
+#include <android/sharedmem.h>
 #include "aap/audio-plugin-host.h"
 
 #define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
@@ -32,7 +33,8 @@ class AndroidPluginHostPAL : public PluginHostPAL
 public:
 	virtual inline ~AndroidPluginHostPAL() {}
 
-	std::string getRemotePluginEntrypoint() override { return "GetAndroidAudioPluginFactoryClientBridge"; }
+	inline int32_t createSharedMemory(size_t size) override { return ASharedMemory_create(nullptr, size); }
+
 	std::vector<std::string> getPluginPaths() override;
 
     inline void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) override {

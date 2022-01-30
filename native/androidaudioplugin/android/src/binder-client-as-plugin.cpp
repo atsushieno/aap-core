@@ -1,6 +1,7 @@
 
 #include <sys/mman.h>
 #include <cstdlib>
+#include <memory>
 #include <android/sharedmem.h>
 #include <android/log.h>
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
@@ -8,6 +9,7 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/audio-plugin-host-android.h"
 #include "AudioPluginInterfaceImpl.h"
+#include "../../core/src/audio-plugin-host-internals.h"
 
 // AAP plugin implementation that performs actual work via AAP binder client.
 
@@ -17,13 +19,11 @@ public:
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
-	aap::SharedMemoryExtension* shared_memory_extension{nullptr};
+	std::unique_ptr<aap::SharedMemoryExtension> shared_memory_extension{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state{};
 	int state_ashmem_fd{0};
-
-	AAPClientContext() {}
 
     int initialize(int sampleRate, const char *pluginUniqueId)
 	{
@@ -67,7 +67,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	int n = buffer->num_buffers;
 
 	auto prevBuf = ctx->previous_buffer;
-	auto shmExt = ctx->shared_memory_extension;
+	auto shmExt = ctx->shared_memory_extension.get();
 
 
     // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
@@ -80,11 +80,12 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
     }
     shmExt->resizePortBuffer(n);
 
-    // allocate shm FDs, first locally, then remotely.
+    // allocate shm FDs, first locally, then send it to the target AAP.
     for (int i = 0; i < n; i++) {
-        assert(shmExt->getPortBufferFD(i) != 0);
+    	int32_t fd = ASharedMemory_create(nullptr, buffer->num_frames * sizeof(float));
+    	shmExt->setPortBufferFD(i, fd);
         ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(shmExt->getPortBufferFD(i));
+        sfd.set(fd);
         auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         assert(pmStatus.isOk());
     }
@@ -113,8 +114,12 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	long timeoutInNanoseconds)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	if (ctx->previous_buffer != buffer)
-		resetBuffers(ctx, buffer);
+
+	for (size_t i = 0; i < buffer->num_buffers; i++) {
+		if (ctx->previous_buffer->buffers[i] != buffer->buffers[i])
+			memcpy(ctx->previous_buffer->buffers[i], buffer->buffers[i],
+				   buffer->num_frames * sizeof(float));
+	}
 	auto status = ctx->proxy->process(ctx->instance_id, timeoutInNanoseconds);
     assert (status.isOk());
 }
@@ -158,7 +163,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
 	int aapSampleRate,
-	AndroidAudioPluginExtension** extensions	// unused
+	AndroidAudioPluginExtension** extensions
 	)
 {
 	assert(pluginFactory != nullptr);
@@ -168,27 +173,14 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	auto ctx = new AAPClientContext();
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
 		return nullptr;
-
-    for (int i = 0; extensions[i] != nullptr; i++) {
-        auto ext = extensions[i];
-        if (strcmp(ext->uri, AAP_SHARED_MEMORY_EXTENSION_URI) == 0) {
-            assert(ext->transmit_size > 0);
-            ctx->shared_memory_extension = (aap::SharedMemoryExtension *) ext->data;
-            break;
-        }
-    }
-    assert(ctx->shared_memory_extension != nullptr);
+    ctx->shared_memory_extension = std::make_unique<aap::SharedMemoryExtension>();
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 
 	for (int i = 0; extensions[i] != nullptr; i++) {
 		auto ext = extensions[i];
-		// skip copying SharedMemoryExtension itself.
-		if (strcmp(ext->uri, AAP_SHARED_MEMORY_EXTENSION_URI) == 0)
-			continue;
-
-		// for other extensions, create asharedmem and add as an extension FD, keep it until it is destroyed.
+		// create asharedmem and add as an extension FD, keep it until it is destroyed.
 		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
 		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
 		void* shm = mmap(nullptr, ext->transmit_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);

@@ -16,7 +16,6 @@ namespace aapmidideviceservice {
 
     class AAPMidiProcessorPAL {
     public:
-        virtual int32_t createSharedMemory(size_t memSize) = 0;
         virtual int32_t setupStream() = 0;
         virtual int32_t startStreaming() = 0;
         virtual int32_t stopStreaming() = 0;
@@ -32,31 +31,21 @@ namespace aapmidideviceservice {
 
     class PluginInstanceData {
         std::vector<int> audio_out_ports{};
-        std::vector<int> port_shared_memory_fds{};
 
     public:
-        PluginInstanceData(int instanceId, size_t numPorts) : instance_id(instanceId), num_ports(numPorts) {
+        PluginInstanceData(int instanceId, size_t numPorts) : instance_id(instanceId) {
             auto arr = (void**) calloc(sizeof(void*), numPorts + 1);
             arr[numPorts] = nullptr;
             buffer_pointers.reset(arr);
         }
         inline std::vector<int32_t>* getAudioOutPorts() { return &audio_out_ports; }
-        inline int32_t getPortSharedMemoryFD(size_t index) { return port_shared_memory_fds[index]; }
-        inline void setPortSharedMemoryFD(size_t index, int32_t fd) {
-            if (port_shared_memory_fds.size() <= index)
-                port_shared_memory_fds.resize(index + 1);
-            port_shared_memory_fds[index] = fd;
-        }
 
         int instance_id;
-        int num_ports;
         int midi1_in_port{-1};
         int midi2_in_port{-1};
-        std::unique_ptr<AndroidAudioPluginBuffer> plugin_buffer;
+        AndroidAudioPluginBuffer* plugin_buffer;
         std::unique_ptr<void*> buffer_pointers{nullptr};
     };
-
-    class AAPMidiProcessor;
 
     class AAPMidiProcessor {
         static std::string convertStateToText(AAPMidiProcessorState state);
@@ -78,8 +67,6 @@ namespace aapmidideviceservice {
         ZixRing *aap_input_ring_buffer{nullptr};
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
-
-        int32_t convertMidi1ToMidi2(int32_t* dst32, uint8_t* src8, size_t srcLength);
 
     protected:
         AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
