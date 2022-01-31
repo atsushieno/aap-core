@@ -13,33 +13,6 @@
 namespace aap
 {
 
-//-----------------------------------
-
-// AndroidAudioPluginBuffer holder that is comfortable in C++ memory model.
-class PluginSharedMemoryBuffer
-{
-	std::vector<int32_t> shared_memory_fds{};
-	std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
-
-public:
-	enum PluginMemoryAllocatorResult {
-		PLUGIN_MEMORY_ALLOCATOR_SUCCESS,
-		PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC,
-		PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE,
-		PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP
-	};
-
-	~PluginSharedMemoryBuffer() {
-		if (buffer) {
-			for (size_t i = 0; i < buffer->num_buffers; i++)
-				free(buffer->buffers[i]);
-		}
-	}
-
-	int32_t allocateBuffer(size_t numPorts, size_t numFrames);
-
-	AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
-};
 
 //-----------------------------------
 
@@ -88,11 +61,6 @@ std::vector<PluginInformation*> PluginHostPAL::getInstalledPlugins(bool returnCa
 
 //-----------------------------------
 
-void PluginHost::destroyInstance(PluginInstance* instance)
-{
-	delete instance;
-}
-
 PluginHostManager::PluginHostManager()
 {
 	auto pal = getPluginHostPAL();
@@ -131,28 +99,42 @@ bool PluginHostManager::isPluginUpToDate (std::string identifier, int64_t lastIn
 	return desc->getLastInfoUpdateTime() <= lastInfoUpdatedTimeInMilliseconds;
 }
 
-int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
-{
-	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
-	assert (descriptor != nullptr);
+//-----------------------------------
 
-	// For local plugins, they can be directly loaded using dlopen/dlsym.
-	// For remote plugins, the connection has to be established through binder.
-	auto instance = isRemoteExplicit || descriptor->isOutProcess() ?
-			instantiateRemotePlugin(descriptor, sampleRate) :
-			instantiateLocalPlugin(descriptor, sampleRate);
-	assert(instance != nullptr);
-	instances.emplace_back(instance);
-	return instances.size() - 1;
+PluginBuffer::~PluginBuffer() {
+	if (buffer) {
+		for (size_t i = 0; i < buffer->num_buffers; i++)
+			free(buffer->buffers[i]);
+		free(buffer->buffers);
+	}
 }
 
-int32_t PluginSharedMemoryBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
+bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
 	assert(!buffer); // already allocated
 
 	buffer = std::make_unique<AndroidAudioPluginBuffer>();
 	if (!buffer)
-		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+		return false;
 
+	size_t memSize = numFrames * sizeof(float);
+	buffer->num_buffers = numPorts;
+	buffer->num_frames = numFrames;
+	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
+	if (!buffer->buffers)
+		return false;
+
+	for (size_t i = 0; i < numPorts; i++) {
+		buffer->buffers[i] = calloc(1, memSize);
+		if (!buffer->buffers[i])
+			return false;
+	}
+
+	return true;
+}
+
+//-----------------------------------
+
+int32_t PluginSharedMemoryBuffer::allocateClientBuffer(size_t numPorts, size_t numFrames) {
 	size_t memSize = numFrames * sizeof(float);
 	buffer->num_buffers = numPorts;
 	buffer->num_frames = numFrames;
@@ -164,7 +146,7 @@ int32_t PluginSharedMemoryBuffer::allocateBuffer(size_t numPorts, size_t numFram
 		int32_t fd = getPluginHostPAL()->createSharedMemory(memSize);
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
-		shared_memory_fds.emplace_back(fd);
+		shared_memory_fds->emplace_back(fd);
 		buffer->buffers[i] = mmap(nullptr, memSize,
 								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 		if (!buffer->buffers[i])
@@ -174,6 +156,50 @@ int32_t PluginSharedMemoryBuffer::allocateBuffer(size_t numPorts, size_t numFram
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
 }
 
+int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames) {
+	size_t numPorts = clientFDs.size();
+	size_t memSize = numFrames * sizeof(float);
+	buffer->num_buffers = numPorts;
+	buffer->num_frames = numFrames;
+	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
+	if (!buffer->buffers)
+		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+
+	for (size_t i = 0; i < numPorts; i++) {
+		int32_t fd = clientFDs[i];
+		if (!fd)
+			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
+		shared_memory_fds->emplace_back(fd);
+		buffer->buffers[i] = mmap(nullptr, memSize,
+								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		if (!buffer->buffers[i])
+			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
+	}
+
+	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
+}
+
+//-----------------------------------
+
+int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
+{
+	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
+	assert (descriptor != nullptr);
+
+	// For local plugins, they can be directly loaded using dlopen/dlsym.
+	// For remote plugins, the connection has to be established through binder.
+	auto instance = isRemoteExplicit || descriptor->isOutProcess() ?
+					instantiateRemotePlugin(descriptor, sampleRate) :
+					instantiateLocalPlugin(descriptor, sampleRate);
+	assert(instance != nullptr);
+	instances.emplace_back(instance);
+	return instances.size() - 1;
+}
+
+void PluginHost::destroyInstance(PluginInstance* instance)
+{
+	delete instance;
+}
 
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
 {
@@ -252,16 +278,16 @@ PluginInstance::PluginInstance(PluginHost* pluginHost, const PluginInformation* 
 
 PluginInstance::~PluginInstance() { dispose(); }
 
-int32_t PluginInstance::allocateSharedMemoryBuffer(size_t numPorts, size_t numFrames) {
-	assert(!shm_buffer);
-	shm_buffer = std::make_unique<PluginSharedMemoryBuffer>();
-	return shm_buffer->allocateBuffer(numPorts, numFrames);
+int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames) {
+	assert(!plugin_buffer);
+	plugin_buffer = std::make_unique<PluginBuffer>();
+	return plugin_buffer->allocateBuffer(numPorts, numFrames);
 }
 
-AndroidAudioPluginBuffer* PluginInstance::getSharedMemoryBuffer(size_t numPorts, size_t numFrames) {
-	if (!shm_buffer)
-		allocateSharedMemoryBuffer(numPorts, numFrames);
-	return shm_buffer->getAudioPluginBuffer();
+AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, size_t numFrames) {
+	if (!plugin_buffer)
+		allocateAudioPluginBuffer(numPorts, numFrames);
+	return plugin_buffer->getAudioPluginBuffer();
 }
 
 } // namespace

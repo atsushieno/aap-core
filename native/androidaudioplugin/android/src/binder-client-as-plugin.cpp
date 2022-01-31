@@ -19,7 +19,9 @@ public:
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
+	// FIXME: there may be better SharedMemoryExtension/PluginSharedMemoryBuffer unification.
 	std::unique_ptr<aap::SharedMemoryExtension> shared_memory_extension{nullptr};
+	std::unique_ptr<aap::PluginSharedMemoryBuffer> shm_buffer{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state{};
@@ -66,26 +68,15 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 {
 	int n = buffer->num_buffers;
 
-	auto prevBuf = ctx->previous_buffer;
-	auto shmExt = ctx->shared_memory_extension.get();
+    // as it could alter existing PluginSharedMemoryBuffer, it implicitly closes extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
+	ctx->shm_buffer = std::make_unique<aap::PluginSharedMemoryBuffer>();
 
-
-    // close extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
-    if (prevBuf != nullptr) {
-        int nPrev = prevBuf->num_buffers;
-        for (int i = prevBuf->num_frames < buffer->num_frames ? 0 : n; i < nPrev; i++) {
-            close(shmExt->getPortBufferFD(i));
-            shmExt->setPortBufferFD(i, 0);
-        }
-    }
-    shmExt->resizePortBuffer(n);
+    ctx->shm_buffer->allocateClientBuffer(buffer->num_buffers, buffer->num_frames);
 
     // allocate shm FDs, first locally, then send it to the target AAP.
     for (int i = 0; i < n; i++) {
-    	int32_t fd = ASharedMemory_create(nullptr, buffer->num_frames * sizeof(float));
-    	shmExt->setPortBufferFD(i, fd);
         ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(fd);
+        sfd.set(ctx->shm_buffer->getFD(i));
         auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         assert(pmStatus.isOk());
     }
@@ -93,7 +84,7 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
 	auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
     assert(status.isOk());
 
-	ctx->previous_buffer = buffer;
+	ctx->previous_buffer = ctx->shm_buffer->getAudioPluginBuffer();
 }
 
 void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)

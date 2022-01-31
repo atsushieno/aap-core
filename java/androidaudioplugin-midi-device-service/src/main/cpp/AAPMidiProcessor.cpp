@@ -124,8 +124,7 @@ namespace aapmidideviceservice {
         instance->completeInstantiation();
 
         data->instance_id = instanceId;
-        data->plugin_buffer = instance->getSharedMemoryBuffer(numPorts, aap_frame_size);
-
+        data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
 
         for (int i = 0; i < numPorts; i++) {
             auto port = pluginInfo->getPort(i);

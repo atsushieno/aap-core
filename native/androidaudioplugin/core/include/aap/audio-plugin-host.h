@@ -25,6 +25,8 @@ enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED = 0,
 	AAP_CONTENT_TYPE_AUDIO = 1,
 	AAP_CONTENT_TYPE_MIDI = 2,
+	// FIXME: we will remove it. There will be only one MIDI port that would switch
+	//  between MIDI2 and MIDI1, using MIDI-CI Set New Protocol.
 	AAP_CONTENT_TYPE_MIDI2 = 3,
 };
 
@@ -307,8 +309,6 @@ public:
 
 PluginHostPAL* getPluginHostPAL();
 
-#define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
-
 class PluginHostManager
 {
 	std::vector<const PluginInformation*> plugin_infos{};
@@ -385,7 +385,7 @@ public:
     AndroidAudioPluginExtension asTransient() const;
 };
 
-class PluginSharedMemoryBuffer;
+class PluginBuffer;
 
 class PluginInstance
 {
@@ -399,17 +399,18 @@ class PluginInstance
 	std::vector<std::unique_ptr<PluginExtension>> extensions{};
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
-	std::unique_ptr<PluginSharedMemoryBuffer> shm_buffer{nullptr};
+	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
 	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
-	int32_t allocateSharedMemoryBuffer(size_t numPorts, size_t numFrames);
+	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames);
 
 public:
 
     virtual ~PluginInstance();
 
-	AndroidAudioPluginBuffer* getSharedMemoryBuffer(size_t numPorts, size_t numFrames);
+    // It may or may not be shared memory buffer. Available only after prepare().
+	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts, size_t numFrames);
 
 	const PluginInformation* getPluginInformation()
 	{

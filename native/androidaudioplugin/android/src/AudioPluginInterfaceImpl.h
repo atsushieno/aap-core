@@ -42,7 +42,7 @@ public:
         shm->resizePortBuffer(instance->getPluginInformation()->getNumPorts());
         AndroidAudioPluginExtension ext;
         ext.uri = AAP_SHARED_MEMORY_EXTENSION_URI;
-        ext.transmit_size = sizeof(typeid(SharedMemoryExtension));
+        ext.transmit_size = sizeof(SharedMemoryExtension);
         ext.data = shm;
         instance->addExtension(ext);
         buffers.resize(*_aidl_return + 1);
@@ -95,6 +95,10 @@ public:
     ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) override
     {
         assert(in_instanceID < host->getInstanceCount());
+        auto instance = host->getInstance(in_instanceID);
+        auto shmExt = getSharedMemoryExtension(instance);
+        assert(shmExt != nullptr);
+        shmExt->completeInitialization(in_frameCount);
         int ret = prepare(host->getInstance(in_instanceID), buffers[in_instanceID], in_frameCount, in_portCount);
 
         return ret != 0 ? ndk::ScopedAStatus{AStatus_fromServiceSpecificError(ret)}
