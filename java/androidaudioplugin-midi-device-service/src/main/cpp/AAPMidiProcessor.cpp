@@ -279,6 +279,7 @@ namespace aapmidideviceservice {
         int64_t actualTimestamp = timestampInNanoseconds;
         struct timespec curtime{};
         clock_gettime(CLOCK_REALTIME, &curtime);
+        pal()->midiInputReceived(bytes, offset, length, timestampInNanoseconds);
         // it is 99.999... percent true since audio loop must have started before any MIDI events...
         if (last_aap_process_time.tv_sec > 0) {
             int64_t diff = (curtime.tv_sec - last_aap_process_time.tv_sec) * 1000000000 +

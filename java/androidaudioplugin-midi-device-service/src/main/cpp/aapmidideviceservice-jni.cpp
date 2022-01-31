@@ -28,8 +28,11 @@ extern "C" {
 
 aapmidideviceservice::AAPMidiProcessorAndroid *processor{nullptr};
 
+aapmidideviceservice::AudioDriverType driver_type{
+    aapmidideviceservice::AudioDriverType::AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE};
+
 void resetInstance() {
-    processor = new aapmidideviceservice::AAPMidiProcessorAndroid();
+    processor = new aapmidideviceservice::AAPMidiProcessorAndroid(driver_type);
 }
 
 aapmidideviceservice::AAPMidiProcessorAndroid* getInstance() {

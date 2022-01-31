@@ -6,6 +6,7 @@
 #include <oboe/Oboe.h>
 #include "AAPMidiProcessor.h"
 #include <aap/audio-plugin-host-android.h>
+#include <aap/logging.h>
 
 namespace aapmidideviceservice {
 
@@ -28,6 +29,11 @@ public:
 
     inline void setBufferCapacityInFrames(int32_t size) override {}
     inline void setFramesPerDataCallback(int32_t size) override {}
+    void midiInputReceived(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) override {
+        aap::aprintf("AAPMidiProcessorAndroidStubPAL::midiInputReceived(timestampInNanoseconds: %d)", timestampInNanoseconds);
+        for (size_t i = offset; i < offset + length; i++)
+            aap::aprintf("  %x", bytes[i]);
+    }
 };
 
 class AAPMidiProcessorOboePAL : public oboe::AudioStreamDataCallback, public AAPMidiProcessorAndroidPAL {
@@ -55,8 +61,8 @@ class AAPMidiProcessorAndroid : public AAPMidiProcessor {
 protected:
     AAPMidiProcessorAndroidPAL* pal() { return androidPAL.get(); }
 public:
-    AAPMidiProcessorAndroid(bool testStub = false)
-        : androidPAL(testStub ? (std::unique_ptr<AAPMidiProcessorAndroidPAL>)
+    AAPMidiProcessorAndroid(AudioDriverType audioDriverType = AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE)
+        : androidPAL(audioDriverType == AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_STUB ? (std::unique_ptr<AAPMidiProcessorAndroidPAL>)
             std::make_unique<AAPMidiProcessorAndroidStubPAL>(this) :
             std::make_unique<AAPMidiProcessorOboePAL>(this)) {}
 

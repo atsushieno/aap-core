@@ -19,6 +19,12 @@ namespace aapmidideviceservice {
         virtual int32_t setupStream() = 0;
         virtual int32_t startStreaming() = 0;
         virtual int32_t stopStreaming() = 0;
+        virtual void midiInputReceived(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {}
+    };
+
+    enum AudioDriverType {
+        AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE,
+        AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_STUB
     };
 
     enum AAPMidiProcessorState {
