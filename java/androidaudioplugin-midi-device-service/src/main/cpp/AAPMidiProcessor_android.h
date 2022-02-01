@@ -59,7 +59,6 @@ public:
     inline void setBufferCapacityInFrames(int32_t size) override {}
     inline void setFramesPerDataCallback(int32_t size) override {}
     void midiInputReceived(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) override {
-aap::aprintf("AAPMidiProcessorAndroidStubPAL::midiInputReceived(timestampInNanoseconds: %d)", timestampInNanoseconds);
         for (size_t i = offset; i < offset + length; i++)
             aap::aprintf("  %x", bytes[i]);
     }
