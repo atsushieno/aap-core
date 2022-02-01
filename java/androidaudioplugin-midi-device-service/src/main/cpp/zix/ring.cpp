@@ -1,5 +1,5 @@
 /*
-  Copyright 2011-2017 David Robillard <http://drobilla.net>
+  Copyright 2011-2020 David Robillard <d@drobilla.net>
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -16,48 +16,39 @@
 
 #include "zix/ring.h"
 
-#ifdef HAVE_MLOCK
-#    include <sys/mman.h>
-#    define ZIX_MLOCK(ptr, size) mlock((ptr), (size))
-#elif defined(_WIN32)
-#    include <windows.h>
-#    define ZIX_MLOCK(ptr, size) VirtualLock((ptr), (size))
-#else
-#    pragma message("warning: No memory locking, possible RT violations")
-#    define ZIX_MLOCK(ptr, size)
-#endif
-
-#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
-#    include <stdatomic.h>
-#    define ZIX_WRITE_BARRIER() atomic_thread_fence(memory_order_release)
-#    define ZIX_READ_BARRIER() atomic_thread_fence(memory_order_acquire)
-#elif defined(__APPLE__) /* Pre 10.12 */
-#    include <libkern/OSAtomic.h>
-#    define ZIX_WRITE_BARRIER() OSMemoryBarrier()
-#    define ZIX_READ_BARRIER() OSMemoryBarrier()
-#elif defined(_WIN32)
-#    include <windows.h>
-#    define ZIX_WRITE_BARRIER() MemoryBarrier()
-#    define ZIX_READ_BARRIER() MemoryBarrier()
-#elif (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
-#    define ZIX_WRITE_BARRIER() __sync_synchronize()
-#    define ZIX_READ_BARRIER() __sync_synchronize()
-#else
-#    pragma message("warning: No memory barriers, possible SMP bugs")
-#    define ZIX_WRITE_BARRIER()
-#    define ZIX_READ_BARRIER()
-#endif
-
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_MLOCK
+#  include <sys/mman.h>
+#  define ZIX_MLOCK(ptr, size) mlock((ptr), (size))
+#elif defined(_WIN32)
+#  include <windows.h>
+#  define ZIX_MLOCK(ptr, size) VirtualLock((ptr), (size))
+#else
+#  pragma message("warning: No memory locking, possible RT violations")
+#  define ZIX_MLOCK(ptr, size)
+#endif
+
+#if defined(_MSC_VER)
+#  include <windows.h>
+#  define ZIX_READ_BARRIER() MemoryBarrier()
+#  define ZIX_WRITE_BARRIER() MemoryBarrier()
+#elif defined(__GNUC__)
+#  define ZIX_READ_BARRIER() __atomic_thread_fence(__ATOMIC_ACQUIRE)
+#  define ZIX_WRITE_BARRIER() __atomic_thread_fence(__ATOMIC_RELEASE)
+#else
+#  pragma message("warning: No memory barriers, possible SMP bugs")
+#  define ZIX_READ_BARRIER()
+#  define ZIX_WRITE_BARRIER()
+#endif
+
 struct ZixRingImpl {
-	uint32_t write_head;  ///< Read index into buf
-	uint32_t read_head;   ///< Write index into buf
-	uint32_t size;        ///< Size (capacity) in bytes
-	uint32_t size_mask;   ///< Mask for fast modulo
-	char*    buf;         ///< Contents
+	uint32_t write_head; ///< Read index into buf
+	uint32_t read_head;  ///< Write index into buf
+	uint32_t size;       ///< Size (capacity) in bytes
+	uint32_t size_mask;  ///< Mask for fast modulo
+	char*    buf;        ///< Contents
 };
 
 static inline uint32_t
@@ -65,11 +56,11 @@ next_power_of_two(uint32_t size)
 {
 	// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 	size--;
-	size |= size >> 1;
-	size |= size >> 2;
-	size |= size >> 4;
-	size |= size >> 8;
-	size |= size >> 16;
+	size |= size >> 1u;
+	size |= size >> 2u;
+	size |= size >> 4u;
+	size |= size >> 8u;
+	size |= size >> 16u;
 	size++;
 	return size;
 }
@@ -77,7 +68,7 @@ next_power_of_two(uint32_t size)
 ZixRing*
 zix_ring_new(uint32_t size)
 {
-	ZixRing* ring = (ZixRing*)malloc(sizeof(ZixRing));
+	ZixRing* ring    = (ZixRing*)malloc(sizeof(ZixRing));
 	ring->write_head = 0;
 	ring->read_head  = 0;
 	ring->size       = next_power_of_two(size);
@@ -114,9 +105,9 @@ read_space_internal(const ZixRing* ring, uint32_t r, uint32_t w)
 {
 	if (r < w) {
 		return w - r;
-	} else {
-		return (w - r + ring->size) & ring->size_mask;
 	}
+
+	return (w - r + ring->size) & ring->size_mask;
 }
 
 uint32_t
@@ -130,11 +121,13 @@ write_space_internal(const ZixRing* ring, uint32_t r, uint32_t w)
 {
 	if (r == w) {
 		return ring->size - 1;
-	} else if (r < w) {
-		return ((r - w + ring->size) & ring->size_mask) - 1;
-	} else {
-		return (r - w) - 1;
 	}
+
+	if (r < w) {
+		return ((r - w + ring->size) & ring->size_mask) - 1;
+	}
+
+	return (r - w) - 1;
 }
 
 uint32_t
@@ -150,8 +143,11 @@ zix_ring_capacity(const ZixRing* ring)
 }
 
 static inline uint32_t
-peek_internal(const ZixRing* ring, uint32_t r, uint32_t w,
-              uint32_t size, void* dst)
+peek_internal(const ZixRing* ring,
+			  uint32_t       r,
+			  uint32_t       w,
+			  uint32_t       size,
+			  void*          dst)
 {
 	if (read_space_internal(ring, r, w) < size) {
 		return 0;
@@ -184,9 +180,9 @@ zix_ring_read(ZixRing* ring, void* dst, uint32_t size)
 		ZIX_READ_BARRIER();
 		ring->read_head = (r + size) & ring->size_mask;
 		return size;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 uint32_t

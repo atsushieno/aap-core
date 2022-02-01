@@ -61,6 +61,7 @@ target_compile_options (aapmidideviceservice
         -Wshadow
         # uncomment this if you want to enable AddressSanitizer
         #-fsanitize=address -fno-omit-frame-pointer
+		-DHAVE_MLOCK=1
         )
 
 target_link_directories(aapmidideviceservice
