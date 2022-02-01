@@ -106,12 +106,22 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 
+	// FIXME: copy only input ports
 	for (size_t i = 0; i < buffer->num_buffers; i++) {
 		if (ctx->previous_buffer->buffers[i] != buffer->buffers[i])
 			memcpy(ctx->previous_buffer->buffers[i], buffer->buffers[i],
 				   buffer->num_frames * sizeof(float));
 	}
+
 	auto status = ctx->proxy->process(ctx->instance_id, timeoutInNanoseconds);
+
+	// FIXME: copy only output ports
+	for (size_t i = 0; i < buffer->num_buffers; i++) {
+		if (ctx->previous_buffer->buffers[i] != buffer->buffers[i])
+			memcpy(buffer->buffers[i], ctx->previous_buffer->buffers[i],
+				   buffer->num_frames * sizeof(float));
+	}
+
     assert (status.isOk());
 }
 
