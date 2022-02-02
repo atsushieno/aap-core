@@ -73,8 +73,9 @@ android {
     }
     */
 
-    // I leave these settings here for possible use in the future (because this existence is harmless,
-    //  but note that it never worked for me: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
+    // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
+    // It's been long time until I got this working, and I have no idea why it started working.
+    //  If you don't get this working, you are not alone: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
     testOptions {
         devices {
             this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice1") {

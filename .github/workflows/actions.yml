@@ -27,6 +27,13 @@ jobs:
       with:
         path: /usr/local/lib/android/sdk/ndk/21.3.6528147
         key: ndk_r21d_linux
+    - name: cache AVD
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-avd
+      with:
+        path: /home/runner/.android/gradle/avd
+        key: gradle-avd
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
@@ -34,6 +41,8 @@ jobs:
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
       run: make
+    - name: run instrumented tests
+      run: cd java && ./gradlew testDevice1DebugAndroidTest
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
