@@ -19,7 +19,6 @@ class AudioPluginHostHelper {
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
 
         private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
-            // TODO: this XML parsing is super hacky so far.
             val aapServiceInfo = AudioPluginServiceInformation(label, packageName, className)
 
             var currentPlugin: PluginInformation? = null
@@ -31,6 +30,8 @@ class AudioPluginHostHelper {
                     continue
                 if (eventType == XmlPullParser.START_TAG) {
                     if (xp.name == "plugin" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
+                        if (currentPlugin != null)
+                            continue
                         val name = xp.getAttributeValue(null, "name")
                         val backend = xp.getAttributeValue(null, "backend")
                         val version = xp.getAttributeValue(null, "version")
