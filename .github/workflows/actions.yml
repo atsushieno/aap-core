@@ -41,7 +41,11 @@ jobs:
       run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
       run: make
-    - name: run instrumented tests
+    - name: run instrumented tests (disabled)
+      if: false
+      # > Gradle was not able to complete device setup for: dev30_google_x86_Pixel_5
+      # > The emulator failed to open the managed device to generate the snapshot.
+      # also https://github.com/actions/virtual-environments/issues/183
       run:
         cd java && ./gradlew testDevice1DebugAndroidTest && cd .. || exit 1
         cd java && ./gradlew testDevice2DebugAndroidTest && cd .. || exit 1
