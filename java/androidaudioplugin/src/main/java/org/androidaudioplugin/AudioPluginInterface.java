@@ -57,7 +57,6 @@ public interface AudioPluginInterface extends android.os.IInterface
   /** Local-side IPC implementation stub class. */
   public static abstract class Stub extends android.os.Binder implements org.androidaudioplugin.AudioPluginInterface
   {
-    private static final java.lang.String DESCRIPTOR = "org.androidaudioplugin.AudioPluginInterface";
     /** Construct the stub at attach it to the interface. */
     public Stub()
     {
@@ -92,6 +91,9 @@ public interface AudioPluginInterface extends android.os.IInterface
           reply.writeString(descriptor);
           return true;
         }
+      }
+      switch (code)
+      {
         case TRANSACTION_beginCreate:
         {
           data.enforceInterface(descriptor);
@@ -287,8 +289,10 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeString(pluginId);
           _data.writeInt(sampleRate);
           boolean _status = mRemote.transact(Stub.TRANSACTION_beginCreate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            return getDefaultImpl().beginCreate(pluginId, sampleRate);
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              return getDefaultImpl().beginCreate(pluginId, sampleRate);
+            }
           }
           _reply.readException();
           _result = _reply.readInt();
@@ -316,9 +320,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           }
           _data.writeInt(size);
           boolean _status = mRemote.transact(Stub.TRANSACTION_addExtension, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().addExtension(instanceID, uri, sharedMemoryFD, size);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().addExtension(instanceID, uri, sharedMemoryFD, size);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -335,9 +341,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_endCreate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().endCreate(instanceID);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().endCreate(instanceID);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -355,8 +363,10 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_isPluginAlive, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            return getDefaultImpl().isPluginAlive(instanceID);
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              return getDefaultImpl().isPluginAlive(instanceID);
+            }
           }
           _reply.readException();
           _result = (0!=_reply.readInt());
@@ -376,8 +386,10 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_getStateSize, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            return getDefaultImpl().getStateSize(instanceID);
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              return getDefaultImpl().getStateSize(instanceID);
+            }
           }
           _reply.readException();
           _result = _reply.readInt();
@@ -403,9 +415,11 @@ public interface AudioPluginInterface extends android.os.IInterface
             _data.writeInt(0);
           }
           boolean _status = mRemote.transact(Stub.TRANSACTION_getState, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().getState(instanceID, sharedMemoryFD);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().getState(instanceID, sharedMemoryFD);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -430,9 +444,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           }
           _data.writeInt(size);
           boolean _status = mRemote.transact(Stub.TRANSACTION_setState, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().setState(instanceID, sharedMemoryFD, size);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().setState(instanceID, sharedMemoryFD, size);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -451,9 +467,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInt(frameCount);
           _data.writeInt(portCount);
           boolean _status = mRemote.transact(Stub.TRANSACTION_prepare, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepare(instanceID, frameCount, portCount);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().prepare(instanceID, frameCount, portCount);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -478,9 +496,11 @@ public interface AudioPluginInterface extends android.os.IInterface
             _data.writeInt(0);
           }
           boolean _status = mRemote.transact(Stub.TRANSACTION_prepareMemory, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().prepareMemory(instanceID, shmFDIndex, sharedMemoryFD);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().prepareMemory(instanceID, shmFDIndex, sharedMemoryFD);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -497,9 +517,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_activate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().activate(instanceID);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().activate(instanceID);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -517,9 +539,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInt(instanceID);
           _data.writeInt(timeoutInNanoseconds);
           boolean _status = mRemote.transact(Stub.TRANSACTION_process, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().process(instanceID, timeoutInNanoseconds);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().process(instanceID, timeoutInNanoseconds);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -536,9 +560,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_deactivate, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().deactivate(instanceID);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().deactivate(instanceID);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -555,9 +581,11 @@ public interface AudioPluginInterface extends android.os.IInterface
           _data.writeInterfaceToken(DESCRIPTOR);
           _data.writeInt(instanceID);
           boolean _status = mRemote.transact(Stub.TRANSACTION_destroy, _data, _reply, 0);
-          if (!_status && getDefaultImpl() != null) {
-            getDefaultImpl().destroy(instanceID);
-            return;
+          if (!_status) {
+            if (getDefaultImpl() != null) {
+              getDefaultImpl().destroy(instanceID);
+              return;
+            }
           }
           _reply.readException();
         }
@@ -598,6 +626,7 @@ public interface AudioPluginInterface extends android.os.IInterface
       return Stub.Proxy.sDefaultImpl;
     }
   }
+  public static final java.lang.String DESCRIPTOR = "org.androidaudioplugin.AudioPluginInterface";
   public int beginCreate(java.lang.String pluginId, int sampleRate) throws android.os.RemoteException;
   public void addExtension(int instanceID, java.lang.String uri, android.os.ParcelFileDescriptor sharedMemoryFD, int size) throws android.os.RemoteException;
   public void endCreate(int instanceID) throws android.os.RemoteException;
