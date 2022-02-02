@@ -45,7 +45,7 @@ android {
     //  If you don't get this working, you are not alone: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
     testOptions {
         devices {
-            this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice1") {
+            this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice2") {
                 device = "Pixel 5"
                 apiLevel = 30
                 systemImageSource = "google"

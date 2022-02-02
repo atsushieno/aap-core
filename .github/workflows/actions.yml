@@ -42,7 +42,9 @@ jobs:
     - name: build
       run: make
     - name: run instrumented tests
-      run: cd java && ./gradlew testDevice1DebugAndroidTest
+      run:
+        cd java && ./gradlew testDevice1DebugAndroidTest && cd .. || exit 1
+        cd java && ./gradlew testDevice2DebugAndroidTest && cd .. || exit 1
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
