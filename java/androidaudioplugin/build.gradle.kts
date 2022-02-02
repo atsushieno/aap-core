@@ -72,6 +72,19 @@ android {
         }
     }
     */
+
+    // I leave these settings here for possible use in the future (because this existence is harmless,
+    //  but note that it never worked for me: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
+    testOptions {
+        devices {
+            this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice1") {
+                device = "Pixel 5"
+                apiLevel = 30
+                systemImageSource = "google"
+                abi = "x86"
+            }
+        }
+    }
 }
 
 apply { from ("../publish-pom.gradle") }
