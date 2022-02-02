@@ -1,0 +1,72 @@
+plugins {
+    id ("com.android.application")
+    id ("kotlin-android")
+}
+
+apply { from ("../../common.gradle") }
+
+// What a mess...
+val kotlin_version: String by rootProject
+val dokka_version: String by rootProject
+val compose_version: String by rootProject
+val aap_version: String by rootProject
+
+android {
+    buildFeatures {
+        viewBinding = true
+    }
+    defaultConfig {
+        applicationId = "org.androidaudioplugin.aaphostsample"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
+    /*
+    buildFeatures {
+        prefab true
+    }
+    */
+    buildTypes {
+        debug {
+            packagingOptions {
+                doNotStrip ("**/*.so")
+            }
+        }
+        release {
+            isMinifyEnabled = false
+            proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    aaptOptions {
+        noCompress ("sample.wav")
+    }
+}
+
+dependencies {
+    implementation (project(":androidaudioplugin"))
+    implementation (project(":androidaudioplugin-samples-host-engine"))
+    implementation (project(":androidaudioplugin-ui-compose"))
+
+    implementation ("androidx.core:core-ktx:1.7.0")
+    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
+    implementation ("androidx.appcompat:appcompat:1.4.1")
+
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
+
+    testImplementation ("junit:junit:4.13.2")
+
+    androidTestImplementation ("androidx.test:core:1.4.0")
+    androidTestImplementation ("androidx.test:rules:1.4.0")
+    androidTestImplementation ("androidx.test:runner:1.4.0")
+    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
+    androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
+}
+
+// Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
+// This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
+/*
+gradle.projectsEvaluated {
+    mergeDebugNativeLibs.dependsOn(rootProject.project("androidaudioplugin").mergeDebugNativeLibs)
+    mergeReleaseNativeLibs.dependsOn(rootProject.project("androidaudioplugin").mergeReleaseNativeLibs)
+}
+*/

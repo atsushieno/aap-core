@@ -1,13 +1,13 @@
 
 android {
-    compileSdkVersion 31
-    buildToolsVersion "31.0.0"
+    compileSdk = 31
+    buildToolsVersion = "31.0.0"
 
     defaultConfig {
-        minSdkVersion 29
-        targetSdkVersion 31
-        versionCode 1
-        versionName "$aap_version"
+        minSdk = 29
+        targetSdk = 31
+        versionCode = 1
+        versionName = "$aap_version"
     }
 
     // This should not be necessary in normal projects, but we specify c++_shared and thus
@@ -15,14 +15,14 @@ android {
     // yet but will be at some stage). This means, every AAP related project has to fix the
     // NDK version in use. It is not realistic when it becomes for public uses, but so far
     // we have to take this pill...
-    ndkVersion "21.3.6528147"
+    ndkVersion = "21.3.6528147"
     //ndkVersion "24.0.7956693" // unable to upgrade due to NDK bug: error: 'AStatus_getDescription' is unavailable: introduced in Android 30
     //ndkVersion "23.1.7779620" // ditto!
     //ndkVersion "22.1.7171670"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
         jvmTarget = '1.8'

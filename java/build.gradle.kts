@@ -1,0 +1,42 @@
+
+buildscript {
+    val kotlin_version: String by extra("1.5.31")
+    val dokka_version: String by extra("1.5.0")
+    val compose_version: String by extra("1.0.5")
+    val aap_version: String by extra("0.6.22")
+
+    repositories {
+        google()
+        mavenCentral()
+        maven ("https://plugins.gradle.org/m2/")
+        maven ("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+    }
+    dependencies {
+        classpath ("com.android.tools.build:gradle:7.3.0-alpha01")
+        classpath ("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+        classpath ("org.jetbrains.dokka:dokka-gradle-plugin:$dokka_version")
+        classpath ("org.jetbrains.compose:compose-gradle-plugin:1.0.1")
+    }
+}
+
+plugins {
+    id ("maven-publish")
+    //id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+}
+
+apply { from ("${rootDir}/publish-root.gradle") }
+
+subprojects {
+    group = "org.androidaudioplugin"
+    repositories {
+        google()
+        mavenCentral()
+        maven ("https://plugins.gradle.org/m2/")
+        maven ("https://jitpack.io")
+        maven ("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+    }
+}
+
+tasks.register<Delete>("clean") {
+    delete(rootProject.buildDir)
+}

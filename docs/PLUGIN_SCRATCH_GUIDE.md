@@ -12,7 +12,7 @@ rewrite wherever appropriate.
 
 ## Where to make changes
 
-- `build.gradle`
+- `build.gradle.kts`
   - It's best to create Android Application project with the template
     that brings in C++ code. It will add `externalNativeBuild` sections.
   - Add `org.androidaudioplugin:androidaudioplugin:(version)` package in `dependencies`
@@ -22,7 +22,7 @@ rewrite wherever appropriate.
     by ANDROID_STL=libc++_static (which is the default in Android Gradle Plugin)
     may result in some inconsistency issue. Our recommendation is to build
     your application (host/plugin) code with `ANDROID_STL=c++_shared` in your
-    `build.gradle`: ` android { defaultConfig { externalNativeBuild { cmake { arguments "-DANDROID_STL=c++_shared" } } } }`
+    `build.gradle.kts`: ` android { defaultConfig { externalNativeBuild { cmake { arguments ("-DANDROID_STL=c++_shared") } } } }`
     - Note that prefab is not enabled in this repository yet (due to way too many existing known issues, see Google issuetracker for details).
 - `CMakeLists.txt`
   - It's best to start with automatically generated file from C++ based
