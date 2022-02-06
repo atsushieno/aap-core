@@ -25,15 +25,22 @@ jobs:
       env:
         cache-name: cache-ndk
       with:
-        path: /usr/local/lib/android/sdk/ndk/21.3.6528147
-        key: ndk_r21d_linux
+        path: /usr/local/lib/android/sdk/ndk/21.4.7075529
+        key: ${{ runner.os }}-ndk_r21d_linux
     - name: cache AVD
       uses: actions/cache@v2
       env:
         cache-name: cache-avd
       with:
         path: /home/runner/.android/gradle/avd
-        key: gradle-avd
+        key: ${{ runner.os }}-gradle-avd
+    - name: cache gradle caches
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-gradle-caches
+      with:
+        path: /home/runner/.gradle/caches/
+        key: ${{ runner.os }}-gradle-caches
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
@@ -85,8 +92,22 @@ jobs:
       env:
         cache-name: cache-ndk
       with:
-        path: /Users/runner/Library/Android/sdk/ndk/21.3.6528147
-        key: ndk_r21d_osx
+        path: /Users/runner/Library/Android/sdk/ndk/21.4.7075529
+        key: ${{ runner.os }}-ndk_r21d_osx
+    - name: cache AVD
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-avd
+      with:
+        path: /Users/runner/.android/gradle/avd
+        key: ${{ runner.os }}-gradle-avd
+    - name: cache gradle caches
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-gradle-caches
+      with:
+        path: /Users/runner/.gradle/caches/
+        key: ${{ runner.os }}-gradle-caches
     - name: install deps
       run: |
         brew tap grpc/grpc && brew install doxygen libxml2 ninja graphviz openssl grpc
