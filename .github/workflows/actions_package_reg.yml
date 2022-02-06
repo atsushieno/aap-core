@@ -40,9 +40,9 @@ jobs:
         SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
     - name: rewrite build.gradle to require signing
       run: |
-        sed -i "s/signing {}/signing { sign (publishing.publications) }/" java/publish-pom.gradle
+        sed -i "s/signing {}/signing { sign (publishing.publications) }/" publish-pom.gradle
     - name: publish
-      run: make publish-global
+      run: ./gradlew build dokkaHtml publish
       env:
         USERNAME: atsushieno
         GITHUB_TOKEN: ${{ secrets.MAVEN_PAT }}
@@ -56,7 +56,7 @@ jobs:
       run: |
         cd docs/native && doxygen && cd ../..
         cp -R docs/native/html gh-pages/native
-        cp -R java/androidaudioplugin/build/dokka/html gh-pages/kotlin/androidaudioplugin
+        cp -R androidaudioplugin/build/dokka/html gh-pages/kotlin/androidaudioplugin
     - name: deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@4.1.2
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

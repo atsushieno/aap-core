@@ -30,12 +30,10 @@ add_library( # Specifies the name of the library.
 
 target_include_directories(aaphostsample
         PRIVATE
-        "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
-        "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/core/include"
+        "${Project_SOURCE_DIR}/../../native/plugin-api/include"
+        "${Project_SOURCE_DIR}/../../native/androidaudioplugin/core/include"
         # FIXME: it should have no access to AIDL generated code.
-        "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/android/src/gen/include"
-        "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/"
-        "${Project_SOURCE_DIR}/../../../dependencies/dist/${CMAKE_ANDROID_ARCH_ABI}/include/lilv-0"
+        "${Project_SOURCE_DIR}/../../native/androidaudioplugin/android/src/gen/include"
         )
 
 target_compile_options(aaphostsample

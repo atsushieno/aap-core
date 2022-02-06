@@ -23,10 +23,10 @@ add_library( # Specifies the name of the library.
 
 target_include_directories(aapinstrumentsample
         PRIVATE
-        "${Project_SOURCE_DIR}/../../../external/cmidi2"
-        "${Project_SOURCE_DIR}/../../../native/plugin-api/include"
-        "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/core/include"
-        "${Project_SOURCE_DIR}/../../../native/androidaudioplugin/android/src/gen/include"
+        "${Project_SOURCE_DIR}/../../external/cmidi2"
+        "${Project_SOURCE_DIR}/../../native/plugin-api/include"
+        "${Project_SOURCE_DIR}/../../native/androidaudioplugin/core/include"
+        "${Project_SOURCE_DIR}/../../native/androidaudioplugin/android/src/gen/include"
         )
 
 target_compile_options(aapinstrumentsample

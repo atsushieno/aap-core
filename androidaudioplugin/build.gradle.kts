@@ -48,7 +48,7 @@ android {
     externalNativeBuild {
         cmake {
             version = "3.18.1"
-            path ("../../native/androidaudioplugin/CMakeLists.txt")
+            path ("../native/androidaudioplugin/CMakeLists.txt")
         }
     }
 
@@ -66,9 +66,9 @@ android {
             name 'androidaudioplugin'
             // WARNING: It's not working https://github.com/atsushieno/android-audio-plugin-framework/issues/57
             // There is no way to specify more than one include directory.
-            // headers '../../native/androidaudioplugin/android/include'
+            // headers '../native/androidaudioplugin/android/include'
             // FIXME: remove this dummy headers dir hack once https://issuetracker.google.com/issues/172105145 is supported.
-            headers '../../dummy-prefab-headers/include'
+            headers '../dummy-prefab-headers/include'
         }
     }
     */

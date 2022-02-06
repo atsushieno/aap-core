@@ -221,7 +221,7 @@ AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
 
 ## Hosting AAP
 
-We have an AAP proof-of-concept host in `java/samples/aaphostsample` directory.
+We have an AAP proof-of-concept host in `samples/aaphostsample` directory.
 
 AAP plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder. `aaphostsample` issues queries and lists only remote AAPs.
 

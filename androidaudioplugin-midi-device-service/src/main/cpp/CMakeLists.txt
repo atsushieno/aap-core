@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5.1)
 
 project(aapmidideviceservice VERSION 0.6.2 LANGUAGES CXX)
 
-set (TOPDIR "../../../../..")
+set (TOPDIR "../../../..")
 
 set (OBOE_DIR "${TOPDIR}/external/oboe")
 
@@ -28,7 +28,7 @@ set (aapmidideviceservice_INCLUDES
 
 set (aapmidideviceservice_LIBDIRS
 		# FIXME: do not depend on `debug` here.
-		"${TOPDIR}/java/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
+		"${TOPDIR}/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
 		)
 
 set (aapmidideviceservice_LIBS

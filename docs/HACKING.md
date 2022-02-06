@@ -11,7 +11,7 @@ Android NDK will be downloaded to `~/Android/Sdk/ndk/{rev}` unless `ANDROID_NDK`
 
 gradle is used as **part of** the entire builds, for Android application samples and libraries.
 
-Once supplemental things are set up, Android Studio can be used for development by opening `java` directory.
+Once supplemental things are set up, Android Studio can be used for development by opening the top directory.
 
 ### Source tree structure
 
@@ -23,7 +23,7 @@ Once supplemental things are set up, Android Studio can be used for development 
     - `include` - AAP C++ header files for native host developers. (Plugins don't have to reference anything. Packaging is another story though.)
     - `src` - AAP hosting reference implementation
   - `android` (Android-specific parts; NdkBinder etc.)
--  `java`
+-  Android modules
   - `androidaudioplugin` plugin framework and service implementation
   - `androidaudioplugin-samples-host-engine' implements a plugin preview sample application that is also used as the default plugin preview template.
   - `androidaudioplugin-ui-compose` implements the UI part of plugin preview template, based on the module above.
@@ -39,7 +39,7 @@ Once supplemental things are set up, Android Studio can be used for development 
 
 AAP is kind of client-server model, and to fully test AAP framework there should be two apps (for a client and a server). There are `aaphostsample` and `aapbarebonesample` within this repository, but `aap_lv2_mda` in [aap-lv2](https://github.com/atsushieno/aap-lv2) contains more complete plugin examples. Both host and plugins have to be installed to try out.
 
-On Android Studio, you can switch apps within this repository (the project in `java` directory), and decide which to launch.
+On Android Studio, you can switch apps within this repository, and decide which to launch.
 
 There is also `AudioPluginHost` example in [aap-juce](https://github.com/atsushieno/aap-juce) which has more comprehensive plugin hosting features. It likely expose more buggy behaviors in the current souce code in either of the repositories.
 

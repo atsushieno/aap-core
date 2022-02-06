@@ -1,3 +1,11 @@
 *.so
-.idea
-dummy-prefab-headers
+/.idea
+*.iml
+.gradle
+/local.properties
+.DS_Store
+build
+/captures
+.externalNativeBuild
+.cxx
+

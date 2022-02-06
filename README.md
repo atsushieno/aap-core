@@ -73,7 +73,7 @@ We have a dedicated plugin development guide for (1) [building from scratch](PLU
 
 There are Android Gradle projects.
 
-You can open `java` directory in Android Studio (Arctic Fox 2020.3.1 Canary is required) as the top-level project directory and build it.
+You can open this directory in Android Studio (Arctic Fox 2020.3.1 Canary is required) as the top-level project directory and build it.
 Or run `./gradlew` there from your terminal.
 
 There is Makefile to build all those Android modules, and install `*.aar`s to local m2 repository. It is used by our CI builds too, including derived projects such as aap-lv2, aap-juce, and further derivative works.
