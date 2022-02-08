@@ -39,11 +39,7 @@ public:
 		return 0;
     }
 
-    ~AAPClientContext()
-    {
-		if (instance_id != 0)
-	    	proxy->destroy(instance_id);
-    }
+    ~AAPClientContext();
 };
 
 void releaseStateBuffer(AAPClientContext *ctx)
@@ -52,6 +48,13 @@ void releaseStateBuffer(AAPClientContext *ctx)
 		munmap((void*) ctx->state.raw_data, (size_t) ctx->state.data_size);
 	if (ctx->state_ashmem_fd)
 		close(ctx->state_ashmem_fd);
+}
+
+AAPClientContext::~AAPClientContext() {
+	if (instance_id != 0) {
+		releaseStateBuffer(this);
+		proxy->destroy(instance_id);
+	}
 }
 
 void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
@@ -209,8 +212,6 @@ void aap_client_as_plugin_delete(
 		AndroidAudioPlugin *instance)
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
-	ctx->proxy->destroy(ctx->instance_id);
-	releaseStateBuffer(ctx);
 
 	delete ctx;
 	delete instance;
