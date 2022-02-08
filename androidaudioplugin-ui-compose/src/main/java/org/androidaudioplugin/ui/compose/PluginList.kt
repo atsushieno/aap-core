@@ -129,7 +129,6 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                     state.preview.processAudioCompleted = {
                         waveState = state.preview.outBuf
                         pluginAppliedState = true
-                        state.preview.unbindHost()
                     }
                     GlobalScope.launch {
                         state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)

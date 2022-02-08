@@ -35,13 +35,6 @@ class PluginPreview(context: Context) {
 
     fun applyPlugin(service: AudioPluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?)
     {
-        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        intent.component = ComponentName(
-            service.packageName,
-            service.className
-        )
-        intent.putExtra("sampleRate", PCM_DATA_SAMPLERATE)
-
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->
             this.instance = instance
@@ -50,6 +43,8 @@ class PluginPreview(context: Context) {
 
             GlobalScope.launch {
                 processPluginOnce(parametersOnUI)
+
+                releasePluginInstance(instance)
             }
         }
         host.instantiatePlugin(plugin)
@@ -271,13 +266,12 @@ class PluginPreview(context: Context) {
         track.stop()
     }
 
-    fun unbindHost()
-    {
-        val instance = instance
-        if (instance != null) {
-            val serviceInfo = instance.service.serviceInfo
-            host.serviceConnector.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
-        }
+    private fun releasePluginInstance(instance: AudioPluginInstance) {
+        instance.destroy()
+        this.instance = null
+
+        val serviceInfo = instance.service.serviceInfo
+        host.serviceConnector.unbindAudioPluginService(serviceInfo.packageName, serviceInfo.className)
     }
 
     init {
