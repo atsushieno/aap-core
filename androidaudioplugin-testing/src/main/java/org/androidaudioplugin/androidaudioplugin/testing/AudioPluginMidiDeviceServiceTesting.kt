@@ -3,8 +3,10 @@ package org.androidaudioplugin.androidaudioplugin.testing
 import android.content.Context
 import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiManager
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
 
 class AudioPluginMidiDeviceServiceTesting(private val applicationContext: Context) {
 
@@ -15,15 +17,22 @@ class AudioPluginMidiDeviceServiceTesting(private val applicationContext: Contex
         val midiManager = applicationContext.getSystemService(Context.MIDI_SERVICE) as MidiManager
         val deviceInfo = midiManager.devices.first { d -> d.properties.getString(MidiDeviceInfo.PROPERTY_NAME) == deviceName }
 
-        midiManager.openDevice(deviceInfo, { device ->
-            runBlocking {
-                val input = device.openInputPort(deviceInfo.ports.first { p ->
-                    p.type == MidiDeviceInfo.PortInfo.TYPE_INPUT
-                }.portNumber)
-                input.send(simpleNoteOn, 0, simpleNoteOn.size)
-                delay(50)
-                input.send(simpleNoteOff, 0, simpleNoteOn.size)
-            }
-        }, null)
+        runBlocking {
+            val deferred = CompletableDeferred<Unit>()
+
+            midiManager.openDevice(deviceInfo, { device ->
+                runBlocking {
+                    val input = device.openInputPort(deviceInfo.ports.first { p ->
+                        p.type == MidiDeviceInfo.PortInfo.TYPE_INPUT
+                    }.portNumber)
+                    input.send(simpleNoteOn, 0, simpleNoteOn.size)
+                    delay(50)
+                    input.send(simpleNoteOff, 0, simpleNoteOn.size)
+                    deferred.complete(Unit)
+                }
+            }, null)
+
+            deferred.await()
+        }
     }
 }

@@ -3,6 +3,7 @@ package org.androidaudioplugin.aaphostsample
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.SharedMemory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.rule.ServiceTestRule
 import org.androidaudioplugin.AudioPluginHostHelper
@@ -25,8 +26,8 @@ class AudioPluginInterfaceTest {
     //@Test
     fun basicDirectServiceOperations() {
         val pluginId = "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter"
-        val serviceInfo = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext)
-        val pluginInfo = serviceInfo.plugins.first { p -> p.pluginId == pluginId}
+        val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
+        val pluginInfo = services.flatMap { s -> s.plugins.filter { p -> p.pluginId == pluginId} }.first()
 
         val portInfo = pluginInfo.getPort(0)
         assert(portInfo.name == "Left In")
@@ -46,6 +47,9 @@ class AudioPluginInterfaceTest {
 
         iface.endCreate(instanceId)
         iface.endCreate(instanceId2)
+
+        // FIXME: we have to set up shared memory FDs and call prepareMemory(), which is not doable
+        //  at this moment in the java stub.
 
         iface.prepare(instanceId, frameCount, pluginInfo.getPortCount())
         iface.prepare(instanceId2, frameCount, pluginInfo.getPortCount())
