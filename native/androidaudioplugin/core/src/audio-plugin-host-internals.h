@@ -46,6 +46,7 @@ public:
     PluginSharedMemoryBuffer() {
         buffer = std::make_unique<AndroidAudioPluginBuffer>();
         assert(buffer);
+        buffer->num_buffers = 0;
         shared_memory_fds = std::make_unique<std::vector<int32_t>>();
         assert(shared_memory_fds);
     }
@@ -53,7 +54,8 @@ public:
     ~PluginSharedMemoryBuffer() {
         if (buffer) {
             for (size_t i = 0; i < buffer->num_buffers; i++)
-                free(buffer->buffers[i]);
+                if (buffer->buffers[i])
+                    free(buffer->buffers[i]);
             free(buffer->buffers);
         }
     }
