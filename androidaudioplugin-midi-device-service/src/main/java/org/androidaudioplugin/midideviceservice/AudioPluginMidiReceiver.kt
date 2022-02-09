@@ -83,9 +83,7 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
             return
         deactivate()
         terminateReceiverNative()
-        // FIXME: this has to be called otherwise an old serviceConnector could raise the event
-        //  i.e. event could happen twice (but this call causes crash right now).
-        //serviceConnector.close()
+        serviceConnector.close()
         isOpen = false
     }
 

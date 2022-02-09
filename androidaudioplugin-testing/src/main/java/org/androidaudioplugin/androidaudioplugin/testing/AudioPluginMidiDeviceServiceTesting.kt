@@ -21,14 +21,25 @@ class AudioPluginMidiDeviceServiceTesting(private val applicationContext: Contex
             val deferred = CompletableDeferred<Unit>()
 
             midiManager.openDevice(deviceInfo, { device ->
+                var error: Exception? = null
                 runBlocking {
-                    val input = device.openInputPort(deviceInfo.ports.first { p ->
-                        p.type == MidiDeviceInfo.PortInfo.TYPE_INPUT
-                    }.portNumber)
-                    input.send(simpleNoteOn, 0, simpleNoteOn.size)
-                    delay(50)
-                    input.send(simpleNoteOff, 0, simpleNoteOn.size)
-                    deferred.complete(Unit)
+                    try {
+                        val input = device.openInputPort(deviceInfo.ports.first { p ->
+                            p.type == MidiDeviceInfo.PortInfo.TYPE_INPUT
+                        }.portNumber)
+                        assert(input != null)
+                        input.send(simpleNoteOn, 0, simpleNoteOn.size)
+                        delay(50)
+                        input.send(simpleNoteOff, 0, simpleNoteOn.size)
+
+                        input.close()
+                    } catch (ex: Exception) {
+                        error = ex
+                    } finally {
+                        deferred.complete(Unit)
+                    }
+                    if (error != null)
+                        throw AssertionError("MIDI output test failure", error)
                 }
             }, null)
 

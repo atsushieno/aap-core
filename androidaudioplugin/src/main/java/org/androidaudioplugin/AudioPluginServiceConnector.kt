@@ -54,13 +54,11 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
     }
 
     override fun close() {
-        while (connectedServices.any()) {
-            val list = connectedServices.toTypedArray()
-            for (conn in list)
-                AudioPluginNatives.removeBinderForHost(
-                    conn.serviceInfo.packageName,
-                    conn.serviceInfo.className
-                )
+        connectedServices.toTypedArray().forEach { conn ->
+            AudioPluginNatives.removeBinderForHost(
+                conn.serviceInfo.packageName,
+                conn.serviceInfo.className
+            )
         }
         serviceConnectedListeners.clear()
     }

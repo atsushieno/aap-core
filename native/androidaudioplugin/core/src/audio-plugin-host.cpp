@@ -198,6 +198,7 @@ int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRe
 
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
+	instances.erase(std::find(instances.begin(), instances.end(), instance));
 	delete instance;
 }
 

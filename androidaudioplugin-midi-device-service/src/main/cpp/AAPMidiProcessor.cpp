@@ -67,11 +67,18 @@ namespace aapmidideviceservice {
 
     void AAPMidiProcessor::terminate() {
 
-        for (auto& data : instance_data_list)
-            host->getInstance(data->instance_id)->dispose();
+        for (auto& data : instance_data_list) {
+            if (data->instance_id)
+                host->getInstance(data->instance_id)->dispose();
+            else {
+                aap::aprintf("AAPMidiProcessor detected unexpected zero instance_id.");
+            }
+        }
 
-        zix_ring_free(aap_input_ring_buffer);
-        free(interleave_buffer);
+        if (aap_input_ring_buffer)
+            zix_ring_free(aap_input_ring_buffer);
+        if (interleave_buffer)
+            free(interleave_buffer);
 
         host.reset();
     }
@@ -96,31 +103,38 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::instantiatePlugin(std::string pluginId) {
 
         if (state != AAP_MIDI_PROCESSOR_STATE_CREATED) {
-            aap::aprintf("Unexpected call to start() at %s state.",
+            aap::aprintf("Unexpected call to instantiatePlugin() at %s state.",
                          convertStateToText(state).c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
 
-        auto pluginInfo = host_manager.getPluginInformation(pluginId);
-        int32_t numPorts = pluginInfo->getNumPorts();
-        if (pluginInfo->isInstrument())
-            if (instrument_instance_id != 0) {
-                const auto& info = host->getInstance(instrument_instance_id)->getPluginInformation();
-                aap::aprintf("Instrument instance %s is already assigned.",
-                             info->getDisplayName().c_str());
-                state = AAP_MIDI_PROCESSOR_STATE_ERROR;
-                return;
-            }
+        if (instrument_instance_id != 0) {
+            const auto& info = host->getInstance(instrument_instance_id)->getPluginInformation();
+            aap::aprintf("Plugin \"%s\" is already instantiated.",
+                         info->getDisplayName().c_str());
+            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+            return;
+        }
 
+        auto pluginInfo = host_manager.getPluginInformation(pluginId);
+        if (!pluginInfo->isInstrument()) {
+            const auto& info = host->getInstance(instrument_instance_id)->getPluginInformation();
+            aap::aprintf("Plugin \"%s\" is not an instrument.",
+                         info->getDisplayName().c_str());
+            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+            return;
+        }
+
+        int32_t numPorts = pluginInfo->getNumPorts();
         auto instanceId = host->createInstance(pluginId, sample_rate, true);
         auto instance = host->getInstance(instanceId);
 
-        if (pluginInfo->isInstrument())
-            instrument_instance_id = instanceId;
+        instrument_instance_id = instanceId;
 
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
+        // There is no extension to initialize, so go for completeInstantiation() immediately.
         instance->completeInstantiation();
 
         data->instance_id = instanceId;
@@ -141,23 +155,23 @@ namespace aapmidideviceservice {
         instance->prepare(aap_frame_size, data->plugin_buffer);
 
         instance_data_list.emplace_back(std::move(data));
+
+        state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
     }
 
-    // Activate audio processing. CPU-intensive operations happen from here.
+    // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.
     void AAPMidiProcessor::activate() {
-        // start Oboe stream.
-        switch (state) {
-            case AAP_MIDI_PROCESSOR_STATE_CREATED:
-            case AAP_MIDI_PROCESSOR_STATE_INACTIVE:
-                break;
-            default:
-                aap::aprintf("Unexpected call to start() at %s state.",
-                             convertStateToText(state).c_str());
-                state = AAP_MIDI_PROCESSOR_STATE_ERROR;
-                return;
+        if (state != AAP_MIDI_PROCESSOR_STATE_INACTIVE) {
+            aap::aprintf("Unexpected call to activate() at %s state.",
+                         convertStateToText(state).c_str());
+            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+            return;
         }
 
-        if (pal()->startStreaming()) {
+        auto startStreamingResult = pal()->startStreaming();
+        if (startStreamingResult) {
+            aap::aprintf("startStreaming() failed with error code %d.",
+                         startStreamingResult);
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }

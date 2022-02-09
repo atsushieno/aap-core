@@ -31,13 +31,13 @@ aapmidideviceservice::AAPMidiProcessorAndroid *processor{nullptr};
 aapmidideviceservice::AudioDriverType driver_type{
     aapmidideviceservice::AudioDriverType::AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE};
 
-void resetInstance() {
+void startNewInstance() {
     processor = new aapmidideviceservice::AAPMidiProcessorAndroid(driver_type);
 }
 
 aapmidideviceservice::AAPMidiProcessorAndroid* getInstance() {
     if (!processor)
-        resetInstance();
+        startNewInstance();
     return processor;
 }
 
@@ -48,7 +48,7 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
     aap::set_application_context(env, applicationContext);
     ((aap::AndroidPluginHostPAL*) aap::getPluginHostPAL())->initializeKnownPlugins(plugins);
 
-    resetInstance();
+    startNewInstance();
 
     AAPMIDIDEVICE_INSTANCE->initialize(sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize);
 }
@@ -72,7 +72,7 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->terminate();
 
-    resetInstance();
+    processor = nullptr;
 }
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_activate(
