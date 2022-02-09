@@ -37,6 +37,7 @@ class PluginPreview(context: Context) {
     {
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->
+            assert(this.instance == null)
             this.instance = instance
             val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
             instance.prepare(floatCount)
