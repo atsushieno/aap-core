@@ -15,9 +15,9 @@ android {
     // yet but will be at some stage). This means, every AAP related project has to fix the
     // NDK version in use. It is not realistic when it becomes for public uses, but so far
     // we have to take this pill...
-    ndkVersion = "21.4.7075529"
+    //ndkVersion = "21.4.7075529"
     //ndkVersion "24.0.7956693" // unable to upgrade due to NDK bug: error: 'AStatus_getDescription' is unavailable: introduced in Android 30
-    //ndkVersion "23.1.7779620" // ditto!
+    ndkVersion "23.1.7779620" // ditto!
     //nd""kVersion "22.1.7171670"
 
     compileOptions {
