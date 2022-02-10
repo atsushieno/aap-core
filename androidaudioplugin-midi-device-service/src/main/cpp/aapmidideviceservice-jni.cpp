@@ -31,29 +31,29 @@ aapmidideviceservice::AAPMidiProcessorAndroid *processor{nullptr};
 aapmidideviceservice::AudioDriverType driver_type{
     aapmidideviceservice::AudioDriverType::AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE};
 
-void startNewInstance() {
+void startNewDeviceInstance() {
     processor = new aapmidideviceservice::AAPMidiProcessorAndroid(driver_type);
 }
 
-aapmidideviceservice::AAPMidiProcessorAndroid* getInstance() {
+aapmidideviceservice::AAPMidiProcessorAndroid* getDeviceInstance() {
     if (!processor)
-        startNewInstance();
+        startNewDeviceInstance();
     return processor;
 }
 
-#define AAPMIDIDEVICE_INSTANCE getInstance()
+#define AAPMIDIDEVICE_INSTANCE getDeviceInstance()
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_initializeReceiverNative(
-        JNIEnv *env, jobject midiReceiver, jobject applicationContext, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize, jint midiProtocol) {
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_initializeMidiProcessor(
+        JNIEnv *env, jobject midiReceiver, jobject applicationContext, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
     aap::set_application_context(env, applicationContext);
     ((aap::AndroidPluginHostPAL*) aap::getPluginHostPAL())->initializeKnownPlugins(plugins);
 
-    startNewInstance();
+    startNewDeviceInstance();
 
     AAPMIDIDEVICE_INSTANCE->initialize(sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize);
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_registerPluginService(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_registerPluginService(
         JNIEnv *env, jobject midiReceiver, jobject binder, jstring packageName, jstring className) {
     auto packageNamePtr = dupFromJava(env, packageName);
     std::string packageNameString{packageNamePtr};
@@ -68,24 +68,26 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
     free((void *) packageNamePtr);
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_terminateReceiverNative(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_terminateMidiProcessor(
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->terminate();
 
     processor = nullptr;
+
+    aap::aprintf("AudioPluginMidiReceiver terminated.");
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_activate(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_activate(
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->activate();
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_deactivate(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_deactivate(
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->deactivate();
 }
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_instantiatePlugin(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_instantiatePlugin(
         JNIEnv *env, jobject midiReceiver, jstring pluginId) {
     auto pluginIdPtr = dupFromJava(env, pluginId);
     std::string pluginIdString = pluginIdPtr;
@@ -97,7 +99,7 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
 
 jbyte jni_midi_buffer[1024]{};
 
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiReceiver_processMessage(
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_processMessage(
         JNIEnv *env, jobject midiReceiver, jbyteArray bytes, jint offset, jint length,
         jlong timestampInNanoseconds) {
     env->GetByteArrayRegion(bytes, offset, length, jni_midi_buffer);

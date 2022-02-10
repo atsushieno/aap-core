@@ -9,6 +9,7 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 
     abstract fun getPluginId(portIntex: Int): String
 
+    // It is designed to be open overridable.
     open val plugins: List<PluginInformation>
         get() = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins
             .filter { p -> isInstrument(p) }
@@ -39,9 +40,9 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 
         for (i in 0 until deviceInfo.inputPortCount) {
             if (status.isInputPortOpen(i))
-                (receivers!![i] as AudioPluginMidiReceiver).ensureInitialized(getPluginId(i))
+                (receivers!![i] as AudioPluginMidiReceiver).onDeviceOpened(getPluginId(i))
             else
-                (receivers!![i] as AudioPluginMidiReceiver).ensureTerminated()
+                (receivers!![i] as AudioPluginMidiReceiver).onDeviceClosed()
         }
     }
 }
