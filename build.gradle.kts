@@ -1,8 +1,8 @@
 
 buildscript {
-    val kotlin_version: String by extra("1.5.31")
-    val dokka_version: String by extra("1.5.0")
-    val compose_version: String by extra("1.0.5")
+    val kotlin_version: String by extra("1.6.10")
+    val dokka_version: String by extra("1.6.10")
+    val compose_version: String by extra("1.1.0")
     val aap_version: String by extra("0.6.22")
 
     repositories {
@@ -12,7 +12,7 @@ buildscript {
         maven ("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
     dependencies {
-        classpath ("com.android.tools.build:gradle:7.3.0-alpha01")
+        classpath ("com.android.tools.build:gradle:7.3.0-alpha02")
         classpath ("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
         classpath ("org.jetbrains.dokka:dokka-gradle-plugin:$dokka_version")
         classpath ("org.jetbrains.compose:compose-gradle-plugin:1.0.1")

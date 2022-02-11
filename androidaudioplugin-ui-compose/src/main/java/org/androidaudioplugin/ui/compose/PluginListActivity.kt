@@ -12,7 +12,6 @@ open class PluginListActivity : AppCompatActivity() {
     open fun shouldListPlugin(info: AudioPluginServiceInformation) =
         info.packageName == application.packageName
 
-    @ExperimentalUnsignedTypes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
