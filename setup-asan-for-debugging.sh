@@ -14,8 +14,8 @@ ANDROID_NDK_PATH=~/Android/Sdk/ndk/21.4.7075529
 #ANDROID_NDK_PATH=~/Android/Sdk/ndk/23.1.7779620
 CLANG_VER=9.0.9
 #CLANG_VER=12.0.8
-CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG_VER/lib
 HOST_ARCH_LIB=linux-x86_64/lib64
+CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG_VER/lib
 
 ALL_ABIS=("x86" "x86_64" "armeabi-v7a" "arm64-v8a")
 
