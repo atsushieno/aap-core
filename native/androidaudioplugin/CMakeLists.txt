@@ -37,15 +37,27 @@ target_include_directories (androidaudioplugin
 target_compile_options (androidaudioplugin
   PRIVATE
   -std=c++17 -Wall -Wshadow
-  # uncomment this if you want to enable AddressSanitizer
-  #-fsanitize=address -fno-omit-frame-pointer
   )
 
 target_link_libraries (androidaudioplugin
   ${androidaudioplugin_LIBS}
   )
 
-# uncomment this if you want to enable AddressSanitizer
-#set_target_properties(androidaudioplugin
-#     PROPERTIES LINK_FLAGS -fsanitize=address
-#     )
+# set non-zero this if you want to debug with AddressSanitizer
+set(AAP_DEBUG_WITH_ASAN 0)
+
+if (AAP_DEBUG_WITH_ASAN)
+target_compile_options (androidaudioplugin
+		PUBLIC
+		-fsanitize=address -fno-omit-frame-pointer
+		)
+
+target_link_options(androidaudioplugin
+		PUBLIC
+		-fsanitize=address
+		)
+
+set_target_properties(androidaudioplugin
+		PROPERTIES LINK_FLAGS -fsanitize=address
+		)
+endif()
