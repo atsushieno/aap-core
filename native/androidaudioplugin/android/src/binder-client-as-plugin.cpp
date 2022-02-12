@@ -8,6 +8,7 @@
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
 #include "aap/audio-plugin-host-android.h"
+#include "aap/logging.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "../../core/src/audio-plugin-host-internals.h"
 
@@ -50,8 +51,9 @@ void releaseStateBuffer(AAPClientContext *ctx)
 		close(ctx->state_ashmem_fd);
 }
 
+
 AAPClientContext::~AAPClientContext() {
-	if (instance_id != 0) {
+	if (instance_id >= 0) {
 		releaseStateBuffer(this);
 		proxy->destroy(instance_id);
 	}

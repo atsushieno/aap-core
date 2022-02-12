@@ -1,6 +1,8 @@
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H
 #define AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H
 
+#include <aap/logging.h>
+
 #define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
 
 extern "C" {
@@ -32,8 +34,15 @@ public:
 
 class PluginSharedMemoryBuffer
 {
+    enum PluginBufferOrigin {
+        PLUGIN_BUFFER_ORIGIN_UNALLOCATED,
+        PLUGIN_BUFFER_ORIGIN_LOCAL,
+        PLUGIN_BUFFER_ORIGIN_REMOTE
+    };
+
     std::unique_ptr<std::vector<int32_t>> shared_memory_fds{nullptr};
     std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
+    PluginBufferOrigin memory_origin{PLUGIN_BUFFER_ORIGIN_UNALLOCATED};
 
 public:
     enum PluginMemoryAllocatorResult {
@@ -47,16 +56,23 @@ public:
         buffer = std::make_unique<AndroidAudioPluginBuffer>();
         assert(buffer);
         buffer->num_buffers = 0;
+        buffer->num_frames = 0;
         shared_memory_fds = std::make_unique<std::vector<int32_t>>();
         assert(shared_memory_fds);
     }
 
     ~PluginSharedMemoryBuffer() {
         if (buffer) {
-            for (size_t i = 0; i < buffer->num_buffers; i++)
+            for (size_t i = 0; i < buffer->num_buffers; i++) {
                 if (buffer->buffers[i])
-                    free(buffer->buffers[i]);
-            free(buffer->buffers);
+                    munmap(buffer->buffers[i], buffer->num_frames * sizeof(float *));
+            }
+            if (buffer->buffers)
+                free(buffer->buffers);
+        }
+        if (memory_origin == PLUGIN_BUFFER_ORIGIN_LOCAL) {
+                for (size_t i = 0; i < this->shared_memory_fds->size(); i++)
+                    close(shared_memory_fds->at(i));
         }
     }
 

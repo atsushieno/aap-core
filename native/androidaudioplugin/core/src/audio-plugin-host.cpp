@@ -135,6 +135,8 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
 //-----------------------------------
 
 int32_t PluginSharedMemoryBuffer::allocateClientBuffer(size_t numPorts, size_t numFrames) {
+	memory_origin = PLUGIN_BUFFER_ORIGIN_LOCAL;
+
 	size_t memSize = numFrames * sizeof(float);
 	buffer->num_buffers = numPorts;
 	buffer->num_frames = numFrames;
@@ -157,6 +159,8 @@ int32_t PluginSharedMemoryBuffer::allocateClientBuffer(size_t numPorts, size_t n
 }
 
 int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames) {
+	memory_origin = PLUGIN_BUFFER_ORIGIN_REMOTE;
+
 	size_t numPorts = clientFDs.size();
 	size_t memSize = numFrames * sizeof(float);
 	buffer->num_buffers = numPorts;
