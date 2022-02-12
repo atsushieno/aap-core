@@ -66,14 +66,10 @@ namespace aapmidideviceservice {
     }
 
     void AAPMidiProcessor::terminate() {
-
-        for (auto& data : instance_data_list) {
-            if (data->instance_id)
-                host->getInstance(data->instance_id)->dispose();
-            else {
-                aap::aprintf("AAPMidiProcessor detected unexpected zero instance_id.");
-            }
-        }
+        if (instance_data != nullptr && instance_data->instance_id >= 0)
+            host->getInstance(instance_data->instance_id)->dispose();
+        else if (instance_data->instance_id < 0)
+            aap::aprintf("AAPMidiProcessor detected unexpected instance_id: %d", instance_data->instance_id);
 
         if (aap_input_ring_buffer)
             zix_ring_free(aap_input_ring_buffer);
@@ -109,19 +105,27 @@ namespace aapmidideviceservice {
             return;
         }
 
-        if (instrument_instance_id != 0) {
-            const auto& info = host->getInstance(instrument_instance_id)->getPluginInformation();
-            aap::aprintf("Plugin \"%s\" is already instantiated.",
-                         info->getDisplayName().c_str());
+        if (instance_data) {
+            const auto& instance = host->getInstance(instance_data->instance_id);
+            if (instance)
+                aap::aprintf("There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
+                             instance->getPluginInformation()->getDisplayName().c_str());
+            else
+                aap::aprintf("Internal error: stale plugin instance data remains in the memory.",
+                             instance->getPluginInformation()->getDisplayName().c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
 
         auto pluginInfo = host_manager.getPluginInformation(pluginId);
+        if (!pluginInfo) {
+            aap::aprintf("Plugin of ID \"%s\" is not found.", pluginId.c_str());
+            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+            return;
+        }
         if (!pluginInfo->isInstrument()) {
-            const auto& info = host->getInstance(instrument_instance_id)->getPluginInformation();
             aap::aprintf("Plugin \"%s\" is not an instrument.",
-                         info->getDisplayName().c_str());
+                         pluginInfo->getDisplayName().c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
@@ -154,7 +158,7 @@ namespace aapmidideviceservice {
 
         instance->prepare(aap_frame_size, data->plugin_buffer);
 
-        instance_data_list.emplace_back(std::move(data));
+        instance_data = std::move(data);
 
         state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
     }
@@ -203,17 +207,16 @@ namespace aapmidideviceservice {
 
     // Called by Oboe audio callback implementation. It calls process.
     void AAPMidiProcessor::callPluginProcess() {
-        for (auto &data : instance_data_list) {
-            host->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
-            // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
-            if (data->instance_id == instrument_instance_id) {
-                if (data->midi1_in_port >= 0)
-                    memset((void *) data->plugin_buffer->buffers[data->midi1_in_port], 0,
-                           aap_frame_size * sizeof(float));
-                if (data->midi2_in_port >= 0)
-                    memset((void *) data->plugin_buffer->buffers[data->midi2_in_port], 0,
-                           aap_frame_size * sizeof(float));
-            }
+        auto &data = instance_data;
+        host->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
+        // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
+        if (data->instance_id == instrument_instance_id) {
+            if (data->midi1_in_port >= 0)
+                memset((void *) data->plugin_buffer->buffers[data->midi1_in_port], 0,
+                       aap_frame_size * sizeof(float));
+            if (data->midi2_in_port >= 0)
+                memset((void *) data->plugin_buffer->buffers[data->midi2_in_port], 0,
+                       aap_frame_size * sizeof(float));
         }
     }
 
@@ -226,16 +229,15 @@ namespace aapmidideviceservice {
 
         memset(interleave_buffer, 0, channel_count * aap_frame_size * sizeof(float));
 
-        for (auto &data : instance_data_list) {
-            if (data->instance_id == instrument_instance_id) {
-                int numPorts = data->getAudioOutPorts()->size();
-                for (int p = 0; p < numPorts; p++) {
-                    int portIndex = data->getAudioOutPorts()->at(p);
-                    auto src = (float*) data->plugin_buffer->buffers[portIndex];
-                    // We have to interleave separate port outputs to copy...
-                    for (int i = 0; i < aap_frame_size; i++)
-                        interleave_buffer[i * numPorts + p] = src[i];
-                }
+        auto &data = instance_data;
+        if (data->instance_id == instrument_instance_id) {
+            int numPorts = data->getAudioOutPorts()->size();
+            for (int p = 0; p < numPorts; p++) {
+                int portIndex = data->getAudioOutPorts()->at(p);
+                auto src = (float*) data->plugin_buffer->buffers[portIndex];
+                // We have to interleave separate port outputs to copy...
+                for (int i = 0; i < aap_frame_size; i++)
+                    interleave_buffer[i * numPorts + p] = src[i];
             }
         }
 
@@ -262,22 +264,16 @@ namespace aapmidideviceservice {
     }
 
     PluginInstanceData* AAPMidiProcessor::getAAPMidiInputData() {
-        for (auto &data : instance_data_list)
-            if (data->instance_id == instrument_instance_id)
-                return data.get();
-        return nullptr;
+        return instance_data ? instance_data.get() : nullptr;
     }
 
     void* AAPMidiProcessor::getAAPMidiInputBuffer() {
-        for (auto &data : instance_data_list)
-            if (data->instance_id == instrument_instance_id) {
-                // MIDI2 port if If MIDI2 port exists and MIDI2 protocol is specified.
-                // MIDI1 port unless MIDI1 port does not exist.
-                // MIDI2 port (or -1 if none exists).
-                int portIndex = (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ? data->midi2_in_port : data->midi1_in_port >= 0 ? data->midi1_in_port : data->midi2_in_port;
-                return data->plugin_buffer->buffers[portIndex];
-            }
-        return nullptr;
+        auto &data = instance_data;
+        // MIDI2 port if If MIDI2 port exists and MIDI2 protocol is specified.
+        // MIDI1 port unless MIDI1 port does not exist.
+        // MIDI2 port (or -1 if none exists).
+        int portIndex = (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ? data->midi2_in_port : data->midi1_in_port >= 0 ? data->midi1_in_port : data->midi2_in_port;
+        return data->plugin_buffer->buffers[portIndex];
     }
 
     void AAPMidiProcessor::processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {

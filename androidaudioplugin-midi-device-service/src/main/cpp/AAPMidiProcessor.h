@@ -62,7 +62,7 @@ namespace aapmidideviceservice {
         int sample_rate{0};
         int aap_frame_size{4096};
         int channel_count{2};
-        std::vector<std::unique_ptr<PluginInstanceData>> instance_data_list{};
+        std::unique_ptr<PluginInstanceData> instance_data;
         int instrument_instance_id{0};
         int32_t midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
 
