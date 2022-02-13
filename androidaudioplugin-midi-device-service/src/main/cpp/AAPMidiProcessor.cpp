@@ -207,7 +207,8 @@ namespace aapmidideviceservice {
 
     // Called by Oboe audio callback implementation. It calls process.
     void AAPMidiProcessor::callPluginProcess() {
-        auto &data = instance_data;
+        auto data = instance_data.get();
+        assert(data);
         host->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
@@ -229,7 +230,8 @@ namespace aapmidideviceservice {
 
         memset(interleave_buffer, 0, channel_count * aap_frame_size * sizeof(float));
 
-        auto &data = instance_data;
+        auto data = instance_data.get();
+        assert(data);
         if (data->instance_id == instrument_instance_id) {
             int numPorts = data->getAudioOutPorts()->size();
             for (int p = 0; p < numPorts; p++) {
@@ -268,7 +270,8 @@ namespace aapmidideviceservice {
     }
 
     void* AAPMidiProcessor::getAAPMidiInputBuffer() {
-        auto &data = instance_data;
+        auto data = instance_data.get();
+        assert(data);
         // MIDI2 port if If MIDI2 port exists and MIDI2 protocol is specified.
         // MIDI1 port unless MIDI1 port does not exist.
         // MIDI2 port (or -1 if none exists).
