@@ -24,7 +24,7 @@ android {
         externalNativeBuild {
             cmake {
                 // https://github.com/google/prefab/blob/bccf5a6a75b67add30afbb6d4f7a7c50081d2d86/api/src/main/kotlin/com/google/prefab/api/Android.kt#L243
-                arguments ("-DANDROID_STL=c++_shared")
+                arguments ("-DANDROID_STL=c++_shared", "-DCOMPILE_SDK_VERSION=31")
                 cppFlags ("-Werror")
             }
         }
