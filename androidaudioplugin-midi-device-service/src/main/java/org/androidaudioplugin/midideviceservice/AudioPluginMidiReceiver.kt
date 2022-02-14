@@ -1,5 +1,6 @@
 package org.androidaudioplugin.midideviceservice
 
+import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiReceiver
 
 // LAMESPEC: This is a failure point in Android MIDI API.
@@ -20,7 +21,7 @@ import android.media.midi.MidiReceiver
 // depends on Application context until MidiDeviceService.onCreate() is invoked, so
 // (1) we have a dedicated `initialize()` method to do that job, so (2) do not anything
 // before that happens!
-open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDeviceService) : MidiReceiver() {
+open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDeviceService, private val portIndex: Int) : MidiReceiver() {
     companion object {
         init {
             System.loadLibrary("aapmidideviceservice")
@@ -28,10 +29,11 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
     }
 
     private var instance: AudioPluginMidiDeviceInstance? = null
+    private val port = ownerService.deviceInfo.ports[portIndex]
 
-    fun onDeviceOpened(pluginId: String) {
+    fun onDeviceOpened() {
         assert(instance == null)
-        instance = AudioPluginMidiDeviceInstance(pluginId, ownerService)
+        instance = AudioPluginMidiDeviceInstance(ownerService.getPluginId(portIndex), ownerService)
     }
 
     fun onDeviceClosed() {
