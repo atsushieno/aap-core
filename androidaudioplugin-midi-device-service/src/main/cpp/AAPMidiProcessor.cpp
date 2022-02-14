@@ -97,6 +97,7 @@ namespace aapmidideviceservice {
 
     // Instantiate AAP plugin and proceed up to prepare().
     void AAPMidiProcessor::instantiatePlugin(std::string pluginId) {
+        aap::aprintf("AAPMidiProcessor: instantiating plugin %s", pluginId.c_str());
 
         if (state != AAP_MIDI_PROCESSOR_STATE_CREATED) {
             aap::aprintf("Unexpected call to instantiatePlugin() at %s state.",
