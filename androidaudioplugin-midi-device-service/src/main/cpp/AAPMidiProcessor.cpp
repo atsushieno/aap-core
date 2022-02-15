@@ -66,17 +66,27 @@ namespace aapmidideviceservice {
     }
 
     void AAPMidiProcessor::terminate() {
-        if (instance_data != nullptr && instance_data->instance_id >= 0)
-            host->getInstance(instance_data->instance_id)->dispose();
-        else if (instance_data->instance_id < 0)
-            aap::aprintf("AAPMidiProcessor detected unexpected instance_id: %d", instance_data->instance_id);
-
+        if (instance_data != nullptr) {
+            if (instance_data->instance_id >= 0) {
+                auto instance = host->getInstance(instance_data->instance_id);
+                if (!instance)
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "instance of instance_id %d was not found",
+                                 instance_data->instance_id);
+                else
+                    instance->dispose();
+            }
+            else
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "detected unexpected instance_id: %d",
+                             instance_data->instance_id);
+        }
         if (aap_input_ring_buffer)
             zix_ring_free(aap_input_ring_buffer);
         if (interleave_buffer)
             free(interleave_buffer);
 
         host.reset();
+
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "Successfully terminated MIDI processor.");
     }
 
     std::string AAPMidiProcessor::convertStateToText(AAPMidiProcessorState stateValue) {
@@ -97,10 +107,10 @@ namespace aapmidideviceservice {
 
     // Instantiate AAP plugin and proceed up to prepare().
     void AAPMidiProcessor::instantiatePlugin(std::string pluginId) {
-        aap::aprintf("AAPMidiProcessor: instantiating plugin %s", pluginId.c_str());
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "instantiating plugin %s", pluginId.c_str());
 
         if (state != AAP_MIDI_PROCESSOR_STATE_CREATED) {
-            aap::aprintf("Unexpected call to instantiatePlugin() at %s state.",
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Unexpected call to instantiatePlugin() at %s state.",
                          convertStateToText(state).c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
@@ -109,10 +119,10 @@ namespace aapmidideviceservice {
         if (instance_data) {
             const auto& instance = host->getInstance(instance_data->instance_id);
             if (instance)
-                aap::aprintf("There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
                              instance->getPluginInformation()->getDisplayName().c_str());
             else
-                aap::aprintf("Internal error: stale plugin instance data remains in the memory.",
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Internal error: stale plugin instance data remains in the memory.",
                              instance->getPluginInformation()->getDisplayName().c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
@@ -120,19 +130,26 @@ namespace aapmidideviceservice {
 
         auto pluginInfo = host_manager.getPluginInformation(pluginId);
         if (!pluginInfo) {
-            aap::aprintf("Plugin of ID \"%s\" is not found.", pluginId.c_str());
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin of ID \"%s\" is not found.", pluginId.c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
         if (!pluginInfo->isInstrument()) {
-            aap::aprintf("Plugin \"%s\" is not an instrument.",
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin \"%s\" is not an instrument.",
                          pluginInfo->getDisplayName().c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
 
         int32_t numPorts = pluginInfo->getNumPorts();
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "host is going to instantiate %s", pluginId.c_str());
         auto instanceId = host->createInstance(pluginId, sample_rate, true);
+        if (instanceId < 0) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin \"%s\" could not be instantiated.",
+                         pluginInfo->getDisplayName().c_str());
+            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+            return;
+        }
         auto instance = host->getInstance(instanceId);
 
         instrument_instance_id = instanceId;
@@ -162,12 +179,14 @@ namespace aapmidideviceservice {
         instance_data = std::move(data);
 
         state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
+
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "instantiated plugin %s", pluginId.c_str());
     }
 
     // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.
     void AAPMidiProcessor::activate() {
         if (state != AAP_MIDI_PROCESSOR_STATE_INACTIVE) {
-            aap::aprintf("Unexpected call to activate() at %s state.",
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Unexpected call to activate() at %s state.",
                          convertStateToText(state).c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
@@ -175,7 +194,7 @@ namespace aapmidideviceservice {
 
         auto startStreamingResult = pal()->startStreaming();
         if (startStreamingResult) {
-            aap::aprintf("startStreaming() failed with error code %d.",
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "startStreaming() failed with error code %d.",
                          startStreamingResult);
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
@@ -191,7 +210,7 @@ namespace aapmidideviceservice {
     // Deactivate audio processing. CPU-intensive operations stop here.
     void AAPMidiProcessor::deactivate() {
         if (state != AAP_MIDI_PROCESSOR_STATE_ACTIVE) {
-            aap::aprintf("Unexpected call to deactivate() at %s state.",
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Unexpected call to deactivate() at %s state.",
                          convertStateToText(state).c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
