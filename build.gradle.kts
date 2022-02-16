@@ -4,6 +4,7 @@ buildscript {
     val dokka_version: String by extra("1.6.10")
     val compose_version: String by extra("1.1.0")
     val aap_version: String by extra("0.6.26")
+    val enable_asan: Boolean by extra(false)
 
     repositories {
         google()

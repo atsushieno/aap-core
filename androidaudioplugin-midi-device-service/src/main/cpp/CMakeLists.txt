@@ -74,10 +74,8 @@ target_link_libraries (aapmidideviceservice
 		)
 
 
-# set non-zero this if you want to debug with AddressSanitizer
-set(AAP_DEBUG_WITH_ASAN 0)
-
-if (AAP_DEBUG_WITH_ASAN)
+# You can set it via build.gradle
+if (${AAP_ENABLE_ASAN})
 	target_compile_options (aapmidideviceservice
 			PUBLIC
 			-fsanitize=address -fno-omit-frame-pointer
