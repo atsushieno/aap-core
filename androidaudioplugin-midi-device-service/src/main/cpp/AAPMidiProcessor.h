@@ -5,7 +5,7 @@
 #include <vector>
 #include <zix/ring.h>
 #include <cmidi2.h>
-#include <aap/audio-plugin-host.h>
+#include <aap/core/host/audio-plugin-host.h>
 
 namespace aapmidideviceservice {
     // keep it compatible with Oboe

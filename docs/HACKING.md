@@ -5,24 +5,15 @@
 
 ## Building this repo
 
-Basically `make` is the all-in-one command that handles everything on Unix-y environment. It will perform some supplemental tasks before it runs `gradlew`. You will have to specify `ANDROID_SDK_ROOT` before running `make`.
-
-Android NDK will be downloaded to `~/Android/Sdk/ndk/{rev}` unless `ANDROID_NDK` variable is externally specified to `make`.
-
-gradle is used as **part of** the entire builds, for Android application samples and libraries.
-
-Once supplemental things are set up, Android Studio can be used for development by opening the top directory.
+Basically `./gradlew build` is the all-in-one command that handles everything. Or you can open the top directory on Android Studio. Note that it is tailored for the latest Android Studio Canary (Dolphin-alpha at the time of writing this). You would still be able to open it on some older versions of Android Studio.
 
 ### Source tree structure
 
-- `aidl` - contains common internal interface definitions for native and Kotlin modules.
-- `dependencies` - native source dependencies. (It used to contain various LV2 related dependencies, but now they have gone to `aap-lv2` repo.)
-- `native`
-  - `plugin-api` (C include file; it is just for reference for plugin developers)
-  - `core`
-    - `include` - AAP C++ header files for native host developers. (Plugins don't have to reference anything. Packaging is another story though.)
-    - `src` - AAP hosting reference implementation
-  - `android` (Android-specific parts; NdkBinder etc.)
+- `external` - native source dependencies. (It used to contain various LV2 related dependencies, but now they have gone to `aap-lv2` repo.)
+- `include` - C include files. The top directory is for plugin API.
+  - `core` - public API in `libandroidaudioplugin.so`.
+    - `host` - AAP C++ header files for native host developers.
+      - `android` - Android specific public API (regarding NdkBinder etc.)
 -  Android modules
   - `androidaudioplugin` plugin framework and service implementation
   - `androidaudioplugin-samples-host-engine' implements a plugin preview sample application that is also used as the default plugin preview template.
@@ -59,7 +50,7 @@ It usually does not matter, but sometimes it does - when you would like to debug
 
 ## Build with AddressSanitizer
 
-When debugging AAP framework itself (and probably plugins too), AddressSanitizer (asan) is very helpful to investigate the native code issues.
+When debugging AAP framework itself (and probably plugins too), AddressSanitizer (asan) is very helpful to investigate the native code issues. [The official Android NDK documentation](https://developer.android.com/ndk/guides/asan) should work as an up-to-date normative reference.
 
 To enable asan in this project, there are three things to do:
 

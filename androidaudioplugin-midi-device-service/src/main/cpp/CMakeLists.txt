@@ -21,9 +21,7 @@ set (aapmidideviceservice_SOURCES
 set (aapmidideviceservice_INCLUDES
 		.
 		${TOPDIR}/external/cmidi2
-		${TOPDIR}/native/plugin-api/include
-		${TOPDIR}/native/androidaudioplugin/core/include
-		${TOPDIR}/native/androidaudioplugin/android/include
+		${TOPDIR}/include
 		)
 
 set (aapmidideviceservice_LIBDIRS

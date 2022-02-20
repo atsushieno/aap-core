@@ -1,5 +1,5 @@
 #include "AAPMidiProcessor_android.h"
-#include <aap/logging.h>
+#include "aap/unstable/logging.h"
 
 namespace aapmidideviceservice {
 oboe::DataCallbackResult AAPMidiProcessorOboePAL::onAudioReady(

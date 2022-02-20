@@ -6,8 +6,8 @@
 #include <android/sharedmem.h>
 #include <oboe/Oboe.h>
 #include "AAPMidiProcessor.h"
-#include <aap/audio-plugin-host-android.h>
-#include <aap/logging.h>
+#include <aap/core/host/android/audio-plugin-host-android.h>
+#include <aap/unstable/logging.h>
 
 namespace aapmidideviceservice {
 

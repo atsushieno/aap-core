@@ -7,10 +7,10 @@
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
-#include "aap/audio-plugin-host-android.h"
-#include "aap/logging.h"
+#include "aap/core/host/android/audio-plugin-host-android.h"
+#include "aap/unstable/logging.h"
 #include "AudioPluginInterfaceImpl.h"
-#include "../../core/src/audio-plugin-host-internals.h"
+#include "../core/audio-plugin-host-internals.h"
 
 // AAP plugin implementation that performs actual work via AAP binder client.
 

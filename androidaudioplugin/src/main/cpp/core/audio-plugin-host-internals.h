@@ -1,7 +1,7 @@
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H
 #define AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H
 
-#include <aap/logging.h>
+#include "aap/unstable/logging.h"
 
 #define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
 

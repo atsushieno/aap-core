@@ -3,8 +3,8 @@
 // Anything Android specific must to into `android` directory.
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include "../include/aap/audio-plugin-host.h"
-#include "../include/aap/logging.h"
+#include "aap/core/host/audio-plugin-host.h"
+#include "aap/unstable/logging.h"
 #include "shared-memory-extension.h"
 #include "audio-plugin-host-internals.h"
 #include <vector>

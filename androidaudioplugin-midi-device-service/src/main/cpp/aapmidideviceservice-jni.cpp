@@ -3,10 +3,10 @@
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
 
-#include <aap/audio-plugin-host.h>
-#include <aap/audio-plugin-host-android.h>
-#include <aap/android-application-context.h>
-#include <aap/logging.h>
+#include <aap/core/host/audio-plugin-host.h>
+#include <aap/core/host/android/audio-plugin-host-android.h>
+#include <aap/core/host/android/android-application-context.h>
+#include <aap/unstable/logging.h>
 #include "AAPMidiProcessor_android.h"
 
 

@@ -49,7 +49,7 @@ android {
     externalNativeBuild {
         cmake {
             version = "3.18.1"
-            path ("../native/androidaudioplugin/CMakeLists.txt")
+            path ("src/main/cpp/CMakeLists.txt")
         }
     }
 

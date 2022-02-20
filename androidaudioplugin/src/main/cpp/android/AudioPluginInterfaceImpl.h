@@ -13,8 +13,8 @@
 #include <android/binder_parcel_utils.h>
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
-#include "aap/audio-plugin-host.h"
-#include "../../core/src/shared-memory-extension.h"
+#include "aap/core/host/audio-plugin-host.h"
+#include "../core/shared-memory-extension.h"
 
 namespace aap {
 

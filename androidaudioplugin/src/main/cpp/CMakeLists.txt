@@ -4,23 +4,21 @@ project(androidaudioplugin VERSION 0.6.2 LANGUAGES CXX)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
-	"core/src/audio-plugin-host.cpp"
+	"core/audio-plugin-host.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
-	"../plugin-api/include/"
-	"core/include"
-	"android/include"
-	"android/src/gen/include"
+	"../../../../include/"
+	"android/gen/include"
 	)
 
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
-	"android/src/binder-client-as-plugin.cpp"
-	"android/src/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
-	"android/src/android-application-context.cpp"
-	"android/src/AudioPluginNatives_jni.cpp"
-	"android/src/audio-plugin-host-android.cpp"
+	"android/binder-client-as-plugin.cpp"
+	"android/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
+	"android/android-application-context.cpp"
+	"android/AudioPluginNatives_jni.cpp"
+	"android/audio-plugin-host-android.cpp"
 	)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)

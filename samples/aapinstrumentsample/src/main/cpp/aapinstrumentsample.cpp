@@ -2,13 +2,13 @@
 #include <aap/android-audio-plugin.h>
 #include <cstring>
 #include <math.h>
-#include <aap/logging.h>
+#include <aap/unstable/logging.h>
 
 extern "C" {
 
 #include "ayumi.h"
 #include "cmidi2.h"
-#include "aap/aap-midi2.h"
+#include "aap/unstable/aap-midi2.h"
 
 #define AYUMI_AAP_MIDI2_IN_PORT 0
 #define AYUMI_AAP_MIDI2_OUT_PORT 1

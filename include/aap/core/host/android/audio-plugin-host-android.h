@@ -9,7 +9,7 @@
 #include <jni.h>
 #include <android/binder_ibinder.h>
 #include <android/sharedmem.h>
-#include "aap/audio-plugin-host.h"
+#include "../audio-plugin-host.h"
 
 #define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
 
