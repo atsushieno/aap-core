@@ -1,14 +1,13 @@
 package org.androidaudioplugin.samples.host.engine
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
+import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -33,7 +32,7 @@ class PluginPreview(context: Context) {
         host.dispose()
     }
 
-    fun applyPlugin(service: AudioPluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?)
+    fun applyPlugin(service: PluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?)
     {
         host.pluginInstantiatedListeners.clear()
         host.pluginInstantiatedListeners.add { instance ->

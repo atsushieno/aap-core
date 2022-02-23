@@ -5,6 +5,7 @@ import android.media.midi.MidiDeviceService
 import android.media.midi.MidiDeviceStatus
 import android.media.midi.MidiReceiver
 import org.androidaudioplugin.*
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 
 abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 

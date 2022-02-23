@@ -2,6 +2,10 @@ package org.androidaudioplugin
 
 import android.content.Context
 import android.media.AudioManager
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
+import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.AudioPluginServiceConnector
+import org.androidaudioplugin.hosting.PluginServiceConnection
 import java.lang.UnsupportedOperationException
 
 // These classes are not to endorse any official API for hosting AAP.
@@ -120,7 +124,7 @@ class AudioPluginHost(private var applicationContext: Context) {
     }
 }
 
-// FIXME: We are still unsure if they will be kept alive or not.
+// FIXME: We are still unsure if these classes will be kept alive or not.
 class AudioBus(var name : String, var map : Map<String,Int>)
 
 class AudioBusPresets

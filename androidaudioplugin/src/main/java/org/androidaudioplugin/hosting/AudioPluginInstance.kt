@@ -1,7 +1,10 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.os.ParcelFileDescriptor
 import android.os.SharedMemory
+import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.AudioPluginInterface
 import java.nio.ByteBuffer
 
 class AudioPluginInstance

@@ -3,7 +3,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 import android.content.Context
 import junit.framework.Assert.assertEquals
 import org.androidaudioplugin.AudioPluginHost
-import org.androidaudioplugin.AudioPluginHostHelper
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 
 class AudioPluginServiceTesting(private val applicationContext: Context) {

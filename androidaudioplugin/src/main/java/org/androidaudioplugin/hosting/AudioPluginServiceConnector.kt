@@ -1,17 +1,18 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import org.androidaudioplugin.AudioPluginHostHelper.Companion
+import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.PluginServiceInformation
 
 class AudioPluginServiceConnector(private val applicationContext: Context) : AutoCloseable {
     val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
     val connectedServices = mutableListOf<PluginServiceConnection>()
     private var isClosed = false
 
-    fun bindAudioPluginService(service: AudioPluginServiceInformation, sampleRate: Int) {
+    fun bindAudioPluginService(service: PluginServiceInformation, sampleRate: Int) {
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(
             service.packageName,

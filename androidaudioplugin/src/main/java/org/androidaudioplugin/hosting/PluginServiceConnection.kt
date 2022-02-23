@@ -1,4 +1,4 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.content.ComponentName
 import android.content.ServiceConnection
@@ -6,8 +6,12 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.SharedMemory
 import android.util.Log
+import org.androidaudioplugin.AudioPluginExtensionData
+import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.AudioPluginInterface
 
-class PluginServiceConnection(var serviceInfo: AudioPluginServiceInformation, var onConnectedCallback: (conn: PluginServiceConnection) -> Unit) :
+class PluginServiceConnection(var serviceInfo: PluginServiceInformation, var onConnectedCallback: (conn: PluginServiceConnection) -> Unit) :
     ServiceConnection {
 
     var binder: IBinder? = null

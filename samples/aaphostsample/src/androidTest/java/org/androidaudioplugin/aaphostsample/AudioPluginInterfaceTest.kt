@@ -3,10 +3,9 @@ package org.androidaudioplugin.aaphostsample
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.SharedMemory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.rule.ServiceTestRule
-import org.androidaudioplugin.AudioPluginHostHelper
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.AudioPluginInterface
 import org.junit.Rule
 import org.junit.Test

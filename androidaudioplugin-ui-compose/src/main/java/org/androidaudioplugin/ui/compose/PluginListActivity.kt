@@ -3,13 +3,12 @@ package org.androidaudioplugin.ui.compose
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import org.androidaudioplugin.AudioPluginHostHelper
-import org.androidaudioplugin.AudioPluginServiceInformation
-import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
+import org.androidaudioplugin.PluginServiceInformation
 
 open class PluginListActivity : AppCompatActivity() {
 
-    open fun shouldListPlugin(info: AudioPluginServiceInformation) =
+    open fun shouldListPlugin(info: PluginServiceInformation) =
         info.packageName == application.packageName
 
     override fun onCreate(savedInstanceState: Bundle?) {

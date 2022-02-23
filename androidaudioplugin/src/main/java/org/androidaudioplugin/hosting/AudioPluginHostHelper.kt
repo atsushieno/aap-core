@@ -1,4 +1,4 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.content.ComponentName
 import android.content.Context
@@ -6,8 +6,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Bundle
-import android.os.IBinder
 import android.util.Log
+import org.androidaudioplugin.AudioPluginService
+import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.PortInformation
 import org.xmlpull.v1.XmlPullParser
 
 class AudioPluginHostHelper {
@@ -18,8 +21,8 @@ class AudioPluginHostHelper {
         const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
 
-        private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : AudioPluginServiceInformation {
-            val aapServiceInfo = AudioPluginServiceInformation(label, packageName, className)
+        private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : PluginServiceInformation {
+            val aapServiceInfo = PluginServiceInformation(label, packageName, className)
 
             var currentPlugin: PluginInformation? = null
             while (true) {
@@ -106,7 +109,7 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : AudioPluginServiceInformation? {
+        fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : PluginServiceInformation? {
             val xp = serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
                 ?: return null
             val isOutProcess = serviceInfo.packageName != context.packageName
@@ -125,11 +128,11 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun queryAudioPluginServices(context: Context): Array<AudioPluginServiceInformation> {
+        fun queryAudioPluginServices(context: Context): Array<PluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
             val resolveInfos =
                 context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
-            val plugins = mutableListOf<AudioPluginServiceInformation>()
+            val plugins = mutableListOf<PluginServiceInformation>()
             for (ri in resolveInfos) {
                 val serviceInfo = ri.serviceInfo
                 Log.i("AAP", "Service " + serviceInfo.name)
@@ -162,7 +165,7 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun getLocalAudioPluginService(context: Context) : AudioPluginServiceInformation {
+        fun getLocalAudioPluginService(context: Context) : PluginServiceInformation {
             val componentName = ComponentName(context.packageName, AudioPluginService::class.java.name)
             val serviceInfo = context.packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
             return createAudioPluginServiceInformation(context, serviceInfo)!!

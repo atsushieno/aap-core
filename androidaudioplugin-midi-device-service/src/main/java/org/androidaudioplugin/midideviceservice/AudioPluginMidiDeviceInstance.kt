@@ -3,8 +3,8 @@ package org.androidaudioplugin.midideviceservice
 import android.content.Context
 import android.media.AudioManager
 import android.os.IBinder
-import org.androidaudioplugin.AudioPluginServiceConnector
-import org.androidaudioplugin.AudioPluginServiceInformation
+import org.androidaudioplugin.hosting.AudioPluginServiceConnector
+import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 
 // Unlike MidiReceiver, it is instantiated whenever the port is opened, and disposed every time it is closed.
@@ -57,7 +57,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
 
     private fun connectService(packageName: String, className: String) {
         if (!serviceConnector.connectedServices.any { s -> s.serviceInfo.packageName == packageName && s.serviceInfo.className == className })
-            serviceConnector.bindAudioPluginService(AudioPluginServiceInformation("", packageName, className), sampleRate)
+            serviceConnector.bindAudioPluginService(PluginServiceInformation("", packageName, className), sampleRate)
     }
 
     fun onSend(msg: ByteArray?, offset: Int, count: Int, timestamp: Long) {

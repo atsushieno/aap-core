@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import org.androidaudioplugin.AudioPluginServiceInformation
+import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.samples.host.engine.PluginPreview
 
 class PluginListViewModel(ctx: Context) {
@@ -13,12 +13,12 @@ class PluginListViewModel(ctx: Context) {
         private set
 
     data class State @ExperimentalUnsignedTypes constructor(
-        val availablePluginServices: MutableList<AudioPluginServiceInformation>,
+        val availablePluginServices: MutableList<PluginServiceInformation>,
         val preview: PluginPreview
     )
 
     @ExperimentalUnsignedTypes
-    fun setAvailablePluginServices(services: List<AudioPluginServiceInformation>) {
+    fun setAvailablePluginServices(services: List<PluginServiceInformation>) {
         items = State(services.toMutableList(), items.preview)
     }
 }

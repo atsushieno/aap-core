@@ -1,7 +1,7 @@
 package org.androidaudioplugin.midideviceservice
 
 import android.content.Context
-import org.androidaudioplugin.AudioPluginHostHelper
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import java.io.ByteArrayOutputStream

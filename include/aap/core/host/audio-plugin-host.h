@@ -19,8 +19,6 @@
 
 namespace aap {
 
-void set_application_context(void* javaVM, void* jobjectApplicationContext);
-
 enum ContentType {
 	AAP_CONTENT_TYPE_UNDEFINED = 0,
 	AAP_CONTENT_TYPE_AUDIO = 1,

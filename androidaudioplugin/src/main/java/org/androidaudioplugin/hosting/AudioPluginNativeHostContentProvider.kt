@@ -1,4 +1,4 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.content.ContentProvider
 import android.content.ContentValues
@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.net.Uri
+import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.PluginServiceInformation
 import java.lang.RuntimeException
 
 // This class can be used to initialize AudioPluginHost by specifying the class as a <provider>
@@ -35,7 +38,7 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
         val services = AudioPluginHostHelper.queryAudioPluginServices(context)
         for (service in services) {
             host.serviceConnector.bindAudioPluginService(
-                AudioPluginServiceInformation(
+                PluginServiceInformation(
                     service.label,
                     service.packageName,
                     service.className

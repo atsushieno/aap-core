@@ -31,10 +31,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import org.androidaudioplugin.AudioPluginServiceInformation
+import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
@@ -43,7 +41,7 @@ import java.nio.FloatBuffer
 
 
 @Composable
-fun AvailablePlugins(onItemClick: (PluginInformation) -> Unit = {}, pluginServices: List<AudioPluginServiceInformation>) {
+fun AvailablePlugins(onItemClick: (PluginInformation) -> Unit = {}, pluginServices: List<PluginServiceInformation>) {
     val small = TextStyle(fontSize = 12.sp)
 
     LazyColumn {

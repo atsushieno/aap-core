@@ -2,7 +2,7 @@ package org.androidaudioplugin
 
 import android.graphics.drawable.Drawable
 
-class AudioPluginServiceInformation
+class PluginServiceInformation
 {
     var label: String
     var packageName: String
