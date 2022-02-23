@@ -44,8 +44,7 @@ aapmidideviceservice::AAPMidiProcessorAndroid* getDeviceInstance() {
 #define AAPMIDIDEVICE_INSTANCE getDeviceInstance()
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_initializeMidiProcessor(
-        JNIEnv *env, jobject midiReceiver, jobject applicationContext, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
-    aap::set_application_context(env, applicationContext);
+        JNIEnv *env, jobject midiReceiver, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
     ((aap::AndroidPluginHostPAL*) aap::getPluginHostPAL())->initializeKnownPlugins(plugins);
 
     startNewDeviceInstance();
@@ -105,6 +104,13 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
     env->GetByteArrayRegion(bytes, offset, length, jni_midi_buffer);
     AAPMIDIDEVICE_INSTANCE->processMidiInput(
             reinterpret_cast<uint8_t *>(jni_midi_buffer), 0, length, timestampInNanoseconds);
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_midideviceservice_MidiDeviceServiceStartup_initializeApplicationContext(
+        JNIEnv *env, jobject thiz, jobject context) {
+    // Should we actually replace this with private field in this libaapmidideviceservice.so?
+    aap::set_application_context(env, context);
 }
 
 } // extern "C"

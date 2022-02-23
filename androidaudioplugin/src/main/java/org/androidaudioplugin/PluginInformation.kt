@@ -16,13 +16,14 @@ class PluginInformation(var packageName: String, var localName: String, var disp
 
     var ports = mutableListOf<PortInformation>()
 
-    // These obvious members are for use in C interop.
-    internal fun getPortCount() : Int
+    /** These obvious members are for use in C interop and not expected to be consumed by user developers. */
+    fun getPortCount() : Int
     {
         return ports.size
     }
 
-    internal fun getPort(index : Int) : PortInformation
+    /** These obvious members are for use in C interop and not expected to be consumed by user developers. */
+    fun getPort(index : Int) : PortInformation
     {
         return ports[index]
     }

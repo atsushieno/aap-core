@@ -32,7 +32,7 @@ android {
     buildTypes {
         debug {
             packagingOptions {
-                doNotStrip ("**/*.so")
+                jniLibs.keepDebugSymbols.add ("**/*.so")
             }
         }
         release {
@@ -47,7 +47,7 @@ android {
         }
     }
     packagingOptions {
-        exclude ("**libc++_shared.so")
+        jniLibs.excludes.add ("**libc++_shared.so")
     }
 }
 
@@ -55,7 +55,7 @@ apply { from ("../publish-pom.gradle") }
 
 dependencies {
     implementation ("androidx.core:core-ktx:1.7.0")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
+    implementation ("androidx.startup:startup-runtime:1.1.1")
     implementation (project(":androidaudioplugin"))
     testImplementation ("junit:junit:4.13.2")
     androidTestImplementation ("androidx.test.ext:junit:1.1.3")

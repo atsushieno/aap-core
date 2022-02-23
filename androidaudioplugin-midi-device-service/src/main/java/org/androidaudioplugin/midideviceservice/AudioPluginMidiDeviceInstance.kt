@@ -26,7 +26,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
         sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
         oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
 
-        initializeMidiProcessor(ownerService.applicationContext, ownerService.plugins.toTypedArray(),
+        initializeMidiProcessor(ownerService.plugins.toTypedArray(),
             sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize)
 
         serviceConnector = AudioPluginServiceConnector(ownerService.applicationContext)
@@ -68,7 +68,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
     }
 
     // Initialize basic native parts, without any plugin information.
-    private external fun initializeMidiProcessor(applicationContext: Context, knownPlugins: Array<PluginInformation>, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int)
+    private external fun initializeMidiProcessor(knownPlugins: Array<PluginInformation>, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int)
     private external fun terminateMidiProcessor()
     // register Binder instance to native host
     private external fun registerPluginService(binder: IBinder, packageName: String, className: String)
