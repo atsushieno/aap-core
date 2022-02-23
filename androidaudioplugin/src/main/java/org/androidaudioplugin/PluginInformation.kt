@@ -1,5 +1,9 @@
 package org.androidaudioplugin
 
+/**
+ * Plugin information structure. The members mostly correspond to attributes and content elements
+ * in a `<plugin>` element in `aap_metadata.xml`.
+ */
 class PluginInformation(var packageName: String, var localName: String, var displayName: String, var backend: String?, var version: String?,
                         var category: String?, var author: String?, var manufacturer: String?,
                         var pluginId: String?, var sharedLibraryName: String?,
@@ -13,12 +17,12 @@ class PluginInformation(var packageName: String, var localName: String, var disp
     var ports = mutableListOf<PortInformation>()
 
     // These obvious members are for use in C interop.
-    fun getPortCount() : Int
+    internal fun getPortCount() : Int
     {
         return ports.size
     }
 
-    fun getPort(index : Int) : PortInformation
+    internal fun getPort(index : Int) : PortInformation
     {
         return ports[index]
     }

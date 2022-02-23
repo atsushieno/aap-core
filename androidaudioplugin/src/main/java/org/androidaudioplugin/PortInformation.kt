@@ -1,6 +1,11 @@
 package org.androidaudioplugin
 
-class PortInformation(var index: Int, var name: String, var direction: Int, var content: Int, defaultValue: Float = 0.0f, minimumValue: Float = 0.0f, maximumValue: Float = 1.0f)
+/**
+ * Port information structure. The members mostly correspond to attributes in a `<port>` element in
+ * `aap_metadata.xml`.
+ */
+class PortInformation(var index: Int, var name: String, var direction: Int, var content: Int,
+                      defaultValue: Float = 0.0f, minimumValue: Float = 0.0f, maximumValue: Float = 1.0f)
 {
     companion object {
         const val PORT_DIRECTION_INPUT = 0

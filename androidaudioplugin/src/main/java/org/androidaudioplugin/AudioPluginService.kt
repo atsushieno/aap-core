@@ -10,14 +10,33 @@ import android.app.NotificationChannel
 import android.content.Context
 import android.os.Build
 
+/**
+ * The Audio plugin service class. Every AAP (plugin) derives from this class, either directly or indirectly.
+ *
+ * Typical user developers don't have to write any code to create their own plugins in Kotlin code.
+ * They are implemented in native code to get closest to realtime audio processing.
+ */
 open class AudioPluginService : Service()
 {
+    /**
+     * This interface is used by AAP extensions that will be initialized at instantiation step.
+     *
+     * By registering this extension as a `<meta-data>` element in AndroidManifest.xml, whose
+     * `android:name` is `org.androidaudioplugin.AudioPluginService#Extensions`, the implementation
+     * class that is specified in the `android:value` attribute of the `<meta-data>` element
+     * will be instantiated and those members are invoked, wherever appropriate.
+     */
     interface Extension {
         fun initialize(ctx: Context)
         fun cleanup()
     }
 
     companion object {
+        /**
+         * Enable it only if you're debugging. Otherwise it might suspend if the debuggee is a different process.
+         *
+         * Also, if it is true, the shutdown process by lack of active sensing messages should be disabled.
+         */
         @JvmStatic
         var enableDebug = false
     }
@@ -25,7 +44,6 @@ open class AudioPluginService : Service()
     private var native_binder : IBinder? = null
 
     override fun onBind(intent: Intent?): IBinder? {
-        // NOTE: enable it only if you're debugging. Otherwise it will suspend if the debuggee is different process.
         if (enableDebug)
             android.os.Debug.waitForDebugger()
         val sampleRate = intent!!.getIntExtra("sampleRate", 44100)
