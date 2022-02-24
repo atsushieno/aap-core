@@ -20,6 +20,11 @@ public:
   IAudioPluginInterface();
   virtual ~IAudioPluginInterface();
 
+  enum : int32_t { AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1 };
+  enum : int32_t { AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION = 10 };
+  enum : int32_t { AAP_BINDER_ERROR_MMAP_FAILED = 11 };
+  enum : int32_t { AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12 };
+  enum : int32_t { AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20 };
   static constexpr uint32_t TRANSACTION_beginCreate = FIRST_CALL_TRANSACTION + 0;
   static constexpr uint32_t TRANSACTION_addExtension = FIRST_CALL_TRANSACTION + 1;
   static constexpr uint32_t TRANSACTION_endCreate = FIRST_CALL_TRANSACTION + 2;

@@ -1,7 +1,3 @@
-//
-// Created by atsushi on 19/08/26.
-//
-
 #ifndef ANDROIDAUDIOPLUGIN_AUDIOPLUGININTERFACEIMPL_H
 #define ANDROIDAUDIOPLUGIN_AUDIOPLUGININTERFACEIMPL_H
 
@@ -55,15 +51,18 @@ public:
 
     ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         AndroidAudioPluginExtension extension;
         extension.uri = in_uri.c_str();
         auto shmExt = getSharedMemoryExtension(host->getInstance(in_instanceID));
-        assert(shmExt != nullptr);
-        auto dfd = dup(in_sharedMemoryFD.get());
+        if (shmExt == nullptr)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, "unable to get shared memory extension");
+        auto fdRemote = in_sharedMemoryFD.get();
+        auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
         shmExt->getExtensionFDs()->emplace_back(dfd);
         extension.transmit_size = in_size;
-        extension.data = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
+        extension.data = fdRemote < 0 ? nullptr : mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         host->getInstance(in_instanceID)->addExtension(extension);
         return ndk::ScopedAStatus::ok();
     }
@@ -76,7 +75,8 @@ public:
 
     ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         *_aidl_return = host->getInstance(in_instanceID) != nullptr;
         return ndk::ScopedAStatus::ok();
     }
@@ -85,24 +85,32 @@ public:
     // Here we just cache the FDs, and process them later at prepare().
     ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto shmExt = getSharedMemoryExtension(host->getInstance(in_instanceID));
-        assert(shmExt != nullptr);
-        shmExt->setPortBufferFD(in_shmFDIndex, dup(in_sharedMemoryFD.get()));
+        if (shmExt == nullptr)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, "unable to get shared memory extension");
+        auto fdRemote = in_sharedMemoryFD.get();
+        if (fdRemote < 0)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD, "invalid shared memory fd was passed");
+        auto dfd = dup(fdRemote);
+        shmExt->setPortBufferFD(in_shmFDIndex, dfd);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = host->getInstance(in_instanceID);
         auto shmExt = getSharedMemoryExtension(instance);
-        assert(shmExt != nullptr);
+        if (shmExt == nullptr)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, "unable to get shared memory extension");
         shmExt->completeInitialization(in_frameCount);
         int ret = prepare(host->getInstance(in_instanceID), buffers[in_instanceID], in_frameCount, in_portCount);
-
-        return ret != 0 ? ndk::ScopedAStatus{AStatus_fromServiceSpecificError(ret)}
-                        : ndk::ScopedAStatus::ok();
+        if (ret != 0)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, "unable to get shared memory extension");
+        return ndk::ScopedAStatus::ok();
     }
 
     void freeBuffers(PluginInstance* instance, AndroidAudioPluginBuffer& buffer)
@@ -128,6 +136,8 @@ public:
     {
         int nPorts = instance->getPluginInformation()->getNumPorts();
         auto shmExt = getSharedMemoryExtension(instance);
+        if (shmExt == nullptr)
+            return AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION;
         shmExt->resizePortBuffer(nPorts);
         if (buffer.num_buffers != nPorts)
             freeBuffers(instance, buffer);
@@ -144,50 +154,63 @@ public:
             buffer.buffers[i] = mmap(nullptr, buffer.num_frames * sizeof(float), PROT_READ | PROT_WRITE,
                                      MAP_SHARED, shmExt->getPortBufferFD(i), 0);
             if (buffer.buffers[i] == MAP_FAILED) {
-                int err = errno; // FIXME : define error codes
+                int err = AAP_BINDER_ERROR_MMAP_FAILED;
                 __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",
                                     "mmap failed at buffer %d. errno = %d", i, err);
                 return err;
             }
-            assert(buffer.buffers[i] != nullptr);
+            if (buffer.buffers[i] == nullptr) {
+                __android_log_print(ANDROID_LOG_ERROR, "AndroidAudioPlugin",
+                                    "mmap returned null pointer");
+                return AAP_BINDER_ERROR_MMAP_NULL_RETURN;
+            }
         }
         return 0;
     }
 
     ::ndk::ScopedAStatus activate(int32_t in_instanceID) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         host->getInstance(in_instanceID)->activate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         host->getInstance(in_instanceID)->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         host->getInstance(in_instanceID)->deactivate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus getStateSize(int32_t in_instanceID, int32_t *_aidl_return) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         *_aidl_return = host->getInstance(in_instanceID)->getStateSize();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus getState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = host->getInstance(in_instanceID);
         auto state = instance->getState();
-        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
+        auto fdRemote = in_sharedMemoryFD.get();
+        if (fdRemote < 0)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD, "invalid shared memory fd was passed");
+        auto dfd = dup(fdRemote);
+        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         memcpy(dst, state.raw_data, state.data_size);
         munmap(dst, state.data_size);
         return ndk::ScopedAStatus::ok();
@@ -195,9 +218,14 @@ public:
 
     ::ndk::ScopedAStatus setState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = host->getInstance(in_instanceID);
-        auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dup(in_sharedMemoryFD.get()), 0);
+        auto fdRemote = in_sharedMemoryFD.get();
+        if (fdRemote < 0)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD, "invalid shared memory fd was passed");
+        auto dfd = dup(fdRemote);
+        auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         instance->setState(src, in_size);
         munmap(src, in_size);
         return ndk::ScopedAStatus::ok();
@@ -205,7 +233,8 @@ public:
 
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override
     {
-        assert(in_instanceID < host->getInstanceCount());
+        if (in_instanceID < 0 || in_instanceID >= host->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         host->destroyInstance(host->getInstance(in_instanceID));
         return ndk::ScopedAStatus::ok();
     }
