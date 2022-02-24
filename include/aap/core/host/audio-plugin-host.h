@@ -321,10 +321,6 @@ public:
 
 	void updateKnownPlugins(std::vector<PluginInformation*> plugins);
 
-	bool isPluginAlive (std::string identifier);
-
-	bool isPluginUpToDate (std::string identifier, int64_t lastInfoUpdated);
-
 	size_t getNumPluginInformation()
 	{
 		return plugin_infos.size();

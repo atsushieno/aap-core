@@ -73,32 +73,6 @@ void PluginHostManager::updateKnownPlugins(std::vector<PluginInformation*> plugi
 		plugin_infos.emplace_back(entry);
 }
 
-bool PluginHostManager::isPluginAlive (std::string identifier)
-{
-	auto desc = getPluginInformation(identifier);
-	if (!desc)
-		return false;
-
-	if (desc->isOutProcess()) {
-		// TODO: implement healthcheck
-	} else {
-		// assets won't be removed
-	}
-
-	// need more validation?
-	
-	return true;
-}
-
-bool PluginHostManager::isPluginUpToDate (std::string identifier, int64_t lastInfoUpdatedTimeInMilliseconds)
-{
-	auto desc = getPluginInformation(identifier);
-	if (!desc)
-		return false;
-
-	return desc->getLastInfoUpdateTime() <= lastInfoUpdatedTimeInMilliseconds;
-}
-
 //-----------------------------------
 
 PluginBuffer::~PluginBuffer() {
