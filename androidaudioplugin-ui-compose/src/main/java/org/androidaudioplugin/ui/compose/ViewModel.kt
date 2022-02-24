@@ -21,6 +21,8 @@ class PluginListViewModel(ctx: Context) {
     fun setAvailablePluginServices(services: List<PluginServiceInformation>) {
         items = State(services.toMutableList(), items.preview)
     }
+
+    var atTopLevel = true
 }
 
 @ExperimentalUnsignedTypes

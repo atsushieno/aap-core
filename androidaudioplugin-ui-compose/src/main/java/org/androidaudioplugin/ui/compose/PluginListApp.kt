@@ -27,6 +27,7 @@ fun PluginListAppContent() {
                 Scaffold(
                     topBar = { TopAppBar(title = { Text(text = "Plugins in this Plugin Service") }) },
                     content = {
+                        pluginListViewModel.atTopLevel = true // it feels ugly. There should be some better way...
                         AvailablePlugins(onItemClick = { p ->
                             navController.navigate("plugin_details/" + Uri.encode(p.pluginId))
                         }, pluginServices = state.availablePluginServices)
@@ -38,6 +39,7 @@ fun PluginListAppContent() {
                 arguments = listOf(navArgument("pluginId") { type = NavType.StringType })) {
                 val pluginId = it.arguments?.getString("pluginId")
                 if (pluginId != null) {
+                    pluginListViewModel.atTopLevel = false // it feels ugly. There should be some better way...
                     val plugin = state.availablePluginServices.flatMap { s -> s.plugins }
                         .firstOrNull { p -> p.pluginId == pluginId }
                     if (plugin != null) {
