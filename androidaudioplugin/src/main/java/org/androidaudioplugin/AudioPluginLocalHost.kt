@@ -22,8 +22,7 @@ internal class AudioPluginLocalHost {
                 extensions.add(ext)
             }
             AudioPluginNatives.setApplicationContext(context.applicationContext)
-            val pluginInfos = getLocalAudioPluginService(context).plugins.toTypedArray()
-            AudioPluginNatives.initializeLocalHost(pluginInfos)
+            AudioPluginNatives.initializeLocalHostForPluginService()
             initialized = true
         }
 

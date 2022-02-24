@@ -18,7 +18,7 @@ internal class AudioPluginNatives
         external fun initialize(pluginInfos: Array<PluginInformation>)
 
         @JvmStatic
-        external fun initializeLocalHost(pluginInfos: Array<PluginInformation>)
+        external fun initializeLocalHostForPluginService(pluginInfos: Array<PluginInformation>? = null)
 
         @JvmStatic
         external fun cleanupLocalHostNatives()

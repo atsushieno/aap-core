@@ -25,7 +25,7 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
 
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
 		*java_port_information_class_name = "org/androidaudioplugin/PortInformation",
-		*java_audio_plugin_host_helper_class_name = "org/androidaudioplugin/AudioPluginHostHelper";
+		*java_audio_plugin_host_helper_class_name = "org/androidaudioplugin/hosting/AudioPluginHostHelper";
 
 static jmethodID
 		j_method_is_out_process,
@@ -157,7 +157,6 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 }
 
 
-// FIXME: I haven't figured out how it results in crashes yet. Plugins must be set in Kotlin layer so far.
 jobjectArray queryInstalledPluginsJNI()
 {
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
@@ -187,10 +186,8 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
     sp_binder.reset();
 }
 
-void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHost(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
+void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHostForPluginService(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
 {
-    // FIXME: enable later code once queryInstalledPluginsJNI() is fixed.
-    //assert(jPluginInfos != nullptr);
 	if (jPluginInfos == nullptr)
 		jPluginInfos = queryInstalledPluginsJNI();
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());

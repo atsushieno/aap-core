@@ -24,7 +24,6 @@ public:
 class AndroidPluginHostPAL : public PluginHostPAL
 {
 	std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos);
-	std::vector<PluginInformation*> queryInstalledPlugins();
 
 public:
 	virtual inline ~AndroidPluginHostPAL() {}

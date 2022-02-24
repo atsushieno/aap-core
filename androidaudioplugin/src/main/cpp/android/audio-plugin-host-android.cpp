@@ -83,11 +83,6 @@ void AndroidPluginHostPAL::initializeKnownPlugins(jobjectArray jPluginInfos)
     setPluginListCache(convertPluginList(jPluginInfos));
 }
 
-std::vector<aap::PluginInformation*> AndroidPluginHostPAL::queryInstalledPlugins()
-{
-    return convertPluginList(queryInstalledPluginsJNI());
-}
-
 std::unique_ptr<AndroidPluginHostPAL> android_pal_instance{};
 
 PluginHostPAL* getPluginHostPAL()
