@@ -61,20 +61,6 @@ std::vector<PluginInformation*> PluginHostPAL::getInstalledPlugins(bool returnCa
 
 //-----------------------------------
 
-PluginHostManager::PluginHostManager()
-{
-	auto pal = getPluginHostPAL();
-	updateKnownPlugins(pal->getInstalledPlugins());
-}
-
-void PluginHostManager::updateKnownPlugins(std::vector<PluginInformation*> pluginDescriptors)
-{
-	for (auto entry : pluginDescriptors)
-		plugin_infos.emplace_back(entry);
-}
-
-//-----------------------------------
-
 PluginBuffer::~PluginBuffer() {
 	if (buffer) {
 		for (size_t i = 0; i < buffer->num_buffers; i++)
@@ -161,7 +147,7 @@ int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& cl
 
 int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
 {
-	const PluginInformation *descriptor = manager->getPluginInformation(identifier);
+	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
@@ -210,20 +196,18 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aprintf("AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
-	return new PluginInstance(this, descriptor, pluginFactory, sampleRate);
+	return new PluginInstance(descriptor, pluginFactory, sampleRate);
 }
 
 PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
 #if ANDROID
-	auto factoryGetter = GetAndroidAudioPluginFactoryClientBridge;
+    auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
 #else
-	auto factoryGetter = GetDesktopAudioPluginFactoryClientBridge;
+    auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
-	assert (factoryGetter != nullptr);
-	auto pluginFactory = factoryGetter();
 	assert (pluginFactory != nullptr);
-	auto instance = new PluginInstance(this, descriptor, pluginFactory, sampleRate);
+	auto instance = new PluginInstance(descriptor, pluginFactory, sampleRate);
 	return instance;
 }
 
@@ -245,7 +229,7 @@ AndroidAudioPluginExtension PluginExtension::asTransient() const {
 
 //-----------------------------------
 
-PluginInstance::PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+PluginInstance::PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: sample_rate(sampleRate),
 		pluginInfo(pluginInformation),
 		plugin_factory(loadedPluginFactory),
@@ -269,4 +253,10 @@ AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, 
 	return plugin_buffer->getAudioPluginBuffer();
 }
 
+PluginListSnapshot PluginListSnapshot::queryServices() {
+    PluginListSnapshot ret{};
+	for (auto p : getPluginHostPAL()->getInstalledPlugins())
+		ret.plugins.emplace_back(p);
+	return ret;
+}
 } // namespace

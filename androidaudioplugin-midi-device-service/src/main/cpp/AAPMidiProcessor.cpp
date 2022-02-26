@@ -52,7 +52,7 @@ namespace aapmidideviceservice {
 
     void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
         // AAP settings
-        host = std::make_unique<aap::PluginHost>(&host_manager);
+        host = std::make_unique<aap::PluginHost>(&plugin_list);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
@@ -128,7 +128,7 @@ namespace aapmidideviceservice {
             return;
         }
 
-        auto pluginInfo = host_manager.getPluginInformation(pluginId);
+        auto pluginInfo = plugin_list.getPluginInformation(pluginId);
         if (!pluginInfo) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin of ID \"%s\" is not found.", pluginId.c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;

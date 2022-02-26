@@ -85,5 +85,42 @@ public:
     AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
 };
 
+//-----------------------------------
+
+class PluginHostPAL
+{
+protected:
+    // FIXME: move to PluginHost
+    std::vector<PluginInformation*> plugin_list_cache{};
+
+public:
+    ~PluginHostPAL() {
+        for (auto plugin : plugin_list_cache)
+            delete plugin;
+    }
+
+    virtual int32_t createSharedMemory(size_t size) = 0;
+
+    virtual std::vector<std::string> getPluginPaths() = 0;
+    virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
+    virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
+
+    // FIXME: move to PluginHost (it is used by juce_android_plugin_format.cpp so far)
+    std::vector<PluginInformation*> getPluginListCache() { return plugin_list_cache; }
+
+    // FIXME: move to PluginHost
+    void setPluginListCache(std::vector<PluginInformation*> pluginInfos) {
+        plugin_list_cache.clear();
+        for (auto p : pluginInfos)
+            plugin_list_cache.emplace_back(p);
+    }
+
+    std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
+};
+
+// FIXME: this should be removed, not just from the public API, it should be replaced by either
+//  PluginClientSystem or PluginServiceSystem.
+PluginHostPAL* getPluginHostPAL();
+
 }
 #endif // AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H

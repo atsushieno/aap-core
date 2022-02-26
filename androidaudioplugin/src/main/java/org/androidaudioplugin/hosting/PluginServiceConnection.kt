@@ -19,7 +19,7 @@ class PluginServiceConnection(var serviceInfo: PluginServiceInformation, var onC
     var instances = mutableListOf<AudioPluginInstance>()
 
     override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-        Log.d("AudioPluginServiceConnection", "onServiceConnected")
+        Log.d("PluginClientConnection", "onServiceConnected")
         this.binder = binder
         onConnectedCallback(this)
     }

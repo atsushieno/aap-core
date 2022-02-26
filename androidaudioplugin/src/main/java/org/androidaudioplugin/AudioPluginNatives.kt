@@ -12,10 +12,10 @@ internal class AudioPluginNatives
         }
 
         @JvmStatic
-        external fun setApplicationContext(applicationContext: Context)
+        external fun initializeAAPJni(applicationContext: Context)
 
         @JvmStatic
-        external fun initialize(pluginInfos: Array<PluginInformation>)
+        external fun initialize()
 
         @JvmStatic
         external fun initializeLocalHostForPluginService(pluginInfos: Array<PluginInformation>? = null)
@@ -30,7 +30,7 @@ internal class AudioPluginNatives
         external fun destroyBinderForService(binder: IBinder)
 
         @JvmStatic
-        external fun addBinderForHost(packageName: String, className: String, binder: IBinder)
+        external fun addBinderForClient(packageName: String, className: String, binder: IBinder)
 
         @JvmStatic
         external fun removeBinderForHost(packageName: String, className: String)

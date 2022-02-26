@@ -11,12 +11,14 @@
 #include "aap/unstable/logging.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/audio-plugin-host-internals.h"
+#include "audio-plugin-host-android.h"
 
 // AAP plugin implementation that performs actual work via AAP binder client.
 
 class AAPClientContext {
 
 public:
+	AIBinder* binder{nullptr};
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
@@ -31,8 +33,6 @@ public:
     int initialize(int sampleRate, const char *pluginUniqueId)
 	{
 		unique_id = pluginUniqueId;
-    	auto pal = dynamic_cast<aap::AndroidPluginHostPAL*> (aap::getPluginHostPAL());
-    	auto binder = pal->getBinderForServiceConnectionForPlugin(pluginUniqueId);
     	if(binder == nullptr)
     		return 1; // unexpected
         spAIBinder.set(binder);
@@ -186,6 +186,11 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
 	for (int i = 0; extensions[i] != nullptr; i++) {
 		auto ext = extensions[i];
+		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
+			ctx->binder = (AIBinder*) ext->data;
+			continue;
+		}
+
 		// create asharedmem and add as an extension FD, keep it until it is destroyed.
 		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
 		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);

@@ -45,26 +45,9 @@ aapmidideviceservice::AAPMidiProcessorAndroid* getDeviceInstance() {
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_initializeMidiProcessor(
         JNIEnv *env, jobject midiReceiver, jobjectArray plugins, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
-    ((aap::AndroidPluginHostPAL*) aap::getPluginHostPAL())->initializeKnownPlugins(plugins);
-
     startNewDeviceInstance();
 
     AAPMIDIDEVICE_INSTANCE->initialize(sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize);
-}
-
-JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_registerPluginService(
-        JNIEnv *env, jobject midiReceiver, jobject binder, jstring packageName, jstring className) {
-    auto packageNamePtr = dupFromJava(env, packageName);
-    std::string packageNameString{packageNamePtr};
-    auto classNamePtr = dupFromJava(env, className);
-    std::string classNameString{classNamePtr};
-    auto aiBinder = AIBinder_fromJavaBinder(env, binder);
-
-    AAPMIDIDEVICE_INSTANCE->registerPluginService(
-            std::make_unique<aap::AudioPluginServiceConnection>(packageNameString, classNameString, aiBinder));
-
-    free((void *) classNamePtr);
-    free((void *) packageNamePtr);
 }
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_terminateMidiProcessor(

@@ -30,7 +30,7 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
     }
 
     private fun onBindAudioPluginService(conn: PluginServiceConnection) {
-        AudioPluginNatives.addBinderForHost(
+        AudioPluginNatives.addBinderForClient(
             conn.serviceInfo.packageName,
             conn.serviceInfo.className,
             conn.binder!!

@@ -274,61 +274,34 @@ public:
 };
 
 
-class PluginHostPAL
-{
-protected:
-	// FIXME: move to PluginHost
-	std::vector<PluginInformation*> plugin_list_cache{};
+class PluginServiceInformation {
+	std::string package_name;
+	std::string class_name;
 
 public:
-	~PluginHostPAL() {
-		for (auto plugin : plugin_list_cache)
-			delete plugin;
+	PluginServiceInformation(std::string &packageName, std::string &className)
+		: package_name(packageName), class_name(className) {
 	}
 
-	virtual int32_t createSharedMemory(size_t size) = 0;
-
-	virtual std::vector<std::string> getPluginPaths() = 0;
-	virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
-	virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
-
-	// FIXME: move to PluginHost (it is used by juce_android_plugin_format.cpp so far)
-	std::vector<PluginInformation*> getPluginListCache() { return plugin_list_cache; }
-
-	// FIXME: move to PluginHost
-    void setPluginListCache(std::vector<PluginInformation*> pluginInfos) {
-    	plugin_list_cache.clear();
-    	for (auto p : pluginInfos)
-    		plugin_list_cache.emplace_back(p);
-    }
-
-	std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
+	inline std::string & getPackageName() { return package_name; }
+	inline std::string & getClassName() { return class_name; }
 };
 
-PluginHostPAL* getPluginHostPAL();
-
-class PluginHostManager
-{
-	std::vector<const PluginInformation*> plugin_infos{};
+class PluginListSnapshot {
+	std::vector<const PluginServiceInformation*> services{};
+	std::vector<const PluginInformation*> plugins{};
 
 public:
-
-	PluginHostManager();
-
-	~PluginHostManager()
-	{
-	}
-
-	void updateKnownPlugins(std::vector<PluginInformation*> plugins);
+	static PluginListSnapshot queryServices();
 
 	size_t getNumPluginInformation()
 	{
-		return plugin_infos.size();
+		return plugins.size();
 	}
 
 	const PluginInformation* getPluginInformation(int32_t index)
 	{
-		return plugin_infos[(size_t) index];
+		return plugins[(size_t) index];
 	}
 
 	const PluginInformation* getPluginInformation(std::string identifier)
@@ -346,17 +319,37 @@ public:
 
 class PluginInstance;
 
+
+class PluginClientConnection {
+	std::string package_name;
+	std::string class_name;
+	void * connection_data;
+
+public:
+	PluginClientConnection(std::string packageName, std::string className, void * connectionData)
+			: package_name(packageName), class_name(className), connection_data(connectionData) {}
+
+	inline std::string & getPackageName() { return package_name; }
+	inline std::string & getClassName() { return class_name; }
+	inline void * getConnectionData() { return connection_data; }
+};
+
+class PluginClientConnectionList {
+
+};
+
+
 class PluginHost
 {
 	std::vector<PluginInstance*> instances{};
-	PluginHostManager* manager{nullptr};
+	PluginListSnapshot* plugin_list{nullptr};
 
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
 	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(PluginHostManager* pluginHostManager)
-			: manager(pluginHostManager)
+	PluginHost(PluginListSnapshot* contextPluginList)
+			: plugin_list(contextPluginList)
 	{
 	}
 
@@ -384,7 +377,7 @@ class PluginBuffer;
 class PluginInstance
 {
 	friend class PluginHost;
-	friend class PluginHostManager;
+	friend class PluginListSnapshot;
 	
 	int sample_rate{44100};
 	const PluginInformation *pluginInfo;
@@ -395,7 +388,7 @@ class PluginInstance
 	AndroidAudioPluginState plugin_state{0, nullptr};
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
-	PluginInstance(PluginHost* pluginHost, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+	PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
 	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames);
 

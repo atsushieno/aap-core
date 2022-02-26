@@ -21,7 +21,7 @@ internal class AudioPluginLocalHost {
                 ext.initialize(context)
                 extensions.add(ext)
             }
-            AudioPluginNatives.setApplicationContext(context.applicationContext)
+            AudioPluginNatives.initializeAAPJni(context.applicationContext)
             AudioPluginNatives.initializeLocalHostForPluginService()
             initialized = true
         }

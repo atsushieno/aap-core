@@ -57,7 +57,7 @@ namespace aapmidideviceservice {
         static std::string convertStateToText(AAPMidiProcessorState state);
 
         // AAP
-        aap::PluginHostManager host_manager{};
+        aap::PluginListSnapshot plugin_list{};
         std::unique_ptr<aap::PluginHost> host{nullptr};
         int sample_rate{0};
         int aap_frame_size{4096};

@@ -7,11 +7,6 @@ oboe::DataCallbackResult AAPMidiProcessorOboePAL::onAudioReady(
     return (oboe::DataCallbackResult) owner->onAudioReady(audioData, oboeNumFrames);
 }
 
-void AAPMidiProcessorAndroid::registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service) {
-    auto pal = (aap::AndroidPluginHostPAL*) aap::getPluginHostPAL();
-    pal->serviceConnections.emplace_back(std::move(service));
-}
-
 int32_t AAPMidiProcessorOboePAL::setupStream() {
 
     builder.setDirection(oboe::Direction::Output);

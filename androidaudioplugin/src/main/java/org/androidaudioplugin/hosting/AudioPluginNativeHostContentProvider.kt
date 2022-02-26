@@ -30,8 +30,7 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
     }
 
     override fun attachInfo(context: Context?, info: ProviderInfo?) {
-        AudioPluginNatives.setApplicationContext(context!!)
-        AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPlugins(context))
+        AudioPluginNatives.initializeAAPJni(context!!)
         val host = AudioPluginHost(context)
         // FIXME: it is brutal, but is the only way for fully-native JUCE apps to prepare
         // audio plugin service connections beforehand so far.

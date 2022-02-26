@@ -1,21 +1,8 @@
-//
-// Created by atsushi on 2020/01/21.
-//
-
-#include <jni.h>
-#include <android/log.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-
-#include <memory>
-#include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
-#include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
-#include "aap/core/host/audio-plugin-host.h"
-#include "aap/core/host/android/audio-plugin-host-android.h"
-#include "aap/core/host/android/android-application-context.h"
-#include "AudioPluginInterfaceImpl.h"
+#include "audio-plugin-host-android.h"
 
 namespace aap {
+
+// ----------------------------------
 
 std::vector<std::string> AndroidPluginHostPAL::getPluginPaths() {
     // Due to the way how Android service query works (asynchronous),
@@ -44,8 +31,8 @@ AIBinder* AndroidPluginHostPAL::getBinderForServiceConnection(std::string packag
 {
     for (int i = 0; i < serviceConnections.size(); i++) {
         auto s = serviceConnections[i].get();
-        if (s->packageName == packageName && s->className == className)
-            return serviceConnections[i]->aibinder;
+        if (s->getPackageName() == packageName && s->getClassName() == className)
+            return (AIBinder*) serviceConnections[i]->getConnectionData();
     }
     return nullptr;
 }
@@ -66,7 +53,8 @@ std::vector<PluginInformation*> AndroidPluginHostPAL::convertPluginList(jobjectA
 {
     assert(jPluginInfos != nullptr);
     plugin_list_cache.clear();
-    auto env = getJNIEnv();
+    JNIEnv *env;
+    aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
@@ -90,26 +78,6 @@ PluginHostPAL* getPluginHostPAL()
     if (android_pal_instance == nullptr)
         android_pal_instance = std::make_unique<AndroidPluginHostPAL>();
     return android_pal_instance.get();
-}
-
-JNIEnv* AndroidPluginHostPAL::getJNIEnv()
-{
-    JavaVM* vm = aap::get_android_jvm();
-    assert(vm);
-
-    JNIEnv* env;
-    vm->AttachCurrentThread(&env, nullptr);
-    return env;
-}
-
-void AndroidPluginHostPAL::initialize(JNIEnv *env, jobject applicationContext)
-{
-    aap::set_application_context(env, applicationContext);
-}
-
-void AndroidPluginHostPAL::terminate(JNIEnv *env)
-{
-    aap::unset_application_context(env);
 }
 
 } // namespace aap

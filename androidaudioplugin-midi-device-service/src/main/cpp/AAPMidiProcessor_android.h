@@ -99,8 +99,6 @@ public:
         androidPAL->setFramesPerDataCallback(aapFrameSize);
         AAPMidiProcessor::initialize(sampleRate, channelCount, aapFrameSize);
     }
-
-    static void registerPluginService(std::unique_ptr<aap::AudioPluginServiceConnection> service);
 };
 
 }

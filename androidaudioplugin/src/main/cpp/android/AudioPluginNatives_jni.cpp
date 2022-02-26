@@ -10,6 +10,7 @@
 #include "aap/core/host/android/audio-plugin-host-android.h"
 #include "aap/core/host/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
+#include "audio-plugin-host-android.h"
 
 extern "C" {
 
@@ -50,8 +51,11 @@ static jmethodID
 		j_method_port_get_maximum,
 		j_method_query_audio_plugins;
 
-void initializeJNIMetadata(JNIEnv *env)
+void initializeJNIMetadata()
 {
+    JNIEnv *env;
+    aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
+
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
 			java_port_information_class = env->FindClass(java_port_information_class_name),
 			java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
@@ -159,8 +163,8 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 
 jobjectArray queryInstalledPluginsJNI()
 {
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	auto env = apal->getJNIEnv();
+	JNIEnv *env;
+	aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
 
 	jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
 	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
@@ -199,27 +203,20 @@ void Java_org_androidaudioplugin_AudioPluginNatives_cleanupLocalHostNatives(JNIE
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_setApplicationContext(JNIEnv *env, jclass clazz,
-																  jobject applicationContext) {
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	apal->initialize(env, applicationContext);
-    initializeJNIMetadata(env);
-}
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_initialize(JNIEnv *env, jclass clazz,
-                                                       jobjectArray jPluginInfos) {
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->initializeKnownPlugins(jPluginInfos);
+Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jclass clazz,
+																jobject applicationContext) {
+	aap::set_application_context(env, applicationContext);
+    initializeJNIMetadata();
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_addBinderForHost(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz,
                                                                 jstring packageName, jstring className, jobject binder) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->serviceConnections.push_back(std::make_unique<aap::AudioPluginServiceConnection>(packageNameDup, classNameDup, aiBinder));
+    apal->serviceConnections.push_back(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
 }
@@ -233,7 +230,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 	auto &conns = pal->serviceConnections;
 	for (int i = 0; i < conns.size(); i++) {
 		auto &c = pal->serviceConnections[i];
-		if (c->packageName == packageNameDup && c->className == classNameDup) {
+		if (c->getPackageName() == packageNameDup && c->getClassName() == classNameDup) {
 			conns[i].release();
 			pal->serviceConnections.erase(pal->serviceConnections.begin() + i);
 			break;

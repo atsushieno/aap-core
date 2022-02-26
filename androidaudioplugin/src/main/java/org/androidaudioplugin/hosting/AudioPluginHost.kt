@@ -8,12 +8,7 @@ import org.androidaudioplugin.hosting.AudioPluginServiceConnector
 import org.androidaudioplugin.hosting.PluginServiceConnection
 import java.lang.UnsupportedOperationException
 
-/** This class not to endorse any official API for hosting AAP.
- * Its implementation is hacky and not really with decent API design.
- * It is to provide usable utilities for plugin developers as a proof of concept.
- */
-class AudioPluginHost(private var applicationContext: Context) {
-
+open class AudioPluginServiceClient(private val applicationContext: Context) {
     // Service connection
     val serviceConnector = AudioPluginServiceConnector(applicationContext)
 
@@ -26,6 +21,7 @@ class AudioPluginHost(private var applicationContext: Context) {
     fun dispose() {
         for (instance in instantiatedPlugins)
             instance.destroy()
+        serviceConnector.close()
     }
 
     // Plugin instancing
@@ -54,16 +50,30 @@ class AudioPluginHost(private var applicationContext: Context) {
         pluginInstantiatedListeners.forEach { l -> l (instance) }
     }
 
+    var sampleRate : Int
+
+    init {
+        AudioPluginNatives.initializeAAPJni(applicationContext)
+
+        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
+    }
+}
+
+/** This class not to endorse any official API for hosting AAP.
+ * Its implementation is hacky and not really with decent API design.
+ * It is to provide usable utilities for plugin developers as a proof of concept.
+ */
+class AudioPluginHost(private var applicationContext: Context)
+    : AudioPluginServiceClient(applicationContext) {
+
     // Audio buses and buffers management
 
     var audioInputs = mutableListOf<ByteArray>()
     var controlInputs = mutableListOf<ByteArray>()
     var audioOutputs = mutableListOf<ByteArray>()
 
-    private var isConfigured = false
     private var isActive = false
-
-    var sampleRate : Int
 
     var audioBufferSizeInBytes = 4096 * 4
         set(value) {
@@ -114,13 +124,8 @@ class AudioPluginHost(private var applicationContext: Context) {
     }
 
     init {
-        AudioPluginNatives.setApplicationContext(applicationContext)
-        AudioPluginNatives.initialize(AudioPluginHostHelper.queryAudioPluginServices(applicationContext).flatMap { s -> s.plugins }.toTypedArray())
         inputAudioBus = AudioBusPresets.stereo
         outputAudioBus = AudioBusPresets.stereo
-
-        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
     }
 }
 
