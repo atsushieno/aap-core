@@ -51,6 +51,8 @@ namespace aapmidideviceservice {
     }
 
     void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+        plugin_list = aap::PluginListSnapshot::queryServices();
+
         // AAP settings
         host = std::make_unique<aap::PluginHost>(&plugin_list);
         sample_rate = sampleRate;

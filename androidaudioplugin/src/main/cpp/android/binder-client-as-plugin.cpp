@@ -177,6 +177,19 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	assert(extensions != nullptr);
 
 	auto ctx = new AAPClientContext();
+
+	// FIXME: it is kind of ugly hack; we pass AIBinder as an extension, but extensions should be
+	//  initialized *after* initialize() is invoked. We have this code section because AIBinder
+	//  assignment is needed before initialize(), but it should not be implemented within the
+	//  plugin API in the first stage...
+	for (int i = 0; extensions[i] != nullptr; i++) {
+		auto ext = extensions[i];
+		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
+			ctx->binder = (AIBinder *) ext->data;
+			break;
+		}
+	}
+
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
 		return nullptr;
     ctx->shared_memory_extension = std::make_unique<aap::SharedMemoryExtension>();
@@ -187,7 +200,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	for (int i = 0; extensions[i] != nullptr; i++) {
 		auto ext = extensions[i];
 		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
-			ctx->binder = (AIBinder*) ext->data;
 			continue;
 		}
 
