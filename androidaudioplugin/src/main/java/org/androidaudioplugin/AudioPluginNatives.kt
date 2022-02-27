@@ -15,25 +15,16 @@ internal class AudioPluginNatives
         external fun initializeAAPJni(applicationContext: Context)
 
         @JvmStatic
-        external fun initialize()
-
-        @JvmStatic
-        external fun initializeLocalHostForPluginService(pluginInfos: Array<PluginInformation>? = null)
-
-        @JvmStatic
-        external fun cleanupLocalHostNatives()
-
-        @JvmStatic
         external fun createBinderForService(sampleRate: Int) : IBinder
 
         @JvmStatic
         external fun destroyBinderForService(binder: IBinder)
 
         @JvmStatic
-        external fun addBinderForClient(packageName: String, className: String, binder: IBinder)
+        external fun addBinderForClient(scope: Any?, packageName: String, className: String, binder: IBinder)
 
         @JvmStatic
-        external fun removeBinderForHost(packageName: String, className: String)
+        external fun removeBinderForHost(scope: Any?, packageName: String, className: String)
 
         @JvmStatic
         external fun getSharedMemoryFD(shm: SharedMemory) : Int

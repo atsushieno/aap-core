@@ -19,8 +19,6 @@
 namespace aap {
 
 class AndroidPluginHostPAL : public PluginHostPAL {
-    std::vector<PluginInformation *> convertPluginList(jobjectArray jPluginInfos);
-
 public:
     virtual inline ~AndroidPluginHostPAL() {}
 
@@ -39,13 +37,7 @@ public:
     std::vector<PluginInformation *>
     getPluginsFromMetadataPaths(std::vector<std::string> &aapMetadataPaths) override;
 
-    std::vector<std::unique_ptr<PluginClientConnection>> serviceConnections{};
-
     void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
-
-    AIBinder *getBinderForServiceConnection(std::string packageName, std::string className);
-
-    AIBinder *getBinderForServiceConnectionForPlugin(std::string pluginId);
 };
 
 } // namespace aap

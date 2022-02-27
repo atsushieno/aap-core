@@ -10,7 +10,7 @@ import java.lang.UnsupportedOperationException
 
 open class AudioPluginServiceClient(private val applicationContext: Context) {
     // Service connection
-    val serviceConnector = AudioPluginServiceConnector(applicationContext)
+    val serviceConnector = AudioPluginServiceConnector(applicationContext, this)
 
     val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
 

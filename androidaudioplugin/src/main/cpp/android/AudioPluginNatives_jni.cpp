@@ -161,6 +161,8 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 }
 
 
+// --------------------------------------------------
+
 jobjectArray queryInstalledPluginsJNI()
 {
 	JNIEnv *env;
@@ -172,6 +174,17 @@ jobjectArray queryInstalledPluginsJNI()
 	return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
 }
 
+
+// --------------------------------------------------
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jclass clazz,
+                                                                jobject applicationContext) {
+    aap::set_application_context(env, applicationContext);
+    initializeJNIMetadata();
+}
+
+// --------------------------------------------------
 
 std::shared_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
 
@@ -190,51 +203,35 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
     sp_binder.reset();
 }
 
-void Java_org_androidaudioplugin_AudioPluginNatives_initializeLocalHostForPluginService(JNIEnv *env, jclass cls, jobjectArray jPluginInfos)
-{
-	if (jPluginInfos == nullptr)
-		jPluginInfos = queryInstalledPluginsJNI();
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	apal->initializeKnownPlugins(jPluginInfos);
-}
+// --------------------------------------------------
 
-void Java_org_androidaudioplugin_AudioPluginNatives_cleanupLocalHostNatives(JNIEnv *env, jclass cls)
-{
-}
+std::map<jobject, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jclass clazz,
-																jobject applicationContext) {
-	aap::set_application_context(env, applicationContext);
-    initializeJNIMetadata();
-}
-
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jobject scope,
                                                                 jstring packageName, jstring className, jobject binder) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
-	auto apal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-    apal->serviceConnections.push_back(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
+
+    auto list = client_connection_list_per_scope[scope];
+    if (list == nullptr) {
+        client_connection_list_per_scope[scope] = new aap::PluginClientConnectionList();
+        list = client_connection_list_per_scope[scope];
+    }
+	list->add(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz,
-                                                                   jstring packageName, jstring className) {
+Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jobject scope,
+																   jstring packageName, jstring className) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
-	auto pal = dynamic_cast<aap::AndroidPluginHostPAL*>(aap::getPluginHostPAL());
-	auto &conns = pal->serviceConnections;
-	for (int i = 0; i < conns.size(); i++) {
-		auto &c = pal->serviceConnections[i];
-		if (c->getPackageName() == packageNameDup && c->getClassName() == classNameDup) {
-			conns[i].release();
-			pal->serviceConnections.erase(pal->serviceConnections.begin() + i);
-			break;
-		}
+	auto list = client_connection_list_per_scope[scope];
+	if (list != nullptr) {
+		list->remove(packageNameDup, classNameDup);
 	}
 	free((void*) packageNameDup);
 	free((void*) classNameDup);

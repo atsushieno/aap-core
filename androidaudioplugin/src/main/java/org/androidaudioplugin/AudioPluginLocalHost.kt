@@ -22,7 +22,6 @@ internal class AudioPluginLocalHost {
                 extensions.add(ext)
             }
             AudioPluginNatives.initializeAAPJni(context.applicationContext)
-            AudioPluginNatives.initializeLocalHostForPluginService()
             initialized = true
         }
 
@@ -31,13 +30,12 @@ internal class AudioPluginLocalHost {
         {
             for(ext in extensions)
                 ext.cleanup()
-            AudioPluginNatives.cleanupLocalHostNatives()
             initialized = false
         }
 
         @JvmStatic
-        fun getLocalAudioPluginService(context: Context) = AudioPluginHostHelper.queryAudioPluginServices(
-            context
-        ).first { svc -> svc.packageName == context.packageName }
+        fun getLocalAudioPluginService(context: Context) =
+            AudioPluginHostHelper.queryAudioPluginServices(context)
+                .first { svc -> svc.packageName == context.packageName }
     }
 }

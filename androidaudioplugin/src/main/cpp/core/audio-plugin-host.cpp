@@ -259,4 +259,25 @@ PluginListSnapshot PluginListSnapshot::queryServices() {
 		ret.plugins.emplace_back(p);
 	return ret;
 }
+
+void* PluginClientConnectionList::getBinderForServiceConnection(std::string packageName, std::string className)
+{
+	for (int i = 0; i < serviceConnections.size(); i++) {
+		auto s = serviceConnections[i].get();
+		if (s->getPackageName() == packageName && s->getClassName() == className)
+			return serviceConnections[i]->getConnectionData();
+	}
+	return nullptr;
+}
+
+void* PluginClientConnectionList::getBinderForServiceConnectionForPlugin(std::string pluginId)
+{
+	auto pl = getPluginHostPAL()->getInstalledPlugins();
+	for (int i = 0; pl[i] != nullptr; i++)
+		if (pl[i]->getPluginID() == pluginId)
+			return getBinderForServiceConnection(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
+	return nullptr;
+}
+
+
 } // namespace

@@ -335,7 +335,28 @@ public:
 };
 
 class PluginClientConnectionList {
+	std::vector<std::unique_ptr<PluginClientConnection>> serviceConnections{};
 
+public:
+
+	inline void add(std::unique_ptr<PluginClientConnection> entry) {
+		serviceConnections.emplace_back(std::move(entry));
+	}
+
+	inline void remove(std::string packageName, std::string className) {
+		for (int i = 0; i < serviceConnections.size(); i++) {
+			auto &c = serviceConnections[i];
+			if (c->getPackageName() == packageName && c->getClassName() == className) {
+				serviceConnections[i].release();
+				serviceConnections.erase(serviceConnections.begin() + i);
+				break;
+			}
+		}
+	}
+
+	void* getBinderForServiceConnection(std::string packageName, std::string className);
+
+	void* getBinderForServiceConnectionForPlugin(std::string pluginId);
 };
 
 

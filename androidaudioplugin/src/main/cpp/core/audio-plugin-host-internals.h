@@ -105,16 +105,6 @@ public:
     virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
     virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
 
-    // FIXME: move to PluginHost (it is used by juce_android_plugin_format.cpp so far)
-    std::vector<PluginInformation*> getPluginListCache() { return plugin_list_cache; }
-
-    // FIXME: move to PluginHost
-    void setPluginListCache(std::vector<PluginInformation*> pluginInfos) {
-        plugin_list_cache.clear();
-        for (auto p : pluginInfos)
-            plugin_list_cache.emplace_back(p);
-    }
-
     std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
 };
 
