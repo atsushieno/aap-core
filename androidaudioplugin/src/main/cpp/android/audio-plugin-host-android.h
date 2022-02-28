@@ -14,8 +14,6 @@
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 #define AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 
-#define AAP_BINDER_EXTENSION_URI "urn:aap:internals:ai_binder_provider_extension"
-
 namespace aap {
 
 class AndroidPluginHostPAL : public PluginHostPAL {

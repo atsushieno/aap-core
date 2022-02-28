@@ -50,11 +50,11 @@ namespace aapmidideviceservice {
         return AudioCallbackResult::Continue;
     }
 
-    void AAPMidiProcessor::initialize(int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+    void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
         plugin_list = aap::PluginListSnapshot::queryServices();
 
         // AAP settings
-        host = std::make_unique<aap::PluginHost>(&plugin_list);
+        host = std::make_unique<aap::PluginClient>(connections, &plugin_list);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
@@ -158,7 +158,12 @@ namespace aapmidideviceservice {
 
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
-        // There is no extension to initialize, so go for completeInstantiation() immediately.
+        AndroidAudioPluginExtension binderExt;
+        binderExt.uri = AAP_BINDER_EXTENSION_URI;
+        binderExt.transmit_size = sizeof(aap::PluginClientConnectionList*);
+        binderExt.data = host->getConnections();
+        instance->addExtension(binderExt);
+
         instance->completeInstantiation();
 
         data->instance_id = instanceId;

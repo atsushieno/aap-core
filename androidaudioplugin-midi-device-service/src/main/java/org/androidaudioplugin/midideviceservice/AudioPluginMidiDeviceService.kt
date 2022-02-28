@@ -34,7 +34,7 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
     }
 
     // it does not really do any work but initializing native PAL.
-    private lateinit var host: AudioPluginHost
+    lateinit var host: AudioPluginHost
 
     override fun onCreate() {
         super.onCreate()

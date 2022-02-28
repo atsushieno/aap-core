@@ -207,17 +207,23 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 
 std::map<jobject, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
+aap::PluginClientConnectionList* getPluginConnectionListFromJni(jobject connector) {
+	// FIXME: do we need GlobalRef?
+	return client_connection_list_per_scope[connector];
+}
+
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jobject scope,
+Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jobject connector,
                                                                 jstring packageName, jstring className, jobject binder) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 
-    auto list = client_connection_list_per_scope[scope];
+	// FIXME: do we need GlobalRef?
+    auto list = client_connection_list_per_scope[connector];
     if (list == nullptr) {
-        client_connection_list_per_scope[scope] = new aap::PluginClientConnectionList();
-        list = client_connection_list_per_scope[scope];
+        client_connection_list_per_scope[connector] = new aap::PluginClientConnectionList();
+        list = client_connection_list_per_scope[connector];
     }
 	list->add(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
@@ -225,11 +231,11 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jobject scope,
+Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jobject connector,
 																   jstring packageName, jstring className) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
-	auto list = client_connection_list_per_scope[scope];
+	auto list = client_connection_list_per_scope[connector];
 	if (list != nullptr) {
 		list->remove(packageNameDup, classNameDup);
 	}

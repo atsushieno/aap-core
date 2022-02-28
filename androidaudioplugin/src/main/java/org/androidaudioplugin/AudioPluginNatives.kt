@@ -3,6 +3,7 @@ package org.androidaudioplugin
 import android.content.Context
 import android.os.IBinder
 import android.os.SharedMemory
+import org.androidaudioplugin.hosting.AudioPluginServiceConnector
 
 internal class AudioPluginNatives
 {
@@ -21,10 +22,10 @@ internal class AudioPluginNatives
         external fun destroyBinderForService(binder: IBinder)
 
         @JvmStatic
-        external fun addBinderForClient(scope: Any?, packageName: String, className: String, binder: IBinder)
+        external fun addBinderForClient(connector: AudioPluginServiceConnector, packageName: String, className: String, binder: IBinder)
 
         @JvmStatic
-        external fun removeBinderForHost(scope: Any?, packageName: String, className: String)
+        external fun removeBinderForHost(connector: AudioPluginServiceConnector, packageName: String, className: String)
 
         @JvmStatic
         external fun getSharedMemoryFD(shm: SharedMemory) : Int

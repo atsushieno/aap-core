@@ -58,7 +58,7 @@ namespace aapmidideviceservice {
 
         // AAP
         aap::PluginListSnapshot plugin_list{};
-        std::unique_ptr<aap::PluginHost> host{nullptr};
+        std::unique_ptr<aap::PluginClient> host{nullptr};
         int sample_rate{0};
         int aap_frame_size{4096};
         int channel_count{2};
@@ -79,7 +79,7 @@ namespace aapmidideviceservice {
         virtual AAPMidiProcessorPAL* pal() = 0;
 
     public:
-        void initialize(int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize);
+        void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize);
 
         void instantiatePlugin(std::string pluginId);
 

@@ -17,6 +17,8 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/port-properties.h"
 
+#define AAP_BINDER_EXTENSION_URI "urn:aap:internals:ai_binder_provider_extension"
+
 namespace aap {
 
 enum ContentType {
@@ -335,19 +337,19 @@ public:
 };
 
 class PluginClientConnectionList {
-	std::vector<std::unique_ptr<PluginClientConnection>> serviceConnections{};
+	std::vector<PluginClientConnection*> serviceConnections{};
 
 public:
 
 	inline void add(std::unique_ptr<PluginClientConnection> entry) {
-		serviceConnections.emplace_back(std::move(entry));
+		serviceConnections.emplace_back(entry.release());
 	}
 
 	inline void remove(std::string packageName, std::string className) {
 		for (int i = 0; i < serviceConnections.size(); i++) {
 			auto &c = serviceConnections[i];
 			if (c->getPackageName() == packageName && c->getClassName() == className) {
-				serviceConnections[i].release();
+				delete serviceConnections[i];
 				serviceConnections.erase(serviceConnections.begin() + i);
 				break;
 			}
@@ -359,27 +361,57 @@ public:
 	void* getBinderForServiceConnectionForPlugin(std::string pluginId);
 };
 
-
 class PluginHost
 {
-	std::vector<PluginInstance*> instances{};
+protected:
 	PluginListSnapshot* plugin_list{nullptr};
-
+	std::vector<PluginInstance*> instances{};
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
-	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(PluginListSnapshot* contextPluginList)
-			: plugin_list(contextPluginList)
+	PluginHost(PluginListSnapshot* contextPluginList) : plugin_list(contextPluginList)
 	{
 	}
 
-	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false);
+	virtual ~PluginHost() {}
+
+	virtual int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) = 0;
 	void destroyInstance(PluginInstance* instance);
 	size_t getInstanceCount() { return instances.size(); }
 	PluginInstance* getInstance(int32_t instanceId) { return instances[(size_t) instanceId]; }
 };
 
+
+class PluginService : public PluginHost {
+
+public:
+	PluginService(PluginListSnapshot* contextPluginList)
+			: PluginHost(contextPluginList)
+	{
+	}
+
+	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override {
+		auto info = plugin_list->getPluginInformation(identifier);
+		instances.emplace_back(instantiateLocalPlugin(info, sampleRate));
+		return instances.size();
+	}
+};
+
+class PluginClient : public PluginHost {
+	PluginClientConnectionList* connections;
+
+	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
+
+public:
+	PluginClient(PluginClientConnectionList* connections, PluginListSnapshot* contextPluginList)
+		: PluginHost(contextPluginList), connections(connections)
+	{
+	}
+
+	inline PluginClientConnectionList* getConnections() { return connections; }
+
+	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override;
+};
 
 // This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
 class PluginExtension {
@@ -398,6 +430,7 @@ class PluginBuffer;
 class PluginInstance
 {
 	friend class PluginHost;
+	friend class PluginClient;
 	friend class PluginListSnapshot;
 	
 	int sample_rate{44100};
@@ -430,22 +463,7 @@ public:
 		extensions.emplace_back(std::make_unique<PluginExtension>(ext));
 	}
 
-	void completeInstantiation()
-	{
-		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
-
-		AndroidAudioPluginExtension extArr[extensions.size()];
-		for (size_t i = 0; i < extensions.size(); i++)
-			extArr[i] = extensions[i]->asTransient();
-		AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
-		for (size_t i = 0; i < extensions.size(); i++)
-			extPtrArr[i] = &extArr[i];
-		extPtrArr[extensions.size()] = nullptr;
-		plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extPtrArr);
-		assert(plugin);
-
-		instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
-	}
+	void completeInstantiation();
 
 	const void* getExtension(const char* uri)
 	{

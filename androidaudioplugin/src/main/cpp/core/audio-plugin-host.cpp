@@ -145,7 +145,7 @@ int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& cl
 
 //-----------------------------------
 
-int PluginHost::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
+int PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
 {
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
@@ -199,7 +199,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return new PluginInstance(descriptor, pluginFactory, sampleRate);
 }
 
-PluginInstance* PluginHost::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
+PluginInstance* PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
 #if ANDROID
     auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
@@ -253,6 +253,23 @@ AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, 
 	return plugin_buffer->getAudioPluginBuffer();
 }
 
+void PluginInstance::completeInstantiation()
+{
+	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
+
+	AndroidAudioPluginExtension extArr[extensions.size() + 1];
+	for (size_t i = 0; i < extensions.size(); i++)
+		extArr[i] = extensions[i]->asTransient();
+	AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
+	for (size_t i = 0; i < extensions.size(); i++)
+		extPtrArr[i] = &extArr[i];
+	extPtrArr[extensions.size()] = nullptr;
+	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extPtrArr);
+	assert(plugin);
+
+	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+}
+
 PluginListSnapshot PluginListSnapshot::queryServices() {
     PluginListSnapshot ret{};
 	for (auto p : getPluginHostPAL()->getInstalledPlugins())
@@ -263,7 +280,7 @@ PluginListSnapshot PluginListSnapshot::queryServices() {
 void* PluginClientConnectionList::getBinderForServiceConnection(std::string packageName, std::string className)
 {
 	for (int i = 0; i < serviceConnections.size(); i++) {
-		auto s = serviceConnections[i].get();
+		auto s = serviceConnections[i];
 		if (s->getPackageName() == packageName && s->getClassName() == className)
 			return serviceConnections[i]->getConnectionData();
 	}

@@ -7,7 +7,7 @@
 #include <android/sharedmem.h>
 #include "../audio-plugin-host.h"
 
-#define SERVICE_QUERY_TIMEOUT_IN_SECONDS 10
+extern "C" aap::PluginClientConnectionList* getPluginConnectionListFromJni(jobject connector);
 
 namespace aap {
 
