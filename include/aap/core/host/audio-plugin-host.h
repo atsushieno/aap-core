@@ -390,11 +390,7 @@ public:
 	{
 	}
 
-	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override {
-		auto info = plugin_list->getPluginInformation(identifier);
-		instances.emplace_back(instantiateLocalPlugin(info, sampleRate));
-		return instances.size();
-	}
+	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override;
 };
 
 class PluginClient : public PluginHost {

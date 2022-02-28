@@ -2,6 +2,7 @@ package org.androidaudioplugin;
 
 interface AudioPluginInterface {
     const int AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1;
+    const int AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED = 2;
     const int AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION = 10;
     const int AAP_BINDER_ERROR_MMAP_FAILED = 11;
     const int AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12;

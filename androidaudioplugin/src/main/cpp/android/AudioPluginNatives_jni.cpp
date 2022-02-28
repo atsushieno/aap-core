@@ -205,25 +205,26 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 
 // --------------------------------------------------
 
-std::map<jobject, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
+std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
-aap::PluginClientConnectionList* getPluginConnectionListFromJni(jobject connector) {
-	// FIXME: do we need GlobalRef?
-	return client_connection_list_per_scope[connector];
+aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist) {
+	auto ret = client_connection_list_per_scope[connectorInstanceId];
+	if (!ret)
+		client_connection_list_per_scope[connectorInstanceId] = ret = new aap::PluginClientConnectionList();
+	return ret;
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jobject connector,
+Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
                                                                 jstring packageName, jstring className, jobject binder) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 
-	// FIXME: do we need GlobalRef?
-    auto list = client_connection_list_per_scope[connector];
+    auto list = client_connection_list_per_scope[connectorInstanceId];
     if (list == nullptr) {
-        client_connection_list_per_scope[connector] = new aap::PluginClientConnectionList();
-        list = client_connection_list_per_scope[connector];
+        client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
+        list = client_connection_list_per_scope[connectorInstanceId];
     }
 	list->add(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
 	free((void*) packageNameDup);
@@ -231,11 +232,11 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 }
 
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jobject connector,
+Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jint connectorInstanceId,
 																   jstring packageName, jstring className) {
 	const char *packageNameDup = strdup_fromJava(env, packageName);
 	const char *classNameDup = strdup_fromJava(env, className);
-	auto list = client_connection_list_per_scope[connector];
+	auto list = client_connection_list_per_scope[connectorInstanceId];
 	if (list != nullptr) {
 		list->remove(packageNameDup, classNameDup);
 	}

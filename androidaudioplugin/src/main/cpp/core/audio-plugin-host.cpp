@@ -166,6 +166,17 @@ void PluginHost::destroyInstance(PluginInstance* instance)
 	delete instance;
 }
 
+int32_t PluginService::createInstance(std::string identifier, int sampleRate,
+									  bool isRemoteExplicit)  {
+	auto info = plugin_list->getPluginInformation(identifier);
+	if (!info) {
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "libandroidaudioplugin", "Plugin information was not found for: %s ", identifier.c_str());
+		return -1;
+	}
+	instances.emplace_back(instantiateLocalPlugin(info, sampleRate));
+	return instances.size() - 1;
+}
+
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
 {
 	dlerror(); // clean up any previous error state
@@ -183,17 +194,17 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
 	if (dl == nullptr) {
-		aprintf("AAP library %s could not be loaded.\n", file.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP library %s could not be loaded.\n", file.c_str());
 		return nullptr;
 	}
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
 	if (factoryGetter == nullptr) {
-		aprintf("AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
 		return nullptr;
 	}
 	auto pluginFactory = factoryGetter();
 	if (pluginFactory == nullptr) {
-		aprintf("AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
 	return new PluginInstance(descriptor, pluginFactory, sampleRate);

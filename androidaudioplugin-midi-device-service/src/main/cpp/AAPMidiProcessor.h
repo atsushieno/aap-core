@@ -58,7 +58,7 @@ namespace aapmidideviceservice {
 
         // AAP
         aap::PluginListSnapshot plugin_list{};
-        std::unique_ptr<aap::PluginClient> host{nullptr};
+        std::unique_ptr<aap::PluginClient> client{nullptr};
         int sample_rate{0};
         int aap_frame_size{4096};
         int channel_count{2};

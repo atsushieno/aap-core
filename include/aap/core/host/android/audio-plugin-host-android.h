@@ -7,7 +7,7 @@
 #include <android/sharedmem.h>
 #include "../audio-plugin-host.h"
 
-extern "C" aap::PluginClientConnectionList* getPluginConnectionListFromJni(jobject connector);
+extern "C" aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist);
 
 namespace aap {
 

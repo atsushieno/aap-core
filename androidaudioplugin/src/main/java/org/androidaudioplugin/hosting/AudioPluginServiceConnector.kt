@@ -8,6 +8,11 @@ import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 
 class AudioPluginServiceConnector(private val applicationContext: Context) : AutoCloseable {
+    companion object {
+        var serial = 0
+    }
+
+    var instanceId = serial++
     val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
     val connectedServices = mutableListOf<PluginServiceConnection>()
     private var isClosed = false
@@ -31,7 +36,7 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
 
     private fun onBindAudioPluginService(conn: PluginServiceConnection) {
         AudioPluginNatives.addBinderForClient(
-            this,
+            instanceId,
             conn.serviceInfo.packageName,
             conn.serviceInfo.className,
             conn.binder!!
@@ -50,7 +55,7 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
         val conn = findExistingServiceConnection(packageName, localName) ?: return
         connectedServices.remove(conn)
         AudioPluginNatives.removeBinderForHost(
-            this,
+            instanceId,
             conn.serviceInfo.packageName,
             conn.serviceInfo.className
         )
@@ -59,7 +64,7 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
     override fun close() {
         connectedServices.toTypedArray().forEach { conn ->
             AudioPluginNatives.removeBinderForHost(
-                this,
+                instanceId,
                 conn.serviceInfo.packageName,
                 conn.serviceInfo.className
             )

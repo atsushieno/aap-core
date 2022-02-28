@@ -33,13 +33,9 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
         return c != null && (c.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) || c.contains("Synth"))
     }
 
-    // it does not really do any work but initializing native PAL.
-    lateinit var host: AudioPluginHost
-
     override fun onCreate() {
         super.onCreate()
 
-        host = AudioPluginHost(applicationContext)
         portStatus = Array(deviceInfo.inputPortCount) { false }
     }
 

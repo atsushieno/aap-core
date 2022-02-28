@@ -29,7 +29,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
 
         client = AudioPluginServiceClient(ownerService.applicationContext)
 
-        initializeMidiProcessor(ownerService.host.serviceConnector,
+        initializeMidiProcessor(client.serviceConnector.instanceId,
             sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize)
 
         client.pluginInstantiatedListeners.add { instance ->
@@ -55,7 +55,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
     }
 
     // Initialize basic native parts, without any plugin information.
-    private external fun initializeMidiProcessor(knownPlugins: AudioPluginServiceConnector, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int)
+    private external fun initializeMidiProcessor(connectorInstanceId: Int, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int)
     private external fun terminateMidiProcessor()
     private external fun instantiatePlugin(pluginId: String)
     private external fun processMessage(msg: ByteArray?, offset: Int, count: Int, timestampInNanoseconds: Long)

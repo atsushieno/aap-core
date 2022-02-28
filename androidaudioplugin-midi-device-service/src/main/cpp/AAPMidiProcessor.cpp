@@ -51,10 +51,11 @@ namespace aapmidideviceservice {
     }
 
     void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+        assert(connections);
         plugin_list = aap::PluginListSnapshot::queryServices();
 
         // AAP settings
-        host = std::make_unique<aap::PluginClient>(connections, &plugin_list);
+        client = std::make_unique<aap::PluginClient>(connections, &plugin_list);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
@@ -70,7 +71,7 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::terminate() {
         if (instance_data != nullptr) {
             if (instance_data->instance_id >= 0) {
-                auto instance = host->getInstance(instance_data->instance_id);
+                auto instance = client->getInstance(instance_data->instance_id);
                 if (!instance)
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "instance of instance_id %d was not found",
                                  instance_data->instance_id);
@@ -86,7 +87,7 @@ namespace aapmidideviceservice {
         if (interleave_buffer)
             free(interleave_buffer);
 
-        host.reset();
+        client.reset();
 
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "Successfully terminated MIDI processor.");
     }
@@ -119,7 +120,7 @@ namespace aapmidideviceservice {
         }
 
         if (instance_data) {
-            const auto& instance = host->getInstance(instance_data->instance_id);
+            const auto& instance = client->getInstance(instance_data->instance_id);
             if (instance)
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
                              instance->getPluginInformation()->getDisplayName().c_str());
@@ -145,14 +146,14 @@ namespace aapmidideviceservice {
 
         int32_t numPorts = pluginInfo->getNumPorts();
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "host is going to instantiate %s", pluginId.c_str());
-        auto instanceId = host->createInstance(pluginId, sample_rate, true);
+        auto instanceId = client->createInstance(pluginId, sample_rate, true);
         if (instanceId < 0) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin \"%s\" could not be instantiated.",
                          pluginInfo->getDisplayName().c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
-        auto instance = host->getInstance(instanceId);
+        auto instance = client->getInstance(instanceId);
 
         instrument_instance_id = instanceId;
 
@@ -161,7 +162,7 @@ namespace aapmidideviceservice {
         AndroidAudioPluginExtension binderExt;
         binderExt.uri = AAP_BINDER_EXTENSION_URI;
         binderExt.transmit_size = sizeof(aap::PluginClientConnectionList*);
-        binderExt.data = host->getConnections();
+        binderExt.data = client->getConnections();
         instance->addExtension(binderExt);
 
         instance->completeInstantiation();
@@ -208,8 +209,8 @@ namespace aapmidideviceservice {
         }
 
         // activate instances
-        for (int i = 0; i < host->getInstanceCount(); i++)
-            host->getInstance(i)->activate();
+        for (int i = 0; i < client->getInstanceCount(); i++)
+            client->getInstance(i)->activate();
 
         state = AAP_MIDI_PROCESSOR_STATE_ACTIVE;
     }
@@ -224,8 +225,8 @@ namespace aapmidideviceservice {
         }
 
         // deactivate AAP instances
-        for (int i = 0; i < host->getInstanceCount(); i++)
-            host->getInstance(i)->deactivate();
+        for (int i = 0; i < client->getInstanceCount(); i++)
+            client->getInstance(i)->deactivate();
 
         pal()->stopStreaming();
 
@@ -236,7 +237,7 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::callPluginProcess() {
         auto data = instance_data.get();
         assert(data);
-        host->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
+        client->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
             if (data->midi1_in_port >= 0)
