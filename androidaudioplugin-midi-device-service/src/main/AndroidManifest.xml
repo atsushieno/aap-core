@@ -2,9 +2,8 @@
     package="org.androidaudioplugin.midideviceservice">
     <application>
         <provider xmlns:tools="http://schemas.android.com/tools"
-            tools:node="merge"
             tools:replace="android:authorities"
-            android:authorities="$[applicationId}.midideviceservice"
+            android:authorities="${applicationId}.midideviceservice"
             android:name="androidx.startup.InitializationProvider"
             android:exported="false">
             <meta-data android:name="org.androidaudioplugin.midideviceservice.MidiDeviceServiceStartup"
