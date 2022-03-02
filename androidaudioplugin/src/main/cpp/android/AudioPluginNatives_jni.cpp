@@ -10,7 +10,7 @@
 #include "aap/core/host/android/audio-plugin-host-android.h"
 #include "aap/core/host/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
-#include "audio-plugin-host-android.h"
+#include "audio-plugin-host-android-internal.h"
 
 extern "C" {
 
@@ -25,8 +25,7 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
 }
 
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
-		*java_port_information_class_name = "org/androidaudioplugin/PortInformation",
-		*java_audio_plugin_host_helper_class_name = "org/androidaudioplugin/hosting/AudioPluginHostHelper";
+		*java_port_information_class_name = "org/androidaudioplugin/PortInformation";
 
 static jmethodID
 		j_method_is_out_process,
@@ -48,8 +47,7 @@ static jmethodID
 		j_method_port_has_value_range,
 		j_method_port_get_default,
 		j_method_port_get_minimum,
-		j_method_port_get_maximum,
-		j_method_query_audio_plugins;
+		j_method_port_get_maximum;
 
 void initializeJNIMetadata()
 {
@@ -57,8 +55,7 @@ void initializeJNIMetadata()
     aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
 
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
-			java_port_information_class = env->FindClass(java_port_information_class_name),
-			java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
+			java_port_information_class = env->FindClass(java_port_information_class_name);
 
 	j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
 											   "isOutProcess", "()Z");
@@ -103,8 +100,6 @@ void initializeJNIMetadata()
 												 "()F");
 	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
 												 "()F");
-	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
-														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
 }
 
 const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
@@ -166,12 +161,18 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 jobjectArray queryInstalledPluginsJNI()
 {
 	JNIEnv *env;
-	aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
+	JavaVM* vm = aap::get_android_jvm();
+	assert(vm);
+	vm->AttachCurrentThread(&env, nullptr);
 
-	jclass java_audio_plugin_host_helper_class = env->FindClass(java_audio_plugin_host_helper_class_name);
-	j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
+	jclass java_audio_plugin_host_helper_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
+	assert(java_audio_plugin_host_helper_class);
+	jmethodID j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
-	return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
+	assert(j_method_query_audio_plugins);
+	auto ret = (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
+	vm->DetachCurrentThread();
+	return ret;
 }
 
 

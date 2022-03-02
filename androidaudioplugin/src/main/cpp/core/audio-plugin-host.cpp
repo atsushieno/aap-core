@@ -49,13 +49,10 @@ PluginInformation::PluginInformation(bool isOutProcess, const char* pluginPackag
 //-----------------------------------
 
 std::vector<PluginInformation*> PluginHostPAL::getInstalledPlugins(bool returnCacheIfExists, std::vector<std::string>* searchPaths) {
-	auto& ret = plugin_list_cache;
-	if (ret.size() > 0)
-		return ret;
 	std::vector<std::string> aapPaths{};
 	for (auto path : getPluginPaths())
 		getAAPMetadataPaths(path, aapPaths);
-	ret = getPluginsFromMetadataPaths(aapPaths);
+	auto ret = getPluginsFromMetadataPaths(aapPaths);
 	return ret;
 }
 

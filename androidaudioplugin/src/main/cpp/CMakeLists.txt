@@ -18,7 +18,7 @@ set (androidaudioplugin_SOURCES
 	"android/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
 	"android/android-application-context.cpp"
 	"android/AudioPluginNatives_jni.cpp"
-	"android/audio-plugin-host-android.cpp"
+	"android/audio-plugin-host-android-internal.cpp"
 	)
 
 set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)

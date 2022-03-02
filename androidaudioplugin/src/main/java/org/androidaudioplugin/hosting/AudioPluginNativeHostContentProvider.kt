@@ -26,6 +26,7 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
     }
 
     override fun onCreate(): Boolean {
+        System.loadLibrary("androidaudioplugin")
         return true
     }
 

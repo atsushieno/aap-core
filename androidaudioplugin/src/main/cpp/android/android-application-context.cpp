@@ -19,6 +19,8 @@ void unset_application_context(JNIEnv *env) {
 void set_application_context(JNIEnv *env, jobject jobjectApplicationContext) {
     if (application_context)
         unset_application_context(env);
+    if (!android_vm)
+	    env->GetJavaVM(&android_vm);
     application_context = env->NewGlobalRef((jobject) jobjectApplicationContext);
 }
 

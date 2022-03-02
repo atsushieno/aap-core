@@ -1,13 +1,8 @@
-#include "audio-plugin-host-android.h"
+#include "audio-plugin-host-android-internal.h"
 
 namespace aap {
 
 // ----------------------------------
-
-extern "C" jobjectArray queryInstalledPluginsJNI(); // in AudioPluginHost_native.cpp
-
-extern "C" aap::PluginInformation *
-pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation); // in AudioPluginHost_native.cpp
 
 std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
 {
@@ -29,9 +24,12 @@ std::vector<PluginInformation*> queryInstalledPlugins() {
 
 std::vector<std::string> AndroidPluginHostPAL::getPluginPaths() {
     std::vector<std::string> ret{};
-    for (auto p : convertPluginList(queryInstalledPluginsJNI())) {
-        if (std::find(ret.begin(), ret.end(), p->getPluginPackageName()) == ret.end())
-            ret.emplace_back(p->getPluginPackageName());
+    auto plugins = queryInstalledPlugins();
+    for (auto p : plugins) {
+        assert(p);
+        auto packageName = p->getPluginPackageName();
+        if (std::find(ret.begin(), ret.end(), packageName) == ret.end())
+            ret.emplace_back(packageName);
     }
     return ret;
 }

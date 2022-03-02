@@ -14,6 +14,11 @@
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 #define AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 
+extern "C" aap::PluginInformation *
+pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation); // in AudioPluginHost_native.cpp
+
+extern "C" jobjectArray queryInstalledPluginsJNI(); // in AudioPluginNatives_jni.cpp
+
 namespace aap {
 
 class AndroidPluginHostPAL : public PluginHostPAL {
@@ -34,8 +39,6 @@ public:
 
     std::vector<PluginInformation *>
     getPluginsFromMetadataPaths(std::vector<std::string> &aapMetadataPaths) override;
-
-    void initializeKnownPlugins(jobjectArray jPluginInfos = nullptr);
 };
 
 } // namespace aap

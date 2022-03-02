@@ -10,6 +10,7 @@ val kotlin_version: String by rootProject
 val dokka_version: String by rootProject
 val compose_version: String by rootProject
 val aap_version: String by rootProject
+val enable_asan: Boolean by rootProject
 
 android {
     defaultConfig {
@@ -33,6 +34,8 @@ android {
     packagingOptions {
         exclude ("META-INF/AL2.0")
         exclude ("META-INF/LGPL2.1")
+        if (enable_asan)
+            jniLibs.useLegacyPackaging = true
     }
 }
 

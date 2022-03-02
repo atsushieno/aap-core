@@ -11,7 +11,7 @@
 #include "aap/unstable/logging.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/audio-plugin-host-internals.h"
-#include "audio-plugin-host-android.h"
+#include "audio-plugin-host-android-internal.h"
 
 // AAP plugin implementation that performs actual work via AAP binder client.
 

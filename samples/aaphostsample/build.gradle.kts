@@ -10,6 +10,7 @@ val kotlin_version: String by rootProject
 val dokka_version: String by rootProject
 val compose_version: String by rootProject
 val aap_version: String by rootProject
+val enable_asan: Boolean by rootProject
 
 android {
     buildFeatures {
@@ -38,6 +39,10 @@ android {
     }
     aaptOptions {
         noCompress ("sample.wav")
+    }
+    packagingOptions {
+        if (enable_asan)
+            jniLibs.useLegacyPackaging = true
     }
 
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
