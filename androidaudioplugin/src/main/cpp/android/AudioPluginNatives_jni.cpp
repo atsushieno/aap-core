@@ -166,7 +166,9 @@ jobjectArray queryInstalledPluginsJNI()
 	JNIEnv *env;
 	JavaVM* vm = aap::get_android_jvm();
 	assert(vm);
-	vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+	auto envState = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+	if (envState == JNI_EDETACHED)
+		vm->AttachCurrentThread(&env, nullptr);
 	assert(env);
 
 	jclass java_audio_plugin_host_helper_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
@@ -175,6 +177,10 @@ jobjectArray queryInstalledPluginsJNI()
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
 	assert(j_method_query_audio_plugins);
 	auto ret = (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
+
+	if (envState == JNI_EDETACHED)
+		vm->DetachCurrentThread();
+
 	return ret;
 }
 
