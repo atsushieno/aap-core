@@ -54,7 +54,8 @@ void initializeJNIMetadata()
     JNIEnv *env;
     auto vm = aap::get_android_jvm();
     assert(vm);
-    vm->AttachCurrentThread(&env, nullptr);
+    vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    assert(env);
 
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
 			java_port_information_class = env->FindClass(java_port_information_class_name);
@@ -102,7 +103,6 @@ void initializeJNIMetadata()
 												 "()F");
 	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
 												 "()F");
-    vm->DetachCurrentThread();
 }
 
 const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
@@ -166,7 +166,8 @@ jobjectArray queryInstalledPluginsJNI()
 	JNIEnv *env;
 	JavaVM* vm = aap::get_android_jvm();
 	assert(vm);
-	vm->AttachCurrentThread(&env, nullptr);
+	vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+	assert(env);
 
 	jclass java_audio_plugin_host_helper_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
 	assert(java_audio_plugin_host_helper_class);
@@ -174,7 +175,6 @@ jobjectArray queryInstalledPluginsJNI()
 														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
 	assert(j_method_query_audio_plugins);
 	auto ret = (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
-	vm->DetachCurrentThread();
 	return ret;
 }
 
