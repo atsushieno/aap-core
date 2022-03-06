@@ -52,7 +52,9 @@ static jmethodID
 void initializeJNIMetadata()
 {
     JNIEnv *env;
-    aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
+    auto vm = aap::get_android_jvm();
+    assert(vm);
+    vm->AttachCurrentThread(&env, nullptr);
 
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
 			java_port_information_class = env->FindClass(java_port_information_class_name);
@@ -100,6 +102,7 @@ void initializeJNIMetadata()
 												 "()F");
 	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
 												 "()F");
+    vm->DetachCurrentThread();
 }
 
 const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
