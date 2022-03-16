@@ -2,10 +2,7 @@ package org.androidaudioplugin.midideviceservice
 
 import android.content.Context
 import android.media.AudioManager
-import android.os.IBinder
-import org.androidaudioplugin.AudioPluginServiceClient
-import org.androidaudioplugin.hosting.AudioPluginServiceConnector
-import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.PluginInformation
 
 // Unlike MidiReceiver, it is instantiated whenever the port is opened, and disposed every time it is closed.
@@ -13,7 +10,7 @@ import org.androidaudioplugin.PluginInformation
 class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ownerService: AudioPluginMidiDeviceService) {
 
     // It is used to manage Service connections, not instancing (which is managed by native code).
-    private val client: AudioPluginServiceClient
+    private val client: AudioPluginClient
 
     private val sampleRate: Int
     private val oboeFrameSize: Int
@@ -27,7 +24,7 @@ class AudioPluginMidiDeviceInstance(private val pluginId: String, private val ow
         sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
         oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
 
-        client = AudioPluginServiceClient(ownerService.applicationContext)
+        client = AudioPluginClient(ownerService.applicationContext)
 
         initializeMidiProcessor(client.serviceConnector.instanceId,
             sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize)

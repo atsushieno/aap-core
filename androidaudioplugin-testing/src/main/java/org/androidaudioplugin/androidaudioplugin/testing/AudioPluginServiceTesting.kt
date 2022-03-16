@@ -2,7 +2,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 
 import android.content.Context
 import junit.framework.Assert.assertEquals
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.hosting.AudioPluginHost
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 

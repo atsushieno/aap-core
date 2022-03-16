@@ -7,17 +7,28 @@ import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 
+/*
+  Manages one or more connections to AudioPluginServices.
+
+  A plugin host instance holds an instance of this class.
+
+ */
 class AudioPluginServiceConnector(private val applicationContext: Context) : AutoCloseable {
     companion object {
         var serial = 0
     }
 
     var instanceId = serial++
+
     val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
+
     val connectedServices = mutableListOf<PluginServiceConnection>()
+
     private var isClosed = false
 
     fun bindAudioPluginService(service: PluginServiceInformation, sampleRate: Int) {
+        assert(!isClosed)
+
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(
             service.packageName,
@@ -70,5 +81,6 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
             )
         }
         serviceConnectedListeners.clear()
+        isClosed = true
     }
 }

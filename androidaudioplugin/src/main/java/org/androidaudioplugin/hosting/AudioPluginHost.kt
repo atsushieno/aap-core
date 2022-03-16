@@ -1,71 +1,15 @@
-package org.androidaudioplugin
+package org.androidaudioplugin.hosting
 
 import android.content.Context
-import android.media.AudioManager
-import org.androidaudioplugin.hosting.AudioPluginHostHelper
-import org.androidaudioplugin.hosting.AudioPluginInstance
-import org.androidaudioplugin.hosting.AudioPluginServiceConnector
-import org.androidaudioplugin.hosting.PluginServiceConnection
+import org.androidaudioplugin.hosting.*
 import java.lang.UnsupportedOperationException
-
-open class AudioPluginServiceClient(private val applicationContext: Context) {
-    // Service connection
-    val serviceConnector = AudioPluginServiceConnector(applicationContext)
-
-    val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
-
-    val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
-
-    val extensions = mutableListOf<AudioPluginExtensionData>()
-
-    fun dispose() {
-        for (instance in instantiatedPlugins)
-            instance.destroy()
-        serviceConnector.close()
-    }
-
-    // Plugin instancing
-
-    fun instantiatePlugin(pluginInfo: PluginInformation)
-    {
-        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName, pluginInfo.localName)
-        if (conn == null) {
-            var serviceConnectedListener: (PluginServiceConnection) -> Unit ={}
-            serviceConnectedListener = { c ->
-                serviceConnector.serviceConnectedListeners.remove(serviceConnectedListener)
-                instantiatePlugin(pluginInfo, c)
-            }
-            serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
-            val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext).first { c -> c.plugins.any { p -> p.pluginId == pluginInfo.pluginId }}
-            serviceConnector.bindAudioPluginService(service, sampleRate)
-        }
-        else
-            instantiatePlugin(pluginInfo, conn)
-    }
-
-    private fun instantiatePlugin(pluginInfo: PluginInformation, conn: PluginServiceConnection)
-    {
-        val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
-        instantiatedPlugins.add(instance)
-        pluginInstantiatedListeners.forEach { l -> l (instance) }
-    }
-
-    var sampleRate : Int
-
-    init {
-        AudioPluginNatives.initializeAAPJni(applicationContext)
-
-        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
-    }
-}
 
 /** This class not to endorse any official API for hosting AAP.
  * Its implementation is hacky and not really with decent API design.
  * It is to provide usable utilities for plugin developers as a proof of concept.
  */
 class AudioPluginHost(private var applicationContext: Context)
-    : AudioPluginServiceClient(applicationContext) {
+    : AudioPluginClient(applicationContext) {
 
     // Audio buses and buffers management
 
@@ -126,47 +70,5 @@ class AudioPluginHost(private var applicationContext: Context)
     init {
         inputAudioBus = AudioBusPresets.stereo
         outputAudioBus = AudioBusPresets.stereo
-    }
-}
-
-/** This class not to endorse any official API for hosting AAP.
- * We are still unsure if these classes will be kept alive or not.
- */
-class AudioBus(var name : String, var map : Map<String,Int>)
-
-/** This class not to endorse any official API for hosting AAP.
- * We are still unsure if these classes will be kept alive or not.
- */
-class AudioBusPresets
-{
-    companion object {
-        val mono = AudioBus("Mono", mapOf(Pair("center", 0)))
-        val stereo = AudioBus("Stereo", mapOf(Pair("Left", 0), Pair("Right", 1)))
-        val surround50 = AudioBus(
-            "5.0 Surrounded", mapOf(
-                Pair("Left", 0), Pair("Center", 1), Pair("Right", 2),
-                Pair("RearLeft", 3), Pair("RearRight", 4)
-            )
-        )
-        val surround51 = AudioBus(
-            "5.1 Surrounded", mapOf(
-                Pair("Left", 0), Pair("Center", 1), Pair("Right", 2),
-                Pair("RearLeft", 3), Pair("RearRight", 4), Pair("LowFrequencyEffect", 5)
-            )
-        )
-        val surround61 = AudioBus(
-            "6.1 Surrounded", mapOf(
-                Pair("Left", 0), Pair("Center", 1), Pair("Right", 2),
-                Pair("SideLeft", 3), Pair("SideRight", 4),
-                Pair("RearCenter", 5), Pair("LowFrequencyEffect", 6)
-            )
-        )
-        val surround71 = AudioBus(
-            "7.1 Surrounded", mapOf(
-                Pair("Left", 0), Pair("Center", 1), Pair("Right", 2),
-                Pair("SideLeft", 3), Pair("SideRight", 4),
-                Pair("RearLeft", 5), Pair("RearRight", 6), Pair("LowFrequencyEffect", 7)
-            )
-        )
     }
 }

@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.net.Uri
-import org.androidaudioplugin.AudioPluginHost
+import org.androidaudioplugin.hosting.AudioPluginHost
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 import java.lang.RuntimeException
@@ -14,6 +14,7 @@ import java.lang.RuntimeException
 // This class can be used to initialize AudioPluginHost by specifying the class as a <provider>
 // element in  AndroidManifest.xml, then AudioPluginHost can automatically initializes the required
 // audio plugin list for local setup.
+@Deprecated("Use AudioPluginClientInitializer instead")
 class AudioPluginNativeHostContentProvider : ContentProvider()
 {
     override fun insert(uri: Uri, values: ContentValues?): Uri? {

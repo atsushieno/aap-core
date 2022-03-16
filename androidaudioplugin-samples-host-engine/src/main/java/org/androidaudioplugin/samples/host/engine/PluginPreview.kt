@@ -7,6 +7,7 @@ import android.media.AudioTrack
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
+import org.androidaudioplugin.hosting.AudioPluginHost
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
