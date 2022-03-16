@@ -18,15 +18,15 @@ namespace aap {
 // It is instantiated for one plugin per client.
 // One client can instantiate multiple plugins.
 class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterface {
-    aap::PluginListSnapshot plugins;
-    std::unique_ptr<aap::PluginService> svc;
+    PluginListSnapshot plugins;
+    std::unique_ptr<PluginService> svc;
     std::vector<AndroidAudioPluginBuffer> buffers{};
 
 public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
-        svc.reset(new PluginService(&plugins));
+        svc.reset(new PluginService(std::shared_ptr<PluginListSnapshot> (&plugins)));
     }
 
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,

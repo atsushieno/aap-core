@@ -308,11 +308,9 @@ public:
 
 	const PluginInformation* getPluginInformation(std::string identifier)
 	{
-		size_t n = getNumPluginInformation();
-		for(size_t i = 0; i < n; i++) {
-			auto d = getPluginInformation(i);
-			if (d->getPluginID().compare(identifier) == 0)
-				return d;
+		for (auto plugin : plugins) {
+			if (plugin->getPluginID().compare(identifier) == 0)
+				return plugin;
 		}
 		return nullptr;
 	}
@@ -346,7 +344,7 @@ public:
 	}
 
 	inline void remove(std::string packageName, std::string className) {
-		for (int i = 0; i < serviceConnections.size(); i++) {
+		for (size_t i = 0; i < serviceConnections.size(); i++) {
 			auto &c = serviceConnections[i];
 			if (c->getPackageName() == packageName && c->getClassName() == className) {
 				delete serviceConnections[i];
@@ -364,12 +362,12 @@ public:
 class PluginHost
 {
 protected:
-	PluginListSnapshot* plugin_list{nullptr};
+	std::shared_ptr<PluginListSnapshot> plugin_list{nullptr};
 	std::vector<PluginInstance*> instances{};
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(PluginListSnapshot* contextPluginList) : plugin_list(contextPluginList)
+	PluginHost(std::shared_ptr<PluginListSnapshot> contextPluginList) : plugin_list(contextPluginList)
 	{
 	}
 
@@ -385,7 +383,7 @@ public:
 class PluginService : public PluginHost {
 
 public:
-	PluginService(PluginListSnapshot* contextPluginList)
+	PluginService(std::shared_ptr<PluginListSnapshot> contextPluginList)
 			: PluginHost(contextPluginList)
 	{
 	}
@@ -394,17 +392,17 @@ public:
 };
 
 class PluginClient : public PluginHost {
-	PluginClientConnectionList* connections;
+	std::shared_ptr<PluginClientConnectionList> connections;
 
 	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginClient(PluginClientConnectionList* connections, PluginListSnapshot* contextPluginList)
-		: PluginHost(contextPluginList), connections(connections)
+	PluginClient(std::shared_ptr<PluginClientConnectionList> pluginConnections, std::shared_ptr<PluginListSnapshot> contextPluginList)
+		: PluginHost(contextPluginList), connections(pluginConnections)
 	{
 	}
 
-	inline PluginClientConnectionList* getConnections() { return connections; }
+	inline PluginClientConnectionList* getConnections() { return connections.get(); }
 
 	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override;
 };
@@ -524,18 +522,18 @@ public:
 		return 0;
 	}
 	
-	void setCurrentProgram(int index)
+	void setCurrentProgram(int /*index*/)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it, but resets all parameters.
 	}
 
-	std::string getProgramName(int index)
+	std::string getProgramName(int /*index*/)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 		return nullptr;
 	}
 	
-	void changeProgramName(int index, std::string newName)
+	void changeProgramName(int /*index*/, std::string /*newName*/)
 	{
 		// TODO: FUTURE (v0.6). LADSPA does not support it either.
 	}

@@ -218,9 +218,10 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
 aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist) {
-	auto ret = client_connection_list_per_scope[connectorInstanceId];
-	if (!ret)
-		client_connection_list_per_scope[connectorInstanceId] = ret = new aap::PluginClientConnectionList();
+	if (client_connection_list_per_scope.find(connectorInstanceId) != client_connection_list_per_scope.end())
+		return client_connection_list_per_scope[connectorInstanceId];
+	auto ret = new aap::PluginClientConnectionList();
+	client_connection_list_per_scope[connectorInstanceId] = ret;
 	return ret;
 }
 
