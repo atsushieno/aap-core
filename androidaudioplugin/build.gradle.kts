@@ -53,6 +53,10 @@ android {
         }
     }
 
+    lint {
+        disable.add("EnsureInitializerMetadata")
+    }
+
     // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
     /*
     buildFeatures {
