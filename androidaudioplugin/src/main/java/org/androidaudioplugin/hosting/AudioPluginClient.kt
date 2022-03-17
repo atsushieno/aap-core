@@ -36,7 +36,7 @@ open class AudioPluginClient(private val applicationContext: Context) {
             serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
             val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
                 .first { c -> c.plugins.any { p -> p.pluginId == pluginInfo.pluginId }}
-            serviceConnector.bindAudioPluginService(service, sampleRate)
+            serviceConnector.bindAudioPluginService(service)
         }
         else
             instantiatePlugin(pluginInfo, conn)

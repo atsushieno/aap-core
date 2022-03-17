@@ -26,7 +26,7 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
 
     private var isClosed = false
 
-    fun bindAudioPluginService(service: PluginServiceInformation, sampleRate: Int) {
+    fun bindAudioPluginService(service: PluginServiceInformation) {
         assert(!isClosed)
 
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
@@ -34,7 +34,6 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
             service.packageName,
             service.className
         )
-        intent.putExtra("sampleRate", sampleRate)
 
         val conn = PluginServiceConnection(service) { c -> onBindAudioPluginService(c) }
 

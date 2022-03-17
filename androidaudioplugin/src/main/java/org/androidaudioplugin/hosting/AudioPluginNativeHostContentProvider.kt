@@ -39,12 +39,7 @@ class AudioPluginNativeHostContentProvider : ContentProvider()
         val services = AudioPluginHostHelper.queryAudioPluginServices(context)
         for (service in services) {
             host.serviceConnector.bindAudioPluginService(
-                PluginServiceInformation(
-                    service.label,
-                    service.packageName,
-                    service.className
-                ),
-                host.sampleRate)
+                PluginServiceInformation(service.label, service.packageName, service.className))
         }
         // FIXME: it should add callback to wait for bindService() result otherwise app don't
         //  actually get those services in the end.

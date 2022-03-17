@@ -199,7 +199,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jcl
 std::shared_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
 
 jobject
-Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz, jint sampleRate) {
+Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz) {
     sp_binder = ndk::SharedRefBase::make<aap::AudioPluginInterfaceImpl>();
     auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
     return ret;
