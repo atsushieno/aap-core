@@ -12,8 +12,9 @@ import org.androidaudioplugin.PluginServiceInformation
 
   A plugin host instance holds an instance of this class.
 
+  Native hosts also use this class to instantiate plugins and manage them.
  */
-class AudioPluginServiceConnector(private val applicationContext: Context) : AutoCloseable {
+class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseable {
     companion object {
         var serial = 0
     }
@@ -58,11 +59,14 @@ class AudioPluginServiceConnector(private val applicationContext: Context) : Aut
         currentListeners.forEach { f -> f(conn) }
     }
 
-    fun findExistingServiceConnection(packageName: String, className: String) =
-        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == className }
+    // Used via JNI
+    fun getBinderForPackage(packageName: String) = findExistingServiceConnection(packageName)!!.binder!!
 
-    fun unbindAudioPluginService(packageName: String, localName: String) {
-        val conn = findExistingServiceConnection(packageName, localName) ?: return
+    fun findExistingServiceConnection(packageName: String) =
+        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName }
+
+    fun unbindAudioPluginService(packageName: String) {
+        val conn = findExistingServiceConnection(packageName) ?: return
         connectedServices.remove(conn)
         AudioPluginNatives.removeBinderForHost(
             instanceId,

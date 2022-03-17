@@ -12,6 +12,33 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "audio-plugin-host-android-internal.h"
 
+template <typename T>
+T usingJNIEnv(std::function<T(JNIEnv*)> func) {
+	JNIEnv *env;
+	JavaVM* vm = aap::get_android_jvm();
+	assert(vm);
+	auto envState = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+	if (envState == JNI_EDETACHED)
+		vm->AttachCurrentThread(&env, nullptr);
+	assert(env);
+
+	T ret = func(env);
+
+	if (envState == JNI_EDETACHED)
+		vm->DetachCurrentThread();
+	return ret;
+}
+
+template <typename T>
+T usingJString(const char* s, std::function<T(jstring)> func) {
+    return usingJNIEnv<T>([&](JNIEnv* env) {
+        jstring js = env->NewStringUTF(s);
+        T ret = func(js);
+        free(js);
+        return ret;
+    });
+}
+
 extern "C" {
 
 const char *strdup_fromJava(JNIEnv *env, jstring s) {
@@ -163,27 +190,19 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 
 jobjectArray queryInstalledPluginsJNI()
 {
-	JNIEnv *env;
-	JavaVM* vm = aap::get_android_jvm();
-	assert(vm);
-	auto envState = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-	if (envState == JNI_EDETACHED)
-		vm->AttachCurrentThread(&env, nullptr);
-	assert(env);
-
-	jclass java_audio_plugin_host_helper_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
-	assert(java_audio_plugin_host_helper_class);
-	jmethodID j_method_query_audio_plugins = env->GetStaticMethodID(java_audio_plugin_host_helper_class, "queryAudioPlugins",
-														  "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
-	assert(j_method_query_audio_plugins);
-	auto ret = (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class, j_method_query_audio_plugins, aap::get_android_application_context());
-
-	if (envState == JNI_EDETACHED)
-		vm->DetachCurrentThread();
-
-	return ret;
+	return usingJNIEnv<jobjectArray> ([&](JNIEnv *env) {
+		jclass java_audio_plugin_host_helper_class = env->FindClass(
+				"org/androidaudioplugin/hosting/AudioPluginHostHelper");
+		assert(java_audio_plugin_host_helper_class);
+		jmethodID j_method_query_audio_plugins = env->GetStaticMethodID(
+				java_audio_plugin_host_helper_class, "queryAudioPlugins",
+				"(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
+		assert(j_method_query_audio_plugins);
+		return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class,
+															  j_method_query_audio_plugins,
+															  aap::get_android_application_context());
+	});
 }
-
 
 // --------------------------------------------------
 
@@ -220,6 +239,8 @@ std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scop
 aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist) {
 	if (client_connection_list_per_scope.find(connectorInstanceId) != client_connection_list_per_scope.end())
 		return client_connection_list_per_scope[connectorInstanceId];
+	if (!createIfNotExist)
+		return nullptr;
 	auto ret = new aap::PluginClientConnectionList();
 	client_connection_list_per_scope[connectorInstanceId] = ret;
 	return ret;
@@ -254,6 +275,45 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 	free((void*) packageNameDup);
 	free((void*) classNameDup);
 }
+
+// --------------------------------------------------
+
+jobject audio_plugin_service_connector{nullptr};
+
+extern "C" jobject createInstanceBinderFromJni(jint connectorInstanceId, aap::PluginServiceInformation* service) {
+	return usingJNIEnv<jobject> ([&](JNIEnv *env) {
+
+        if (audio_plugin_service_connector == nullptr) {
+            jclass connector_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginServiceConnector");
+            jmethodID constructor = env->GetMethodID(connector_class, "<init>", "(Landroid/content/Context;)V");
+            audio_plugin_service_connector = env->NewGlobalRef(env->NewObject(connector_class, constructor, aap::get_android_application_context()));
+        }
+
+		auto connectionList = getPluginConnectionListFromJni(connectorInstanceId, false);
+		assert(connectionList);
+
+		jclass java_audio_plugin_host_helper_class = env->FindClass(
+				"org/androidaudioplugin/hosting/AudioPluginHostHelper");
+		assert(java_audio_plugin_host_helper_class);
+		jmethodID j_method_ensure_instance_created = env->GetStaticMethodID(
+				java_audio_plugin_host_helper_class, "ensureInstanceCreated",
+				"(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
+		assert(j_method_ensure_instance_created);
+
+        return usingJString<jobject>(service->getPackageName().c_str(), [&](jstring packageName) {
+            env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
+                                                         j_method_ensure_instance_created,
+                                                         packageName,
+                                                         audio_plugin_service_connector);
+
+			jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
+			jmethodID getBinderForPackage = env->GetMethodID(connector_class, "getBinderForPackage", "(Ljava/lang/String;)Landroid/os/IBinder;");
+			return env->CallObjectMethod(audio_plugin_service_connector, getBinderForPackage, packageName);
+        });
+	});
+}
+
+// --------------------------------------------------
 
 JNIEXPORT int JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_getSharedMemoryFD(JNIEnv *env, jclass clazz, jobject shm) {

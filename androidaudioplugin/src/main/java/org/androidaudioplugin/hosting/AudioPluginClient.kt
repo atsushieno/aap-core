@@ -26,7 +26,7 @@ open class AudioPluginClient(private val applicationContext: Context) {
 
     fun instantiatePlugin(pluginInfo: PluginInformation)
     {
-        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName, pluginInfo.localName)
+        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         if (conn == null) {
             var serviceConnectedListener: (PluginServiceConnection) -> Unit ={}
             serviceConnectedListener = { c ->

@@ -7,10 +7,9 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Bundle
 import android.util.Log
-import org.androidaudioplugin.AudioPluginService
-import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.PluginServiceInformation
-import org.androidaudioplugin.PortInformation
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
+import org.androidaudioplugin.*
 import org.xmlpull.v1.XmlPullParser
 
 class AudioPluginHostHelper {
@@ -128,8 +127,14 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun queryAudioPluginServices(context: Context): Array<PluginServiceInformation> {
+        fun queryAudioPluginService(context: Context, packageName: String) =
+            queryAudioPluginServices(context, packageName).first()
+
+        @JvmStatic
+        fun queryAudioPluginServices(context: Context, packageNameFilter: String? = null): Array<PluginServiceInformation> {
             val intent = Intent(AAP_ACTION_NAME)
+            if (packageNameFilter != null)
+                intent.setPackage(packageNameFilter)
             val resolveInfos =
                 context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
             val plugins = mutableListOf<PluginServiceInformation>()
@@ -169,6 +174,37 @@ class AudioPluginHostHelper {
             val componentName = ComponentName(context.packageName, AudioPluginService::class.java.name)
             val serviceInfo = context.packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
             return createAudioPluginServiceInformation(context, serviceInfo)!!
+        }
+
+        @JvmStatic
+        fun ensureInstanceCreated(servicePackageName: String, connector: AudioPluginServiceConnector) =
+            ensureInstanceCreated(queryAudioPluginService(connector.applicationContext, servicePackageName), connector)
+
+        @JvmStatic
+        fun ensureInstanceCreated(service: PluginServiceInformation, connector: AudioPluginServiceConnector) {
+            val existing = connector.connectedServices.firstOrNull { c -> c.serviceInfo.packageName == service.packageName && c.serviceInfo.className == service.className }
+            if (existing != null)
+                return
+
+            val waiter = Channel<Unit>()
+            runBlocking {
+                val listener : (PluginServiceConnection) -> Unit = {
+                    suspend {
+                        val binder = it.binder
+                        if (binder != null)
+                            AudioPluginNatives.addBinderForClient(
+                                connector.instanceId,
+                                service.packageName,
+                                service.className,
+                                binder
+                            )
+                        waiter.send(Unit)
+                    }
+                }
+                connector.serviceConnectedListeners.add(listener)
+                connector.bindAudioPluginService(service)
+                waiter.receive()
+            }
         }
     }
 }
