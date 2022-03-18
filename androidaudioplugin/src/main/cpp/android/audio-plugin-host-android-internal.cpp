@@ -43,6 +43,10 @@ std::vector<PluginInformation*> AndroidPluginHostPAL::getPluginsFromMetadataPath
     return results;
 }
 
+void AndroidPluginHostPAL::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName) {
+    ensureServiceConnectedFromJni(getConnectorInstanceId(connections), serviceName);
+}
+
 // -------------------------------------------------------
 
 std::unique_ptr<AndroidPluginHostPAL> android_pal_instance{};

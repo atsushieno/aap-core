@@ -159,10 +159,14 @@ namespace aapmidideviceservice {
 
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
+        // We cannot directly assign pointer to binderExt.data as it is being serialized and deserialized.
+        // We pass am sizeof(uint64_t) memory buffer that stores the int value of the pointer, and
+        // then it will be de deserialized as such (in binder-client-as-plugin.cpp).
         AndroidAudioPluginExtension binderExt;
+        auto ptrData = (uint64_t) (void*) client->getConnections();
         binderExt.uri = AAP_BINDER_EXTENSION_URI;
-        binderExt.transmit_size = sizeof(aap::PluginClientConnectionList*);
-        binderExt.data = client->getConnections();
+        binderExt.transmit_size = sizeof(uint64_t);
+        binderExt.data = &ptrData;
         instance->addExtension(binderExt);
 
         instance->completeInstantiation();

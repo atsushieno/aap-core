@@ -7,10 +7,12 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Bundle
 import android.util.Log
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.androidaudioplugin.*
 import org.xmlpull.v1.XmlPullParser
+import java.lang.Thread.sleep
 
 class AudioPluginHostHelper {
     companion object {
@@ -177,33 +179,37 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun ensureInstanceCreated(servicePackageName: String, connector: AudioPluginServiceConnector) =
-            ensureInstanceCreated(queryAudioPluginService(connector.applicationContext, servicePackageName), connector)
+        fun ensureBinderConnected(servicePackageName: String, connector: AudioPluginServiceConnector) =
+            ensureBinderConnected(queryAudioPluginService(connector.applicationContext, servicePackageName), connector)
 
         @JvmStatic
-        fun ensureInstanceCreated(service: PluginServiceInformation, connector: AudioPluginServiceConnector) {
+        fun ensureBinderConnected(service: PluginServiceInformation, connector: AudioPluginServiceConnector) {
             val existing = connector.connectedServices.firstOrNull { c -> c.serviceInfo.packageName == service.packageName && c.serviceInfo.className == service.className }
             if (existing != null)
                 return
 
-            val waiter = Channel<Unit>()
-            runBlocking {
-                val listener : (PluginServiceConnection) -> Unit = {
-                    suspend {
-                        val binder = it.binder
-                        if (binder != null)
-                            AudioPluginNatives.addBinderForClient(
-                                connector.instanceId,
-                                service.packageName,
-                                service.className,
-                                binder
-                            )
-                        waiter.send(Unit)
-                    }
+            var passed = false
+
+            val listener : (PluginServiceConnection) -> Unit = {
+                Log.d("AAP", "Plugin service callback from ${it.serviceInfo.packageName}")
+                suspend {
+                    val binder = it.binder
+                    if (binder != null)
+                        AudioPluginNatives.addBinderForClient(
+                            connector.instanceId,
+                            service.packageName,
+                            service.className,
+                            binder
+                        )
+                    passed = true
                 }
-                connector.serviceConnectedListeners.add(listener)
-                connector.bindAudioPluginService(service)
-                waiter.receive()
+            }
+            connector.serviceConnectedListeners.add(listener)
+            // FIXME: this seems to raise callback
+            connector.bindAudioPluginService(service)
+
+            while (!passed) {
+                sleep(1)
             }
         }
     }

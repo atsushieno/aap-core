@@ -2,8 +2,9 @@
 #include <android/log.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-
 #include <memory>
+
+#include "AudioPluginNative_jni.h"
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/core/host/audio-plugin-host.h"
@@ -14,11 +15,6 @@
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 #define AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
 
-extern "C" aap::PluginInformation *
-pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation); // in AudioPluginHost_native.cpp
-
-extern "C" jobjectArray queryInstalledPluginsJNI(); // in AudioPluginNatives_jni.cpp
-
 namespace aap {
 
 class AndroidPluginHostPAL : public PluginHostPAL {
@@ -28,6 +24,8 @@ public:
     inline int32_t createSharedMemory(size_t size) override {
         return ASharedMemory_create(nullptr, size);
     }
+
+    void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName) override;
 
     std::vector<std::string> getPluginPaths() override;
 

@@ -338,7 +338,6 @@ class PluginClientConnectionList {
 	std::vector<PluginClientConnection*> serviceConnections{};
 
 public:
-
 	inline void add(std::unique_ptr<PluginClientConnection> entry) {
 		serviceConnections.emplace_back(entry.release());
 	}
@@ -354,11 +353,12 @@ public:
 		}
 	}
 
-	void* getBinderForServiceConnection(std::string packageName, std::string className);
+	void* getHandleForConnectedPlugin(std::string packageName, std::string className);
 
-	void* getBinderForServiceConnectionForPlugin(std::string pluginId);
+	void* getHandleForConnectedPlugin(std::string pluginId);
 };
 
+/* Common foundation for both Plugin service and Plugin client. */
 class PluginHost
 {
 protected:

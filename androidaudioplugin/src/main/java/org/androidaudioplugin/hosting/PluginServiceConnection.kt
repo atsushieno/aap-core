@@ -19,12 +19,22 @@ class PluginServiceConnection(var serviceInfo: PluginServiceInformation, var onC
     var instances = mutableListOf<AudioPluginInstance>()
 
     override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-        Log.d("PluginClientConnection", "onServiceConnected")
+        Log.d("PluginServiceConnection", "onServiceConnected")
         this.binder = binder
         onConnectedCallback(this)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
+    }
+
+    override fun onNullBinding(name: ComponentName?) {
+        Log.d("PluginServiceConnection", "onNullBinding")
+        super.onNullBinding(name)
+    }
+
+    override fun onBindingDied(name: ComponentName?) {
+        Log.d("PluginServiceConnection", "onBindingDied")
+        super.onBindingDied(name)
     }
 
     fun instantiatePlugin(pluginInfo : PluginInformation, sampleRate: Int, extensions: List<AudioPluginExtensionData>) : AudioPluginInstance {

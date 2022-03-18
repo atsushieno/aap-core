@@ -236,6 +236,13 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 
 std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
+int32_t getConnectorInstanceId(aap::PluginClientConnectionList* connections) {
+    for (auto entry : client_connection_list_per_scope)
+		if (entry.second == connections)
+			return entry.first;
+	return -1;
+}
+
 aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist) {
 	if (client_connection_list_per_scope.find(connectorInstanceId) != client_connection_list_per_scope.end())
 		return client_connection_list_per_scope[connectorInstanceId];
@@ -280,8 +287,8 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 
 jobject audio_plugin_service_connector{nullptr};
 
-extern "C" jobject createInstanceBinderFromJni(jint connectorInstanceId, aap::PluginServiceInformation* service) {
-	return usingJNIEnv<jobject> ([&](JNIEnv *env) {
+extern "C" void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string& servicePackageName) {
+	usingJNIEnv<void*> ([&](JNIEnv *env) {
 
         if (audio_plugin_service_connector == nullptr) {
             jclass connector_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginServiceConnector");
@@ -296,19 +303,22 @@ extern "C" jobject createInstanceBinderFromJni(jint connectorInstanceId, aap::Pl
 				"org/androidaudioplugin/hosting/AudioPluginHostHelper");
 		assert(java_audio_plugin_host_helper_class);
 		jmethodID j_method_ensure_instance_created = env->GetStaticMethodID(
-				java_audio_plugin_host_helper_class, "ensureInstanceCreated",
+				java_audio_plugin_host_helper_class, "ensureBinderConnected",
 				"(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
 		assert(j_method_ensure_instance_created);
 
-        return usingJString<jobject>(service->getPackageName().c_str(), [&](jstring packageName) {
+        return usingJString<void*>(servicePackageName.c_str(), [&](jstring packageName) {
             env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
                                                          j_method_ensure_instance_created,
                                                          packageName,
                                                          audio_plugin_service_connector);
 
+			return nullptr;
+			/*
 			jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
 			jmethodID getBinderForPackage = env->GetMethodID(connector_class, "getBinderForPackage", "(Ljava/lang/String;)Landroid/os/IBinder;");
 			return env->CallObjectMethod(audio_plugin_service_connector, getBinderForPackage, packageName);
+			 */
         });
 	});
 }

@@ -210,6 +210,8 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 PluginInstance* PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
 #if ANDROID
+
+
     auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
 #else
     auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
@@ -285,22 +287,24 @@ PluginListSnapshot PluginListSnapshot::queryServices() {
 	return ret;
 }
 
-void* PluginClientConnectionList::getBinderForServiceConnection(std::string packageName, std::string className)
+void* PluginClientConnectionList::getHandleForConnectedPlugin(std::string packageName, std::string className)
 {
 	for (int i = 0; i < serviceConnections.size(); i++) {
 		auto s = serviceConnections[i];
 		if (s->getPackageName() == packageName && s->getClassName() == className)
 			return serviceConnections[i]->getConnectionData();
 	}
-	return nullptr;
+
+	getPluginHostPAL()->ensurePluginServiceConnected(this, packageName);
+	return getHandleForConnectedPlugin(packageName, className); // recurse
 }
 
-void* PluginClientConnectionList::getBinderForServiceConnectionForPlugin(std::string pluginId)
+void* PluginClientConnectionList::getHandleForConnectedPlugin(std::string pluginId)
 {
 	auto pl = getPluginHostPAL()->getInstalledPlugins();
 	for (int i = 0; pl[i] != nullptr; i++)
 		if (pl[i]->getPluginID() == pluginId)
-			return getBinderForServiceConnection(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
+			return getHandleForConnectedPlugin(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
 	return nullptr;
 }
 

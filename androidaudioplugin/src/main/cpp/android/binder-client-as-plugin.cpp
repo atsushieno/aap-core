@@ -12,6 +12,7 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/audio-plugin-host-internals.h"
 #include "audio-plugin-host-android-internal.h"
+#include "AudioPluginNative_jni.h"
 
 // AAP plugin implementation that performs actual work via AAP binder client.
 
@@ -185,8 +186,10 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	for (int i = 0; extensions[i] != nullptr; i++) {
 		auto ext = extensions[i];
 		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
-			auto connections = (aap::PluginClientConnectionList*) ext->data;
-			ctx->binder = (AIBinder *) connections->getBinderForServiceConnectionForPlugin(pluginUniqueId);
+            uint64_t data;
+			memcpy(&data, ext->data, sizeof(uint64_t));
+			auto connections = (aap::PluginClientConnectionList*) data;
+			ctx->binder = (AIBinder *) connections->getHandleForConnectedPlugin(pluginUniqueId);
 			break;
 		}
 	}
