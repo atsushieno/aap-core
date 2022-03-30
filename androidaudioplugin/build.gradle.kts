@@ -34,7 +34,7 @@ android {
     buildTypes {
         debug {
             packagingOptions {
-                doNotStrip ("**/*.so")
+                jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
         release {
