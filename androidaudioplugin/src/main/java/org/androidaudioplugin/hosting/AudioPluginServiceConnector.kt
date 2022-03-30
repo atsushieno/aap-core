@@ -3,6 +3,8 @@ package org.androidaudioplugin.hosting
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
@@ -15,6 +17,29 @@ import org.androidaudioplugin.PluginServiceInformation
   Native hosts also use this class to instantiate plugins and manage them.
  */
 class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseable {
+    internal class Connection(private val parent: AudioPluginServiceConnector, private val serviceInfo: PluginServiceInformation) : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            Log.d("AAP", "AudioPluginServiceConnector: onServiceConnected")
+            parent.registerNewConnection(PluginServiceConnection(serviceInfo, binder))
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.d("AAP", "AudioPluginServiceConnector: onServiceDisconnected - FIXME: implement")
+            parent.unbindAudioPluginService(serviceInfo.packageName)
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            Log.d("AAP", "AudioPluginServiceConnector: onNullBinding")
+            super.onNullBinding(name)
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            Log.d("AAP", "AudioPluginServiceConnector: onBindingDied")
+            super.onBindingDied(name)
+        }
+    }
+
     companion object {
         var serial = 0
     }
@@ -36,16 +61,16 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             service.className
         )
 
-        val conn = PluginServiceConnection(service) { c -> onBindAudioPluginService(c) }
+        val conn = Connection(this, service)
 
         Log.d(
             "AudioPluginHost",
             "bindAudioPluginService: ${service.packageName} | ${service.className}"
         )
-        applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+        assert(applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 
-    private fun onBindAudioPluginService(conn: PluginServiceConnection) {
+    private fun registerNewConnection(conn: PluginServiceConnection) {
         AudioPluginNatives.addBinderForClient(
             instanceId,
             conn.serviceInfo.packageName,
@@ -57,10 +82,10 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         // avoid conflicting concurrent updates
         val currentListeners = serviceConnectedListeners.toTypedArray()
         currentListeners.forEach { f -> f(conn) }
+        nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
     }
 
-    // Used via JNI
-    fun getBinderForPackage(packageName: String) = findExistingServiceConnection(packageName)!!.binder!!
+    private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
 
     fun findExistingServiceConnection(packageName: String) =
         connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName }

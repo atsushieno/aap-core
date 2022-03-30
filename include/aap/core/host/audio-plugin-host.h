@@ -353,9 +353,9 @@ public:
 		}
 	}
 
-	void* getHandleForConnectedPlugin(std::string packageName, std::string className);
+	void* getServiceHandleForConnectedPlugin(std::string packageName, std::string className);
 
-	void* getHandleForConnectedPlugin(std::string pluginId);
+	void* getServiceHandleForConnectedPlugin(std::string pluginId);
 };
 
 /* Common foundation for both Plugin service and Plugin client. */
@@ -373,7 +373,6 @@ public:
 
 	virtual ~PluginHost() {}
 
-	virtual int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) = 0;
 	void destroyInstance(PluginInstance* instance);
 	size_t getInstanceCount() { return instances.size(); }
 	PluginInstance* getInstance(int32_t instanceId) { return instances[(size_t) instanceId]; }
@@ -381,20 +380,19 @@ public:
 
 
 class PluginService : public PluginHost {
-
 public:
 	PluginService(std::shared_ptr<PluginListSnapshot> contextPluginList)
 			: PluginHost(contextPluginList)
 	{
 	}
 
-	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override;
+	int createInstance(std::string identifier, int sampleRate);
 };
 
 class PluginClient : public PluginHost {
 	std::shared_ptr<PluginClientConnectionList> connections;
 
-	PluginInstance* instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
+	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
 public:
 	PluginClient(std::shared_ptr<PluginClientConnectionList> pluginConnections, std::shared_ptr<PluginListSnapshot> contextPluginList)
@@ -404,7 +402,7 @@ public:
 
 	inline PluginClientConnectionList* getConnections() { return connections.get(); }
 
-	int createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit = false) override;
+	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 };
 
 // This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.

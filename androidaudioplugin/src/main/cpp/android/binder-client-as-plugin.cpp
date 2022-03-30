@@ -189,7 +189,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             uint64_t data;
 			memcpy(&data, ext->data, sizeof(uint64_t));
 			auto connections = (aap::PluginClientConnectionList*) data;
-			ctx->binder = (AIBinder *) connections->getHandleForConnectedPlugin(pluginUniqueId);
+			ctx->binder = (AIBinder *) connections->getServiceHandleForConnectedPlugin(pluginUniqueId);
 			break;
 		}
 	}

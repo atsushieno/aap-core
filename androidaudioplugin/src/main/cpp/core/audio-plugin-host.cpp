@@ -142,19 +142,31 @@ int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& cl
 
 //-----------------------------------
 
-int PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
+void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
 {
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
-	auto instance = isRemoteExplicit || descriptor->isOutProcess() ?
-					instantiateRemotePlugin(descriptor, sampleRate) :
-					instantiateLocalPlugin(descriptor, sampleRate);
-	assert(instance != nullptr);
-	instances.emplace_back(instance);
-	return instances.size() - 1;
+	auto internalCallback = [&, userCallback](PluginInstance* instance, std::string error) {
+		if (instance != nullptr) {
+			instances.emplace_back(instance);
+			userCallback(instances.size() - 1, "");
+		}
+		else
+			userCallback(-1, error);
+	};
+	if (isRemoteExplicit || descriptor->isOutProcess())
+		instantiateRemotePlugin(descriptor, sampleRate, internalCallback);
+	else {
+		try {
+			auto instance = instantiateLocalPlugin(descriptor, sampleRate);
+			internalCallback(instance, "");
+		} catch(std::exception& ex) {
+			internalCallback(nullptr, ex.what());
+		}
+	}
 }
 
 void PluginHost::destroyInstance(PluginInstance* instance)
@@ -163,8 +175,7 @@ void PluginHost::destroyInstance(PluginInstance* instance)
 	delete instance;
 }
 
-int32_t PluginService::createInstance(std::string identifier, int sampleRate,
-									  bool isRemoteExplicit)  {
+int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 	auto info = plugin_list->getPluginInformation(identifier);
 	if (!info) {
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "libandroidaudioplugin", "Plugin information was not found for: %s ", identifier.c_str());
@@ -207,18 +218,30 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return new PluginInstance(descriptor, pluginFactory, sampleRate);
 }
 
-PluginInstance* PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
+void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
+	// We first ensure to bind the remote plugin service, and then create a plugin instance.
+	//  Since binding the plugin service must be asynchronous while instancing does not have to be,
+	//  we call ensureServiceConnected() first and pass the rest as its callback.
+	auto internalCallback = [&, callback](std::string error) {
+		if (error.empty()) {
 #if ANDROID
-
-
-    auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
+			auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
 #else
-    auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
+			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
-	assert (pluginFactory != nullptr);
-	auto instance = new PluginInstance(descriptor, pluginFactory, sampleRate);
-	return instance;
+			assert (pluginFactory != nullptr);
+			auto instance = new PluginInstance(descriptor, pluginFactory, sampleRate);
+			callback(instance, "");
+		}
+		else
+			callback(nullptr, error);
+	};
+	auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
+	if (service != nullptr)
+		internalCallback("");
+	else
+		getPluginHostPAL()->ensurePluginServiceConnected(connections.get(), descriptor->getPluginPackageName(), internalCallback);
 }
 
 PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {
@@ -287,24 +310,22 @@ PluginListSnapshot PluginListSnapshot::queryServices() {
 	return ret;
 }
 
-void* PluginClientConnectionList::getHandleForConnectedPlugin(std::string packageName, std::string className)
+void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string packageName, std::string className)
 {
 	for (int i = 0; i < serviceConnections.size(); i++) {
 		auto s = serviceConnections[i];
 		if (s->getPackageName() == packageName && s->getClassName() == className)
 			return serviceConnections[i]->getConnectionData();
 	}
-
-	getPluginHostPAL()->ensurePluginServiceConnected(this, packageName);
-	return getHandleForConnectedPlugin(packageName, className); // recurse
+	return nullptr;
 }
 
-void* PluginClientConnectionList::getHandleForConnectedPlugin(std::string pluginId)
+void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string pluginId)
 {
 	auto pl = getPluginHostPAL()->getInstalledPlugins();
 	for (int i = 0; pl[i] != nullptr; i++)
 		if (pl[i]->getPluginID() == pluginId)
-			return getHandleForConnectedPlugin(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
+			return getServiceHandleForConnectedPlugin(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
 	return nullptr;
 }
 

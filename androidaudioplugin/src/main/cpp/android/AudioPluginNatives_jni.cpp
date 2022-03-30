@@ -34,7 +34,6 @@ T usingJString(const char* s, std::function<T(jstring)> func) {
     return usingJNIEnv<T>([&](JNIEnv* env) {
         jstring js = env->NewStringUTF(s);
         T ret = func(js);
-        free(js);
         return ret;
     });
 }
@@ -286,8 +285,11 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 // --------------------------------------------------
 
 jobject audio_plugin_service_connector{nullptr};
+std::map<std::string,std::function<void(std::string)> > inProgressCallbacks{};
 
-extern "C" void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string& servicePackageName) {
+void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string)> callback) {
+	inProgressCallbacks[servicePackageName] = callback;
+
 	usingJNIEnv<void*> ([&](JNIEnv *env) {
 
         if (audio_plugin_service_connector == nullptr) {
@@ -314,13 +316,20 @@ extern "C" void ensureServiceConnectedFromJni(jint connectorInstanceId, std::str
                                                          audio_plugin_service_connector);
 
 			return nullptr;
-			/*
-			jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
-			jmethodID getBinderForPackage = env->GetMethodID(connector_class, "getBinderForPackage", "(Ljava/lang/String;)Landroid/os/IBinder;");
-			return env->CallObjectMethod(audio_plugin_service_connector, getBinderForPackage, packageName);
-			 */
         });
 	});
+}
+
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_AudioPluginServiceConnector_nativeOnServiceConnectedCallback(
+		JNIEnv *env, jobject thiz, jstring servicePackageName) {
+	jboolean wasCopy;
+	// FIXME: shouldn't the resulting value be freed manually ig it `wasCopy` ? Doing so causes segv.
+	const char* s = env->GetStringUTFChars(servicePackageName, &wasCopy);
+	auto entry = inProgressCallbacks.find(s);
+	if (entry != inProgressCallbacks.end())
+		// FIXME: what kind of error propagation could be achieved here?
+		entry->second("");
 }
 
 // --------------------------------------------------

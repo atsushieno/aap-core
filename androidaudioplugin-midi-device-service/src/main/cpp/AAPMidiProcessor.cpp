@@ -146,53 +146,59 @@ namespace aapmidideviceservice {
 
         int32_t numPorts = pluginInfo->getNumPorts();
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "host is going to instantiate %s", pluginId.c_str());
-        auto instanceId = client->createInstance(pluginId, sample_rate, true);
-        if (instanceId < 0) {
-            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Plugin \"%s\" could not be instantiated.",
-                         pluginInfo->getDisplayName().c_str());
-            state = AAP_MIDI_PROCESSOR_STATE_ERROR;
-            return;
-        }
-        auto instance = client->getInstance(instanceId);
+        client->createInstanceAsync(pluginId, sample_rate, true, [&](int32_t instanceId, std::string error) {
+            if (instanceId < 0) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor",
+                             "Plugin \"%s\" could not be instantiated.",
+                             pluginInfo->getDisplayName().c_str());
+                state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+                return;
+            }
+            auto instance = client->getInstance(instanceId);
 
-        instrument_instance_id = instanceId;
+            instrument_instance_id = instanceId;
 
-        auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
+            auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
-        // We cannot directly assign pointer to binderExt.data as it is being serialized and deserialized.
-        // We pass am sizeof(uint64_t) memory buffer that stores the int value of the pointer, and
-        // then it will be de deserialized as such (in binder-client-as-plugin.cpp).
-        AndroidAudioPluginExtension binderExt;
-        auto ptrData = (uint64_t) (void*) client->getConnections();
-        binderExt.uri = AAP_BINDER_EXTENSION_URI;
-        binderExt.transmit_size = sizeof(uint64_t);
-        binderExt.data = &ptrData;
-        instance->addExtension(binderExt);
+            // We cannot directly assign pointer to binderExt.data as it is being serialized and deserialized.
+            // We pass am sizeof(uint64_t) memory buffer that stores the int value of the pointer, and
+            // then it will be de deserialized as such (in binder-client-as-plugin.cpp).
+            AndroidAudioPluginExtension binderExt;
+            auto ptrData = (uint64_t) (void *) client->getConnections();
+            binderExt.uri = AAP_BINDER_EXTENSION_URI;
+            binderExt.transmit_size = sizeof(uint64_t);
+            binderExt.data = &ptrData;
+            instance->addExtension(binderExt);
 
-        instance->completeInstantiation();
+            instance->completeInstantiation();
 
-        data->instance_id = instanceId;
-        data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
+            data->instance_id = instanceId;
+            data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
 
-        for (int i = 0; i < numPorts; i++) {
-            auto port = pluginInfo->getPort(i);
-            if (port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO && port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT)
-                data->getAudioOutPorts()->emplace_back(i);
-            else if (port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
-                data->midi2_in_port = i;
-            else if (port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI && port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
-                data->midi1_in_port = i;
-            else if (port->hasProperty(AAP_PORT_DEFAULT))
-                *((float*) data->plugin_buffer->buffers[i]) = port->getDefaultValue();
-        }
+            for (int i = 0; i < numPorts; i++) {
+                auto port = pluginInfo->getPort(i);
+                if (port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO &&
+                    port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT)
+                    data->getAudioOutPorts()->emplace_back(i);
+                else if (port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI2 &&
+                         port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
+                    data->midi2_in_port = i;
+                else if (port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI &&
+                         port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
+                    data->midi1_in_port = i;
+                else if (port->hasProperty(AAP_PORT_DEFAULT))
+                    *((float *) data->plugin_buffer->buffers[i]) = port->getDefaultValue();
+            }
 
-        instance->prepare(aap_frame_size, data->plugin_buffer);
+            instance->prepare(aap_frame_size, data->plugin_buffer);
 
-        instance_data = std::move(data);
+            instance_data = std::move(data);
 
-        state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
+            state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
 
-        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "instantiated plugin %s", pluginId.c_str());
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "instantiated plugin %s",
+                         pluginId.c_str());
+        });
     }
 
     // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.

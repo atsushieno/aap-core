@@ -11,31 +11,9 @@ import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.AudioPluginInterface
 
-class PluginServiceConnection(var serviceInfo: PluginServiceInformation, var onConnectedCallback: (conn: PluginServiceConnection) -> Unit) :
-    ServiceConnection {
-
-    var binder: IBinder? = null
+class PluginServiceConnection(var serviceInfo: PluginServiceInformation, val binder: IBinder?) {
 
     var instances = mutableListOf<AudioPluginInstance>()
-
-    override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-        Log.d("PluginServiceConnection", "onServiceConnected")
-        this.binder = binder
-        onConnectedCallback(this)
-    }
-
-    override fun onServiceDisconnected(name: ComponentName?) {
-    }
-
-    override fun onNullBinding(name: ComponentName?) {
-        Log.d("PluginServiceConnection", "onNullBinding")
-        super.onNullBinding(name)
-    }
-
-    override fun onBindingDied(name: ComponentName?) {
-        Log.d("PluginServiceConnection", "onBindingDied")
-        super.onBindingDied(name)
-    }
 
     fun instantiatePlugin(pluginInfo : PluginInformation, sampleRate: Int, extensions: List<AudioPluginExtensionData>) : AudioPluginInstance {
         val aapSvc = AudioPluginInterface.Stub.asInterface(binder!!)
