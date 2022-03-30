@@ -54,10 +54,12 @@ When debugging AAP framework itself (and probably plugins too), AddressSanitizer
 
 To enable asan in this project, there are three things to do:
 
-- run `./setup-asan-for-debugging.sh` to copy asan runtime shared libraries from NDK. You might have to adjust some variables.
-- uncomment some lines in `CMakeLists.txt` (search for "AddressSanitizer" to find the corresponding lines.)
-- Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
-
-Note that this description is not equivalent to what [NDK documentation](https://developer.android.com/ndk/guides/asan) says; its `wrap.sh` is broken and you'd stuck at unresponsive debugging.
+- In this module:
+  - run `./setup-asan-for-debugging.sh` to copy asan runtime shared libraries from NDK. You might have to adjust some variables in the script.
+  - In the top-level `build.gradle.kts`, change `enable_asan` value to `true`. It will delegate the option to cmake as well as enable the ASAN settings in the library modules as well as sample apps.
+- In the app module (e.g. `aap-juce-plugin-host/app`):
+  - Similarly to `./setup-asan-for-debugging.sh` in this repo, you will have to copy ASAN libraries and `wrap.sh` into the app module. For more details, see [NDK documentation](https://developer.android.com/ndk/guides/asan).
+  - Add `android { packagingOptions { jniLibs { useLegacyPackaging = true } } }` (you would most likely have to copy "part of" this script in your existing build script e.g. only within `androoid { ... }` part)
+  - Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
 
 Note that the ASAN options are specified only for `libandroidaudioplugin.so` and `libaapbareboneplugin.so`. To enable ASAN in other projects and their dependencies, pass appropriate build arguments to them as well.
