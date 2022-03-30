@@ -26,7 +26,7 @@ public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
-        svc.reset(new PluginService(std::shared_ptr<PluginListSnapshot> (&plugins)));
+        svc.reset(new PluginService(&plugins));
     }
 
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,

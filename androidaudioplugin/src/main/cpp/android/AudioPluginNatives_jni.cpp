@@ -30,12 +30,25 @@ T usingJNIEnv(std::function<T(JNIEnv*)> func) {
 }
 
 template <typename T>
-T usingJString(const char* s, std::function<T(jstring)> func) {
+T usingUTFChars(const char* s, std::function<T(jstring)> func) {
     return usingJNIEnv<T>([&](JNIEnv* env) {
         jstring js = env->NewStringUTF(s);
         T ret = func(js);
         return ret;
     });
+}
+
+template <typename T>
+T usingJString(jstring s, std::function<T(const char*)> func) {
+	return usingJNIEnv<T>([&](JNIEnv* env) {
+		if (!s)
+			return func(nullptr);
+		const char *u8 = env->GetStringUTFChars(s, nullptr);
+		auto ret = func(u8);
+        env->ReleaseStringUTFChars(s, u8);
+		return ret;
+	});
+
 }
 
 extern "C" {
@@ -255,31 +268,34 @@ aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorIn
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
                                                                 jstring packageName, jstring className, jobject binder) {
-	const char *packageNameDup = strdup_fromJava(env, packageName);
-	const char *classNameDup = strdup_fromJava(env, className);
-	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+	usingJString<void*>(packageName, [&](const char* packageNameChars) {
+		usingJString<void*>(className, [&](const char* classNameChars) {
+			auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 
-    auto list = client_connection_list_per_scope[connectorInstanceId];
-    if (list == nullptr) {
-        client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
-        list = client_connection_list_per_scope[connectorInstanceId];
-    }
-	list->add(std::make_unique<aap::PluginClientConnection>(packageNameDup, classNameDup, aiBinder));
-	free((void*) packageNameDup);
-	free((void*) classNameDup);
+			auto list = client_connection_list_per_scope[connectorInstanceId];
+			if (list == nullptr) {
+				client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
+				list = client_connection_list_per_scope[connectorInstanceId];
+			}
+			list->add(std::make_unique<aap::PluginClientConnection>(packageNameChars, classNameChars, aiBinder));
+			return nullptr;
+		});
+		return nullptr;
+	});
 }
 
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jint connectorInstanceId,
 																   jstring packageName, jstring className) {
-	const char *packageNameDup = strdup_fromJava(env, packageName);
-	const char *classNameDup = strdup_fromJava(env, className);
-	auto list = client_connection_list_per_scope[connectorInstanceId];
-	if (list != nullptr) {
-		list->remove(packageNameDup, classNameDup);
-	}
-	free((void*) packageNameDup);
-	free((void*) classNameDup);
+	usingJString<void*>(packageName, [&](const char* packageNameChars) {
+		usingJString<void*>(className, [&](const char* classNameChars) {
+			auto list = client_connection_list_per_scope[connectorInstanceId];
+			if (list != nullptr)
+				list->remove(packageNameChars, classNameChars);
+			return nullptr;
+		});
+		return nullptr;
+	});
 }
 
 // --------------------------------------------------
@@ -306,14 +322,14 @@ void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string service
 				"(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
 		assert(j_method_ensure_instance_created);
 
-        return usingJString<void*>(servicePackageName.c_str(), [&](jstring packageName) {
-            env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
-                                                         j_method_ensure_instance_created,
-                                                         packageName,
-                                                         audio_plugin_service_connector);
+        return usingUTFChars<void *>(servicePackageName.c_str(), [&](jstring packageName) {
+			env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
+									  j_method_ensure_instance_created,
+									  packageName,
+									  audio_plugin_service_connector);
 
 			return nullptr;
-        });
+		});
 	});
 }
 
@@ -321,12 +337,12 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_AudioPluginServiceConnector_nativeOnServiceConnectedCallback(
 		JNIEnv *env, jobject thiz, jstring servicePackageName) {
 	jboolean wasCopy;
-	// FIXME: shouldn't the resulting value be freed manually ig it `wasCopy` ? Doing so causes segv.
 	const char* s = env->GetStringUTFChars(servicePackageName, &wasCopy);
 	auto entry = inProgressCallbacks.find(s);
 	if (entry != inProgressCallbacks.end())
 		// FIXME: what kind of error propagation could be achieved here?
 		entry->second("");
+    env->ReleaseStringUTFChars(servicePackageName, s);
 }
 
 // --------------------------------------------------

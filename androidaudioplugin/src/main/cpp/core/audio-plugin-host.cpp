@@ -241,7 +241,7 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 	if (service != nullptr)
 		internalCallback("");
 	else
-		getPluginHostPAL()->ensurePluginServiceConnected(connections.get(), descriptor->getPluginPackageName(), internalCallback);
+		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }
 
 PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {

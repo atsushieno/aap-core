@@ -362,12 +362,12 @@ public:
 class PluginHost
 {
 protected:
-	std::shared_ptr<PluginListSnapshot> plugin_list{nullptr};
+	PluginListSnapshot* plugin_list{nullptr};
 	std::vector<PluginInstance*> instances{};
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(std::shared_ptr<PluginListSnapshot> contextPluginList) : plugin_list(contextPluginList)
+	PluginHost(PluginListSnapshot* contextPluginList) : plugin_list(contextPluginList)
 	{
 	}
 
@@ -381,7 +381,7 @@ public:
 
 class PluginService : public PluginHost {
 public:
-	PluginService(std::shared_ptr<PluginListSnapshot> contextPluginList)
+	PluginService(PluginListSnapshot* contextPluginList)
 			: PluginHost(contextPluginList)
 	{
 	}
@@ -390,17 +390,17 @@ public:
 };
 
 class PluginClient : public PluginHost {
-	std::shared_ptr<PluginClientConnectionList> connections;
+	PluginClientConnectionList* connections;
 
 	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
 public:
-	PluginClient(std::shared_ptr<PluginClientConnectionList> pluginConnections, std::shared_ptr<PluginListSnapshot> contextPluginList)
+	PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList)
 		: PluginHost(contextPluginList), connections(pluginConnections)
 	{
 	}
 
-	inline PluginClientConnectionList* getConnections() { return connections.get(); }
+	inline PluginClientConnectionList* getConnections() { return connections; }
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 };
