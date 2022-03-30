@@ -323,9 +323,10 @@ void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string
 void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string pluginId)
 {
 	auto pl = getPluginHostPAL()->getInstalledPlugins();
-	for (int i = 0; pl[i] != nullptr; i++)
-		if (pl[i]->getPluginID() == pluginId)
-			return getServiceHandleForConnectedPlugin(pl[i]->getPluginPackageName(), pl[i]->getPluginLocalName());
+	for (auto &plugin : pl)
+		if (plugin->getPluginID() == pluginId)
+			return getServiceHandleForConnectedPlugin(plugin->getPluginPackageName(),
+                                                      plugin->getPluginLocalName());
 	return nullptr;
 }
 
