@@ -298,9 +298,6 @@ void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string service
             audio_plugin_service_connector = env->NewGlobalRef(env->NewObject(connector_class, constructor, aap::get_android_application_context()));
         }
 
-		auto connectionList = getPluginConnectionListFromJni(connectorInstanceId, false);
-		assert(connectionList);
-
 		jclass java_audio_plugin_host_helper_class = env->FindClass(
 				"org/androidaudioplugin/hosting/AudioPluginHostHelper");
 		assert(java_audio_plugin_host_helper_class);
