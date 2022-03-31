@@ -31,7 +31,7 @@ T usingJNIEnv(std::function<T(JNIEnv*)> func) {
 
 template <typename T>
 T usingUTFChars(const char* s, std::function<T(jstring)> func) {
-    return usingJNIEnv<T>([&](JNIEnv* env) {
+    return usingJNIEnv<T>([=](JNIEnv* env) {
         jstring js = env->NewStringUTF(s);
         T ret = func(js);
         return ret;
@@ -40,7 +40,7 @@ T usingUTFChars(const char* s, std::function<T(jstring)> func) {
 
 template <typename T>
 T usingJString(jstring s, std::function<T(const char*)> func) {
-	return usingJNIEnv<T>([&](JNIEnv* env) {
+	return usingJNIEnv<T>([=](JNIEnv* env) {
 		if (!s)
 			return func(nullptr);
 		const char *u8 = env->GetStringUTFChars(s, nullptr);
@@ -202,7 +202,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 
 jobjectArray queryInstalledPluginsJNI()
 {
-	return usingJNIEnv<jobjectArray> ([&](JNIEnv *env) {
+	return usingJNIEnv<jobjectArray> ([](JNIEnv *env) {
 		jclass java_audio_plugin_host_helper_class = env->FindClass(
 				"org/androidaudioplugin/hosting/AudioPluginHostHelper");
 		assert(java_audio_plugin_host_helper_class);
@@ -268,8 +268,8 @@ aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorIn
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
                                                                 jstring packageName, jstring className, jobject binder) {
-	usingJString<void*>(packageName, [&](const char* packageNameChars) {
-		usingJString<void*>(className, [&](const char* classNameChars) {
+	usingJString<void*>(packageName, [=](const char* packageNameChars) {
+		usingJString<void*>(className, [=](const char* classNameChars) {
 			auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 
 			auto list = client_connection_list_per_scope[connectorInstanceId];
@@ -287,8 +287,8 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jint connectorInstanceId,
 																   jstring packageName, jstring className) {
-	usingJString<void*>(packageName, [&](const char* packageNameChars) {
-		usingJString<void*>(className, [&](const char* classNameChars) {
+	usingJString<void*>(packageName, [=](const char* packageNameChars) {
+		usingJString<void*>(className, [=](const char* classNameChars) {
 			auto list = client_connection_list_per_scope[connectorInstanceId];
 			if (list != nullptr)
 				list->remove(packageNameChars, classNameChars);
@@ -306,7 +306,7 @@ std::map<std::string,std::function<void(std::string)> > inProgressCallbacks{};
 void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string)> callback) {
 	inProgressCallbacks[servicePackageName] = callback;
 
-	usingJNIEnv<void*> ([&](JNIEnv *env) {
+	usingJNIEnv<void*> ([=](JNIEnv *env) {
 
         if (audio_plugin_service_connector == nullptr) {
             jclass connector_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginServiceConnector");
@@ -322,7 +322,7 @@ void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string service
 				"(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
 		assert(j_method_ensure_instance_created);
 
-        return usingUTFChars<void *>(servicePackageName.c_str(), [&](jstring packageName) {
+        return usingUTFChars<void *>(servicePackageName.c_str(), [=](jstring packageName) {
 			env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
 									  j_method_ensure_instance_created,
 									  packageName,

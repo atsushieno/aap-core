@@ -149,7 +149,7 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 
 	// For local plugins, they can be directly loaded using dlopen/dlsym.
 	// For remote plugins, the connection has to be established through binder.
-	auto internalCallback = [&, userCallback](PluginInstance* instance, std::string error) {
+	auto internalCallback = [=](PluginInstance* instance, std::string error) {
 		if (instance != nullptr) {
 			instances.emplace_back(instance);
 			userCallback(instances.size() - 1, "");
@@ -223,7 +223,7 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 	// We first ensure to bind the remote plugin service, and then create a plugin instance.
 	//  Since binding the plugin service must be asynchronous while instancing does not have to be,
 	//  we call ensureServiceConnected() first and pass the rest as its callback.
-	auto internalCallback = [&, callback](std::string error) {
+	auto internalCallback = [=](std::string error) {
 		if (error.empty()) {
 #if ANDROID
 			auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
