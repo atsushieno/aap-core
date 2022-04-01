@@ -46,7 +46,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
     var instanceId = serial++
 
-    val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection) -> Unit>()
+    val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection?, error: Exception?) -> Unit>()
 
     val connectedServices = mutableListOf<PluginServiceConnection>()
 
@@ -81,7 +81,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
         // avoid conflicting concurrent updates
         val currentListeners = serviceConnectedListeners.toTypedArray()
-        currentListeners.forEach { f -> f(conn) }
+        currentListeners.forEach { f -> f(conn, null) }
         nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
     }
 

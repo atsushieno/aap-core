@@ -2,6 +2,7 @@ package org.androidaudioplugin.midideviceservice
 
 import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiReceiver
+import android.util.Log
 
 // LAMESPEC: This is a failure point in Android MIDI API.
 //  onGetInputPortReceivers() should be called no earlier than onCreate() because onCreate() is
@@ -33,7 +34,12 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
 
     fun onDeviceOpened() {
         assert(instance == null)
-        instance = AudioPluginMidiDeviceInstance(ownerService.getPluginId(portIndex), ownerService)
+        AudioPluginMidiDeviceInstance.createAsync(ownerService.getPluginId(portIndex), ownerService) { conn, error ->
+            if (conn != null)
+                instance = conn
+            else
+                Log.e("AAP", error.toString())
+        }
     }
 
     fun onDeviceClosed() {

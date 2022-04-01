@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.util.Log
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
@@ -33,23 +34,25 @@ class PluginPreview(context: Context) {
         host.dispose()
     }
 
-    fun applyPlugin(service: PluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?)
+    fun applyPlugin(service: PluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
     {
-        host.pluginInstantiatedListeners.clear()
-        host.pluginInstantiatedListeners.add { instance ->
-            assert(this.instance == null)
-            this.instance = instance
-            val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-            instance.prepare(floatCount)
+        host.instantiatePluginAsync(plugin) { instance, error ->
+            if (instance != null) {
+                this.instance = instance
+                val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+                instance.prepare(floatCount)
 
-            GlobalScope.launch {
-                processPluginOnce(parametersOnUI)
+                android.os.Looper.getMainLooper().queue.run {
+                    processPluginOnce(parametersOnUI)
 
-                releasePluginInstance(instance)
+                    releasePluginInstance(instance)
+                }
+            }
+            else {
+                Log.e("AAP", "PluginPreview: $error")
+                errorCallback(error)
             }
         }
-        host.instantiatePlugin(plugin)
-
     }
 
     private fun processPluginOnce(parametersOnUI: FloatArray?) {

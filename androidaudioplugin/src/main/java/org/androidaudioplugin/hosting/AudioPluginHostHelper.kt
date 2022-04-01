@@ -190,15 +190,20 @@ class AudioPluginHostHelper {
             if (existing != null)
                 return
 
-            val listener: (PluginServiceConnection) -> Unit = {
-                Log.d("AAP", "Plugin service callback from ${it.serviceInfo.packageName}")
-                val binder = it.binder
-                if (binder != null)
-                    AudioPluginNatives.addBinderForClient(
-                        connector.instanceId,
-                        service.packageName,
-                        service.className,
-                        binder)
+            val listener: (PluginServiceConnection?, Exception?) -> Unit = { conn, error ->
+                if (conn != null) {
+                    Log.d("AAP", "Plugin service callback from ${conn.serviceInfo.packageName}")
+                    val binder = conn.binder
+                    if (binder != null)
+                        AudioPluginNatives.addBinderForClient(
+                            connector.instanceId,
+                            service.packageName,
+                            service.className,
+                            binder
+                        )
+                }
+                else
+                    Log.e("AAP", error.toString())
             }
             connector.serviceConnectedListeners.add(listener)
             connector.bindAudioPluginService(service)

@@ -24,14 +24,25 @@ open class AudioPluginClient(private val applicationContext: Context) {
 
     // Plugin instancing
 
-    fun instantiatePlugin(pluginInfo: PluginInformation)
+    fun instantiatePluginAsync(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) -> Unit)
     {
+        val internalCallback = { conn: PluginServiceConnection?, error: Exception? ->
+            if (conn != null) {
+                val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
+                instantiatedPlugins.add(instance)
+                pluginInstantiatedListeners.forEach { l -> l(instance) }
+                callback(instance, null)
+            }
+            else
+                callback(null, error)
+        }
+
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         if (conn == null) {
-            var serviceConnectedListener: (PluginServiceConnection) -> Unit ={}
-            serviceConnectedListener = { c ->
+            var serviceConnectedListener: (PluginServiceConnection?, Exception?) -> Unit = { _, _ -> }
+            serviceConnectedListener = { c, e ->
                 serviceConnector.serviceConnectedListeners.remove(serviceConnectedListener)
-                instantiatePlugin(pluginInfo, c)
+                internalCallback(c, e)
             }
             serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
             val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
@@ -39,14 +50,7 @@ open class AudioPluginClient(private val applicationContext: Context) {
             serviceConnector.bindAudioPluginService(service)
         }
         else
-            instantiatePlugin(pluginInfo, conn)
-    }
-
-    private fun instantiatePlugin(pluginInfo: PluginInformation, conn: PluginServiceConnection)
-    {
-        val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
-        instantiatedPlugins.add(instance)
-        pluginInstantiatedListeners.forEach { l -> l (instance) }
+            internalCallback(conn, null)
     }
 
     var sampleRate : Int
