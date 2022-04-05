@@ -29,7 +29,7 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 ![AAP process model](docs/images/aap-process-model.png)
 
-**Extensibility** : plugin feature extensibility is provided through raw pointer data. But it must not contain function pointers, as Android platform does not support calling them from different apps.
+**Extensibility** : plugin feature extensibility is provided through raw pointer data and local functions. It is shared between the host application and the plugin application, therefore it must not contain function pointers, as Android platform does not support calling them from different apps. The data part is copied into the internally allocated shared pointer data. C functions can be defined, but they will be called locally either within the host or within the plugin, not across the applications border.
 
 **Basically declarative parameter meta data** : like LV2, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports.
 
