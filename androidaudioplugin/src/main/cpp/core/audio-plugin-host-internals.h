@@ -5,15 +5,11 @@
 
 #define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
 
-extern "C" {
-
 #if ANDROID
-AndroidAudioPluginFactory *(GetAndroidAudioPluginFactoryClientBridge)();
+AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge(aap::PluginClient *client);
 #else
 AndroidAudioPluginFactory* (GetDesktopAudioPluginFactoryClientBridge)();
 #endif
-
-}
 
 namespace aap {
 

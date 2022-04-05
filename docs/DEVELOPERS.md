@@ -198,7 +198,7 @@ AndroidAudioPlugin* sample_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
-	const AndroidAudioPluginExtension * const *extensions)
+	AndroidAudioPluginHost *host)
 {
 	return new AndroidAudioPlugin {
 		new SamplePluginSpecific {},
@@ -207,13 +207,14 @@ AndroidAudioPlugin* sample_plugin_new(
 		sample_plugin_process,
 		sample_plugin_deactivate,
 		sample_plugin_get_state,
-		sample_plugin_set_state
+		sample_plugin_set_state,
+		sample_plugin_get_extension
 		};
 }
 
 AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
 {
-	return new AndroidAudioPluginFactory { sample_plugin_new, sample_plugin_delete };
+	return new AndroidAudioPluginFactory { sample_plugin_new, sample_plugin_delete, nullptr };
 }
 ```
 

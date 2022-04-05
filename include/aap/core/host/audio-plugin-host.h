@@ -17,8 +17,6 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/port-properties.h"
 
-#define AAP_BINDER_EXTENSION_URI "urn:aap:internals:ai_binder_provider_extension"
-
 namespace aap {
 
 enum ContentType {

@@ -172,7 +172,7 @@ void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char 
 }
 
 AndroidAudioPlugin* aap_client_as_plugin_new(
-	AndroidAudioPluginFactory *pluginFactory,	// unused
+	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int aapSampleRate,
 	AndroidAudioPluginHost* host
@@ -182,19 +182,9 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	assert(pluginUniqueId != nullptr);
 	assert(host != nullptr);
 
-	auto ctx = new AAPClientContext();
-
-	// FIXME: it is kind of ugly hack; we pass AIBinder as an extension via aap::PluginClientConnectionList, but extensions should be
-	//  initialized *after* initialize() is invoked. We have this code section because AIBinder
-	//  assignment is needed before initialize(), but it should not be implemented within the
-	//  plugin API in the first stage...
-	auto binderExtension = (AndroidAudioPluginExtension*) host->get_extension_entry(AAP_BINDER_EXTENSION_URI);
-	if (binderExtension) {
-		uint64_t data;
-		memcpy(&data, binderExtension->data, sizeof(uint64_t));
-		auto connections = (aap::PluginClientConnectionList*) data;
-		ctx->binder = (AIBinder *) connections->getServiceHandleForConnectedPlugin(pluginUniqueId);
-	}
+    auto client = (aap::PluginClient*) pluginFactory->factory_context;
+    auto ctx = new AAPClientContext();
+    ctx->binder = (AIBinder*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
 		return nullptr;
@@ -205,10 +195,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
 	for (int i = 0; host->extensions[i] != nullptr; i++) {
 		auto ext = host->extensions[i];
-		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
-			continue;
-		}
-
 		// create asharedmem and add as an extension FD, keep it until it is destroyed.
 		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
 		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
@@ -243,10 +229,6 @@ void aap_client_as_plugin_delete(
 	delete instance;
 }
 
-extern "C" {
-
-AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge() {
-	return new AndroidAudioPluginFactory{aap_client_as_plugin_new, aap_client_as_plugin_delete};
-}
-
+AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge(aap::PluginClient* client) {
+	return new AndroidAudioPluginFactory{aap_client_as_plugin_new, aap_client_as_plugin_delete, client};
 }

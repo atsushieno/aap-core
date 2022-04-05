@@ -226,7 +226,7 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 	auto internalCallback = [=](std::string error) {
 		if (error.empty()) {
 #if ANDROID
-			auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge();
+			auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
 #else
 			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif

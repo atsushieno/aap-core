@@ -114,6 +114,7 @@ typedef struct AndroidAudioPlugin {
 typedef struct AndroidAudioPluginFactory {
 	aap_instantiate_func_t instantiate;
 	aap_release_func_t release;
+	void *factory_context;
 } AndroidAudioPluginFactory;
 
 AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
