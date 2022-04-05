@@ -19,7 +19,8 @@ import android.os.Build
 open class AudioPluginService : Service()
 {
     /**
-     * This interface is used by AAP extensions that will be initialized at instantiation step.
+     * This interface is used by AAP Service extensions that will be initialized at instantiation step.
+     * Not to be confused with AAP extension in the native (audio plugin) API context (`get_extension()`).
      *
      * By registering this extension as a `<meta-data>` element in AndroidManifest.xml, whose
      * `android:name` is `org.androidaudioplugin.AudioPluginService#Extensions`, the implementation
@@ -62,19 +63,18 @@ open class AudioPluginService : Service()
         return true
     }
 
+    // FIXME: we should probably just remove them, we're not foreground service now (still unsure for future).
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val channelID = "AndroidAudioPluginServiceChannel"
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(
-                channelID,
-                "AAP Foreground Service Channel",
-                NotificationManager.IMPORTANCE_LOW
-            )
+        val serviceChannel = NotificationChannel(
+            channelID,
+            "AAP Foreground Service Channel",
+            NotificationManager.IMPORTANCE_LOW
+        )
 
-            val manager = getSystemService(NotificationManager::class.java)
-            manager!!.createNotificationChannel(serviceChannel)
-        }
+        val manager = getSystemService(NotificationManager::class.java)
+        manager!!.createNotificationChannel(serviceChannel)
 
         val notification = NotificationCompat.Builder(this, channelID)
             .setContentTitle("Foreground Service")
