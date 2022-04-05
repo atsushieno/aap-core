@@ -12,7 +12,7 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
+Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService.V1` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -25,14 +25,14 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
              android:label="AAPBareBoneSamplePlugin">
       <intent-filter>
         <action 
-	      android:name="org.androidaudioplugin.AudioPluginService" />
+	      android:name="org.androidaudioplugin.AudioPluginService.V1" />
       </intent-filter>
       <meta-data 
-	    android:name="org.androidaudioplugin.AudioPluginService#Plugins"
+	    android:name="org.androidaudioplugin.AudioPluginService.V1#Plugins"
 	    android:resource="@xml/aap_metadata"
         />
       <meta-data
-        android:name="org.androidaudioplugin.AudioPluginService#Extensions"
+        android:name="org.androidaudioplugin.AudioPluginService.V1#Extensions"
         android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
         />
     </service>
@@ -42,7 +42,7 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
 
 The `<service>` element comes up with two `<meta-data>` elements.
 
-The simpler one with `org.androidaudioplugin.AudioPluginService#Extensions` is a ',' (comma)-separated list, to specify service-specific "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument. Any AAP service that contains LV2-based plugins has to specify `org.androidaudioplugin.lv2.AudioPluginLV2LocalHost` as the extension. For reference, its `initialize` method looks like:
+The simpler one with `org.androidaudioplugin.AudioPluginService.V1#Extensions` is a ',' (comma)-separated list, to specify service-specific "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument. Any AAP service that contains LV2-based plugins has to specify `org.androidaudioplugin.lv2.AudioPluginLV2LocalHost` as the extension. For reference, its `initialize` method looks like:
 
 ```
 @JvmStatic
@@ -58,7 +58,7 @@ fun initialize(context: Context)
 external fun initialize(lv2Path: String, assets: AssetManager)
 ```
 
-The other one with `org.androidaudioplugin.AudioPluginService#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
+The other one with `org.androidaudioplugin.AudioPluginService.V1#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
 <plugins xmlns="urn:org.androidaudioplugin.core"
@@ -232,7 +232,7 @@ Android 11 brought in a new restriction on querying information on other applica
 ```
     <queries>
         <intent>
-            <action android:name="org.androidaudioplugin.AudioPluginService" />
+            <action android:name="org.androidaudioplugin.AudioPluginService.V1" />
         </intent>
     </queries>
 ```

@@ -424,7 +424,7 @@ class PluginInstance
 	friend class PluginHost;
 	friend class PluginClient;
 	friend class PluginListSnapshot;
-	
+
 	int sample_rate{44100};
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;

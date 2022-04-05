@@ -166,16 +166,21 @@ void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
     assert (status.isOk());
 }
 
+void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
+{
+	return nullptr;
+}
+
 AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,	// unused
 	const char* pluginUniqueId,
 	int aapSampleRate,
-	AndroidAudioPluginExtension** extensions
+	AndroidAudioPluginHost* host
 	)
 {
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
-	assert(extensions != nullptr);
+	assert(host != nullptr);
 
 	auto ctx = new AAPClientContext();
 
@@ -183,15 +188,12 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	//  initialized *after* initialize() is invoked. We have this code section because AIBinder
 	//  assignment is needed before initialize(), but it should not be implemented within the
 	//  plugin API in the first stage...
-	for (int i = 0; extensions[i] != nullptr; i++) {
-		auto ext = extensions[i];
-		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
-            uint64_t data;
-			memcpy(&data, ext->data, sizeof(uint64_t));
-			auto connections = (aap::PluginClientConnectionList*) data;
-			ctx->binder = (AIBinder *) connections->getServiceHandleForConnectedPlugin(pluginUniqueId);
-			break;
-		}
+	auto binderExtension = (AndroidAudioPluginExtension*) host->get_extension_entry(AAP_BINDER_EXTENSION_URI);
+	if (binderExtension) {
+		uint64_t data;
+		memcpy(&data, binderExtension->data, sizeof(uint64_t));
+		auto connections = (aap::PluginClientConnectionList*) data;
+		ctx->binder = (AIBinder *) connections->getServiceHandleForConnectedPlugin(pluginUniqueId);
 	}
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
@@ -201,8 +203,8 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 
-	for (int i = 0; extensions[i] != nullptr; i++) {
-		auto ext = extensions[i];
+	for (int i = 0; host->extensions[i] != nullptr; i++) {
+		auto ext = host->extensions[i];
 		if (strcmp(ext->uri, AAP_BINDER_EXTENSION_URI) == 0) {
 			continue;
 		}
@@ -226,7 +228,8 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_process,
 		aap_client_as_plugin_deactivate,
 		aap_client_as_plugin_get_state,
-		aap_client_as_plugin_set_state
+		aap_client_as_plugin_set_state,
+		aap_client_as_plugin_get_extension
 		};
 }
 

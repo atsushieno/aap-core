@@ -12,9 +12,9 @@ import org.xmlpull.v1.XmlPullParser
 
 class AudioPluginHostHelper {
     companion object {
-        const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService"
-        const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService#Plugins"
-        const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService#Extensions"
+        const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V1"
+        const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService.V1#Plugins"
+        const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService.V1#Extensions"
         const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
 

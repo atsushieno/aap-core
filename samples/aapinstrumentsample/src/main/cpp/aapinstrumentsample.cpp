@@ -242,11 +242,15 @@ void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState
     // FIXME: implement
 }
 
+void* sample_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri) {
+    return nullptr;
+}
+
 AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
         int sampleRate,
-        AndroidAudioPluginExtension **extensions) {
+        AndroidAudioPluginHost *host) {
 
     auto handle = new AyumiHandle();
     handle->active = false;
@@ -265,13 +269,9 @@ AndroidAudioPlugin *sample_plugin_new(
         ayumi_set_volume(handle->impl, i, 14); // FIXME: max = 14?? 15 doesn't work
     }
 
-    for (int i = 0; extensions[i] != nullptr; i++) {
-        AndroidAudioPluginExtension *ext = extensions[i];
-        if (strcmp(AAP_MIDI_CI_EXTENSION_URI, ext->uri) == 0) {
-            auto data = (MidiCIExtension*) ext->data;
-            handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
-        }
-    }
+    auto data = (MidiCIExtension*) host->get_extension(AAP_MIDI_CI_EXTENSION_URI);
+    if (data)
+        handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
 
     return new AndroidAudioPlugin{
             handle,
@@ -280,7 +280,8 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_process,
             sample_plugin_deactivate,
             sample_plugin_get_state,
-            sample_plugin_set_state
+            sample_plugin_set_state,
+            sample_plugin_get_extension
     };
 }
 

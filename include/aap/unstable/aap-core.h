@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,20 +33,44 @@ typedef struct {
 	const void *raw_data;
 } AndroidAudioPluginState;
 
-
+/**
+ * A deprecated type for host extension.
+ */
 typedef struct {
 	const char *uri;
 	int32_t transmit_size;
 	void *data;
 } AndroidAudioPluginExtension;
 
+struct AndroidAudioPluginHost;
+
+/**
+ * Represents a host from plugin's perspective.
+ */
+typedef struct AndroidAudioPluginHost {
+	AndroidAudioPluginExtension** extensions;
+
+	inline AndroidAudioPluginExtension* get_extension_entry(const char * uri) {
+		for (size_t i = 0; extensions[i]; i++) {
+			AndroidAudioPluginExtension *ext = extensions[i];
+			if (strcmp(ext->uri, uri) == 0)
+				return ext;
+		}
+		return NULL;
+	}
+
+	inline void* get_extension(const char * uri) {
+		auto entry = get_extension_entry(uri);
+		return entry ? entry->data : NULL;
+	}
+} AndroidAudioPluginHost;
 
 /* function types */
 typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
-	AndroidAudioPluginExtension ** hostExtensions);
+	AndroidAudioPluginHost *host);
 
 typedef void (*aap_release_func_t) (
 	AndroidAudioPluginFactory *pluginFactory,
@@ -70,7 +95,7 @@ typedef void (*aap_set_state_func_t) (
 	AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *input);
 
-typedef void* (*aap_get_extension_func_t) (
+typedef void* (*aap_get_plugin_extension_func_t) (
 	AndroidAudioPlugin *plugin,
 	const char *extensionURI);
 
@@ -82,7 +107,7 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t deactivate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
-	aap_get_extension_func_t get_extension;
+	aap_get_plugin_extension_func_t get_extension;
 } AndroidAudioPlugin;
 
 

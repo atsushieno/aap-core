@@ -4,7 +4,7 @@
 
     <queries>
         <intent>
-            <action android:name="org.androidaudioplugin.AudioPluginService" />
+            <action android:name="org.androidaudioplugin.AudioPluginService.V1" />
         </intent>
     </queries>
     <uses-feature android:name="android.software.midi" android:required="true"/>

@@ -63,3 +63,13 @@ To enable asan in this project, there are three things to do:
   - Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
 
 Note that the ASAN options are specified only for `libandroidaudioplugin.so` and `libaapbareboneplugin.so`. To enable ASAN in other projects and their dependencies, pass appropriate build arguments to them as well.
+
+## When Introducing Breaking Changes in the Core API.
+
+It should very rately happen, but sometimes we would have to introduce breaking changes in the plugin API (`android-audio-plugin.h`), especially before 1.0 release. As the time of writing this, it happened in April 2022, and April 2020, and earlier (it is logged here to tell that it had been kept stable such long time).
+
+Introducing breaking changes at the core API, unlike changes on the extension APIs, means that any of the existing plugins will be unusable and crashes at run-time if there is no safe guard to filter out such incompatibles oens.
+
+(Incompatible extensions would just mean that the host will be unable to retrieve such an extension from the plugin, or the plugin will be unable to retrieve such an extension from the host. They might result in lack of mandatory extension or  some features disabled.)
+
+When introducing breaking changes in the core API, we should alter the Android Intent action name. In the current API, it is `org.androidaudioplugin.AudioPluginService.V1`. Before April 2022, it was `org.androidaudioplugin.AudioPluginService`.

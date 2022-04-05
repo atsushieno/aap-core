@@ -297,7 +297,9 @@ void PluginInstance::completeInstantiation()
 	for (size_t i = 0; i < extensions.size(); i++)
 		extPtrArr[i] = &extArr[i];
 	extPtrArr[extensions.size()] = nullptr;
-	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, extPtrArr);
+	AndroidAudioPluginHost asPluginAPI;
+	asPluginAPI.extensions = extPtrArr;
+	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, &asPluginAPI);
 	assert(plugin);
 
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
