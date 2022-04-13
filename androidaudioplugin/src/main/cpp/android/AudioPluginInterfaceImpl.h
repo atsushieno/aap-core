@@ -257,6 +257,15 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
+    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override {
+        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
+        auto instance = svc->getInstance(in_instanceID);
+        instance->controlExtension(in_uri, in_size);
+        return ndk::ScopedAStatus::ok();
+    }
+
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override {
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(

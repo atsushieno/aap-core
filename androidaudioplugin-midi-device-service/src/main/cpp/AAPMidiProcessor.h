@@ -6,6 +6,7 @@
 #include <zix/ring.h>
 #include <cmidi2.h>
 #include <aap/core/host/audio-plugin-host.h>
+#include <aap/core/host/extension-registry.h>
 
 namespace aapmidideviceservice {
     // keep it compatible with Oboe
@@ -73,6 +74,8 @@ namespace aapmidideviceservice {
         ZixRing *aap_input_ring_buffer{nullptr};
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
+
+        aap::PluginExtensionServiceRegistry extension_registry{};
 
     protected:
         AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};

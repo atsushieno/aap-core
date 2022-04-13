@@ -16,6 +16,7 @@
 #include <string>
 #include "aap/android-audio-plugin.h"
 #include "aap/port-properties.h"
+#include "aap/unstable/presets.h"
 
 namespace aap {
 
@@ -356,6 +357,22 @@ public:
 	void* getServiceHandleForConnectedPlugin(std::string pluginId);
 };
 
+//-------------------------------------------------------
+
+// This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
+class PluginExtension {
+public:
+	PluginExtension(AndroidAudioPluginExtension src);
+
+	std::unique_ptr<char> uri{nullptr};
+	int32_t dataSize;
+	std::unique_ptr<uint8_t> data{nullptr}; // pointer to void does not work...
+
+	AndroidAudioPluginExtension asTransient() const;
+};
+
+//-------------------------------------------------------
+
 /* Common foundation for both Plugin service and Plugin client. */
 class PluginHost
 {
@@ -387,15 +404,19 @@ public:
 	int createInstance(std::string identifier, int sampleRate);
 };
 
+class PluginExtensionServiceRegistry;
+
 class PluginClient : public PluginHost {
 	PluginClientConnectionList* connections;
+	PluginExtensionServiceRegistry* extension_registry;
 
 	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
 public:
-	PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList)
-		: PluginHost(contextPluginList), connections(pluginConnections)
+	PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList, PluginExtensionServiceRegistry *extensionRegistry)
+		: PluginHost(contextPluginList), connections(pluginConnections), extension_registry(extensionRegistry)
 	{
+		assert(extension_registry); // FIXME: remove, it is added just to avoid -Wunused-private-field.
 	}
 
 	inline PluginClientConnectionList* getConnections() { return connections; }
@@ -403,17 +424,7 @@ public:
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 };
 
-// This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
-class PluginExtension {
-public:
-	PluginExtension(AndroidAudioPluginExtension src);
-
-    std::unique_ptr<char> uri{nullptr};
-    int32_t dataSize;
-    std::unique_ptr<uint8_t> data{nullptr}; // pointer to void does not work...
-
-    AndroidAudioPluginExtension asTransient() const;
-};
+//-------------------------------------------------------
 
 class PluginBuffer;
 
@@ -506,32 +517,56 @@ public:
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
 
-	int getNumPrograms()
-	{
-		// TODO: FUTURE (v0.6). LADSPA does not support it either.
-		return 0;
-	}
-	
-	int getCurrentProgram()
-	{
-		// TODO: FUTURE (v0.6). LADSPA does not support it either.
-		return 0;
-	}
-	
-	void setCurrentProgram(int /*index*/)
-	{
-		// TODO: FUTURE (v0.6). LADSPA does not support it, but resets all parameters.
+    PluginExtension* getExtensionService(const char* uri) {
+        // FIXME: implement using PluginExtensionServiceRegistry
+        assert(false);
+        return nullptr;
+    }
+
+	template<typename T> T withPresetsExtension(std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
+		auto presetsExt = (aap_presets_extension_t*) getExtensionService(AAP_PRESETS_EXTENSION_URI);
+		if (presetsExt == nullptr)
+			return (T) nullptr;
+		aap_presets_context_t context;
+		context.context = this;
+		context.plugin = plugin;
+		return func(presetsExt, &context);
 	}
 
-	std::string getProgramName(int /*index*/)
+	int32_t getPresetCount()
 	{
-		// TODO: FUTURE (v0.6). LADSPA does not support it either.
-		return nullptr;
+		return withPresetsExtension<int32_t>([&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+			return ext->get_preset_count(ctx);
+		});
 	}
 	
-	void changeProgramName(int /*index*/, std::string /*newName*/)
+	int32_t getCurrentPresetIndex()
 	{
-		// TODO: FUTURE (v0.6). LADSPA does not support it either.
+		return withPresetsExtension<int32_t>([&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+			return ext->get_preset_index(ctx);
+		});
+	}
+	
+	void setCurrentPresetIndex(int index)
+	{
+		withPresetsExtension<int32_t>([&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+			ext->set_preset_index(ctx, index);
+			return 0;
+		});
+	}
+
+	std::string getCurrentPresetName(int index)
+	{
+		return withPresetsExtension<std::string>([&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+			aap_preset_t result;
+			ext->get_preset(ctx, index, true, &result);
+			return std::string{result.name};
+		});
+	}
+
+	void controlExtension(const std::string &uri, int32_t opcode)
+	{
+		// FIXME: implement
 	}
 
 	size_t getStateSize()
@@ -570,7 +605,6 @@ public:
 		return 0;
 	}
 };
-
 
 } // namespace
 

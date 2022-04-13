@@ -42,8 +42,6 @@ typedef struct {
 	void *data;
 } AndroidAudioPluginExtension;
 
-struct AndroidAudioPluginHost;
-
 /**
  * Represents a host from plugin's perspective.
  */
@@ -117,6 +115,7 @@ typedef struct AndroidAudioPluginFactory {
 	void *factory_context;
 } AndroidAudioPluginFactory;
 
+/* All plugin developers are supposed to implement this function, either directly or via some SDKs. */
 AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
 
 typedef AndroidAudioPluginFactory* (*aap_factory_t) ();
