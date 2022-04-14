@@ -75,8 +75,6 @@ namespace aapmidideviceservice {
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
 
-        aap::PluginExtensionServiceRegistry extension_registry{};
-
     protected:
         AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
         virtual AAPMidiProcessorPAL* pal() = 0;

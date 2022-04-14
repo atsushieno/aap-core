@@ -1,14 +1,15 @@
 
 #include "aap/core/host/extension-registry.h"
 
+
 namespace aap {
 
 //-----------------------------------
 
-AndroidAudioPluginServiceExtension *
-PluginExtensionServiceRegistry::create(const char *uri, AndroidAudioPluginHost *host,
-                                AndroidAudioPluginExtension *extensionInstance) {
-    assert(false); // FIXME: implement
+PluginServiceExtension* PluginExtensionServiceRegistry::getByUri(const char *uri) {
+    for (auto &e : extension_services)
+        if (strcmp(e->asTransient()->uri, uri) == 0)
+            return e.get();
     return nullptr;
 }
 

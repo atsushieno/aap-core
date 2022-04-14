@@ -55,7 +55,7 @@ namespace aapmidideviceservice {
         plugin_list = aap::PluginListSnapshot::queryServices();
 
         // AAP settings
-        client = std::make_unique<aap::PluginClient>(connections, &plugin_list, &extension_registry);
+        client = std::make_unique<aap::PluginClient>(connections, &plugin_list);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;

@@ -56,13 +56,6 @@ typedef struct {
 typedef aap_service_extension_t* (*aap_service_extension_factory_create_extension_instance_t) (
         void* context);
 
-typedef struct {
-    const char *uri;
-    aap_service_extension_factory_create_extension_instance_t create_instance;
-} AndroidAudioPluginServiceExtensionFactory;
-
-void aap_register_service_extension_factory(AndroidAudioPluginServiceExtensionFactory *factory);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif

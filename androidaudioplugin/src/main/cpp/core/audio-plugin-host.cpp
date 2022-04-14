@@ -169,6 +169,11 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	}
 }
 
+AndroidAudioPluginExtension* PluginClient::getExtensionService(const char* uri) {
+	return extension_registry->getByUri(uri)->asTransient()->data;
+}
+
+
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
 	instances.erase(std::find(instances.begin(), instances.end(), instance));
@@ -215,7 +220,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
-	return new PluginInstance(descriptor, pluginFactory, sampleRate);
+	return new LocalPluginInstance(descriptor, pluginFactory, sampleRate);
 }
 
 void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
@@ -231,7 +236,7 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
 			assert (pluginFactory != nullptr);
-			auto instance = new PluginInstance(descriptor, pluginFactory, sampleRate);
+			auto instance = new RemotePluginInstance(this, descriptor, pluginFactory, sampleRate);
 			callback(instance, "");
 		}
 		else
@@ -266,8 +271,8 @@ PluginInstance::PluginInstance(const PluginInformation* pluginInformation, Andro
 		: sample_rate(sampleRate),
 		pluginInfo(pluginInformation),
 		plugin_factory(loadedPluginFactory),
-		plugin(nullptr),
-		instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL) {
+		instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
+		plugin(nullptr) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
 }

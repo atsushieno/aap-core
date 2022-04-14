@@ -8,16 +8,42 @@
 
 namespace aap {
 
-class PluginExtensionServiceRegistry {
-    std::vector<AndroidAudioPluginServiceExtensionFactory*> factories;
+class PluginClient;
+
+/**
+ * C++ wrapper for AndroidAudioPluginServiceExtension.
+ */
+class PluginServiceExtension {
+    AndroidAudioPluginExtension proxy;
+    AndroidAudioPluginServiceExtension pub;
 
 public:
-    inline void registerFactory(AndroidAudioPluginServiceExtensionFactory* factory) {
-        factories.emplace_back(factory);
+    PluginServiceExtension(const char *uri, int32_t dataSize, void *data) {
+        proxy.uri = uri;
+        proxy.transmit_size = dataSize;
+        proxy.data = data;
+
+        pub.context = this;
+        pub.uri = uri;
+        pub.data = &proxy;
     }
 
-    AndroidAudioPluginServiceExtension* create(const char * uri, AndroidAudioPluginHost* host, AndroidAudioPluginExtension *extensionInstance);
+    inline AndroidAudioPluginServiceExtension* asTransient() {
+        return &pub;
+    }
+};
 
+class PluginExtensionServiceRegistry {
+    std::vector<std::unique_ptr<PluginServiceExtension>> extension_services{};
+
+public:
+    inline void add(PluginServiceExtension* extensionService) {
+        extension_services.emplace_back(std::move(extensionService));
+    }
+
+    PluginServiceExtension* getByUri(const char * uri);
+
+    /*
     class StandardExtensions {
         aap_presets_context_t *preset_context{nullptr};
     public:
@@ -39,6 +65,7 @@ public:
             extension->get_preset(preset_context, index, skipBinary, preset);
         }
     };
+    */
 };
 
 } // namespace aap
