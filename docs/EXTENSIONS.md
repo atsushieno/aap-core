@@ -125,7 +125,13 @@ It is what I described "IPC proxies" earlier, but we need a lot more explanation
 
 ### What Extension developers need to provide
 
-As I wrote earlier, plugin client (host) has to invoke the extension functions via proxies, and it is actually offered by the extension developers. 
+As I wrote earlier, plugin client (host) has to invoke the extension functions via proxies, and it is (should be) actually offered by the extension developers.
+
+It should also be noted that the messaging framework part that we (AAP developers) implement is actual host code agnostic, which means that we have to make it generic and extension agnostic i.e. we cannot simply switch-case per our official extensions.
+
+Similarly to client side, our AudioPluginService native internals also have to be implemented as extension agnostic.
+
+Therefore we come up with some generic code like this. `onInvoked()` is invoked by AudioPluginService internals, and `getPreset()` in this example is ultimately called by extension host developers (as in `aap_preset_extension_t::get_preset` function member).
 
 ```
 	void (*aap_service_extension_on_invoked_t) (
@@ -142,7 +148,7 @@ As I wrote earlier, plugin client (host) has to invoke the extension functions v
 	} aap_service_extension_t;
 ```
 
-Presets PluginService extension implementation:
+Example use of this API: Presets PluginService extension implementation:
 
 ```
 	// It is already in aap-core.h
@@ -197,6 +203,7 @@ Presets PluginService extension implementation:
 		std::bind(PresetExtensionService::onInvoked, svc),
 		std::bind(PresetExtensionService::asProxy, svc)};
 ```
+
 
 ### What libandroidaudioplugin needs to provide
 
