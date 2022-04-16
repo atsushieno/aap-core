@@ -1,6 +1,6 @@
 
-#ifndef AAP_CORE_EXTENSION_REGISTRY_H
-#define AAP_CORE_EXTENSION_REGISTRY_H
+#ifndef AAP_CORE_EXTENSION_SERVICE_H
+#define AAP_CORE_EXTENSION_SERVICE_H
 
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/extensions.h"
@@ -70,4 +70,4 @@ public:
 
 } // namespace aap
 
-#endif //AAP_CORE_EXTENSION_REGISTRY_H
+#endif //AAP_CORE_EXTENSION_SERVICE_H

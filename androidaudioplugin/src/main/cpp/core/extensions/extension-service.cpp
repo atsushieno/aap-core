@@ -1,10 +1,8 @@
 
-#include "aap/core/host/extension-registry.h"
+#include "aap/core/host/extension-service.h"
 
 
 namespace aap {
-
-//-----------------------------------
 
 PluginServiceExtension* PluginExtensionServiceRegistry::getByUri(const char *uri) {
     for (auto &e : extension_services)

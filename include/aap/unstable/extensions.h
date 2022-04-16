@@ -9,7 +9,10 @@ extern "C" {
 
 /**
  * The public extension API surface that represents a service extension instance, for plugin extension service implementors.
+ * In libandroidaudioplugin implementation, its `context` is `aap::PluginClient, which has handful of members:
  *
+ * - serviceHandle, which is AIBinder* on Android.
+ * - provides access to `extension()` AIDL-based request.
  */
 typedef struct {
     void *context;
@@ -17,13 +20,14 @@ typedef struct {
     AndroidAudioPluginExtension *data;
 } AndroidAudioPluginServiceExtension;
 
+// ---------------------------------------------------
+
 typedef void (*aap_plugin_extension_service_client_extension_message_t) (void* context, int32_t opcode);
 
 /**
  * The public extension API surface that works as a facade of the host client, for plugin extension service implementors.
  * In libandroidaudioplugin implementation, its `context` is `aap::PluginClient, which has handful of members:
  *
- * - serviceHandle, which is AIBinder* on Android.
  * - provides access to `extension()` AIDL-based request.
  * - instanceId that is needed to pass to `extension()`
  */
@@ -38,8 +42,7 @@ typedef void (*aap_service_extension_on_invoked_t) (
         AndroidAudioPluginServiceExtension* serviceExtension,
         int32_t opcode);
 
-typedef void* (*aap_service_extension_as_proxy) (AndroidAudioPluginExtensionServiceClient *client,
-                                                 AndroidAudioPluginServiceExtension* serviceExtension);
+typedef void* (*aap_service_extension_as_proxy) (AndroidAudioPluginServiceExtension* serviceExtension);
 
 /**
  * The facade for AAP extension service feature.

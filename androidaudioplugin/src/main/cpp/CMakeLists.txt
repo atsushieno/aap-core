@@ -6,7 +6,7 @@ project(androidaudioplugin VERSION 0.6.2 LANGUAGES CXX)
 set (androidaudioplugin_SOURCES
 	"core/audio-plugin-host.cpp"
 	"core/extensions/presets-service.cpp"
-	"core/extensions/extension-registry.cpp"
+	"core/extensions/extension-service.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES

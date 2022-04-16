@@ -18,7 +18,7 @@
 #include "aap/port-properties.h"
 #include "aap/unstable/presets.h"
 #include "plugin-information.h"
-#include "extension-registry.h"
+#include "extension-service.h"
 
 namespace aap {
 
