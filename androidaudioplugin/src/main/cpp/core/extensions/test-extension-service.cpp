@@ -61,6 +61,7 @@ example_test_extension_t proxy{};
 int32_t proxy_foo (example_test_extension_t* plugin, int32_t input) {
     // FIXME: implement
     assert(false);
+    return 0;
 }
 
 void proxy_bar (example_test_extension_t* plugin, char *msg) {
