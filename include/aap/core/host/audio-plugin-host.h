@@ -76,6 +76,7 @@ public:
 	int createInstance(std::string identifier, int sampleRate);
 };
 
+// FIXME: is this for plugin client only, plugin service only, or both?
 class PluginExtensionServiceRegistry;
 
 class PluginClient : public PluginHost {
@@ -95,7 +96,7 @@ public:
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 
-	AndroidAudioPluginExtension* getExtensionService(const char* uri);
+	AAPXSFeatureWrapper getExtensionFeature(const char* uri);
 };
 
 //-------------------------------------------------------
@@ -122,6 +123,8 @@ protected:
 	AndroidAudioPlugin *plugin;
 
 	PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+	virtual AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() = 0;
 
 public:
 
@@ -193,6 +196,8 @@ public:
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
 
+	// FIXME: maybe move these standard presets features to some class.
+
 	virtual int32_t getPresetCount() = 0;
 	virtual int32_t getCurrentPresetIndex() = 0;
 	virtual void setCurrentPresetIndex(int index) = 0;
@@ -239,6 +244,10 @@ public:
  * A plugin instance that could use dlopen() and dlsym(). It can be either client side or host side.
  */
 class LocalPluginInstance : public PluginInstance {
+	std::unique_ptr<PluginExtensionServiceRegistry> registry;
+	AndroidAudioPluginHost plugin_host_facade{};
+	std::map<const char*, AndroidAudioPluginExtension> extension_instances;
+
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
@@ -251,26 +260,32 @@ class LocalPluginInstance : public PluginInstance {
 		return func(presetsExt, &context);
 	}
 
-public:
-	LocalPluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-	: PluginInstance(pluginInformation, loadedPluginFactory, sampleRate) {
+	inline static void* internalGetExtension(AndroidAudioPluginHost *host, const char* uri) {
+		auto thisObj = (LocalPluginInstance*) host->context;
+		return const_cast<void*>(thisObj->getExtension(uri));
 	}
 
-	int32_t getPresetCount()
+protected:
+	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
+
+public:
+	LocalPluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+	int32_t getPresetCount() override
 	{
 		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			return ext->get_preset_count(ctx);
 		});
 	}
 
-	int32_t getCurrentPresetIndex()
+	int32_t getCurrentPresetIndex() override
 	{
 		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			return ext->get_preset_index(ctx);
 		});
 	}
 
-	void setCurrentPresetIndex(int index)
+	void setCurrentPresetIndex(int index) override
 	{
 		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			ext->set_preset_index(ctx, index);
@@ -278,7 +293,7 @@ public:
 		});
 	}
 
-	std::string getCurrentPresetName(int index)
+	std::string getCurrentPresetName(int index) override
 	{
 		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			aap_preset_t result;
@@ -295,9 +310,10 @@ public:
 
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
+	std::unique_ptr<AAPXSClientInstanceWrapper> aapxsClientInstanceWrapper;
 
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
-		auto presetsExt = (aap_presets_extension_t*) getExtensionService(AAP_PRESETS_EXTENSION_URI);
+		auto presetsExt = (aap_presets_extension_t*) getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
 		if (presetsExt == nullptr)
 			return defaultValue;
 		aap_presets_context_t context;
@@ -306,30 +322,61 @@ class RemotePluginInstance : public PluginInstance {
 		return func(presetsExt, &context);
 	}
 
+    void sendExtensionMessage(AAPXSClientInstanceWrapper *aapxsWrapper, int32_t opcode) {
+        // FIXME: implement
+		assert(false);
+    }
+
+	static void internalExtensionMessage (void* context, int32_t opcode) {
+		auto thisObj = (RemotePluginInstance *) context;
+		auto aapxsInstance = (AAPXSClientInstanceWrapper *) thisObj;
+		auto client = aapxsInstance->getPluginInstance();
+		client->sendExtensionMessage(aapxsInstance, opcode);
+	}
+
+protected:
+	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
+
 public:
     RemotePluginInstance(PluginClient *client, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: PluginInstance(pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
 
-	AndroidAudioPluginExtension* getExtensionService(const char* uri) {
-		return client->getExtensionService(uri);
+	AAPXSClientInstanceWrapper* getExtensionProxyWrapper(const char* uri) {
+		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
+
+		if (aapxsClientInstanceWrapper == nullptr) {
+			// FIXME: pass correct `data` and `size`.
+			aapxsClientInstanceWrapper = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, 0);
+		}
+		return aapxsClientInstanceWrapper.get();
 	}
 
-	int32_t getPresetCount()
+	// For host developers, it is the only entry point to get extension.
+	// Therefore the return value is the (strongly typed) extension proxy value.
+	// When we AAP developers implement the internals, we need another wrapper around this function.
+	//
+	// FIXME: this should really be renamed to `getExtension()` but that conflicts an existing function.
+	void* getExtensionProxy(const char* uri) {
+        auto aapxsClientInstance = getExtensionProxyWrapper(uri)->asPublicApi();
+		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
+	}
+
+	int32_t getPresetCount() override
 	{
 		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			return ext->get_preset_count(ctx);
 		});
 	}
 
-	int32_t getCurrentPresetIndex()
+	int32_t getCurrentPresetIndex() override
 	{
 		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			return ext->get_preset_index(ctx);
 		});
 	}
 
-	void setCurrentPresetIndex(int index)
+	void setCurrentPresetIndex(int index) override
 	{
 		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			ext->set_preset_index(ctx, index);
@@ -337,7 +384,7 @@ public:
 		});
 	}
 
-	std::string getCurrentPresetName(int index)
+	std::string getCurrentPresetName(int index) override
 	{
 		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
 			aap_preset_t result;

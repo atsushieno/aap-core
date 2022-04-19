@@ -34,33 +34,30 @@ typedef struct {
 } AndroidAudioPluginState;
 
 /**
- * A deprecated type for host extension.
+ * An entry for plugin extension instance (memory data)
  */
 typedef struct {
+	/** The plugin extension URI */
 	const char *uri;
+	/** The size of shared memory data, if needed */
 	int32_t transmit_size;
+	/** The optional shared memory pointer, if it wants */
 	void *data;
 } AndroidAudioPluginExtension;
 
+struct AndroidAudioPluginHost;
+
+typedef void* (*aap_host_get_exntension_t) (struct AndroidAudioPluginHost* host, const char *uri);
+
 /**
  * Represents a host from plugin's perspective.
+ * AAP client host is supposed to provide it (aap::PluginClient does so).
+ * Note that it is not to represent a comprehensive host that manages multiple instances, but
+ * to provide minimum information that is exposed to plugin.
  */
 typedef struct AndroidAudioPluginHost {
-	AndroidAudioPluginExtension** extensions;
-
-	inline AndroidAudioPluginExtension* get_extension_entry(const char * uri) {
-		for (size_t i = 0; extensions[i]; i++) {
-			AndroidAudioPluginExtension *ext = extensions[i];
-			if (strcmp(ext->uri, uri) == 0)
-				return ext;
-		}
-		return NULL;
-	}
-
-	inline void* get_extension(const char * uri) {
-		auto entry = get_extension_entry(uri);
-		return entry ? entry->data : NULL;
-	}
+	void *context;
+	aap_host_get_exntension_t get_extension;
 } AndroidAudioPluginHost;
 
 /* function types */

@@ -269,7 +269,7 @@ AndroidAudioPlugin *sample_plugin_new(
         ayumi_set_volume(handle->impl, i, 14); // FIXME: max = 14?? 15 doesn't work
     }
 
-    auto data = (MidiCIExtension*) host->get_extension(AAP_MIDI_CI_EXTENSION_URI);
+    auto data = (MidiCIExtension*) host->get_extension(host, AAP_MIDI_CI_EXTENSION_URI);
     if (data)
         handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
 

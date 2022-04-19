@@ -6,16 +6,10 @@ namespace aap {
 
 //-----------------------------------
 
-class AndroidAudioPluginClientExtensionImpl {
-protected:
-    AndroidAudioPluginExtensionServiceClient *client;
-    AndroidAudioPluginExtension *extensionInstance;
+class PluginClientExtensionImpl {
 
 public:
-    AndroidAudioPluginClientExtensionImpl(AndroidAudioPluginExtensionServiceClient *extensionClient,
-                                          AndroidAudioPluginExtension *extensionInstance)
-            : client(extensionClient), extensionInstance(extensionInstance) {
-    }
+    virtual ~PluginClientExtensionImpl() {}
 
     /** Optionally override this for additional initialization and resource acquisition */
     virtual void initialize() {}
@@ -23,21 +17,23 @@ public:
     /** Optionally override this for additional termination and resource releases */
     virtual void terminate() {}
 
-    void clientInvokePluginExtension(int32_t opcode) {
-        // FIXME: implement
+    void clientInvokePluginExtension(AAPXSClientInstance* clientInstance, int32_t opcode) {
+        clientInstance->client->extension_message(this, clientInstance, opcode);
     }
 
-    virtual void* asProxy() = 0;
+    virtual void* asProxy(AAPXSClientInstance *clientInstance) = 0;
 };
 
-class AndroidAudioPluginServiceExtensionImpl {
-protected:
-    AndroidAudioPluginExtension *extensionInstance{nullptr};
+class PluginServiceExtensionImpl {
+    AAPXSServiceInstance pub;
 
 public:
-    explicit AndroidAudioPluginServiceExtensionImpl(AndroidAudioPluginExtension *extensionInstance)
-            : extensionInstance(extensionInstance) {
+    PluginServiceExtensionImpl(const char *uri) {
+        pub.context = this;
+        pub.uri = uri;
     }
+
+    virtual ~PluginServiceExtensionImpl() {}
 
     /** Optionally override this for additional initialization and resource acquisition */
     virtual void initialize() {}
@@ -45,8 +41,13 @@ public:
     /** Optionally override this for additional termination and resource releases */
     virtual void terminate() {}
 
-    virtual void onInvoked(aap::LocalPluginInstance *instance,
+    // `instance` is actually aap::LocalPluginInstance, but we don't expose the host type to extension developers.
+    virtual void onInvoked(void *contextInstance, AAPXSServiceInstance *extensionInstance,
                            int32_t opcode) = 0;
+
+    AAPXSServiceInstance asTransient() {
+        return pub;
+    }
 };
 
 } // namespace aap

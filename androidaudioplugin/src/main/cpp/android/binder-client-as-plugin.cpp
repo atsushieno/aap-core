@@ -180,7 +180,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 {
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
-	assert(host != nullptr);
+	//assert(host != nullptr); // we shouldn't need this, and thus we indeed don't provide it.
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();
@@ -193,8 +193,10 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 
-	for (int i = 0; host->extensions[i] != nullptr; i++) {
-		auto ext = host->extensions[i];
+	// FIXME: replace this part with AAPXS
+	/*
+	for (int i = 0, n = host->get_extension_count(host); i < n; i++) {
+		auto ext = host->get_extension_at(host, i);
 		// create asharedmem and add as an extension FD, keep it until it is destroyed.
 		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
 		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
@@ -204,6 +206,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		ndk::ScopedFileDescriptor sfd{fd};
 		ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->transmit_size);
 	}
+	*/
 
     ctx->proxy->endCreate(ctx->instance_id);
 

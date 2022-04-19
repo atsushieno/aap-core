@@ -3,11 +3,12 @@
 // Anything Android specific must to into `android` directory.
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <vector>
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/logging.h"
 #include "shared-memory-extension.h"
 #include "audio-plugin-host-internals.h"
-#include <vector>
+#include "extensions/standard-extensions-impl.h"
 
 
 namespace aap
@@ -169,8 +170,8 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	}
 }
 
-AndroidAudioPluginExtension* PluginClient::getExtensionService(const char* uri) {
-	return extension_registry->getByUri(uri)->asTransient()->data;
+AAPXSFeatureWrapper PluginClient::getExtensionFeature(const char* uri) {
+	return extension_registry->getByUri(uri);
 }
 
 
@@ -222,6 +223,27 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	}
 	return new LocalPluginInstance(descriptor, pluginFactory, sampleRate);
 }
+
+LocalPluginInstance::LocalPluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+: PluginInstance(pluginInformation, loadedPluginFactory, sampleRate) {
+	registry = std::make_unique<PluginExtensionServiceRegistry>();
+
+	// presets
+    PluginExtensionFeatureImpl presets{};
+    registry->add(presets.asPublicApi());
+}
+
+AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
+	plugin_host_facade.context = this;
+	plugin_host_facade.get_extension = internalGetExtension;
+	return &plugin_host_facade;
+}
+
+AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
+	// we don't need it (client-as-plugin shouldn't need this)
+	return nullptr;
+}
+
 
 void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
@@ -295,6 +317,8 @@ void PluginInstance::completeInstantiation()
 {
 	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
 
+	// FIXME: we have to revamp this part: pass extensions from AAPXS.
+	/*
 	AndroidAudioPluginExtension extArr[extensions.size() + 1];
 	for (size_t i = 0; i < extensions.size(); i++)
 		extArr[i] = extensions[i]->asTransient();
@@ -302,9 +326,10 @@ void PluginInstance::completeInstantiation()
 	for (size_t i = 0; i < extensions.size(); i++)
 		extPtrArr[i] = &extArr[i];
 	extPtrArr[extensions.size()] = nullptr;
-	AndroidAudioPluginHost asPluginAPI;
-	asPluginAPI.extensions = extPtrArr;
-	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, &asPluginAPI);
+	*/
+	AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
+	//asPluginAPI.extensions = extPtrArr;
+	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
 	assert(plugin);
 
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;

@@ -2,46 +2,62 @@
 #ifndef AAP_CORE_EXTENSION_SERVICE_H
 #define AAP_CORE_EXTENSION_SERVICE_H
 
-#include "aap/core/host/audio-plugin-host.h"
-#include "aap/unstable/extensions.h"
+#include <vector>
+#include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
 
 namespace aap {
 
 class PluginClient;
+class RemotePluginInstance;
 
-/**
- * C++ wrapper for AndroidAudioPluginServiceExtension.
- */
-class PluginServiceExtension {
-    AndroidAudioPluginExtension proxy;
-    AndroidAudioPluginServiceExtension pub;
+class AAPXSClientInstanceWrapper {
+    RemotePluginInstance* local_plugin_instance;
+    AAPXSClientInstance client;
 
 public:
-    PluginServiceExtension(const char *uri, int32_t dataSize, void *data) {
-        proxy.uri = uri;
-        proxy.transmit_size = dataSize;
-        proxy.data = data;
-
-        pub.context = this;
-        pub.uri = uri;
-        pub.data = &proxy;
+    AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* uri, void* shmData, int32_t shmDataSize)
+        : local_plugin_instance(pluginInstance) {
+        client.uri = uri;
+        client.data = shmData;
+        client.data_size = shmDataSize;
     }
 
-    inline AndroidAudioPluginServiceExtension* asTransient() {
-        return &pub;
+    RemotePluginInstance* getPluginInstance() { return local_plugin_instance; }
+    AAPXSClientInstance* asPublicApi() { return &client; }
+};
+
+/**
+ * wrapper for AAPXSFeature, used by AAP framework hosting API. Not exposed to extension developers.
+ */
+class AAPXSFeatureWrapper {
+    AAPXSFeature feature;
+
+public:
+    AAPXSFeatureWrapper(AAPXSFeature feature)
+        : feature(feature) {
     }
+
+    inline const char* getUri() { return feature.uri; }
+
+    const AAPXSFeature& data() { return feature; }
 };
 
 class PluginExtensionServiceRegistry {
-    std::vector<std::unique_ptr<PluginServiceExtension>> extension_services{};
+    AAPXSFeatureWrapper empty{AAPXSFeature{"", nullptr, nullptr}};
+    std::vector<AAPXSFeatureWrapper> extension_services{};
 
 public:
-    inline void add(PluginServiceExtension* extensionService) {
-        extension_services.emplace_back(std::move(extensionService));
+    inline void add(AAPXSFeatureWrapper extensionService) {
+        extension_services.emplace_back(extensionService);
     }
 
-    PluginServiceExtension* getByUri(const char * uri);
+    inline AAPXSFeatureWrapper getByUri(const char * uri) {
+        for (auto &e : extension_services)
+            if (strcmp(e.getUri(), uri) == 0)
+                return e;
+        return empty;
+    }
 
     /*
     class StandardExtensions {

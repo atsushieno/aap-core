@@ -4,7 +4,7 @@
 
 It is so far a design draft documentation that does NOT describe what we already have.
 
-## AAP Extension Fundamentals
+## What Extensibility means for AAP
 
 AAP is designed to be extensible, which means, anyone can define features that can be used by both host and client. Lots of AAP features are implemented as AAP Extensions. Plugin extensbility is conceptually similar to VST-MA, LV2, and CLAP Extensions.
 
@@ -16,13 +16,20 @@ Conceptually AAP could come up with multiple implementations i.e. other implemen
 
 We could simply give up extensibility and decide that all the features are offered in AAP framework itself, like AudioUnit does not provide extensibility. But we still need some extensibility for AAP framework development for API stability.
 
-### Language
+### supported languages
 
 Extensions API for plugin developers and Extension Service API for client host developers are so far both in C API. (C is acqually somewhat annoying and we could resort to C++ for extension service API, but let's see if we end up to make another decision.)
 
-C is chosen for interoperability with other languages. Though other languages like Rust, Zig, or V (anything feasible for audio development).
+C is chosen for interoperability with other languages. Though other languages like Rust, Zig, or V (anything feasible for audio development). Though we haven't really examined any language interoperability yet.
 
-## Who needs to implement what
+## Known design problem.
+
+We will have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/android-audio-plugin-framework/issues/104#issuecomment-1100858628
+
+At this state we haven't worked on this known issue because that would depend on fundamental [port design changes](NEW_PORTS.md).
+
+
+## Extension API design: Who needs to implement what
 
 For an extension, users are plugin developers and host developers. They want to implement simple API. They are not supposed to implement every complicated IPC bits that AAP extensions actually need under the hood. Thus, extension developers are supposed to offer not just the API definition, but also IPC implementation.
 
@@ -112,8 +119,8 @@ Plugin host developers would also like to use simple API, and they are not suppo
 Therefore, the host code looks like this:
 
 ```
-	AndroidAudioPluginClient* client;
-	auto presetsProxy = (aap_preset_extension_t*) host->get_extension_proxy(AAP_PRESETS_EXTENSION_URI);
+	aap::RemotePluginInstance* pluginInstance;
+	auto presetsProxy = (aap_preset_extension_t*) pluginInstance->getExtension(AAP_PRESETS_EXTENSION_URI);
 	aap_preset preset;
 	preset.data_size = presetsProxy->get_preset_size(0);
 	presetsProxy->get_preset(0);
@@ -136,7 +143,7 @@ Therefore we come up with some generic code like this. `onInvoked()` is invoked 
 ```
 	void (*aap_service_extension_on_invoked_t) (
 		AndroidAudioPluginHost *service,
-		AndroidAudioPluginServiceExtension* serviceExtension,
+		AAPXSServiceInstance* serviceExtension,
 		AndroidAudioPluginExtension* data);
 
 	void* (*aap_service_extension_as_proxy) (AndroidAudioPluginHost *service);
@@ -167,7 +174,7 @@ Example use of this API: Presets PluginService extension implementation:
 
 		void onInvoked (
 			AndroidAudioPluginHost *service,
-			AndroidAudioPluginServiceExtension* serviceExtension,
+			AAPXSServiceInstance* serviceExtension,
 			AndroidAudioPluginExtension* data) {
 			switch (opcode) {
 			case OPCODE_GET_PRESET:
@@ -215,7 +222,7 @@ Each AAP extension service makes use of some framework part. There are two parts
 At this state, it is C++; we are unsure if it will be ported to C:
 
 ```
-	class AndroidAudioPluginServiceExtension {
+	class AAPXSServiceInstance {
 		virtual const char* getURI() = 0;
 		void clientInvokePluginExtension(AndroidAudioPluginExtension* ext) {
 			// transmit data via Binder
@@ -231,7 +238,7 @@ At this state, it is C++; we are unsure if it will be ported to C:
 
 ```
 	class ExtensionRegistry {
-		virtual AndroidAudioPluginServiceExtension* create(const char * uri, AndroidAudioPluginHost* host, AndroidAudioPluginExtension *extensionInstance) = 0;
+		virtual AAPXSServiceInstance* create(const char * uri, AndroidAudioPluginHost* host, AndroidAudioPluginExtension *extensionInstance) = 0;
 	};
 ```
 
@@ -240,7 +247,28 @@ Extension service implementation needs to be compiled in the host. For plugins, 
 A host application has to prepare its own `ExtensionRegistry` instance, and manage whatever extensions it wants to support. `StandardExtensionRegistry` should come up with all those standard extensions enabled.
 
 
+## public extension API in C
+
+We abbreviate AAP Extension Service as AAPXS. It is going to be too long if we didn't. Also, the abbreviated name would give "it's not for everyone" feeling (only extension developers and AAP framework developers use it).
+
+They must represent everything in the public API (including ones in aap-core.h). Instead, they don't have to expose everything.
+
+- Extension definitions
+  - AAPXSFeature
+- Extension instances
+  - AAPXSServiceInstance
+  - AAPXSClientInstance
+
+## C++ Implementation
+
+They are integrated to audio-plugin-host API, which is still unstable as a whole.
+
+They have to be representable in the public AAPXS API
+
+
 ### List of the extension types
+
+OBSOLETE: it needs updates!
 
 Public C API (plugin / extensions API):
 
@@ -249,11 +277,25 @@ Public C API (plugin / extensions API):
 | AndroidAudioPluginExtension | aap-core.h | contains shared data ptr, size, and uri. | do we really need this? |
 | AndroidAudioPluginHost | aap-core.h | facade to aap::PluginClient for plugin users | maybe outdated? |
 | AndroidAudioPluginClient | extensions.h | facade to aap::PluginClient, for host developers | TODO |
-| AndroidAudioPluginServiceExtension | extensions.h | service extension instance. contains context, uri, and data (AndroidAudioPluginExtension). | partly outdated maybe? |
-| AndroidAudioPluginExtensionServiceClient | facede to aap::PluginClient for extension developers. `extension_message()` | up to date |
+| AAPXSServiceInstance | extensions.h | service extension instance. contains context, uri, and data (AndroidAudioPluginExtension). | partly outdated maybe? |
+| AAPXSClient | facede to aap::PluginClient for extension developers. `extension_message()` | up to date |
 
 Public C++ API (aap/core/host .i.e client):
 
 | type | header | description | status |
 |-|-|-|-|
-| PluginExtensionServiceRegistry | extension-registry.h | 
+| PluginExtensionServiceRegistry | extension-service.h | The collection of extension service definitions | maybe done |
+| PluginServiceExtensionFeature | extension-service.h |
+| PluginServiceExtension | 
+
+Public C API vs. C++ wrapper API
+
+| C++ | C |
+|-|-|
+| aap::PluginExtensionFeatureImpl | AndroidAudioPluginExtensionFeature |
+| aap::PluginClientExtensionImpl | - |
+| aap::PluginServiceExtensionImpl | - |
+| aap::PluginExtension | AndroidAudioPluginExtension |
+| | AndroidAudioPluginServiceExtension |
+
+
