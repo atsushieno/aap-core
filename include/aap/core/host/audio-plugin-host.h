@@ -326,6 +326,12 @@ public:
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
 	std::unique_ptr<AAPXSClientInstanceWrapper> aapxsClientInstanceWrapper;
+	AndroidAudioPluginHost plugin_host_facade{};
+
+	inline static void* internalGetExtension(AndroidAudioPluginHost *host, const char* uri) {
+		auto thisObj = (RemotePluginInstance*) host->context;
+		return const_cast<void*>(thisObj->getExtension(uri));
+	}
 
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
 		auto presetsExt = (aap_presets_extension_t*) getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
@@ -347,10 +353,7 @@ class RemotePluginInstance : public PluginInstance {
 	}
 
 protected:
-	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override {
-		// we don't need it (client-as-plugin shouldn't need this)
-		return nullptr;
-	}
+	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
 
 public:
     RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
@@ -373,7 +376,7 @@ public:
 	//
 	// FIXME: this should really be renamed to `getExtension()` but that conflicts an existing function.
 	void* getExtensionProxy(const char* uri) {
-        auto aapxsClientInstance = getExtensionProxyWrapper(uri)->asPublicApi();
+		auto aapxsClientInstance = getExtensionProxyWrapper(uri)->asPublicApi();
 		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
 	}
 

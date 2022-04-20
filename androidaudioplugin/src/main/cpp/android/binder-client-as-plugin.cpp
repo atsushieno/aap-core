@@ -180,7 +180,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 {
 	assert(pluginFactory != nullptr);
 	assert(pluginUniqueId != nullptr);
-	//assert(host != nullptr); // we shouldn't need this, and thus we indeed don't provide it.
+	assert(host != nullptr);
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();
@@ -193,20 +193,23 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());
 
-	// FIXME: replace this part with AAPXS
-	/*
-	for (int i = 0, n = host->get_extension_count(host); i < n; i++) {
-		auto ext = host->get_extension_at(host, i);
-		// create asharedmem and add as an extension FD, keep it until it is destroyed.
-		auto fd = ASharedMemory_create(ext->uri, ext->transmit_size);
-		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
-		void* shm = mmap(nullptr, ext->transmit_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-		memcpy(shm, ext->data, ext->transmit_size);
+    auto instance = (aap::RemotePluginInstance*) host->context;
+    auto pluginInfo = instance->getPluginInformation();
+    std::function<void(const char*, AAPXSClientInstance*)> setupShm = [&](const char* uri, AAPXSClientInstance* ext) {
+        // create asharedmem and add as an extension FD, keep it until it is destroyed.
+        auto fd = ASharedMemory_create(ext->uri, ext->data_size);
+        ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
+        void* shm = mmap(nullptr, ext->data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        memcpy(shm, ext->data, ext->data_size);
 
-		ndk::ScopedFileDescriptor sfd{fd};
-		ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->transmit_size);
+        ndk::ScopedFileDescriptor sfd{fd};
+        ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->data_size);
+    };
+    for (int i = 0, n = pluginInfo->getNumRequiredExtensions(); i < n; i++) {
+        auto uri = pluginInfo->getRequiredExtension(i);
+        auto ext = instance->getExtensionProxyWrapper(uri->c_str())->asPublicApi();
+        setupShm(uri->c_str(), ext);
 	}
-	*/
 
     ctx->proxy->endCreate(ctx->instance_id);
 

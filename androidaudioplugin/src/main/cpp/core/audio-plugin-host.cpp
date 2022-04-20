@@ -244,6 +244,12 @@ AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiati
 	return &plugin_host_facade;
 }
 
+AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
+    plugin_host_facade.context = this;
+    plugin_host_facade.get_extension = internalGetExtension;
+    return &plugin_host_facade;
+}
+
 void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
 	// We first ensure to bind the remote plugin service, and then create a plugin instance.
