@@ -277,15 +277,6 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }
 
-void PluginClient::sendExtensionMessage(AAPXSClientInstanceWrapper *extension, int32_t instanceId, int32_t opcode) {
-	// Here we have to get a native plugin instance and send extension message.
-	// It is kind af annoying because we used to implement Binder-specific part only within the
-	// plugin API (binder-client-as-plugin.cpp)...
-
-	// FIXME: implement.
-	assert(false);
-}
-
 //-----------------------------------
 
 PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
@@ -327,18 +318,7 @@ void PluginInstance::completeInstantiation()
 {
 	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
 
-	// FIXME: we have to revamp this part: pass extensions from AAPXS.
-	/*
-	AndroidAudioPluginExtension extArr[extensions.size() + 1];
-	for (size_t i = 0; i < extensions.size(); i++)
-		extArr[i] = extensions[i]->asTransient();
-	AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
-	for (size_t i = 0; i < extensions.size(); i++)
-		extPtrArr[i] = &extArr[i];
-	extPtrArr[extensions.size()] = nullptr;
-	*/
 	AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
-	//asPluginAPI.extensions = extPtrArr;
 	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
 	assert(plugin);
 

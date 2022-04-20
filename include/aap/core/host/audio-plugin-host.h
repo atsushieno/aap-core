@@ -77,8 +77,6 @@ public:
 	inline PluginClientConnectionList* getConnections() { return connections; }
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
-
-	void sendExtensionMessage(AAPXSClientInstanceWrapper *extension, int32_t instanceId, int32_t opcode);
 };
 
 //-------------------------------------------------------
@@ -216,7 +214,6 @@ class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	std::map<const char*, std::unique_ptr<AAPXSServiceInstanceWrapper>> aapxsServiceInstanceWrappers;
-	// FIXME: should we remove this?
 	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> extensions{};
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
@@ -328,12 +325,13 @@ class RemotePluginInstance : public PluginInstance {
 
     void sendExtensionMessage(const char *uri, int32_t opcode) {
 		auto aapxsInstance = (AAPXSClientInstanceWrapper *) getAAPXSWrapper(uri);
-		client->sendExtensionMessage(aapxsInstance, getInstanceId(), opcode);
+		// Here we have to get a native plugin instance and send extension message.
+		// It is kind af annoying because we used to implement Binder-specific part only within the
+		// plugin API (binder-client-as-plugin.cpp)...
+		// So far, instead of rewriting a lot of code to do so, we let AAPClientContext
+		// assign its implementation details that handle Binder messaging as a std::function.
+		send_extension_message_impl(aapxsInstance, getInstanceId(), opcode);
     }
-
-	static void internalExtensionMessage (void *context, const char *uri, int32_t opcode) {
-		((RemotePluginInstance *) context)->sendExtensionMessage(uri, opcode);
-	}
 
 protected:
 	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
@@ -342,6 +340,9 @@ public:
     RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
+
+	/** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
+	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
 	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
 		assert(plugin != nullptr); // should not be invoked before completeInstantiation().

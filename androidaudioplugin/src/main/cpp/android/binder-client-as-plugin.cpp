@@ -8,6 +8,7 @@
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
+#include "aap/core/host/extension-service.h"
 #include "aap/unstable/logging.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/audio-plugin-host-internals.h"
@@ -189,6 +190,16 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     assert (status.isOk());
 
     auto instance = (aap::RemotePluginInstance*) host->context;
+
+	// It is a nasty workaround to not expose Binder back to RemotePluginInstance; we set a callable function for them here.
+	instance->send_extension_message_impl = [ctx](aap::AAPXSClientInstanceWrapper* aapxs, int32_t instanceId, int32_t opcode) {
+		ctx->proxy->extension(instanceId, aapxs->asPublicApi()->uri, opcode);
+	};
+
+	// Set up shared memory FDs for plugin extension services.
+	// We make use of plugin metadata that should list up required and optional extensions.
+	// FIXME: we should also query registered extension services so that it does not crash
+	//  when a plugin service is queried at use time.
     auto pluginInfo = instance->getPluginInformation();
     std::function<void(const char*, AAPXSClientInstance*)> setupShm = [&](const char* uri, AAPXSClientInstance* ext) {
         // create asharedmem and add as an extension FD, keep it until it is destroyed.
@@ -204,6 +215,11 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         auto uri = pluginInfo->getRequiredExtension(i);
         auto ext = instance->getAAPXSWrapper(uri->c_str())->asPublicApi();
         setupShm(uri->c_str(), ext);
+	}
+	for (int i = 0, n = pluginInfo->getNumOptionalExtensions(); i < n; i++) {
+		auto uri = pluginInfo->getOptionalExtension(i);
+		auto ext = instance->getAAPXSWrapper(uri->c_str())->asPublicApi();
+		setupShm(uri->c_str(), ext);
 	}
 
     ctx->proxy->endCreate(ctx->instance_id);
