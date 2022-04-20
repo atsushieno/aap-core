@@ -246,7 +246,7 @@ AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiati
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension = internalGetExtension;
+    plugin_host_facade.get_extension = internalGetExtensionProxy;
     return &plugin_host_facade;
 }
 
@@ -286,22 +286,6 @@ void PluginClient::sendExtensionMessage(AAPXSClientInstanceWrapper *extension, i
 	assert(false);
 }
 
-PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {
-	uri.reset(strdup(src.uri));
-	auto dataMem = calloc(1, src.transmit_size);
-	memcpy(dataMem, src.data, src.transmit_size);
-	data.reset((uint8_t*) dataMem);
-	dataSize = src.transmit_size;
-}
-
-AndroidAudioPluginExtension PluginExtension::asTransient() const {
-	AndroidAudioPluginExtension ret;
-	ret.uri = uri.get();
-	ret.data = data.get();
-	ret.transmit_size = dataSize;
-	return ret;
-}
-
 //-----------------------------------
 
 PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
@@ -313,9 +297,19 @@ PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* plug
 		  plugin(nullptr) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
+
+	aapxs_shared_memory_store = new AAPXSSharedMemoryStore();
 }
 
 PluginInstance::~PluginInstance() { dispose(); }
+
+void PluginInstance::dispose() {
+	instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
+	if (plugin != nullptr)
+		plugin_factory->release(plugin_factory, plugin);
+	plugin = nullptr;
+	delete aapxs_shared_memory_store;
+}
 
 int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames) {
 	assert(!plugin_buffer);

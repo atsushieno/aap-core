@@ -23,8 +23,8 @@ public:
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
-	// FIXME: there may be better SharedMemoryExtension/PluginSharedMemoryBuffer unification.
-	std::unique_ptr<aap::SharedMemoryExtension> shared_memory_extension{nullptr};
+	// FIXME: there may be better AAPXSSharedMemoryStore/PluginSharedMemoryBuffer unification.
+	std::unique_ptr<aap::AAPXSSharedMemoryStore> shared_memory_extension{nullptr};
 	std::unique_ptr<aap::PluginSharedMemoryBuffer> shm_buffer{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
@@ -183,7 +183,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
 		return nullptr;
-    ctx->shared_memory_extension = std::make_unique<aap::SharedMemoryExtension>();
+    ctx->shared_memory_extension = std::make_unique<aap::AAPXSSharedMemoryStore>();
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     assert (status.isOk());

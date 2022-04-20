@@ -3,8 +3,6 @@
 
 #include "aap/unstable/logging.h"
 
-#define AAP_SHARED_MEMORY_EXTENSION_URI "aap-extension:org.androidaudioplugin.SharedMemoryExtension"
-
 #if ANDROID
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge(aap::PluginClient *client);
 #else

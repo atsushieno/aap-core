@@ -24,23 +24,6 @@ namespace aap {
 
 //-------------------------------------------------------
 
-// FIXME: it is now considered harmful: we should not expect shared pointers disconnected;
-//  They should be retained instead so that extensions can safely return its operation results
-//  (which is kind of arguable, as it should rather be asynchronous instead of request-reply...)
-// This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
-class PluginExtension {
-public:
-	PluginExtension(AndroidAudioPluginExtension src);
-
-	std::unique_ptr<char> uri{nullptr};
-	int32_t dataSize;
-	std::unique_ptr<uint8_t> data{nullptr}; // pointer to void does not work...
-
-	AndroidAudioPluginExtension asTransient() const;
-};
-
-//-------------------------------------------------------
-
 class PluginInstance;
 class LocalPluginInstance;
 
@@ -101,6 +84,7 @@ public:
 //-------------------------------------------------------
 
 class PluginBuffer;
+class AAPXSSharedMemoryStore;
 
 class PluginInstance
 {
@@ -112,7 +96,7 @@ class PluginInstance
 	int instance_id;
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
-	std::vector<std::unique_ptr<PluginExtension>> extensions{};
+	AAPXSSharedMemoryStore *aapxs_shared_memory_store;
 	PluginInstantiationState instantiation_state;
 	AndroidAudioPluginState plugin_state{0, nullptr};
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
@@ -132,6 +116,8 @@ public:
 
 	inline int32_t getInstanceId() { return instance_id; }
 
+	inline AAPXSSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
+
     // It may or may not be shared memory buffer. Available only after prepare().
 	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts, size_t numFrames);
 
@@ -140,20 +126,7 @@ public:
 		return pluginInfo;
 	}
 
-	void addExtension(AndroidAudioPluginExtension ext)
-	{
-		extensions.emplace_back(std::make_unique<PluginExtension>(ext));
-	}
-
 	void completeInstantiation();
-
-	const void* getExtension(const char* uri)
-	{
-		for (auto& ext : extensions)
-			if (strcmp(ext->uri.get(), uri) == 0)
-				return ext->data.get();
-		return nullptr;
-	}
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
@@ -183,14 +156,8 @@ public:
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 	
-	void dispose()
-	{
-		instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
-		if (plugin != nullptr)
-			plugin_factory->release(plugin_factory, plugin);
-		plugin = nullptr;
-	}
-	
+	void dispose();
+
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
 	{
 		// It is not a TODO here, but if pointers have changed, we have to reconnect
@@ -249,6 +216,8 @@ class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	std::map<const char*, std::unique_ptr<AAPXSServiceInstanceWrapper>> aapxsServiceInstanceWrappers;
+	// FIXME: should we remove this?
+	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> extensions{};
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
@@ -272,6 +241,19 @@ protected:
 
 public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+	void prepareExtension(AndroidAudioPluginExtension ext)
+	{
+		extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
+	}
+
+	const void* getExtension(const char* uri)
+	{
+		for (auto& ext : extensions)
+			if (strcmp(ext->uri, uri) == 0)
+				return ext->data;
+		return nullptr;
+	}
 
 	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
 		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
@@ -329,9 +311,9 @@ class RemotePluginInstance : public PluginInstance {
 	std::map<const char*, std::unique_ptr<AAPXSClientInstanceWrapper>> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
 
-	inline static void* internalGetExtension(AndroidAudioPluginHost *host, const char* uri) {
+	inline static void* internalGetExtensionProxy(AndroidAudioPluginHost *host, const char* uri) {
 		auto thisObj = (RemotePluginInstance*) host->context;
-		return const_cast<void*>(thisObj->getExtension(uri));
+		return const_cast<void*>(thisObj->getExtensionProxy(uri));
 	}
 
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
@@ -374,8 +356,6 @@ public:
 	// For host developers, it is the only entry point to get extension.
 	// Therefore the return value is the (strongly typed) extension proxy value.
 	// When we AAP developers implement the internals, we need another wrapper around this function.
-	//
-	// FIXME: this should really be renamed to `getExtension()` but that conflicts an existing function.
 	void* getExtensionProxy(const char* uri) {
 		auto aapxsClientInstance = getAAPXSWrapper(uri)->asPublicApi();
 		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
