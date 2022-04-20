@@ -1,9 +1,14 @@
+/*
+ * It is an example plugin that provides full extension service implementation *without* C++
+ * support features in libandroidaudioplugin. It is to verify the public AAPXS API.
+ *
+ */
 
 #include "aap/core/host/extension-service.h"
 
 // Extension API --------------------------------------
 
-const char * AAPXS_EXAMPLE_TEST_EXTENSION_URI = "urn:aapxs/example/test/feature";
+const char * AAPXS_EXAMPLE_TEST_EXTENSION_URI = "urn://androidaudioplugin.org/examples/aapxs/test1/v1";
 
 // we have to resort to this forward declaration in the function typedefs below.
 struct example_test_extension_t;
@@ -58,19 +63,35 @@ void test_extension_feature_on_invoked(
 
 example_test_extension_t proxy{};
 
-int32_t proxy_foo (example_test_extension_t* plugin, int32_t input) {
-    // FIXME: implement
-    assert(false);
-    return 0;
+int32_t proxy_foo (example_test_extension_t* test, int32_t input) {
+    // The context is assigned by `test_extension_feature_as_proxy()`.
+    auto aapxs = (AAPXSClientInstance*) test->context;
+    // set `input` at the very beginning of the shared data pointer.
+    *(int32_t*) aapxs->data = input;
+    // send the request using AAPXSClient->extension_message().
+    aapxs->client->extension_message(test, aapxs, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
+    // retrieve the return value from the very beginning of the shared data pointer.
+    return *(int32_t*) aapxs->data;
 }
 
-void proxy_bar (example_test_extension_t* plugin, char *msg) {
-    // FIXME: implement
-    assert(false);
+void proxy_bar (example_test_extension_t* test, char *msg) {
+    // The context is assigned by `test_extension_feature_as_proxy()`.
+    auto aapxs = (AAPXSClientInstance*) test->context;
+    // length-prefixed string: set length at the very beginning of the shared data pointer.
+    int32_t len = strlen(msg);
+    *(int32_t*) aapxs->data = len;
+    // then copy the string into the shared buffer
+    strncpy((char*) aapxs->data + sizeof(int32_t), msg, len);
+    // send the request using AAPXSClient->extension_message().
+    aapxs->client->extension_message(test, aapxs, AAPXS_EXAMPLE_TEST_OPCODE_BAR);
+    // no need to retrieve
 }
-
 
 void* test_extension_feature_as_proxy(AAPXSClientInstance *extension) {
+    // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
+    proxy.context = extension;
+    proxy.foo = proxy_foo;
+    proxy.bar = proxy_bar;
     return &proxy;
 }
 
