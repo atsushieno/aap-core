@@ -207,7 +207,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     };
     for (int i = 0, n = pluginInfo->getNumRequiredExtensions(); i < n; i++) {
         auto uri = pluginInfo->getRequiredExtension(i);
-        auto ext = instance->getExtensionProxyWrapper(uri->c_str())->asPublicApi();
+        auto ext = instance->getAAPXSWrapper(uri->c_str())->asPublicApi();
         setupShm(uri->c_str(), ext);
 	}
 

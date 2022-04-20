@@ -245,8 +245,7 @@ public:
 class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
-	std::map<const char*, AndroidAudioPluginExtension> extension_instances;
-	std::unique_ptr<AAPXSServiceInstanceWrapper> aapxsServiceInstanceWrapper;
+	std::map<const char*, std::unique_ptr<AAPXSServiceInstanceWrapper>> aapxsServiceInstanceWrappers;
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
@@ -271,14 +270,13 @@ protected:
 public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
-	AAPXSServiceInstanceWrapper* getExtensionInstanceWrapper(const char* uri) {
+	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
 		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
 
-		if (aapxsServiceInstanceWrapper == nullptr) {
-			// FIXME: pass correct `data` and `size`.
-			aapxsServiceInstanceWrapper = std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0);
-		}
-		return aapxsServiceInstanceWrapper.get();
+		if (aapxsServiceInstanceWrappers[uri] == nullptr)
+			// We pass null data and 0 size here, but will be initialized later at AudioPluginInterfaceImpl.
+			aapxsServiceInstanceWrappers[uri] = std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0);
+		return aapxsServiceInstanceWrappers[uri].get();
 	}
 
 	// FIXME: we should probably move them to dedicated class for standard extensions.
@@ -317,7 +315,7 @@ public:
 	// It is invoked by AudioPluginInterfaceImpl, and supposed to dispatch request to extension service
 	void controlExtension(const std::string &uri, int32_t opcode)
 	{
-		auto extensionWrapper = getExtensionInstanceWrapper(uri.c_str());
+		auto extensionWrapper = getAAPXSWrapper(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
 		feature.data().on_invoked(service, extensionWrapper->asPublicApi(), opcode);
 	}
@@ -325,7 +323,7 @@ public:
 
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
-	std::unique_ptr<AAPXSClientInstanceWrapper> aapxsClientInstanceWrapper;
+	std::map<const char*, std::unique_ptr<AAPXSClientInstanceWrapper>> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
 
 	inline static void* internalGetExtension(AndroidAudioPluginHost *host, const char* uri) {
@@ -344,7 +342,7 @@ class RemotePluginInstance : public PluginInstance {
 	}
 
     void sendExtensionMessage(const char *uri, int32_t opcode) {
-		auto aapxsInstance = (AAPXSClientInstanceWrapper *) getExtensionProxyWrapper(uri);
+		auto aapxsInstance = (AAPXSClientInstanceWrapper *) getAAPXSWrapper(uri);
 		client->sendExtensionMessage(aapxsInstance, getInstanceId(), opcode);
     }
 
@@ -360,14 +358,14 @@ public:
 		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
 
-	AAPXSClientInstanceWrapper* getExtensionProxyWrapper(const char* uri) {
+	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
 		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
 
-		if (aapxsClientInstanceWrapper == nullptr) {
-			// FIXME: pass correct `data` and `size`.
-			aapxsClientInstanceWrapper = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, 0);
-		}
-		return aapxsClientInstanceWrapper.get();
+		if (aapxsClientInstanceWrappers[uri] == nullptr)
+			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
+			aapxsClientInstanceWrappers[uri] = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, 0);
+
+		return aapxsClientInstanceWrappers[uri].get();
 	}
 
 	// For host developers, it is the only entry point to get extension.
@@ -376,7 +374,7 @@ public:
 	//
 	// FIXME: this should really be renamed to `getExtension()` but that conflicts an existing function.
 	void* getExtensionProxy(const char* uri) {
-		auto aapxsClientInstance = getExtensionProxyWrapper(uri)->asPublicApi();
+		auto aapxsClientInstance = getAAPXSWrapper(uri)->asPublicApi();
 		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
 	}
 
