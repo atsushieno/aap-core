@@ -85,16 +85,7 @@ public:
 
 class PluginHostPAL
 {
-protected:
-    // FIXME: move to PluginHost
-    std::vector<PluginInformation*> plugin_list_cache{};
-
 public:
-    ~PluginHostPAL() {
-        for (auto plugin : plugin_list_cache)
-            delete plugin;
-    }
-
     virtual int32_t createSharedMemory(size_t size) = 0;
 
     virtual void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string)> callback) = 0;

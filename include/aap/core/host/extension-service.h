@@ -9,21 +9,42 @@
 namespace aap {
 
 class PluginClient;
+class LocalPluginInstance;
 class RemotePluginInstance;
 
+// FIXME: should this be "AAPXSLocalInstanceWrapper" ?
+//  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
+class AAPXSServiceInstanceWrapper {
+    LocalPluginInstance* local_plugin_instance;
+    AAPXSServiceInstance service;
+
+public:
+    AAPXSServiceInstanceWrapper(LocalPluginInstance* pluginInstance, const char* uri, void* shmData, int32_t shmDataSize)
+        : local_plugin_instance(pluginInstance) {
+        service.uri = uri;
+        service.data = shmData;
+        service.data_size = shmDataSize;
+    }
+
+    LocalPluginInstance* getPluginInstance() { return local_plugin_instance; }
+    AAPXSServiceInstance* asPublicApi() { return &service; }
+};
+
+// FIXME: should this be "AAPXSRemoteInstanceWrapper" ?
+//  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSClientInstanceWrapper {
-    RemotePluginInstance* local_plugin_instance;
+    RemotePluginInstance* remote_plugin_instance;
     AAPXSClientInstance client;
 
 public:
     AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* uri, void* shmData, int32_t shmDataSize)
-        : local_plugin_instance(pluginInstance) {
+        : remote_plugin_instance(pluginInstance) {
         client.uri = uri;
         client.data = shmData;
         client.data_size = shmDataSize;
     }
 
-    RemotePluginInstance* getPluginInstance() { return local_plugin_instance; }
+    RemotePluginInstance* getPluginInstance() { return remote_plugin_instance; }
     AAPXSClientInstance* asPublicApi() { return &client; }
 };
 

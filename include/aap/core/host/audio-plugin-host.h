@@ -44,17 +44,18 @@ class LocalPluginInstance;
 /* Common foundation for both Plugin service and Plugin client. */
 class PluginHost
 {
+	std::unique_ptr<PluginExtensionServiceRegistry> extension_registry;
 protected:
 	PluginListSnapshot* plugin_list{nullptr};
 	std::vector<PluginInstance*> instances{};
 	PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
 
 public:
-	PluginHost(PluginListSnapshot* contextPluginList) : plugin_list(contextPluginList)
-	{
-	}
+	PluginHost(PluginListSnapshot* contextPluginList);
 
 	virtual ~PluginHost() {}
+
+	AAPXSFeatureWrapper getExtensionFeature(const char* uri);
 
 	void destroyInstance(PluginInstance* instance);
 
@@ -76,12 +77,8 @@ public:
 	int createInstance(std::string identifier, int sampleRate);
 };
 
-// FIXME: is this for plugin client only, plugin service only, or both?
-class PluginExtensionServiceRegistry;
-
 class PluginClient : public PluginHost {
 	PluginClientConnectionList* connections;
-	std::unique_ptr<PluginExtensionServiceRegistry> extension_registry;
 
 	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
@@ -89,14 +86,13 @@ public:
 	PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList)
 		: PluginHost(contextPluginList), connections(pluginConnections)
 	{
-		extension_registry = std::make_unique<PluginExtensionServiceRegistry>();
 	}
 
 	inline PluginClientConnectionList* getConnections() { return connections; }
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 
-	AAPXSFeatureWrapper getExtensionFeature(const char* uri);
+	void sendExtensionMessage(AAPXSClientInstanceWrapper *extension, int32_t instanceId, int32_t opcode);
 };
 
 //-------------------------------------------------------
@@ -110,6 +106,7 @@ class PluginInstance
 	friend class PluginListSnapshot;
 
 	int sample_rate{44100};
+	int instance_id;
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
 	std::vector<std::unique_ptr<PluginExtension>> extensions{};
@@ -122,13 +119,15 @@ class PluginInstance
 protected:
 	AndroidAudioPlugin *plugin;
 
-	PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
 	virtual AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() = 0;
 
 public:
 
     virtual ~PluginInstance();
+
+	inline int32_t getInstanceId() { return instance_id; }
 
     // It may or may not be shared memory buffer. Available only after prepare().
 	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts, size_t numFrames);
@@ -244,9 +243,10 @@ public:
  * A plugin instance that could use dlopen() and dlsym(). It can be either client side or host side.
  */
 class LocalPluginInstance : public PluginInstance {
-	std::unique_ptr<PluginExtensionServiceRegistry> registry;
+	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	std::map<const char*, AndroidAudioPluginExtension> extension_instances;
+	std::unique_ptr<AAPXSServiceInstanceWrapper> aapxsServiceInstanceWrapper;
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
@@ -269,7 +269,19 @@ protected:
 	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
 
 public:
-	LocalPluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+	AAPXSServiceInstanceWrapper* getExtensionInstanceWrapper(const char* uri) {
+		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
+
+		if (aapxsServiceInstanceWrapper == nullptr) {
+			// FIXME: pass correct `data` and `size`.
+			aapxsServiceInstanceWrapper = std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0);
+		}
+		return aapxsServiceInstanceWrapper.get();
+	}
+
+	// FIXME: we should probably move them to dedicated class for standard extensions.
 
 	int32_t getPresetCount() override
 	{
@@ -302,9 +314,12 @@ public:
 		});
 	}
 
+	// It is invoked by AudioPluginInterfaceImpl, and supposed to dispatch request to extension service
 	void controlExtension(const std::string &uri, int32_t opcode)
 	{
-		// FIXME: implement
+		auto extensionWrapper = getExtensionInstanceWrapper(uri.c_str());
+		auto feature = service->getExtensionFeature(uri.c_str());
+		feature.data().on_invoked(service, extensionWrapper->asPublicApi(), opcode);
 	}
 };
 
@@ -322,24 +337,24 @@ class RemotePluginInstance : public PluginInstance {
 		return func(presetsExt, &context);
 	}
 
-    void sendExtensionMessage(AAPXSClientInstanceWrapper *aapxsWrapper, int32_t opcode) {
-        // FIXME: implement
-		assert(false);
+    void sendExtensionMessage(const char *uri, int32_t opcode) {
+		auto aapxsInstance = (AAPXSClientInstanceWrapper *) getExtensionProxyWrapper(uri);
+		client->sendExtensionMessage(aapxsInstance, getInstanceId(), opcode);
     }
 
-	static void internalExtensionMessage (void* context, int32_t opcode) {
-		auto thisObj = (RemotePluginInstance *) context;
-		auto aapxsInstance = (AAPXSClientInstanceWrapper *) thisObj;
-		auto client = aapxsInstance->getPluginInstance();
-		client->sendExtensionMessage(aapxsInstance, opcode);
+	static void internalExtensionMessage (void *context, const char *uri, int32_t opcode) {
+		((RemotePluginInstance *) context)->sendExtensionMessage(uri, opcode);
 	}
 
 protected:
-	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
+	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override {
+		// we don't need it (client-as-plugin shouldn't need this)
+		return nullptr;
+	}
 
 public:
-    RemotePluginInstance(PluginClient *client, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-		: PluginInstance(pluginInformation, loadedPluginFactory, sampleRate), client(client) {
+    RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
 
 	AAPXSClientInstanceWrapper* getExtensionProxyWrapper(const char* uri) {

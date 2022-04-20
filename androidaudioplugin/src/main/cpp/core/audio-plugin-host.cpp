@@ -152,8 +152,7 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	// For remote plugins, the connection has to be established through binder.
 	auto internalCallback = [=](PluginInstance* instance, std::string error) {
 		if (instance != nullptr) {
-			instances.emplace_back(instance);
-			userCallback(instances.size() - 1, "");
+			userCallback(instance->getInstanceId(), "");
 		}
 		else
 			userCallback(-1, error);
@@ -170,10 +169,19 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	}
 }
 
-AAPXSFeatureWrapper PluginClient::getExtensionFeature(const char* uri) {
-	return extension_registry->getByUri(uri);
+PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
+	: plugin_list(contextPluginList)
+{
+	extension_registry = std::make_unique<PluginExtensionServiceRegistry>();
+
+	// presets
+	PluginExtensionFeatureImpl presets{};
+	extension_registry->add(presets.asPublicApi());
 }
 
+AAPXSFeatureWrapper PluginHost::getExtensionFeature(const char* uri) {
+	return extension_registry->getByUri(uri);
+}
 
 void PluginHost::destroyInstance(PluginInstance* instance)
 {
@@ -221,16 +229,13 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
-	return new LocalPluginInstance(descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+	instances.emplace_back(instance);
+	return instance;
 }
 
-LocalPluginInstance::LocalPluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-: PluginInstance(pluginInformation, loadedPluginFactory, sampleRate) {
-	registry = std::make_unique<PluginExtensionServiceRegistry>();
-
-	// presets
-    PluginExtensionFeatureImpl presets{};
-    registry->add(presets.asPublicApi());
+LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), service(service) {
 }
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -238,12 +243,6 @@ AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiati
 	plugin_host_facade.get_extension = internalGetExtension;
 	return &plugin_host_facade;
 }
-
-AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
-	// we don't need it (client-as-plugin shouldn't need this)
-	return nullptr;
-}
-
 
 void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
@@ -258,7 +257,8 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
 			assert (pluginFactory != nullptr);
-			auto instance = new RemotePluginInstance(this, descriptor, pluginFactory, sampleRate);
+			auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+			instances.emplace_back(instance);
 			callback(instance, "");
 		}
 		else
@@ -269,6 +269,15 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 		internalCallback("");
 	else
 		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
+}
+
+void PluginClient::sendExtensionMessage(AAPXSClientInstanceWrapper *extension, int32_t instanceId, int32_t opcode) {
+	// Here we have to get a native plugin instance and send extension message.
+	// It is kind af annoying because we used to implement Binder-specific part only within the
+	// plugin API (binder-client-as-plugin.cpp)...
+
+	// FIXME: implement.
+	assert(false);
 }
 
 PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {
@@ -289,12 +298,13 @@ AndroidAudioPluginExtension PluginExtension::asTransient() const {
 
 //-----------------------------------
 
-PluginInstance::PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: sample_rate(sampleRate),
-		pluginInfo(pluginInformation),
-		plugin_factory(loadedPluginFactory),
-		instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
-		plugin(nullptr) {
+		  instance_id(instanceId),
+		  pluginInfo(pluginInformation),
+		  plugin_factory(loadedPluginFactory),
+		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
+		  plugin(nullptr) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
 }

@@ -88,6 +88,7 @@ void proxy_bar (example_test_extension_t* test, char *msg) {
 }
 
 void* test_extension_feature_as_proxy(AAPXSClientInstance *extension) {
+    // This `proxy.context` is managed and used by this extension service developer like this, not by anyone else.
     // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
     proxy.context = extension;
     proxy.foo = proxy_foo;
