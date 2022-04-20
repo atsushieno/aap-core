@@ -166,11 +166,6 @@ void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
     assert (status.isOk());
 }
 
-void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
-{
-	return nullptr;
-}
-
 AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
@@ -221,7 +216,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_deactivate,
 		aap_client_as_plugin_get_state,
 		aap_client_as_plugin_set_state,
-		aap_client_as_plugin_get_extension
 		};
 }
 

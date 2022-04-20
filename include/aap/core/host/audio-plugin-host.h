@@ -24,6 +24,9 @@ namespace aap {
 
 //-------------------------------------------------------
 
+// FIXME: it is now considered harmful: we should not expect shared pointers disconnected;
+//  They should be retained instead so that extensions can safely return its operation results
+//  (which is kind of arguable, as it should rather be asynchronous instead of request-reply...)
 // This is persistable AndroidAudioPluginExtension equivalent that can be stored in other persistent objects.
 class PluginExtension {
 public:

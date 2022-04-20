@@ -242,10 +242,6 @@ void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState
     // FIXME: implement
 }
 
-void* sample_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri) {
-    return nullptr;
-}
-
 AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
@@ -280,8 +276,7 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_process,
             sample_plugin_deactivate,
             sample_plugin_get_state,
-            sample_plugin_set_state,
-            sample_plugin_get_extension
+            sample_plugin_set_state
     };
 }
 

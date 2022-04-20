@@ -13,9 +13,7 @@ extern "C" {
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;
-typedef struct AndroidAudioPluginFactory AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
-typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
 typedef struct {
 	size_t num_buffers;
@@ -61,38 +59,34 @@ typedef struct AndroidAudioPluginHost {
 } AndroidAudioPluginHost;
 
 /* function types */
-typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
-	AndroidAudioPluginFactory *pluginFactory,
+typedef struct AndroidAudioPlugin* (*aap_instantiate_func_t) (
+	struct AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
 	AndroidAudioPluginHost *host);
 
 typedef void (*aap_release_func_t) (
-	AndroidAudioPluginFactory *pluginFactory,
-	AndroidAudioPlugin *instance);
+	struct AndroidAudioPluginFactory *pluginFactory,
+	struct AndroidAudioPlugin *instance);
 
 typedef void (*aap_prepare_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* audioBuffer);
 
-typedef void (*aap_control_func_t) (AndroidAudioPlugin *plugin);
+typedef void (*aap_control_func_t) (struct AndroidAudioPlugin *plugin);
 
 typedef void (*aap_process_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* audioBuffer,
 	long timeoutInNanoseconds);
 
 typedef void (*aap_get_state_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *result);
 
 typedef void (*aap_set_state_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *input);
-
-typedef void* (*aap_get_plugin_extension_func_t) (
-	AndroidAudioPlugin *plugin,
-	const char *extensionURI);
 
 typedef struct AndroidAudioPlugin {
 	void *plugin_specific;
@@ -102,7 +96,6 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t deactivate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
-	aap_get_plugin_extension_func_t get_extension;
 } AndroidAudioPlugin;
 
 
