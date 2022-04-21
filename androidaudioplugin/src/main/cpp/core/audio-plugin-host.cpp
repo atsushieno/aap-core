@@ -8,7 +8,7 @@
 #include "aap/unstable/logging.h"
 #include "shared-memory-extension.h"
 #include "audio-plugin-host-internals.h"
-#include "extensions/standard-extensions-impl.h"
+#include "extensions/presets-service.h"
 
 
 namespace aap

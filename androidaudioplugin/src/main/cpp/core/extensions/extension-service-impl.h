@@ -6,10 +6,13 @@ namespace aap {
 
 //-----------------------------------
 
-class PluginClientExtensionImpl {
+/**
+ * An abstract class to help implementing AAPXS client part i.e. `asProxy()` in C++.
+ */
+class PluginClientExtensionImplBase {
 
 public:
-    virtual ~PluginClientExtensionImpl() {}
+    virtual ~PluginClientExtensionImplBase() {}
 
     /** Optionally override this for additional initialization and resource acquisition */
     virtual void initialize() {}
@@ -24,16 +27,19 @@ public:
     virtual void* asProxy(AAPXSClientInstance *clientInstance) = 0;
 };
 
-class PluginServiceExtensionImpl {
+/**
+ * An abstract class to help implementing AAPXS service part i.e. `onInvoked()` in C++.
+ */
+class PluginServiceExtensionImplBase {
     AAPXSServiceInstance pub;
 
 public:
-    PluginServiceExtensionImpl(const char *uri) {
+    PluginServiceExtensionImplBase(const char *uri) {
         pub.context = this;
         pub.uri = uri;
     }
 
-    virtual ~PluginServiceExtensionImpl() {}
+    virtual ~PluginServiceExtensionImplBase() {}
 
     /** Optionally override this for additional initialization and resource acquisition */
     virtual void initialize() {}

@@ -1,5 +1,5 @@
-#ifndef AAP_CORE_STANDARD_EXTENSIONS_IMPL_H
-#define AAP_CORE_STANDARD_EXTENSIONS_IMPL_H
+#ifndef AAP_CORE_PRESETS_SERVICE_H
+#define AAP_CORE_PRESETS_SERVICE_H
 
 #include <cstdint>
 #include <functional>
@@ -20,7 +20,7 @@ const int32_t OPCODE_GET_PRESET_INDEX = 3;
 const int32_t OPCODE_SET_PRESET_INDEX = 4;
 
 
-class PresetsPluginClientExtension : public PluginClientExtensionImpl {
+class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
     class Instance {
         friend class PresetsPluginClientExtension;
 
@@ -116,7 +116,7 @@ class PresetsPluginClientExtension : public PluginClientExtensionImpl {
 
 public:
     PresetsPluginClientExtension()
-            : PluginClientExtensionImpl() {
+            : PluginClientExtensionImplBase() {
     }
 
     void *asProxy(AAPXSClientInstance *clientInstance) override {
@@ -130,7 +130,7 @@ public:
     }
 };
 
-class PresetsPluginServiceExtension : public PluginServiceExtensionImpl {
+class PresetsPluginServiceExtension : public PluginServiceExtensionImplBase {
 
     template<typename T>
     void withPresetExtension(aap::LocalPluginInstance *instance, T defaultValue,
@@ -139,7 +139,7 @@ class PresetsPluginServiceExtension : public PluginServiceExtensionImpl {
 
 public:
     PresetsPluginServiceExtension()
-        : PluginServiceExtensionImpl(AAP_PRESETS_EXTENSION_URI) {
+        : PluginServiceExtensionImplBase(AAP_PRESETS_EXTENSION_URI) {
     }
 
     // invoked by AudioPluginService
@@ -151,8 +151,8 @@ public:
  * Used by internal extension developers (that is, AAP framework developers)
  */
 class PluginExtensionFeatureImpl {
-    std::unique_ptr<PluginClientExtensionImpl> client;
-    std::unique_ptr<PluginServiceExtensionImpl> service;
+    std::unique_ptr<PluginClientExtensionImplBase> client;
+    std::unique_ptr<PluginServiceExtensionImplBase> service;
     AAPXSFeature pub;
 
     static void* internalAsProxy(AAPXSClientInstance* extension) {
@@ -167,8 +167,8 @@ class PluginExtensionFeatureImpl {
 
 public:
     PluginExtensionFeatureImpl()
-        : client(std::unique_ptr<PluginClientExtensionImpl>()),
-        service(std::unique_ptr<PluginServiceExtensionImpl>()) {
+        : client(std::unique_ptr<PluginClientExtensionImplBase>()),
+        service(std::unique_ptr<PluginServiceExtensionImplBase>()) {
         pub.as_proxy = internalAsProxy;
         pub.on_invoked = internalOnInvoked;
     }
@@ -179,4 +179,4 @@ public:
 } // namespace aap
 
 
-#endif //AAP_CORE_STANDARD_EXTENSIONS_IMPL_H
+#endif //AAP_CORE_PRESETS_SERVICE_H

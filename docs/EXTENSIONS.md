@@ -293,8 +293,8 @@ Public C API vs. C++ wrapper API
 | C++ | C |
 |-|-|
 | aap::PluginExtensionFeatureImpl | AndroidAudioPluginExtensionFeature |
-| aap::PluginClientExtensionImpl | - |
-| aap::PluginServiceExtensionImpl | - |
+| aap::PluginClientExtensionImplBase | - |
+| aap::PluginServiceExtensionImplBase | - |
 | aap::PluginExtension | AndroidAudioPluginExtension |
 | | AndroidAudioPluginServiceExtension |
 
