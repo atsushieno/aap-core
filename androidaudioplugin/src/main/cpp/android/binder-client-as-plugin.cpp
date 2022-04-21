@@ -198,8 +198,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
 	// Set up shared memory FDs for plugin extension services.
 	// We make use of plugin metadata that should list up required and optional extensions.
-	// FIXME: we should also query registered extension services so that it does not crash
-	//  when a plugin service is queried at use time.
     auto pluginInfo = instance->getPluginInformation();
     std::function<void(const char*, AAPXSClientInstance*)> setupShm = [&](const char* uri, AAPXSClientInstance* ext) {
         // create asharedmem and add as an extension FD, keep it until it is destroyed.
@@ -211,15 +209,12 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         ndk::ScopedFileDescriptor sfd{fd};
         ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->data_size);
     };
-    for (int i = 0, n = pluginInfo->getNumRequiredExtensions(); i < n; i++) {
-        auto uri = pluginInfo->getRequiredExtension(i);
-        auto ext = instance->getAAPXSWrapper(uri->c_str())->asPublicApi();
-        setupShm(uri->c_str(), ext);
-	}
-	for (int i = 0, n = pluginInfo->getNumOptionalExtensions(); i < n; i++) {
-		auto uri = pluginInfo->getOptionalExtension(i);
-		auto ext = instance->getAAPXSWrapper(uri->c_str())->asPublicApi();
-		setupShm(uri->c_str(), ext);
+    for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
+        auto info = pluginInfo->getExtension(i);
+        // FIXME: we should also query registered extension services so that it does not crash
+        //  when a plugin service is queried at use time.
+        auto ext = instance->getAAPXSWrapper(info.uri.c_str())->asPublicApi();
+        setupShm(info.uri.c_str(), ext);
 	}
 
     ctx->proxy->endCreate(ctx->instance_id);

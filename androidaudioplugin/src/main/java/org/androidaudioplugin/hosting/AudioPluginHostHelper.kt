@@ -62,6 +62,13 @@ class AudioPluginHostHelper {
                             isOutProcess
                         )
                         aapServiceInfo.plugins.add(currentPlugin)
+                    } else if (xp.name == "extension" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
+                        if (currentPlugin != null) {
+                            val required = xp.getAttributeValue(null, "required")
+                            val name = xp.getAttributeValue(null, "uri")
+                            val extension = ExtensionInformation(required.toBoolean(), name)
+                            currentPlugin.extensions.add(extension)
+                        }
                     } else if (xp.name == "port" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                         if (currentPlugin != null) {
                             val index = xp.getAttributeValue(null, "index")
