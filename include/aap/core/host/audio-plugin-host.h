@@ -214,12 +214,12 @@ class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	std::map<const char*, std::unique_ptr<AAPXSServiceInstanceWrapper>> aapxsServiceInstanceWrappers;
-	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> extensions{};
+	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> host_extensions{};
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
-		auto presetsExt = (aap_presets_extension_t*) getExtension(AAP_PRESETS_EXTENSION_URI);
+		auto presetsExt = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
 		if (presetsExt == nullptr)
 			return defaultValue;
 		aap_presets_context_t context;
@@ -228,9 +228,9 @@ class LocalPluginInstance : public PluginInstance {
 		return func(presetsExt, &context);
 	}
 
-	inline static void* internalGetExtension(AndroidAudioPluginHost *host, const char* uri) {
+	inline static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char* uri) {
 		auto thisObj = (LocalPluginInstance*) host->context;
-		return const_cast<void*>(thisObj->getExtension(uri));
+		return const_cast<void*>(thisObj->getHostExtension(uri));
 	}
 
 protected:
@@ -239,14 +239,16 @@ protected:
 public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
+	inline AndroidAudioPlugin* getPlugin() { return plugin; }
+
 	void prepareExtension(AndroidAudioPluginExtension ext)
 	{
-		extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
+		host_extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
 	}
 
-	const void* getExtension(const char* uri)
+	const void* getHostExtension(const char* uri)
 	{
-		for (auto& ext : extensions)
+		for (auto& ext : host_extensions)
 			if (strcmp(ext->uri, uri) == 0)
 				return ext->data;
 		return nullptr;
@@ -345,8 +347,6 @@ public:
 	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
 	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
-
 		if (aapxsClientInstanceWrappers[uri] == nullptr)
 			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
 			aapxsClientInstanceWrappers[uri] = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, 0);

@@ -45,7 +45,7 @@ typedef struct {
 
 struct AndroidAudioPluginHost;
 
-typedef void* (*aap_host_get_exntension_t) (struct AndroidAudioPluginHost* host, const char *uri);
+typedef void* (*aap_host_get_host_exntension_t) (struct AndroidAudioPluginHost* host, const char *uri);
 
 /**
  * Represents a host from plugin's perspective.
@@ -55,7 +55,7 @@ typedef void* (*aap_host_get_exntension_t) (struct AndroidAudioPluginHost* host,
  */
 typedef struct AndroidAudioPluginHost {
 	void *context;
-	aap_host_get_exntension_t get_extension;
+	aap_host_get_host_exntension_t get_host_extension;
 } AndroidAudioPluginHost;
 
 /* function types */

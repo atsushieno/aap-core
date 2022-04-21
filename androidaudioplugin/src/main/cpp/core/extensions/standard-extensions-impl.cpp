@@ -3,6 +3,19 @@
 
 namespace aap {
 
+template<typename T>
+void PresetsPluginServiceExtension::withPresetExtension(aap::LocalPluginInstance *instance,
+                                                        T defaultValue,
+                                                        std::function<void(aap_presets_extension_t *, aap_presets_context_t *)> func) {
+    // This instance->getExtension() should return an extension from the loaded plugin.
+    auto plugin = instance->getPlugin();
+    auto presetsExtension = (aap_presets_extension_t *) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
+    aap_presets_context_t context;
+    context.plugin = instance->getPlugin();
+    context.context = this;
+    func(presetsExtension, &context);
+}
+
 void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
                                               int32_t opcode) {
     auto instance = (aap::LocalPluginInstance *) contextInstance;

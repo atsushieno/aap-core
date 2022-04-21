@@ -240,13 +240,13 @@ LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
 	plugin_host_facade.context = this;
-	plugin_host_facade.get_extension = internalGetExtension;
+	plugin_host_facade.get_host_extension = internalGetHostExtension;
 	return &plugin_host_facade;
 }
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension = internalGetExtensionProxy;
+    plugin_host_facade.get_host_extension = nullptr; // we shouldn't need it.
     return &plugin_host_facade;
 }
 

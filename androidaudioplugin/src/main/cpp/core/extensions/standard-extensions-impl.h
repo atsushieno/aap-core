@@ -135,14 +135,7 @@ class PresetsPluginServiceExtension : public PluginServiceExtensionImpl {
     template<typename T>
     void withPresetExtension(aap::LocalPluginInstance *instance, T defaultValue,
                              std::function<void(aap_presets_extension_t *,
-                                                aap_presets_context_t *)> func) {
-        auto presetsExtension = (aap_presets_extension_t *) instance->getExtension(
-                AAP_PRESETS_EXTENSION_URI);
-        aap_presets_context_t context;
-        context.plugin = nullptr; // should not be necessary for proxies.
-        context.context = this;
-        func(presetsExtension, &context);
-    }
+                                                aap_presets_context_t *)> func);
 
 public:
     PresetsPluginServiceExtension()
