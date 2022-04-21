@@ -19,86 +19,100 @@ const int32_t OPCODE_GET_PRESET_DATA = 2;
 const int32_t OPCODE_GET_PRESET_INDEX = 3;
 const int32_t OPCODE_SET_PRESET_INDEX = 4;
 
+
 class PresetsPluginClientExtension : public PluginClientExtensionImpl {
-class Instance {
-    aap_presets_extension_t proxy{};
+    class Instance {
+        friend class PresetsPluginClientExtension;
 
-    static int32_t internalGetPresetCount(aap_presets_context_t *context) {
-        return ((Instance *) context->context)->getPresetCount();
-    }
+        aap_presets_extension_t proxy{};
 
-    static int32_t internalGetPresetDataSize(aap_presets_context_t *context, int32_t index) {
-        return ((Instance *) context->context)->getPresetDataSize(index);
-    }
+        static int32_t internalGetPresetCount(aap_presets_context_t *context) {
+            return ((Instance *) context->context)->getPresetCount();
+        }
 
-    static void internalGetPreset(aap_presets_context_t *context, int32_t index, bool skipBinary,
-                                  aap_preset_t *preset) {
-        ((Instance *) context->context)->getPreset(index, skipBinary,
-                                                                       preset);
-    }
+        static int32_t internalGetPresetDataSize(aap_presets_context_t *context, int32_t index) {
+            return ((Instance *) context->context)->getPresetDataSize(index);
+        }
 
-    static int32_t internalGetPresetIndex(aap_presets_context_t *context) {
-        return ((Instance *) context->context)->getPresetIndex();
-    }
+        static void internalGetPreset(aap_presets_context_t *context, int32_t index, bool skipBinary,
+                                      aap_preset_t *preset) {
+            ((Instance *) context->context)->getPreset(index, skipBinary,
+                                                                           preset);
+        }
 
-    static void internalSetPresetIndex(aap_presets_context_t *context, int32_t index) {
-        return ((Instance *) context->context)->setPresetIndex(index);
-    }
+        static int32_t internalGetPresetIndex(aap_presets_context_t *context) {
+            return ((Instance *) context->context)->getPresetIndex();
+        }
 
-    PresetsPluginClientExtension *owner;
-    AAPXSClientInstance* aapxsInstance;
+        static void internalSetPresetIndex(aap_presets_context_t *context, int32_t index) {
+            return ((Instance *) context->context)->setPresetIndex(index);
+        }
 
-public:
-    Instance(PresetsPluginClientExtension *owner, AAPXSClientInstance *clientInstance)
-        : owner(owner)
-    {
-        aapxsInstance = clientInstance;
-    }
+        PresetsPluginClientExtension *owner;
+        AAPXSClientInstance* aapxsInstance;
 
-    void clientInvokePluginExtension(int32_t opcode) {
-        owner->clientInvokePluginExtension(aapxsInstance, opcode);
-    }
+    public:
+        Instance() : owner(nullptr) {} // empty
 
-    int32_t getPresetCount() {
-        clientInvokePluginExtension(OPCODE_GET_PRESET_COUNT);
-        return *((int32_t *) aapxsInstance->data);
-    }
+        Instance(PresetsPluginClientExtension *owner, AAPXSClientInstance *clientInstance)
+            : owner(owner)
+        {
+            aapxsInstance = clientInstance;
+        }
 
-    int32_t getPresetDataSize(int32_t index) {
-        *((int32_t *) aapxsInstance->data) = index;
-        clientInvokePluginExtension(OPCODE_GET_PRESET_DATA_SIZE);
-        return *((int32_t *) aapxsInstance->data);
-    }
+        void clientInvokePluginExtension(int32_t opcode) {
+            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+        }
 
-    void getPreset(int32_t index, bool skipBinary, aap_preset_t *result) {
-        *((int32_t *) aapxsInstance->data) = index;
-        *(bool *) ((int32_t *) aapxsInstance->data + 1) = skipBinary;
-        clientInvokePluginExtension(OPCODE_GET_PRESET_DATA);
-        result->data_size = *((int32_t *) aapxsInstance->data);
-        strncpy(result->name, (const char *) ((int32_t *) aapxsInstance->data + 1), 256);
-        memcpy(result->data, ((int32_t *) aapxsInstance->data + 1), result->data_size);
-    }
+        int32_t getPresetCount() {
+            clientInvokePluginExtension(OPCODE_GET_PRESET_COUNT);
+            return *((int32_t *) aapxsInstance->data);
+        }
 
-    int32_t getPresetIndex() {
-        clientInvokePluginExtension(OPCODE_GET_PRESET_INDEX);
-        return *((int32_t *) aapxsInstance->data);
-    }
+        int32_t getPresetDataSize(int32_t index) {
+            *((int32_t *) aapxsInstance->data) = index;
+            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA_SIZE);
+            return *((int32_t *) aapxsInstance->data);
+        }
 
-    void setPresetIndex(int32_t index) {
-        *((int32_t *) aapxsInstance->data) = index;
-        clientInvokePluginExtension(OPCODE_SET_PRESET_INDEX);
-    }
+        void getPreset(int32_t index, bool skipBinary, aap_preset_t *result) {
+            *((int32_t *) aapxsInstance->data) = index;
+            *(bool *) ((int32_t *) aapxsInstance->data + 1) = skipBinary;
+            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA);
+            result->data_size = *((int32_t *) aapxsInstance->data);
+            strncpy(result->name, (const char *) ((int32_t *) aapxsInstance->data + 1), 256);
+            memcpy(result->data, ((int32_t *) aapxsInstance->data + 1), result->data_size);
+        }
 
-    void *asProxy() {
-        proxy.context = this;
-        proxy.get_preset_count = internalGetPresetCount;
-        proxy.get_preset_data_size = internalGetPresetDataSize;
-        proxy.get_preset = internalGetPreset;
-        proxy.get_preset_index = internalGetPresetIndex;
-        proxy.set_preset_index = internalSetPresetIndex;
-        return &proxy;
-    }
-};
+        int32_t getPresetIndex() {
+            clientInvokePluginExtension(OPCODE_GET_PRESET_INDEX);
+            return *((int32_t *) aapxsInstance->data);
+        }
+
+        void setPresetIndex(int32_t index) {
+            *((int32_t *) aapxsInstance->data) = index;
+            clientInvokePluginExtension(OPCODE_SET_PRESET_INDEX);
+        }
+
+        void *asProxy() {
+            proxy.context = this;
+            proxy.get_preset_count = internalGetPresetCount;
+            proxy.get_preset_data_size = internalGetPresetDataSize;
+            proxy.get_preset = internalGetPreset;
+            proxy.get_preset_index = internalGetPresetIndex;
+            proxy.set_preset_index = internalSetPresetIndex;
+            return &proxy;
+        }
+    };
+
+// FIXME: This tells there is maximum # of instances - we need some better method to retain pointers
+//  to each Instance that at least lives as long as AAPXSClientInstance lifetime.
+//  (Should we add `addDisposableListener` at AAPXSClient to make it possible to free
+//  this Instance at plugin instance disposal? Maybe when if 1024 for instances sounds insufficient...)
+#define PRESETS_MAX_INSTANCE_COUNT 1024
+
+    Instance instances[PRESETS_MAX_INSTANCE_COUNT]{};
+    std::map<int32_t,int32_t> instance_map{}; // map from instanceId to the index of the Instance in `instances`.
 
 public:
     PresetsPluginClientExtension()
@@ -106,8 +120,13 @@ public:
     }
 
     void *asProxy(AAPXSClientInstance *clientInstance) override {
-        // FIXME: we must retain reference to this Instance.
-        return Instance(this, clientInstance).asProxy();
+        size_t last = 0;
+        for (; last < PRESETS_MAX_INSTANCE_COUNT; last++)
+            if (instances[last].aapxsInstance == nullptr)
+                break;
+        instances[last] = Instance(this, clientInstance);
+        instance_map[clientInstance->plugin_instance_id] = (int32_t) last;
+        return instances[last].asProxy();
     }
 };
 
@@ -120,7 +139,7 @@ class PresetsPluginServiceExtension : public PluginServiceExtensionImpl {
         auto presetsExtension = (aap_presets_extension_t *) instance->getExtension(
                 AAP_PRESETS_EXTENSION_URI);
         aap_presets_context_t context;
-        context.plugin = nullptr; // should not be necessary.
+        context.plugin = nullptr; // should not be necessary for proxies.
         context.context = this;
         func(presetsExtension, &context);
     }
