@@ -166,6 +166,10 @@ void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
 	auto status = ctx->proxy->setState(ctx->instance_id, fd, input->data_size);
     assert (status.isOk());
 }
+void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
+{
+	return nullptr;
+}
 
 AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
@@ -227,6 +231,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_deactivate,
 		aap_client_as_plugin_get_state,
 		aap_client_as_plugin_set_state,
+		aap_client_as_plugin_get_extension
 		};
 }
 

@@ -10,14 +10,16 @@ extern "C" {
 
 #define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v1"
 
-typedef struct {
+#define AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH 256
+
+typedef struct aap_preset_t {
     int32_t index{0};
-    char name[256];
+    char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
     void *data;
     int32_t data_size;
 } aap_preset_t;
 
-typedef struct {
+typedef struct aap_presets_context_t {
     void *context;
     AndroidAudioPlugin* plugin;
 } aap_presets_context_t;

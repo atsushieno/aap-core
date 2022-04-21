@@ -88,6 +88,10 @@ typedef void (*aap_set_state_func_t) (
 	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *input);
 
+typedef void* (*aap_get_extension_func_t) (
+		struct AndroidAudioPlugin *plugin,
+		const char *uri);
+
 typedef struct AndroidAudioPlugin {
 	void *plugin_specific;
 	aap_prepare_func_t prepare;
@@ -96,6 +100,7 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t deactivate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
+	aap_get_extension_func_t get_extension;
 } AndroidAudioPlugin;
 
 

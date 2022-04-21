@@ -3,6 +3,7 @@
 #include <cstring>
 #include <math.h>
 #include <aap/unstable/logging.h>
+#include <aap/unstable/presets.h>
 
 extern "C" {
 
@@ -242,6 +243,55 @@ void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState
     // FIXME: implement
 }
 
+// Preset support
+uint8_t preset_data[][3] {{10}, {20}, {30}};
+
+aap_preset_t presets[3] {
+    {0, "preset1", preset_data[0], sizeof(preset_data[0])},
+    {1, "preset2", preset_data[1], sizeof(preset_data[1])},
+    {2, "preset3", preset_data[2], sizeof(preset_data[2])}
+};
+
+int32_t sample_plugin_get_preset_count(aap_presets_context_t* /*context*/) {
+    return 3;
+}
+
+int32_t sample_plugin_get_preset_data_size(aap_presets_context_t* /*context*/, int32_t index) {
+    return presets[index].data_size; // just for testing, no actual content.
+}
+
+void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+    preset->index = index;
+    strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
+    preset->data_size = presets[index].data_size;
+    if (!skipContent && preset->data_size > 0)
+        memcpy(preset->data, presets[index].data, preset->data_size);
+}
+
+int32_t sample_plugin_get_preset_index(aap_presets_context_t* context) {
+    return (int32_t) context->context;
+}
+
+void sample_plugin_set_preset_index(aap_presets_context_t* context, int32_t index) {
+    context->context = (void*) index;
+}
+
+// Its context will be used to store index.
+aap_presets_context_t presets_context{nullptr, nullptr};
+
+aap_presets_extension_t presets_extension{&presets_context,
+                                sample_plugin_get_preset_count,
+                                sample_plugin_get_preset_data_size,
+                                sample_plugin_get_preset,
+                                sample_plugin_get_preset_index,
+                                sample_plugin_set_preset_index};
+
+void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
+    if (strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0)
+        return &presets_extension;
+    return nullptr;
+}
+
 AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
@@ -276,7 +326,8 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_process,
             sample_plugin_deactivate,
             sample_plugin_get_state,
-            sample_plugin_set_state
+            sample_plugin_set_state,
+            sample_plugin_get_extension
     };
 }
 
