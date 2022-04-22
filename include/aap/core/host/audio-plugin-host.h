@@ -65,6 +65,7 @@ public:
 
 class PluginClient : public PluginHost {
 	PluginClientConnectionList* connections;
+	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> common_host_extensions{};
 
 	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
@@ -77,6 +78,18 @@ public:
 	inline PluginClientConnectionList* getConnections() { return connections; }
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
+
+	void addCommonHostExtension(const char *uri, int32_t sharedDataSizeToAllocate) {
+		AndroidAudioPluginExtension ext{uri, sharedDataSizeToAllocate, nullptr};
+		common_host_extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
+	}
+
+	std::vector<AndroidAudioPluginExtension*> getCommonHostExtensions() {
+		auto ret = std::vector<AndroidAudioPluginExtension*>{};
+		for (auto &x : common_host_extensions)
+			ret.emplace_back(x.get());
+		return ret;
+	}
 };
 
 //-------------------------------------------------------
@@ -339,6 +352,8 @@ protected:
 	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
 
 public:
+	// The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
+	// (binder-client-as-plugin does so, and desktop implementation should do so too.)
     RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
@@ -346,12 +361,16 @@ public:
 	/** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
 	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
-	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		if (aapxsClientInstanceWrappers[uri] == nullptr)
-			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
-			aapxsClientInstanceWrappers[uri] = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, 0);
-
+	AAPXSClientInstanceWrapper* setupAAPXSWrapper(const char* uri, int32_t dataSize) {
+		assert (aapxsClientInstanceWrappers[uri] == nullptr);
+		aapxsClientInstanceWrappers[uri] = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize);
 		return aapxsClientInstanceWrappers[uri].get();
+	}
+
+	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
+		auto ret = aapxsClientInstanceWrappers[uri].get();
+		assert(ret);
+		return ret;
 	}
 
 	// For host developers, it is the only entry point to get extension.
@@ -361,6 +380,25 @@ public:
 		auto aapxsClientInstance = getAAPXSWrapper(uri)->asPublicApi();
 		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
 	}
+
+	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS for each
+	// supported extension, while leaving RemotePluginClient to determine what extensions to provide.
+	// It is called at completeInstantiation() step
+	void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
+		// FIXME: we should also query registered extension services so that it does not crash
+		//  when a plugin service is queried at use time.
+		auto pluginInfo = getPluginInformation();
+		for (auto hostExt: client->getCommonHostExtensions()) {
+			func(setupAAPXSWrapper(hostExt->uri, hostExt->transmit_size)->asPublicApi());
+		}
+		for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
+			auto info = pluginInfo->getExtension(i);
+			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
+			func(setupAAPXSWrapper(info.uri.c_str(), 0)->asPublicApi());
+		}
+	}
+
+	// FIXME: we should probably move them to dedicated class for standard extensions.
 
 	int32_t getPresetCount() override
 	{

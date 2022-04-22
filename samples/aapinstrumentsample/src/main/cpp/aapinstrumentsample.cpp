@@ -253,7 +253,7 @@ aap_preset_t presets[3] {
 };
 
 int32_t sample_plugin_get_preset_count(aap_presets_context_t* /*context*/) {
-    return 3;
+    return sizeof(presets) / sizeof(aap_preset_t);
 }
 
 int32_t sample_plugin_get_preset_data_size(aap_presets_context_t* /*context*/, int32_t index) {
