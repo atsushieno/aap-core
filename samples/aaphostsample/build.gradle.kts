@@ -55,7 +55,7 @@ android {
                 device = "Pixel 5"
                 apiLevel = 30
                 systemImageSource = "aosp-atd"
-                abi = "x86"
+                //abi = "x86"
             }
         }
     }
