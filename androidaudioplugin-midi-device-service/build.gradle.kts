@@ -24,7 +24,6 @@ android {
             cmake {
                 // https://github.com/google/prefab/blob/bccf5a6a75b67add30afbb6d4f7a7c50081d2d86/api/src/main/kotlin/com/google/prefab/api/Android.kt#L243
                 arguments ("-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0")) 
-                cppFlags ("-Werror")
             }
         }
     }
@@ -33,6 +32,11 @@ android {
         debug {
             packagingOptions {
                 jniLibs.keepDebugSymbols.add ("**/*.so")
+            }
+            externalNativeBuild {
+                cmake {
+                    cppFlags ("-Werror")
+                }
             }
         }
         release {
