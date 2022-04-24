@@ -3,6 +3,7 @@
 #define AAP_CORE_EXTENSION_SERVICE_H
 
 #include <vector>
+#include <map>
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
 
@@ -64,7 +65,7 @@ public:
     const AAPXSFeature& data() { return feature; }
 };
 
-class PluginExtensionServiceRegistry {
+class AAPXSRegistry {
     AAPXSFeatureWrapper empty{AAPXSFeature{"", nullptr, nullptr}};
     std::vector<AAPXSFeatureWrapper> extension_services{};
 
@@ -81,7 +82,7 @@ public:
     }
 
     /*
-    class StandardExtensions {
+    class StandardAAPXSRegistry {
         aap_presets_context_t *preset_context{nullptr};
     public:
         int32_t getPresetCount(PluginClient *client, int32_t instanceId) {
@@ -103,6 +104,59 @@ public:
         }
     };
     */
+};
+
+template<typename T>
+class AAPXSInstanceMap {
+    AAPXSRegistry *registry;
+    std::vector<const char*> uris{};
+    std::map<size_t, std::unique_ptr<T>> map;
+
+public:
+    // LV2 URID alike: the interned pointer can be used for quick lookup.
+    // Use it with `onlyInterned = true` in getUriIndex() and get().
+    inline const char* getInterned(const char* uri) {
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (strcmp(uris[i], uri) == 0)
+                return uris[i];
+        return nullptr;
+    }
+
+    inline int32_t getUriIndex(const char* uri, bool onlyInterned = false) {
+        if (uri == nullptr)
+            return -1;
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (uris[i] == uri)
+                return i;
+        if (onlyInterned)
+            return -1;
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (strcmp(uris[i], uri) == 0)
+                return i;
+        return -1;
+    }
+
+    inline int32_t addUri(const char* uri) {
+        auto interned = getInterned(uri);
+        assert(getUriIndex(interned) < 0);
+        uris.emplace_back(uri);
+        return uris.size() - 1;
+    }
+
+    inline int32_t addOrGetUri(const char* uri) {
+        auto i = getUriIndex(uri);
+        return i >= 0 ? i : addUri(uri);
+    }
+
+    inline void add(const char* uri, std::unique_ptr<T> newInstance) {
+        assert(getUriIndex(uri) < 0);
+        map[addUri(uri)] = std::move(newInstance);
+    }
+
+    inline T* get(const char* uri, bool onlyInterned = false) {
+        auto i = getUriIndex(uri, onlyInterned);
+        return i < 0 ? nullptr : map[i].get();
+    }
 };
 
 } // namespace aap

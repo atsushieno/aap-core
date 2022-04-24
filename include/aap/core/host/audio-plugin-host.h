@@ -16,6 +16,7 @@
 #include <string>
 #include "aap/android-audio-plugin.h"
 #include "aap/port-properties.h"
+#include "aap/unstable/logging.h"
 #include "aap/unstable/presets.h"
 #include "plugin-information.h"
 #include "extension-service.h"
@@ -30,7 +31,7 @@ class LocalPluginInstance;
 /* Common foundation for both Plugin service and Plugin client. */
 class PluginHost
 {
-	std::unique_ptr<PluginExtensionServiceRegistry> extension_registry;
+	std::unique_ptr<AAPXSRegistry> aapxs_registry;
 protected:
 	PluginListSnapshot* plugin_list{nullptr};
 	std::vector<PluginInstance*> instances{};
@@ -226,7 +227,7 @@ public:
 class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
-	std::map<const char*, std::unique_ptr<AAPXSServiceInstanceWrapper>> aapxsServiceInstanceWrappers;
+	AAPXSInstanceMap<AAPXSServiceInstanceWrapper> aapxsServiceInstanceWrappers;
 	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> host_extensions{};
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
@@ -270,10 +271,10 @@ public:
 	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
 		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
 
-		if (aapxsServiceInstanceWrappers[uri] == nullptr)
+		if (aapxsServiceInstanceWrappers.get(uri) == nullptr)
 			// We pass null data and 0 size here, but will be initialized later at AudioPluginInterfaceImpl.
-			aapxsServiceInstanceWrappers[uri] = std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0);
-		return aapxsServiceInstanceWrappers[uri].get();
+			aapxsServiceInstanceWrappers.add(uri, std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0));
+		return aapxsServiceInstanceWrappers.get(uri);
 	}
 
 	// FIXME: we should probably move them to dedicated class for standard extensions.
@@ -320,7 +321,7 @@ public:
 
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
-	std::map<const char*, std::unique_ptr<AAPXSClientInstanceWrapper>> aapxsClientInstanceWrappers{};
+	AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
 
 	inline static void* internalGetExtensionProxy(AndroidAudioPluginHost *host, const char* uri) {
@@ -362,13 +363,13 @@ public:
 	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
 	AAPXSClientInstanceWrapper* setupAAPXSWrapper(const char* uri, int32_t dataSize) {
-		assert (aapxsClientInstanceWrappers[uri] == nullptr);
-		aapxsClientInstanceWrappers[uri] = std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize);
-		return aapxsClientInstanceWrappers[uri].get();
+		assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
+		aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize));
+		return aapxsClientInstanceWrappers.get(uri);
 	}
 
 	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		auto ret = aapxsClientInstanceWrappers[uri].get();
+		auto ret = aapxsClientInstanceWrappers.get(uri);
 		assert(ret);
 		return ret;
 	}
@@ -377,7 +378,13 @@ public:
 	// Therefore the return value is the (strongly typed) extension proxy value.
 	// When we AAP developers implement the internals, we need another wrapper around this function.
 	void* getExtensionProxy(const char* uri) {
-		auto aapxsClientInstance = getAAPXSWrapper(uri)->asPublicApi();
+		auto aapxsWrapper = getAAPXSWrapper(uri);
+		if (!aapxsWrapper) {
+			aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
+			return nullptr;
+		}
+		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
+		assert(aapxsClientInstance);
 		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
 	}
 
