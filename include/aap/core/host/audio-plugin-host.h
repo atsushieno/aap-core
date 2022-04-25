@@ -385,7 +385,12 @@ public:
 		}
 		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
 		assert(aapxsClientInstance);
-		return client->getExtensionFeature(uri).data().as_proxy(aapxsClientInstance);
+		auto wrapper = client->getExtensionFeature(uri);
+		assert(strlen(wrapper.getUri()) > 0);
+		auto feature = wrapper.data();
+		assert(feature.as_proxy != nullptr);
+		auto proxy = feature.as_proxy(aapxsClientInstance);
+		return proxy;
 	}
 
 	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS for each

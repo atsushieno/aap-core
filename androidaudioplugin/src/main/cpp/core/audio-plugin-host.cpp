@@ -175,7 +175,7 @@ PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	aapxs_registry = std::make_unique<AAPXSRegistry>();
 
 	// presets
-	PluginExtensionFeatureImpl presets{};
+	PluginExtensionFeatureImpl presets{AAP_PRESETS_EXTENSION_URI};
 	aapxs_registry->add(presets.asPublicApi());
 }
 
@@ -350,6 +350,17 @@ void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string
 			return getServiceHandleForConnectedPlugin(plugin->getPluginPackageName(),
                                                       plugin->getPluginLocalName());
 	return nullptr;
+}
+
+AAPXSClientInstanceWrapper::AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize)
+	: remote_plugin_instance(pluginInstance) {
+	uri = extensionUri; // argument extensionUri is not persistent, returned by std::string.c_str(). We need another persistent-ish one.
+	client.context = nullptr;
+	client.client = nullptr; // FIXME: will we need them?
+	client.plugin_instance_id = pluginInstance->getInstanceId();
+	client.uri = uri.data();
+	client.data = shmData;
+	client.data_size = shmDataSize;
 }
 
 

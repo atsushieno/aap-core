@@ -2,10 +2,12 @@
 #ifndef AAP_CORE_EXTENSION_SERVICE_H
 #define AAP_CORE_EXTENSION_SERVICE_H
 
+#include <string>
 #include <vector>
 #include <map>
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
+#include "aap/unstable/logging.h"
 
 namespace aap {
 
@@ -16,13 +18,15 @@ class RemotePluginInstance;
 // FIXME: should this be "AAPXSLocalInstanceWrapper" ?
 //  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSServiceInstanceWrapper {
+    std::string uri;
     LocalPluginInstance* local_plugin_instance;
     AAPXSServiceInstance service;
 
 public:
-    AAPXSServiceInstanceWrapper(LocalPluginInstance* pluginInstance, const char* uri, void* shmData, int32_t shmDataSize)
+    AAPXSServiceInstanceWrapper(LocalPluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize)
         : local_plugin_instance(pluginInstance) {
-        service.uri = uri;
+        uri = extensionUri;
+        service.uri = uri.c_str();
         service.data = shmData;
         service.data_size = shmDataSize;
     }
@@ -34,16 +38,12 @@ public:
 // FIXME: should this be "AAPXSRemoteInstanceWrapper" ?
 //  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSClientInstanceWrapper {
+    std::string uri;
     RemotePluginInstance* remote_plugin_instance;
     AAPXSClientInstance client;
 
 public:
-    AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* uri, void* shmData, int32_t shmDataSize)
-        : remote_plugin_instance(pluginInstance) {
-        client.uri = uri;
-        client.data = shmData;
-        client.data_size = shmDataSize;
-    }
+    AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize);
 
     RemotePluginInstance* getPluginInstance() { return remote_plugin_instance; }
     AAPXSClientInstance* asPublicApi() { return &client; }
@@ -53,14 +53,17 @@ public:
  * wrapper for AAPXSFeature, used by AAP framework hosting API. Not exposed to extension developers.
  */
 class AAPXSFeatureWrapper {
+    std::string uri;
     AAPXSFeature feature;
 
 public:
-    AAPXSFeatureWrapper(AAPXSFeature feature)
-        : feature(feature) {
+    AAPXSFeatureWrapper(AAPXSFeature sourceFeature)
+        : feature(sourceFeature) {
+        uri = sourceFeature.uri;
+        feature.uri = uri.data();
     }
 
-    inline const char* getUri() { return feature.uri; }
+    inline const char* getUri() { return uri.c_str(); }
 
     const AAPXSFeature& data() { return feature; }
 };
@@ -108,7 +111,7 @@ public:
 
 template<typename T>
 class AAPXSInstanceMap {
-    AAPXSRegistry *registry;
+    std::vector<std::string> stringpool{};
     std::vector<const char*> uris{};
     std::map<size_t, std::unique_ptr<T>> map;
 
@@ -139,7 +142,8 @@ public:
     inline int32_t addUri(const char* uri) {
         auto interned = getInterned(uri);
         assert(getUriIndex(interned) < 0);
-        uris.emplace_back(uri);
+        stringpool.emplace_back(uri);
+        uris.emplace_back(stringpool[stringpool.size() - 1].c_str());
         return uris.size() - 1;
     }
 

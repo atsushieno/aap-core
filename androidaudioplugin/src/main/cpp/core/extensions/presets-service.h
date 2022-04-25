@@ -6,6 +6,7 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
+#include "aap/unstable/logging.h"
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/host/extension-service.h"
 #include "extension-service-impl.h"
@@ -151,13 +152,17 @@ public:
  * Used by internal extension developers (that is, AAP framework developers)
  */
 class PluginExtensionFeatureImpl {
+    std::string uri;
     std::unique_ptr<PluginClientExtensionImplBase> client;
     std::unique_ptr<PluginServiceExtensionImplBase> service;
     AAPXSFeature pub;
 
     static void* internalAsProxy(AAPXSClientInstance* extension) {
         auto thisObj = (PluginExtensionFeatureImpl*) extension->context;
-        return thisObj->client->asProxy(extension);
+        assert(thisObj);
+        auto impl = thisObj->client.get();
+        assert(impl);
+        return impl->asProxy(extension);
     }
 
     static void internalOnInvoked(void *service, AAPXSServiceInstance* extension, int32_t opcode) {
@@ -166,9 +171,11 @@ class PluginExtensionFeatureImpl {
     }
 
 public:
-    PluginExtensionFeatureImpl()
-        : client(std::unique_ptr<PluginClientExtensionImplBase>()),
+    PluginExtensionFeatureImpl(const char *extensionUri)
+        : uri(extensionUri),
+        client(std::unique_ptr<PluginClientExtensionImplBase>()),
         service(std::unique_ptr<PluginServiceExtensionImplBase>()) {
+        pub.uri = uri.c_str();
         pub.as_proxy = internalAsProxy;
         pub.on_invoked = internalOnInvoked;
     }
