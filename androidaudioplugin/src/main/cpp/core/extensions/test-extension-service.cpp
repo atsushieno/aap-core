@@ -37,6 +37,7 @@ const int32_t AAPXS_EXAMPLE_TEST_OPCODE_BAR = 1;
 char instance_message_buffer[1024];
 
 void test_extension_feature_on_invoked(
+    //AAPXSFeature feature,
     void* userContext,
     AAPXSServiceInstance *extension,
     int32_t opcode) {
@@ -87,15 +88,16 @@ void proxy_bar (example_test_extension_t* test, char *msg) {
     // no need to retrieve
 }
 
-void* test_extension_feature_as_proxy(AAPXSClientInstance *extension) {
+void* test_extension_feature_as_proxy(/*AAPXSFeature feature,*/ AAPXSClientInstance *extension) {
     // This `proxy.context` is managed and used by this extension service developer like this, not by anyone else.
     // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
-    proxy.context = extension;
+    //proxy.context = extension;
     proxy.foo = proxy_foo;
     proxy.bar = proxy_bar;
     return &proxy;
 }
 
 AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
+                                     //nullptr,
                                      test_extension_feature_on_invoked,
                                      test_extension_feature_as_proxy};

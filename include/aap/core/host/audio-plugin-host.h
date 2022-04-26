@@ -315,7 +315,7 @@ public:
 	{
 		auto extensionWrapper = getAAPXSWrapper(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
-		feature.data().on_invoked(service, extensionWrapper->asPublicApi(), opcode);
+		feature.data().on_invoked(/*feature.data(),*/ service, extensionWrapper->asPublicApi(), opcode);
 	}
 };
 
@@ -384,13 +384,17 @@ public:
 			return nullptr;
 		}
 		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
+        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 1");
 		assert(aapxsClientInstance);
 		auto wrapper = client->getExtensionFeature(uri);
 		assert(strlen(wrapper.getUri()) > 0);
 		auto feature = wrapper.data();
+        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 2");
 		assert(feature.as_proxy != nullptr);
-		auto proxy = feature.as_proxy(aapxsClientInstance);
-		return proxy;
+		a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 3");
+		auto proxy = feature.as_proxy(/*feature,*/ aapxsClientInstance);
+        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! done");
+        return proxy;
 	}
 
 	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS for each
@@ -406,7 +410,9 @@ public:
 		for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
 			auto info = pluginInfo->getExtension(i);
 			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
+            a_log_f(AAP_LOG_LEVEL_INFO, "AAAAAAAA", "[%d] extension: %s", (int32_t) (int64_t) this, info.uri.c_str());
 			func(setupAAPXSWrapper(info.uri.c_str(), 0)->asPublicApi());
+            a_log_f(AAP_LOG_LEVEL_INFO, "AAAAAAAA", "[%d] extension registered? : %d", (int32_t) (int64_t) this, getAAPXSWrapper(info.uri.c_str()) ? 1 : 0);
 		}
 	}
 

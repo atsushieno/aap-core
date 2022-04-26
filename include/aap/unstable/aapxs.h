@@ -13,6 +13,7 @@ extern "C" {
 #include "aap-core.h"
 
 struct AAPXSClient;
+struct AAPXSFeature;
 
 /**
  * The public extension API surface that represents a service extension instance, for plugin extension service implementors.
@@ -86,12 +87,14 @@ typedef struct AAPXSClient {
 // ---------------------------------------------------
 
 typedef void (*aapxs_feature_on_invoked_t) (
+        //struct AAPXSFeature feature,
         /** opaque pointer to the plugin service, provided by AAP framework. */
         void *service,
         AAPXSServiceInstance* extension,
         int32_t opcode);
 
 typedef void* (*aapxs_feature_as_proxy_t) (
+        //struct AAPXSFeature feature,
         AAPXSClientInstance* extension);
 
 /**
@@ -99,8 +102,9 @@ typedef void* (*aapxs_feature_as_proxy_t) (
  * Every extension developer defines one for each AAPXS (i.e. instantiated for each extension).
  * Multiple clients may share the same instance of this struct. They pass client instances.
  */
-typedef struct {
+typedef struct AAPXSFeature {
     const char *uri;
+    //void *context;
     /**
      * Implemented by the extension developer.
      * Called by AAP framework (service part) to invoke the actual plugin extension.

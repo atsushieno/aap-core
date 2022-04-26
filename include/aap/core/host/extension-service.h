@@ -38,9 +38,9 @@ public:
 // FIXME: should this be "AAPXSRemoteInstanceWrapper" ?
 //  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSClientInstanceWrapper {
-    std::string uri;
+    std::string uri;  // argument extensionUri is not persistent, returned by std::string.c_str(). We need another persistent-ish one.
     RemotePluginInstance* remote_plugin_instance;
-    AAPXSClientInstance client;
+    AAPXSClientInstance client{};
 
 public:
     AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize);
