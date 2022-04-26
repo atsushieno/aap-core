@@ -32,6 +32,7 @@ class LocalPluginInstance;
 class PluginHost
 {
 	std::unique_ptr<AAPXSRegistry> aapxs_registry;
+
 protected:
 	PluginListSnapshot* plugin_list{nullptr};
 	std::vector<PluginInstance*> instances{};
@@ -42,7 +43,7 @@ public:
 
 	virtual ~PluginHost() {}
 
-	AAPXSFeatureWrapper getExtensionFeature(const char* uri);
+	AAPXSFeature* getExtensionFeature(const char* uri);
 
 	void destroyInstance(PluginInstance* instance);
 
@@ -237,7 +238,7 @@ class LocalPluginInstance : public PluginInstance {
 		if (presetsExt == nullptr)
 			return defaultValue;
 		aap_presets_context_t context;
-		context.context = this;
+		context.context = presetsExt->context; // it should be PresetsPluginClientExtension::Instance
 		context.plugin = plugin;
 		return func(presetsExt, &context);
 	}
@@ -315,7 +316,7 @@ public:
 	{
 		auto extensionWrapper = getAAPXSWrapper(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
-		feature.data().on_invoked(/*feature.data(),*/ service, extensionWrapper->asPublicApi(), opcode);
+		feature->on_invoked(feature, service, extensionWrapper->asPublicApi(), opcode);
 	}
 };
 
@@ -334,7 +335,7 @@ class RemotePluginInstance : public PluginInstance {
 		if (presetsExt == nullptr)
 			return defaultValue;
 		aap_presets_context_t context;
-		context.context = this;
+		context.context = presetsExt->context; // it should be PresetsPluginClientExtension::Instance
 		context.plugin = plugin;
 		return func(presetsExt, &context);
 	}
@@ -349,6 +350,11 @@ class RemotePluginInstance : public PluginInstance {
 		send_extension_message_impl(aapxsInstance, getInstanceId(), opcode);
     }
 
+	static void staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
+		auto thisObj = (RemotePluginInstance*) clientInstance->context;
+		thisObj->sendExtensionMessage(clientInstance->uri, opcode);
+	}
+
 protected:
 	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
 
@@ -359,13 +365,17 @@ public:
 		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), client(client) {
 	}
 
+	inline PluginClient* getClient() { return client; }
+
 	/** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
 	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
-	AAPXSClientInstanceWrapper* setupAAPXSWrapper(const char* uri, int32_t dataSize) {
+	AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(const char* uri, int32_t dataSize) {
 		assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
 		aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize));
-		return aapxsClientInstanceWrappers.get(uri);
+		auto ret = aapxsClientInstanceWrappers.get(uri);
+		ret->asPublicApi()->extension_message = staticSendExtensionMessage;
+		return ret;
 	}
 
 	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
@@ -384,17 +394,11 @@ public:
 			return nullptr;
 		}
 		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
-        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 1");
 		assert(aapxsClientInstance);
-		auto wrapper = client->getExtensionFeature(uri);
-		assert(strlen(wrapper.getUri()) > 0);
-		auto feature = wrapper.data();
-        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 2");
-		assert(feature.as_proxy != nullptr);
-		a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! 3");
-		auto proxy = feature.as_proxy(/*feature,*/ aapxsClientInstance);
-        a_log(AAP_LOG_LEVEL_INFO, "AAAAAA", "!!!!!!!!!!!! done");
-        return proxy;
+		auto feature = client->getExtensionFeature(uri);
+		assert(strlen(feature->uri) > 0);
+		assert(feature->as_proxy != nullptr);
+		return feature->as_proxy(feature, aapxsClientInstance);
 	}
 
 	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS for each
@@ -405,14 +409,14 @@ public:
 		//  when a plugin service is queried at use time.
 		auto pluginInfo = getPluginInformation();
 		for (auto hostExt: client->getCommonHostExtensions()) {
-			func(setupAAPXSWrapper(hostExt->uri, hostExt->transmit_size)->asPublicApi());
+			func(setupAAPXSInstanceWrapper(hostExt->uri, hostExt->transmit_size)->asPublicApi());
 		}
 		for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
 			auto info = pluginInfo->getExtension(i);
 			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
-            a_log_f(AAP_LOG_LEVEL_INFO, "AAAAAAAA", "[%d] extension: %s", (int32_t) (int64_t) this, info.uri.c_str());
-			func(setupAAPXSWrapper(info.uri.c_str(), 0)->asPublicApi());
-            a_log_f(AAP_LOG_LEVEL_INFO, "AAAAAAAA", "[%d] extension registered? : %d", (int32_t) (int64_t) this, getAAPXSWrapper(info.uri.c_str()) ? 1 : 0);
+			// FIXME: we have to scify precise data size so that binder-client-as-plugin cannot allocate
+			//  shared memory in the callback.
+			func(setupAAPXSInstanceWrapper(info.uri.c_str(), 0)->asPublicApi());
 		}
 	}
 

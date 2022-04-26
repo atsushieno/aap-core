@@ -21,7 +21,7 @@ public:
     virtual void terminate() {}
 
     void clientInvokePluginExtension(AAPXSClientInstance* clientInstance, int32_t opcode) {
-        clientInstance->client->extension_message(this, clientInstance, opcode);
+        clientInstance->extension_message(clientInstance, opcode);
     }
 
     virtual void* asProxy(AAPXSClientInstance *clientInstance) = 0;
@@ -60,40 +60,39 @@ public:
  * Used by internal extension developers (that is, AAP framework developers)
  */
 class PluginExtensionFeatureImpl {
-    std::string uri;
-    std::unique_ptr<PluginClientExtensionImplBase> client;
-    std::unique_ptr<PluginServiceExtensionImplBase> service;
-    AAPXSFeature pub;
+    std::unique_ptr<const char> uri;
+    std::unique_ptr<AAPXSFeature> pub;
 
-    static void* internalAsProxy(/*AAPXSFeature feature,*/ AAPXSClientInstance* extension) {
-        a_log(AAP_LOG_LEVEL_INFO, "AAPXS", "INTERNAL_AS_PROXY 1");
-        auto thisObj = (PluginExtensionFeatureImpl*) nullptr;//feature.context;
+    static void* internalAsProxy(AAPXSFeature *feature, AAPXSClientInstance* extension) {
+        auto thisObj = (PluginExtensionFeatureImpl*) feature->context;
         assert(thisObj);
-        a_log(AAP_LOG_LEVEL_INFO, "AAPXS", "INTERNAL_AS_PROXY 2");
-        auto impl = thisObj->client.get();
-        assert(thisObj);
-        a_log(AAP_LOG_LEVEL_INFO, "AAPXS", "INTERNAL_AS_PROXY 3");
+        auto impl = thisObj->getClient();
+        assert(impl);
         return impl->asProxy(extension);
     }
 
-    static void internalOnInvoked(/*AAPXSFeature feature,*/ void *service, AAPXSServiceInstance* extension, int32_t opcode) {
-        auto thisObj = (PluginExtensionFeatureImpl*) nullptr;//feature.context;
-        thisObj->service->onInvoked(service, extension, opcode);
+    static void internalOnInvoked(AAPXSFeature* feature, void *service, AAPXSServiceInstance* extension, int32_t opcode) {
+        auto thisObj = (PluginExtensionFeatureImpl*) feature->context;
+        thisObj->getService()->onInvoked(service, extension, opcode);
     }
 
 public:
-    PluginExtensionFeatureImpl(const char *extensionUri,
-                               std::unique_ptr<PluginClientExtensionImplBase> clientImpl,
-                               std::unique_ptr<PluginServiceExtensionImplBase> serviceImpl
-    )
-            : uri(extensionUri), client(std::move(clientImpl)), service(std::move(serviceImpl)) {
-        pub.uri = uri.c_str();
-        //pub.context = this;
-        pub.as_proxy = internalAsProxy;
-        pub.on_invoked = internalOnInvoked;
+    PluginExtensionFeatureImpl(const char *extensionUri)
+            : uri(strdup(extensionUri)),
+            pub(std::make_unique<AAPXSFeature>()) {
+        pub->uri = uri.get();
+        pub->context = this;
+        pub->as_proxy = internalAsProxy;
+        pub->on_invoked = internalOnInvoked;
     }
 
-    AAPXSFeature asPublicApi() { return pub; }
+    virtual ~PluginExtensionFeatureImpl() {}
+
+    AAPXSFeature* asPublicApi() { return pub.get(); }
+
+    virtual PluginClientExtensionImplBase* getClient() = 0;
+    virtual PluginServiceExtensionImplBase* getService() = 0;
 };
+
 
 } // namespace aap

@@ -15,6 +15,57 @@ class PluginClient;
 class LocalPluginInstance;
 class RemotePluginInstance;
 
+template<typename T>
+class AAPXSInstanceMap {
+    std::vector<std::unique_ptr<const char>> uris{};
+    std::map<size_t, std::unique_ptr<T>> map;
+
+    inline int32_t addUri(const char* uri) {
+        assert(getUriIndex(uri) < 0);
+        uris.emplace_back(strdup(uri));
+        return (int32_t) uris.size() - 1;
+    }
+
+public:
+    // LV2 URID alike: the interned pointer can be used for quick lookup.
+    // Use it with `onlyInterned = true` in getUriIndex() and get().
+    inline const char* getInterned(const char* uri) {
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (strcmp(uris[i].get(), uri) == 0)
+                return uris[i].get();
+        return nullptr;
+    }
+
+    inline int32_t getUriIndex(const char* uri, bool onlyInterned = false) {
+        if (uri == nullptr)
+            return -1;
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (uris[i].get() == uri)
+                return i;
+        if (onlyInterned)
+            return -1;
+        for (size_t i = 0, n = uris.size(); i < n; i++)
+            if (strcmp(uris[i].get(), uri) == 0)
+                return i;
+        return -1;
+    }
+
+    inline int32_t addOrGetUri(const char* uri) {
+        auto i = getUriIndex(uri);
+        return i >= 0 ? i : addUri(uri);
+    }
+
+    inline void add(const char* uri, std::unique_ptr<T> newInstance) {
+        assert(getUriIndex(uri) < 0);
+        map[addUri(uri)] = std::move(newInstance);
+    }
+
+    inline T* get(const char* uri, bool onlyInterned = false) {
+        auto i = getUriIndex(uri, onlyInterned);
+        return i < 0 ? nullptr : map[i].get();
+    }
+};
+
 // FIXME: should this be "AAPXSLocalInstanceWrapper" ?
 //  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSServiceInstanceWrapper {
@@ -38,7 +89,7 @@ public:
 // FIXME: should this be "AAPXSRemoteInstanceWrapper" ?
 //  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
 class AAPXSClientInstanceWrapper {
-    std::string uri;  // argument extensionUri is not persistent, returned by std::string.c_str(). We need another persistent-ish one.
+    std::unique_ptr<const char> uri;  // argument extensionUri is not persistent, returned by std::string.c_str(). We need another persistent-ish one.
     RemotePluginInstance* remote_plugin_instance;
     AAPXSClientInstance client{};
 
@@ -49,39 +100,24 @@ public:
     AAPXSClientInstance* asPublicApi() { return &client; }
 };
 
-/**
- * wrapper for AAPXSFeature, used by AAP framework hosting API. Not exposed to extension developers.
- */
-class AAPXSFeatureWrapper {
-    std::string uri;
-    AAPXSFeature feature;
-
-public:
-    AAPXSFeatureWrapper(AAPXSFeature sourceFeature)
-        : feature(sourceFeature) {
-        uri = sourceFeature.uri;
-        feature.uri = uri.data();
-    }
-
-    inline const char* getUri() { return uri.c_str(); }
-
-    const AAPXSFeature& data() { return feature; }
-};
-
 class AAPXSRegistry {
-    AAPXSFeatureWrapper empty{AAPXSFeature{"", nullptr, nullptr}};
-    std::vector<AAPXSFeatureWrapper> extension_services{};
+    std::vector<std::unique_ptr<const char>> stringpool{};
+    AAPXSInstanceMap<AAPXSFeature> extension_services{};
 
 public:
-    inline void add(AAPXSFeatureWrapper extensionService) {
-        extension_services.emplace_back(extensionService);
+    inline void add(AAPXSFeature* extensionService) {
+        auto e = std::make_unique<AAPXSFeature>();
+        auto f = extensionService;
+        e->context = f->context;
+        e->as_proxy = f->as_proxy;
+        e->on_invoked = f->on_invoked;
+        extension_services.add(f->uri, std::move(e));
+        // It is somewhat ugly, but we have to replace uri field with interned one here.
+        extension_services.get(f->uri)->uri = extension_services.getInterned(f->uri);
     }
 
-    inline AAPXSFeatureWrapper getByUri(const char * uri) {
-        for (auto &e : extension_services)
-            if (strcmp(e.getUri(), uri) == 0)
-                return e;
-        return empty;
+    inline AAPXSFeature* getByUri(const char * uri) {
+        return (AAPXSFeature*) extension_services.get(uri);
     }
 
     /*
@@ -107,60 +143,6 @@ public:
         }
     };
     */
-};
-
-template<typename T>
-class AAPXSInstanceMap {
-    std::vector<std::string> stringpool{};
-    std::vector<const char*> uris{};
-    std::map<size_t, std::unique_ptr<T>> map;
-
-public:
-    // LV2 URID alike: the interned pointer can be used for quick lookup.
-    // Use it with `onlyInterned = true` in getUriIndex() and get().
-    inline const char* getInterned(const char* uri) {
-        for (size_t i = 0, n = uris.size(); i < n; i++)
-            if (strcmp(uris[i], uri) == 0)
-                return uris[i];
-        return nullptr;
-    }
-
-    inline int32_t getUriIndex(const char* uri, bool onlyInterned = false) {
-        if (uri == nullptr)
-            return -1;
-        for (size_t i = 0, n = uris.size(); i < n; i++)
-            if (uris[i] == uri)
-                return i;
-        if (onlyInterned)
-            return -1;
-        for (size_t i = 0, n = uris.size(); i < n; i++)
-            if (strcmp(uris[i], uri) == 0)
-                return i;
-        return -1;
-    }
-
-    inline int32_t addUri(const char* uri) {
-        auto interned = getInterned(uri);
-        assert(getUriIndex(interned) < 0);
-        stringpool.emplace_back(uri);
-        uris.emplace_back(stringpool[stringpool.size() - 1].c_str());
-        return uris.size() - 1;
-    }
-
-    inline int32_t addOrGetUri(const char* uri) {
-        auto i = getUriIndex(uri);
-        return i >= 0 ? i : addUri(uri);
-    }
-
-    inline void add(const char* uri, std::unique_ptr<T> newInstance) {
-        assert(getUriIndex(uri) < 0);
-        map[addUri(uri)] = std::move(newInstance);
-    }
-
-    inline T* get(const char* uri, bool onlyInterned = false) {
-        auto i = getUriIndex(uri, onlyInterned);
-        return i < 0 ? nullptr : map[i].get();
-    }
 };
 
 } // namespace aap

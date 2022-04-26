@@ -169,19 +169,20 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	}
 }
 
+std::unique_ptr<PresetsExtensionFeature> presets{nullptr};
+
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	: plugin_list(contextPluginList)
 {
 	aapxs_registry = std::make_unique<AAPXSRegistry>();
 
 	// presets
-	PluginExtensionFeatureImpl presets{AAP_PRESETS_EXTENSION_URI,
-                                       std::make_unique<PresetsPluginClientExtension>(),
-                                       std::make_unique<PresetsPluginServiceExtension>()};
-	aapxs_registry->add(presets.asPublicApi());
+	if (presets == nullptr)
+		presets = std::make_unique<PresetsExtensionFeature>();
+	aapxs_registry->add(presets->asPublicApi());
 }
 
-AAPXSFeatureWrapper PluginHost::getExtensionFeature(const char* uri) {
+AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {
 	return aapxs_registry->getByUri(uri);
 }
 

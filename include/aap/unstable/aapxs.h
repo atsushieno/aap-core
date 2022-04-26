@@ -14,6 +14,7 @@ extern "C" {
 
 struct AAPXSClient;
 struct AAPXSFeature;
+struct AAPXSClientInstance;
 
 /**
  * The public extension API surface that represents a service extension instance, for plugin extension service implementors.
@@ -35,19 +36,17 @@ typedef struct {
     int32_t data_size;
 } AAPXSServiceInstance;
 
-/**
- * The public extension API surface that represents a service extension instance, for plugin extension client implementors.
- * In libandroidaudioplugin implementation, its `context` is `aap::PluginClient, which has handful of members:
- *
- * - clientHandle; on Android it is AIBinder* as the result of bindService().
- * - provides access to `extension()` AIDL-based request that extension developers can invoke.
- */
-typedef struct AAPXSClientInstance {
-    /** Custom context that AAP framework may assign. */
-    void *context;
+// ---------------------------------------------------
 
-    /** The client that this plugin extension service instance belongs to. */
-    struct AAPXSClient *client;
+typedef void (*aap_plugin_extension_service_client_extension_message_t) (
+        struct AAPXSClientInstance* aapxsClientInstance,
+        int32_t opcode);
+
+typedef struct AAPXSClientInstance {
+    /** Custom context that AAP framework may assign.
+     * In libandroidaudioplugin it is RemotePluginInstance
+     */
+    void *context;
 
     /** The extension URI */
     const char *uri;
@@ -63,38 +62,21 @@ typedef struct AAPXSClientInstance {
     /** The size of `data`, if it provides non-null pointer. */
     int32_t data_size;
 
+    /** The function to actually send extension() request. */
+    aap_plugin_extension_service_client_extension_message_t extension_message;
 } AAPXSClientInstance;
 
 // ---------------------------------------------------
 
-typedef void (*aap_plugin_extension_service_client_extension_message_t) (
-        void* context,
-        AAPXSClientInstance* aapxsClientInstance,
-        int32_t opcode);
-
-/**
- * The public extension API surface that works as a facade of the host client, for plugin extension service implementors.
- * In libandroidaudioplugin implementation, its `context` is `aap::RemotePluginInstance, which has handful of members:
- *
- * - `sendExtensionMessage()`, which calls `extension()` AIDL-based request.
- * - instanceId that is needed to pass to `extension()`
- */
-typedef struct AAPXSClient {
-    void *context;
-    aap_plugin_extension_service_client_extension_message_t extension_message;
-} AAPXSClient;
-
-// ---------------------------------------------------
-
 typedef void (*aapxs_feature_on_invoked_t) (
-        //struct AAPXSFeature feature,
+        struct AAPXSFeature* feature,
         /** opaque pointer to the plugin service, provided by AAP framework. */
         void *service,
         AAPXSServiceInstance* extension,
         int32_t opcode);
 
 typedef void* (*aapxs_feature_as_proxy_t) (
-        //struct AAPXSFeature feature,
+        struct AAPXSFeature* feature,
         AAPXSClientInstance* extension);
 
 /**
@@ -104,7 +86,7 @@ typedef void* (*aapxs_feature_as_proxy_t) (
  */
 typedef struct AAPXSFeature {
     const char *uri;
-    //void *context;
+    void *context;
     /**
      * Implemented by the extension developer.
      * Called by AAP framework (service part) to invoke the actual plugin extension.

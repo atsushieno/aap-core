@@ -5,11 +5,10 @@
 namespace aap {
 
 AAPXSClientInstanceWrapper::AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize)
-        : uri(extensionUri), remote_plugin_instance(pluginInstance) {
-    client.context = nullptr;
-    client.client = nullptr; // FIXME: will we need them?
+        : uri(strdup(extensionUri)), remote_plugin_instance(pluginInstance) {
+    client.context = pluginInstance;
     client.plugin_instance_id = pluginInstance->getInstanceId();
-    client.uri = uri.data();
+    client.uri = uri.get();
     client.data = shmData;
     client.data_size = shmDataSize;
 }

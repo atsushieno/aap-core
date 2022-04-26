@@ -53,8 +53,6 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
         AAPXSClientInstance* aapxsInstance;
 
     public:
-        Instance() : owner(nullptr) {} // empty
-
         Instance(PresetsPluginClientExtension *owner, AAPXSClientInstance *clientInstance)
             : owner(owner)
         {
@@ -112,7 +110,7 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
 //  this Instance at plugin instance disposal? Maybe when if 1024 for instances sounds insufficient...)
 #define PRESETS_MAX_INSTANCE_COUNT 1024
 
-    Instance instances[PRESETS_MAX_INSTANCE_COUNT]{};
+    std::unique_ptr<Instance> instances[PRESETS_MAX_INSTANCE_COUNT]{};
     std::map<int32_t,int32_t> instance_map{}; // map from instanceId to the index of the Instance in `instances`.
 
 public:
@@ -122,12 +120,15 @@ public:
 
     void *asProxy(AAPXSClientInstance *clientInstance) override {
         size_t last = 0;
-        for (; last < PRESETS_MAX_INSTANCE_COUNT; last++)
-            if (instances[last].aapxsInstance == nullptr)
+        for (; last < PRESETS_MAX_INSTANCE_COUNT; last++) {
+            if (instances[last] == nullptr)
                 break;
-        instances[last] = Instance(this, clientInstance);
+            if (instances[last]->aapxsInstance == clientInstance)
+                return instances[instance_map[last]]->asProxy();
+        }
+        instances[last] = std::make_unique<Instance>(this, clientInstance);
         instance_map[clientInstance->plugin_instance_id] = (int32_t) last;
-        return instances[last].asProxy();
+        return instances[last]->asProxy();
     }
 };
 
@@ -146,6 +147,22 @@ public:
     // invoked by AudioPluginService
     void onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override;
+};
+
+
+class PresetsExtensionFeature : public PluginExtensionFeatureImpl {
+    std::unique_ptr<PluginClientExtensionImplBase> client;
+    std::unique_ptr<PluginServiceExtensionImplBase> service;
+
+public:
+    PresetsExtensionFeature()
+        : PluginExtensionFeatureImpl(AAP_PRESETS_EXTENSION_URI),
+          client(std::make_unique<PresetsPluginClientExtension>()),
+          service(std::make_unique<PresetsPluginServiceExtension>()) {
+    }
+
+    PluginClientExtensionImplBase* getClient() { return client.get(); }
+    PluginServiceExtensionImplBase* getService() { return service.get(); }
 };
 
 } // namespace aap

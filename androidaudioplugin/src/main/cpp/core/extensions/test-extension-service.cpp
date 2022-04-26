@@ -37,7 +37,7 @@ const int32_t AAPXS_EXAMPLE_TEST_OPCODE_BAR = 1;
 char instance_message_buffer[1024];
 
 void test_extension_feature_on_invoked(
-    //AAPXSFeature feature,
+    AAPXSFeature* feature,
     void* userContext,
     AAPXSServiceInstance *extension,
     int32_t opcode) {
@@ -70,7 +70,7 @@ int32_t proxy_foo (example_test_extension_t* test, int32_t input) {
     // set `input` at the very beginning of the shared data pointer.
     *(int32_t*) aapxs->data = input;
     // send the request using AAPXSClient->extension_message().
-    aapxs->client->extension_message(test, aapxs, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
+    aapxs->extension_message(aapxs, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
     // retrieve the return value from the very beginning of the shared data pointer.
     return *(int32_t*) aapxs->data;
 }
@@ -84,11 +84,11 @@ void proxy_bar (example_test_extension_t* test, char *msg) {
     // then copy the string into the shared buffer
     strncpy((char*) aapxs->data + sizeof(int32_t), msg, len);
     // send the request using AAPXSClient->extension_message().
-    aapxs->client->extension_message(test, aapxs, AAPXS_EXAMPLE_TEST_OPCODE_BAR);
+    aapxs->extension_message(aapxs, AAPXS_EXAMPLE_TEST_OPCODE_BAR);
     // no need to retrieve
 }
 
-void* test_extension_feature_as_proxy(/*AAPXSFeature feature,*/ AAPXSClientInstance *extension) {
+void* test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSClientInstance *extension) {
     // This `proxy.context` is managed and used by this extension service developer like this, not by anyone else.
     // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
     //proxy.context = extension;
@@ -98,6 +98,6 @@ void* test_extension_feature_as_proxy(/*AAPXSFeature feature,*/ AAPXSClientInsta
 }
 
 AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
-                                     //nullptr,
+                                     nullptr,
                                      test_extension_feature_on_invoked,
                                      test_extension_feature_as_proxy};
