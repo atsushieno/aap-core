@@ -1,8 +1,8 @@
 # AAP Extension Developer Guide
 
-!!! DRAFT DRAFT DRAFT !!!
+This document explains the AAP Extension Service API a.k.a. "AAPXS" API.
 
-It is so far a design draft documentation that does NOT describe what we already have.
+(We abbreviate AAP Extension Service as AAPXS. It is going to be too long if we didn't. Also, the abbreviated name would give "it's not for everyone" feeling, which is scary *and* appropriate. Only extension developers and AAP framework developers should use it.)
 
 ## What Extensibility means for AAP
 
@@ -10,23 +10,19 @@ AAP is designed to be extensible, which means, anyone can define features that c
 
 On the other hand, AAP is unique in that it has to work **across separate processes** (host process and plugin processes), which makes extensibility quite complicated. The most noticeable difference from LV2 and CLAP is that we cannot simply provide functions without IPC (Binder on Android), as the host cannot simply load plugin extension implementations via `dlopen()`.
 
+Therefore, any plugin extension feature has to be explicitly initialized and declared at client host, and passed to plugin service through the instantiation phase. Host can provide a shared data pointer which can be referenced by the plugin at any time (e.g. its `process()` phase).
+
 ## Scope of Openness
 
-Conceptually AAP could come up with multiple implementations i.e. other implementations of `org.androidaudioplugin.AudioPluginService` than our `androidaudioplugin.aar`, but that is not what we aim right now. Therefore, unlike other plugin extensibility design, our extensions are totally based on `libandroidaudioplugin` implementation.
+Conceptually AAP could come up with multiple implementations i.e. other implementations of `org.androidaudioplugin.AudioPluginService` than our `androidaudioplugin.aar` or `libandroidaudioplugin.so`, but that is not what we aim right now. Therefore, unlike other plugin extensibility design, our extensions are totally based on `libandroidaudioplugin` implementation.
 
-We could simply give up extensibility and decide that all the features are offered in AAP framework itself, like AudioUnit does not provide extensibility. But we still need some extensibility for AAP framework development for API stability.
+We could simply give up extensibility and decide that all the features are offered in AAP framework itself, like AudioUnit does not provide extensibility. But we (AAP framework developers) still need some extensibility for AAP framework development for API stability. Thus extensibility framework matters for us.
 
 ### supported languages
 
-Extensions API for plugin developers and Extension Service API for client host developers are so far both in C API. (C is acqually somewhat annoying and we could resort to C++ for extension service API, but let's see if we end up to make another decision.)
+Both Extensions API (for plugin developers and host developers) and AAPXS API (for extension developers) are in C API. In the actual standard extensions implementation, we use C++ with C API wrapper.
 
-C is chosen for interoperability with other languages. Though other languages like Rust, Zig, or V (anything feasible for audio development). Though we haven't really examined any language interoperability yet.
-
-## Known design problem.
-
-We will have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/android-audio-plugin-framework/issues/104#issuecomment-1100858628
-
-At this state we haven't worked on this known issue because that would depend on fundamental [port design changes](NEW_PORTS.md).
+C is chosen for interoperability with other languages. Note that only languages like C++, Rust and Zig are feasible for audio development. And we haven't really examined interoperability with those languages (yet).
 
 
 ## Extension API design: Who needs to implement what
@@ -39,82 +35,109 @@ For an extension, users are plugin developers and host developers. They want to 
 
 Plugin developers need to "implement" the plugin extension functions, defined as function pointers, by themselves, and that can be fully local (without any IPC concern).
 
-For example, consider Presets extension. Plugins that support this extension will have to provide "get preset" operation, and to supplement memory management work the extension API also needs to define "get preset size" operation. We also need preset catalog, and thus "get preset count" is needed. We also need a preset metadata entry retriever (without data) - but this can be unified to "get preset" oepration. Lastly, (I had hesitated for long time because of design ambiguity, but) we add "get current preset index" and "set current preset index" operations. Thus it looks like:
+For example, consider "Presets" extension. Plugins that support this extension will have to provide the following features -
+
+- "get preset" operation that transmits data content
+- to supplement memory management work the extension API also needs to define "get preset size" operation
+- We also need preset catalog, and thus "get preset count" is needed
+  - We also need a preset metadata entry retriever (without data) - but this can be unified to "get preset" oepration.
+- Lastly, (I had hesitated for long time because of design ambiguity, but) we add "get current preset index"
+- and "set current preset index" operations.
+
+Thus it looks like:
 
 ```
-	typedef struct {
-		int32_t index{0};
-		const char *name;
-		void *data;
-		int32_t data_size;
-	} aap_preset_t;
+#define AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH 256
 
-	typedef struct {
-		void *context;
-		int32_t get_preset_count(AndroidAudioPlugin* plugin);
-		int32_t get_preset_size(AndroidAudioPlugin* plugin, int32_t index);
-		get_preset(AndroidAudioPlugin* plugin, int32_t index, bool skipBinary, aap_preset_t* result);
-		int32_t get_preset_index(AndroidAudioPlugin* plugin);
-		void get_preset_index(AndroidAudioPlugin* plugin, int32_t index);
-	} aap_presets_extension_t;
+typedef struct {
+	int32_t index{0};
+	char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
+	void *data;
+	int32_t data_size;
+} aap_preset_t;
+
+typedef struct aap_presets_context_t {
+    void *context;
+    AndroidAudioPlugin* plugin;
+} aap_presets_context_t;
+
+typedef int32_t (*presets_extension_get_preset_count_func_t) (aap_presets_context_t* context);
+typedef int32_t (*presets_extension_get_preset_data_size_func_t) (aap_presets_context_t* context, int32_t index);
+typedef void (*presets_extension_get_preset_func_t) (aap_presets_context_t* context, int32_t index, bool skipBinary, aap_preset_t *preset);
+typedef int32_t (*presets_extension_get_preset_index_func_t) (aap_presets_context_t* context);
+typedef void (*presets_extension_set_preset_index_func_t) (aap_presets_context_t* context, int32_t index);
+
+typedef struct aap_presets_extension_t {
+    void *context;
+    presets_extension_get_preset_count_func_t get_preset_count;
+    presets_extension_get_preset_data_size_func_t get_preset_data_size;
+    presets_extension_get_preset_func_t get_preset;
+    presets_extension_get_preset_index_func_t get_preset_index;
+    presets_extension_set_preset_index_func_t set_preset_index;
+} aap_presets_extension_t;
 ```
 
+To make it implementable in C, the functions are defined as function pointers in the structure.
 
-Here is an example plugin that supports "Presets" extension:
+Here is an example plugin that supports this Presets extension:
 
 ```
-	struct {
-		aap_preset_t **foo_presets;
-		int32_t num_presets;
-	} FooPluginData;
+uint8_t preset_data[][3] {{10}, {20}, {30}};
 
-	FooPluginData pluginData;
-	
-	void foo_plugin_factory_initialize(FooPluginData *data) {
-		// initialize foo_presets from resources etc. here.
-	}
+aap_preset_t presets[3] {
+    {0, "preset1", preset_data[0], sizeof(preset_data[0])},
+    {1, "preset2", preset_data[1], sizeof(preset_data[1])},
+    {2, "preset3", preset_data[2], sizeof(preset_data[2])}
+};
 
-	// The actual Presets extension implementation for Foo plugin
-	aap_preset_t* foo_presets_get_preset(AndroidAudioPlugin* plugin, int32_t index) {
-		auto data = (FooPluginData*) plugin->plugin_specific;
-		return index < data->num_presets ? foo_presets[index] : NULL;
-	}
+int32_t sample_plugin_get_preset_count(aap_presets_context_t* /*context*/) {
+    return sizeof(presets) / sizeof(aap_preset_t);
+}
 
-	// ... snip other presets member functions...
+int32_t sample_plugin_get_preset_data_size(aap_presets_context_t* /*context*/, int32_t index) {
+    return presets[index].data_size; // just for testing, no actual content.
+}
 
-	// AAP Presets extension (instance) that this Foo plugin implements
-	aap_presets_extension_t foo_presets_extension { NULL, /* snip other members...*/, foo_presets_get_preset };
+void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+    preset->index = index;
+    strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
+    preset->data_size = presets[index].data_size;
+    if (!skipContent && preset->data_size > 0)
+        memcpy(preset->data, presets[index].data, preset->data_size);
+}
 
-	// `get_extension` implementation for Foo plugin
-	void* foo_get_extension(AndroidAudioPlugin *plugin, const char *extensionURI) {
-		// uri_to_id() implemented somewhere (outside this snippet).
-		switch (uri_to_id(extensionURI)) {
-		case AAP_PRESETS_EXTENSION_URI_ID:
-			foo_presets_extension.context = plugin;
-			return &foo_presets_extension;
-		}
-	}
+int32_t sample_plugin_get_preset_index(aap_presets_context_t* context) {
+    return (int32_t) (int64_t) context->context;
+}
 
-	// Foo plugin instance used by the factory (outside this snippet).
-	AndroidAudioPlugin* foo_factory_instantiate(...) {
-		auto data = new FooPluginData();
-		foo_plugin_factory_initialize(data);
-		return new AndroidAudioPlugin(
-			data,
-			foo_prepare,
-		 	(...),
-			foo_get_extension);
-	}
+void sample_plugin_set_preset_index(aap_presets_context_t* context, int32_t index) {
+    context->context = (void*) index;
+}
+
+// AAP Presets extension (instance) that this Foo plugin implements
+void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
+    if (strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0)
+        return &presets_extension;
+    return nullptr;
+}
+
+// Foo plugin instance used by the factory (outside this snippet).
+AndroidAudioPlugin *sample_plugin_new(...) {
+    return new AndroidAudioPlugin{
+            handle,
+			...
+            sample_plugin_get_extension
+    };
+}
 ```
 
 A plugin that supports some extension needs to provide `get_extension()` member of `AndroidAudioPlugin`, and it is supposed to return a corresponding extension to the argument extension URI. In this example, `foo_get_extension()` implements this and returns `foo_preset_extension` for the Presets extension URI (strictly speaking, ID int value of the URI).
 
 The extension is then cast to the appropriate type (in the snipped above it is `aap_preset_extension_t`) and its member is to be invoked by the host (actually not directly by host, but it is explained later).
 
-
 ### How client (host) developers use extensions
 
-Plugin host developers would also like to use simple API, and they are not supposed to implement the complicated IPC bits. Hosts don't have to implement the extension function members, but they cannot load the plugin library. So, hosts use IPC proxies that the extension developers provide instead.
+Plugin host developers would also like to use simple API, and they are not supposed to implement the complicated IPC bits. Hosts don't have to implement the extension function members, but they cannot load the plugin's shared library into the host application process. So, hosts use "IPC proxies" that the extension developers provide instead.
 
 Therefore, the host code looks like this:
 
@@ -237,19 +260,17 @@ At this state, it is C++; we are unsure if it will be ported to C:
 
 
 ```
-	class ExtensionRegistry {
+	class AAPXSRegistry {
 		virtual AAPXSServiceInstance* create(const char * uri, AndroidAudioPluginHost* host, AndroidAudioPluginExtension *extensionInstance) = 0;
 	};
 ```
 
 Extension service implementation needs to be compiled in the host. For plugins, only the extension header is required (the API has to be "implemented" by the plugin developer anyways).
 
-A host application has to prepare its own `ExtensionRegistry` instance, and manage whatever extensions it wants to support. `StandardExtensionRegistry` should come up with all those standard extensions enabled.
+A host application has to prepare its own `AAPXSRegistry` instance, and manage whatever extensions it wants to support. `StandardAAPXSRegistry` should come up with all those standard extensions enabled.
 
 
 ## public extension API in C
-
-We abbreviate AAP Extension Service as AAPXS. It is going to be too long if we didn't. Also, the abbreviated name would give "it's not for everyone" feeling (only extension developers and AAP framework developers use it).
 
 They must represent everything in the public API (including ones in aap-core.h). Instead, they don't have to expose everything.
 
@@ -284,7 +305,7 @@ Public C++ API (aap/core/host .i.e client):
 
 | type | header | description | status |
 |-|-|-|-|
-| PluginExtensionServiceRegistry | extension-service.h | The collection of extension service definitions | maybe done |
+| AAPXSRegistry | extension-service.h | The collection of extension service definitions | maybe done |
 | PluginServiceExtensionFeature | extension-service.h |
 | PluginServiceExtension | 
 
@@ -299,3 +320,13 @@ Public C API vs. C++ wrapper API
 | | AndroidAudioPluginServiceExtension |
 
 
+
+## Known design issues.
+
+At this moment, the scope of extension services is limited to non-realtime request/reply messaging. If your plugin needs realtime plugin controls, then it should provide a MIDI channel and transmit any operation as in System Exclusive messages etc. there.
+
+We may have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/android-audio-plugin-framework/issues/104#issuecomment-1100858628
+
+Hopefully can be upgraded only about internals without changing the public AAPXS API surface.
+
+At this state we haven't worked on this known issue because that would depend on fundamental [port design changes](NEW_PORTS.md).
