@@ -77,10 +77,11 @@ class PluginExtensionFeatureImpl {
     }
 
 public:
-    PluginExtensionFeatureImpl(const char *extensionUri)
+    PluginExtensionFeatureImpl(const char *extensionUri, int32_t sharedMemorySize)
             : uri(strdup(extensionUri)),
             pub(std::make_unique<AAPXSFeature>()) {
         pub->uri = uri.get();
+        pub->shared_memory_size = sharedMemorySize;
         pub->context = this;
         pub->as_proxy = internalAsProxy;
         pub->on_invoked = internalOnInvoked;

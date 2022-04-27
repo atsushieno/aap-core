@@ -81,6 +81,9 @@ public:
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 
+    // FIXME: host extensions will disappear. They have to be provd as plugin extensions.
+    //  "Host extensions" will still have to provide AAPXS (otherwise it won't work), and
+    //  setting data through shared pointer would just work.
 	void addCommonHostExtension(const char *uri, int32_t sharedDataSizeToAllocate) {
 		AndroidAudioPluginExtension ext{uri, sharedDataSizeToAllocate, nullptr};
 		common_host_extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
@@ -370,8 +373,11 @@ public:
 	/** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
 	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
-	AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(const char* uri, int32_t dataSize) {
+	AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) {
+		const char* uri = feature->uri;
 		assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
+		if (dataSize < 0)
+			dataSize = feature->shared_memory_size;
 		aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize));
 		auto ret = aapxsClientInstanceWrappers.get(uri);
 		ret->asPublicApi()->extension_message = staticSendExtensionMessage;
@@ -401,22 +407,16 @@ public:
 		return feature->as_proxy(feature, aapxsClientInstance);
 	}
 
-	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS for each
-	// supported extension, while leaving RemotePluginClient to determine what extensions to provide.
-	// It is called at completeInstantiation() step
+	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
+	// for each supported extension, while leaving RemotePluginClient to determine what extensions to provide.
+	// It is called at completeInstantiation() step, for each plugin instance.
 	void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
-		// FIXME: we should also query registered extension services so that it does not crash
-		//  when a plugin service is queried at use time.
 		auto pluginInfo = getPluginInformation();
-		for (auto hostExt: client->getCommonHostExtensions()) {
-			func(setupAAPXSInstanceWrapper(hostExt->uri, hostExt->transmit_size)->asPublicApi());
-		}
 		for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
 			auto info = pluginInfo->getExtension(i);
-			// We pass null data and 0 size here, but will be initialized later at binder-client-as-plugin.cpp.
-			// FIXME: we have to scify precise data size so that binder-client-as-plugin cannot allocate
-			//  shared memory in the callback.
-			func(setupAAPXSInstanceWrapper(info.uri.c_str(), 0)->asPublicApi());
+			auto feature = getClient()->getExtensionFeature(info.uri.c_str());
+			assert (feature != nullptr || info.required);
+			func(setupAAPXSInstanceWrapper(feature)->asPublicApi());
 		}
 	}
 

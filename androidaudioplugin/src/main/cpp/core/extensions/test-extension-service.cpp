@@ -33,6 +33,8 @@ typedef struct example_test_extension_t {
 const int32_t AAPXS_EXAMPLE_TEST_OPCODE_FOO = 0;
 const int32_t AAPXS_EXAMPLE_TEST_OPCODE_BAR = 1;
 
+const int32_t AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE = 4096;
+
 // FIXME: allocate this per extension service client instance
 char instance_message_buffer[1024];
 
@@ -79,7 +81,7 @@ void proxy_bar (example_test_extension_t* test, char *msg) {
     // The context is assigned by `test_extension_feature_as_proxy()`.
     auto aapxs = (AAPXSClientInstance*) test->context;
     // length-prefixed string: set length at the very beginning of the shared data pointer.
-    int32_t len = strlen(msg);
+    int32_t len = std::min(AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE, (int32_t) strlen(msg));
     *(int32_t*) aapxs->data = len;
     // then copy the string into the shared buffer
     strncpy((char*) aapxs->data + sizeof(int32_t), msg, len);
@@ -99,5 +101,6 @@ void* test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSClientInstance
 
 AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
                                      nullptr,
+                                     AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE + sizeof(int32_t),
                                      test_extension_feature_on_invoked,
                                      test_extension_feature_as_proxy};

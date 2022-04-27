@@ -20,6 +20,7 @@ const int32_t OPCODE_GET_PRESET_DATA = 2;
 const int32_t OPCODE_GET_PRESET_INDEX = 3;
 const int32_t OPCODE_SET_PRESET_INDEX = 4;
 
+const int32_t PRESETS_SHARED_MEMORY_SIZE = 0x100000; // 1M
 
 class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
     class Instance {
@@ -156,7 +157,7 @@ class PresetsExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     PresetsExtensionFeature()
-        : PluginExtensionFeatureImpl(AAP_PRESETS_EXTENSION_URI),
+        : PluginExtensionFeatureImpl(AAP_PRESETS_EXTENSION_URI, PRESETS_SHARED_MEMORY_SIZE),
           client(std::make_unique<PresetsPluginClientExtension>()),
           service(std::make_unique<PresetsPluginServiceExtension>()) {
     }

@@ -85,8 +85,15 @@ typedef void* (*aapxs_feature_as_proxy_t) (
  * Multiple clients may share the same instance of this struct. They pass client instances.
  */
 typedef struct AAPXSFeature {
+
+    /** The extension URI. */
     const char *uri;
+
     void *context;
+
+    /** The size of required shared memory that we allocate and use between host client and plugin service. */
+    int32_t shared_memory_size;
+
     /**
      * Implemented by the extension developer.
      * Called by AAP framework (service part) to invoke the actual plugin extension.
