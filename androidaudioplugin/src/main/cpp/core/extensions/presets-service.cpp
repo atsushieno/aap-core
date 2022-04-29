@@ -9,10 +9,12 @@ void PresetsPluginServiceExtension::withPresetExtension(aap::LocalPluginInstance
                                                         std::function<void(aap_presets_extension_t *, aap_presets_context_t *)> func) {
     // This instance->getExtension() should return an extension from the loaded plugin.
     auto plugin = instance->getPlugin();
+    assert(plugin);
     auto presetsExtension = (aap_presets_extension_t *) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
+    assert(presetsExtension);
     aap_presets_context_t context;
-    context.plugin = instance->getPlugin();
-    context.context = this;
+    context.plugin = plugin;
+    context.context = presetsExtension->context;
     func(presetsExtension, &context);
 }
 
