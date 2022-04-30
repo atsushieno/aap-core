@@ -259,11 +259,7 @@ public:
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
 
-	void prepareExtension(AndroidAudioPluginExtension ext)
-	{
-		host_extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
-	}
-
+	// FIXME: we will have to remove host extensions related stuff, maybe up to the public plugin API.
 	const void* getHostExtension(const char* uri)
 	{
 		for (auto& ext : host_extensions)
@@ -272,13 +268,21 @@ public:
 		return nullptr;
 	}
 
-	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		assert(plugin != nullptr); // should not be invoked before completeInstantiation().
-
-		if (aapxsServiceInstanceWrappers.get(uri) == nullptr)
-			// We pass null data and 0 size here, but will be initialized later at AudioPluginInterfaceImpl.
-			aapxsServiceInstanceWrappers.add(uri, std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, 0));
+	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
+	// which is way simpler.
+	AAPXSServiceInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) {
+		const char* uri = feature->uri;
+		assert (aapxsServiceInstanceWrappers.get(uri) == nullptr);
+		if (dataSize < 0)
+			dataSize = feature->shared_memory_size;
+		aapxsServiceInstanceWrappers.add(uri, std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, dataSize));
 		return aapxsServiceInstanceWrappers.get(uri);
+	}
+
+	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
+		auto ret = aapxsServiceInstanceWrappers.get(uri);
+		assert(ret);
+		return ret;
 	}
 
 	// FIXME: we should probably move them to dedicated class for standard extensions.
@@ -319,7 +323,7 @@ public:
 	{
 		auto extensionWrapper = getAAPXSWrapper(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
-		feature->on_invoked(feature, service, extensionWrapper->asPublicApi(), opcode);
+		feature->on_invoked(feature, this, extensionWrapper->asPublicApi(), opcode);
 	}
 };
 
@@ -408,7 +412,7 @@ public:
 	}
 
 	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
-	// for each supported extension, while leaving RemotePluginClient to determine what extensions to provide.
+	// for each supported extension, while leaving this function to determine what extensions to provide.
 	// It is called at completeInstantiation() step, for each plugin instance.
 	void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
 		auto pluginInfo = getPluginInformation();

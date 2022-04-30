@@ -71,9 +71,9 @@ class PluginExtensionFeatureImpl {
         return impl->asProxy(extension);
     }
 
-    static void internalOnInvoked(AAPXSFeature* feature, void *service, AAPXSServiceInstance* extension, int32_t opcode) {
+    static void internalOnInvoked(AAPXSFeature* feature, void *instance, AAPXSServiceInstance* extension, int32_t opcode) {
         auto thisObj = (PluginExtensionFeatureImpl*) feature->context;
-        thisObj->getService()->onInvoked(service, extension, opcode);
+        thisObj->getService()->onInvoked(instance, extension, opcode);
     }
 
 public:
