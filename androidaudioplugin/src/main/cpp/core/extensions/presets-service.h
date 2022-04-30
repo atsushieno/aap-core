@@ -81,7 +81,8 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
             clientInvokePluginExtension(OPCODE_GET_PRESET_DATA);
             result->data_size = *((int32_t *) aapxsInstance->data);
             strncpy(result->name, (const char *) ((int32_t *) aapxsInstance->data + 1), 256);
-            memcpy(result->data, ((int32_t *) aapxsInstance->data + 1), result->data_size);
+            if (!skipBinary)
+                memcpy(result->data, ((int32_t *) aapxsInstance->data + 1), result->data_size);
         }
 
         int32_t getPresetIndex() {
