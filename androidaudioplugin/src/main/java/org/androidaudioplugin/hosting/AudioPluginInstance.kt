@@ -1,7 +1,9 @@
 package org.androidaudioplugin.hosting
 
 import android.os.ParcelFileDescriptor
+import android.os.RemoteException
 import android.os.SharedMemory
+import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.AudioPluginInterface
@@ -13,7 +15,8 @@ class AudioPluginInstance
         UNPREPARED,
         INACTIVE,
         ACTIVE,
-        DESTROYED
+        DESTROYED,
+        ERROR
     }
 
     private class SharedMemoryBuffer (var shm : SharedMemory, var fd : Int, var buffer: ByteBuffer)
@@ -25,6 +28,7 @@ class AudioPluginInstance
     var pluginInfo: PluginInformation
     var service: PluginServiceConnection
     var state = InstanceState.UNPREPARED
+    var proxyError : Exception? = null
 
     internal constructor (instanceId: Int, pluginInfo: PluginInformation, service: PluginServiceConnection) {
         this.instanceId = instanceId
@@ -35,60 +39,95 @@ class AudioPluginInstance
 
     fun getPortBuffer(port: Int) = shm_list[port].buffer
 
-    fun prepare(samplesPerBlock: Int) {
-        (0 until pluginInfo.getPortCount()).forEach { i ->
-            var shm = SharedMemory.create(null, samplesPerBlock * 4)
-            var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
-            var buffer = shm.mapReadWrite()
-            shm_list.add(SharedMemoryBuffer(shm, shmFD, buffer))
-            proxy.prepareMemory(instanceId, i, ParcelFileDescriptor.adoptFd(shmFD))
+    private fun <T> runCatchingRemoteExceptionFor(default: T, func: () -> T) : T {
+        if (state == InstanceState.ERROR)
+            return default
+        return try {
+            func()
+        } catch (ex: RemoteException) {
+            state = InstanceState.ERROR
+            proxyError = ex
+            Log.e("AAP", "AudioPluginInstance received RemoteException: ${ex.message ?: ""}\n{${ex.stackTraceToString()}")
+            default
         }
-        proxy.prepare(instanceId, samplesPerBlock, pluginInfo.ports.size)
+    }
 
-        state = InstanceState.INACTIVE
+    private fun runCatchingRemoteException(func: () -> Unit) {
+        runCatchingRemoteExceptionFor(Unit) {
+            func()
+        }
+    }
+
+    fun prepare(samplesPerBlock: Int) {
+        runCatchingRemoteException {
+            (0 until pluginInfo.getPortCount()).forEach { i ->
+                var shm = SharedMemory.create(null, samplesPerBlock * 4)
+                var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
+                var buffer = shm.mapReadWrite()
+                shm_list.add(SharedMemoryBuffer(shm, shmFD, buffer))
+                proxy.prepareMemory(instanceId, i, ParcelFileDescriptor.adoptFd(shmFD))
+            }
+            proxy.prepare(instanceId, samplesPerBlock, pluginInfo.ports.size)
+
+            state = InstanceState.INACTIVE
+        }
     }
 
     fun activate() {
-        proxy.activate(instanceId)
+        runCatchingRemoteException {
+            proxy.activate(instanceId)
 
-        state = InstanceState.ACTIVE
+            state = InstanceState.ACTIVE
+        }
     }
 
     fun process() {
-        proxy.process(instanceId, 0)
+        runCatchingRemoteException {
+            proxy.process(instanceId, 0)
+        }
     }
 
     fun deactivate() {
-        proxy.deactivate(instanceId)
+        runCatchingRemoteException {
+            proxy.deactivate(instanceId)
 
-        state = InstanceState.INACTIVE
+            state = InstanceState.INACTIVE
+        }
     }
 
     fun getState() : ByteArray {
-        var size = proxy.getStateSize(instanceId)
-        var shm = SharedMemory.create(null, size)
-        var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
-        proxy.getState(instanceId, ParcelFileDescriptor.adoptFd(shmFD))
-        var buffer = shm.mapReadWrite()
-        var array = ByteArray(size)
-        buffer.get(array, 0, size)
-        return array
+        return runCatchingRemoteExceptionFor(byteArrayOf()) {
+            val size = proxy.getStateSize(instanceId)
+            val shm = SharedMemory.create(null, size)
+            val shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
+            proxy.getState(instanceId, ParcelFileDescriptor.adoptFd(shmFD))
+            val buffer = shm.mapReadWrite()
+            val array = ByteArray(size)
+            buffer.get(array, 0, size)
+            array
+        }
     }
 
     fun setState(data: ByteArray) {
-        var size = data.size
-        var shm = SharedMemory.create(null, size)
-        var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
-        var buffer = shm.mapReadWrite()
-        buffer.put(buffer)
-        proxy.setState(instanceId, ParcelFileDescriptor.adoptFd(shmFD), size)
+        runCatchingRemoteException {
+            val size = data.size
+            val shm = SharedMemory.create(null, size)
+            val shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
+            val buffer = shm.mapReadWrite()
+            buffer.put(buffer)
+            proxy.setState(instanceId, ParcelFileDescriptor.adoptFd(shmFD), size)
+        }
     }
 
     fun destroy() {
         if (state == InstanceState.ACTIVE)
             deactivate()
-        if (state == InstanceState.INACTIVE) {
-            proxy.destroy(instanceId)
+        if (state == InstanceState.INACTIVE || state == InstanceState.ERROR) {
+            try {
+                proxy.destroy(instanceId)
+            } catch (ex: Exception) {
+                // nothing we can do here
+            }
             shm_list.forEach { shm ->
                 shm.shm.close()
             }

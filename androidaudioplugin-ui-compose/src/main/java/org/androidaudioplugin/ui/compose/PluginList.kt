@@ -13,10 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Button
-import androidx.compose.material.Checkbox
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +74,17 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     var pluginAppliedState by remember { mutableStateOf(false) }
     var waveViewSource = state.preview.inBuf
     var waveState by remember { mutableStateOf(waveViewSource) }
+    var pluginErrorState by remember { mutableStateOf("") }
+
+    if (pluginErrorState != "") {
+        AlertDialog(onDismissRequest = {},
+            confirmButton = {
+                Button(onClick = { pluginErrorState = "" }) { Text("OK") }
+            },
+            title = { Text("Plugin internal error") },
+            text = { Text(pluginErrorState) }
+        )
+    }
 
     Column(modifier = Modifier
         .padding(8.dp)
@@ -133,7 +141,9 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         pluginAppliedState = true
                     }
                     GlobalScope.launch {
-                        state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
+                        state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters) {
+                            pluginErrorState = it.toString()
+                        }
                     }
                 } else {
                     waveState = state.preview.inBuf

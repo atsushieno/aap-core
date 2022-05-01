@@ -41,11 +41,16 @@ class PluginPreview(context: Context) {
                 this.instance = instance
                 val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
                 instance.prepare(floatCount)
+                if (instance.proxyError != null) {
+                    errorCallback(instance.proxyError!!)
+                } else {
+                    android.os.Looper.getMainLooper().queue.run {
+                        processPluginOnce(parametersOnUI)
 
-                android.os.Looper.getMainLooper().queue.run {
-                    processPluginOnce(parametersOnUI)
-
-                    releasePluginInstance(instance)
+                        releasePluginInstance(instance)
+                    }
+                    if (instance.proxyError != null)
+                        errorCallback(instance.proxyError!!)
                 }
             }
             else {
