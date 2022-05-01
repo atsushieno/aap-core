@@ -145,12 +145,11 @@ class AudioPluginHostHelper {
             val plugins = mutableListOf<PluginServiceInformation>()
             for (ri in resolveInfos) {
                 val serviceInfo = ri.serviceInfo
-                Log.i("AAP", "Service " + serviceInfo.name)
                 val pluginServiceInfo = createAudioPluginServiceInformation(context, serviceInfo)
                 if (pluginServiceInfo == null) {
                     Log.w(
                         "AAP",
-                        "Service " + serviceInfo.name + " has no AAP metadata XML resource."
+                        "Audio Plugin Service \"" + serviceInfo.name + "\" is found, but with no readable AAP metadata XML resource. Ignored."
                     )
                     continue
                 }
@@ -199,7 +198,7 @@ class AudioPluginHostHelper {
 
             val listener: (PluginServiceConnection?, Exception?) -> Unit = { conn, error ->
                 if (conn != null) {
-                    Log.d("AAP", "Plugin service callback from ${conn.serviceInfo.packageName}")
+                    Log.d("AAP", "Audio Plugin Service connected: ${conn.serviceInfo.packageName}")
                     val binder = conn.binder
                     if (binder != null)
                         AudioPluginNatives.addBinderForClient(
@@ -210,7 +209,7 @@ class AudioPluginHostHelper {
                         )
                 }
                 else
-                    Log.e("AAP", error.toString())
+                    Log.e("AAP", "Audio Plugin Service connection error : $error")
             }
             connector.serviceConnectedListeners.add(listener)
             connector.bindAudioPluginService(service)
