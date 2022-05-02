@@ -25,7 +25,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
     int32_t index;
     switch (opcode) {
     case OPCODE_GET_PRESET_COUNT:
-        withPresetExtension<int32_t>(instance, 0, [&](aap_presets_extension_t *ext,
+        withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
                                                       aap_presets_context_t *context) {
             *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_count(context)
                                                          : 0;
@@ -33,7 +33,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
         break;
     case OPCODE_GET_PRESET_DATA_SIZE:
         index = *((int32_t *) extensionInstance->data);
-        withPresetExtension<int32_t>(instance, 0, [&](aap_presets_extension_t *ext,
+        withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
                                                       aap_presets_context_t *context) {
             *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_data_size(
                     context, index) : 0;
@@ -41,7 +41,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
         break;
     case OPCODE_GET_PRESET_DATA:
         index = *((int32_t *) extensionInstance->data);
-        withPresetExtension<int32_t>(instance, 0, [&](aap_presets_extension_t *ext,
+        withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
                                                       aap_presets_context_t *context) {
             if (ext != nullptr) {
                 aap_preset_t preset;
@@ -56,7 +56,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
         });
         break;
     case OPCODE_GET_PRESET_INDEX:
-        withPresetExtension<int32_t>(instance, 0, [&](aap_presets_extension_t *ext,
+        withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
                                                       aap_presets_context_t *context) {
             *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_index(context)
                                                          : 0;
@@ -64,7 +64,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
         break;
     case OPCODE_SET_PRESET_INDEX:
         index = *((int32_t *) extensionInstance->data);
-        withPresetExtension<int32_t>(instance, 0, [&](aap_presets_extension_t *ext,
+        withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
                                                       aap_presets_context_t *context) {
             if (ext != nullptr)
                 ext->set_preset_index(context, index);

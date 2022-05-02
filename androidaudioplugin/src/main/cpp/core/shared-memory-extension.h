@@ -7,9 +7,9 @@ namespace aap {
 
 // FIXME: there may be better AAPXSSharedMemoryStore/PluginSharedMemoryBuffer unification.
 class AAPXSSharedMemoryStore {
+    std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};
     std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
     std::unique_ptr<std::vector<int32_t>> cached_shm_fds_for_prepare{nullptr};
-    std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};
 
 public:
     AAPXSSharedMemoryStore() {
