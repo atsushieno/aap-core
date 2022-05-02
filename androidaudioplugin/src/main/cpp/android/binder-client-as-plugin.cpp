@@ -30,6 +30,7 @@ public:
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	AndroidAudioPluginState state{};
+    aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
 	int state_ashmem_fd{0};
 
     int initialize(int sampleRate, const char *pluginUniqueId)
@@ -71,12 +72,16 @@ void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 	ctx->state.raw_data = mmap(nullptr, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->state_ashmem_fd, 0);
 }
 
-void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
+void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
 {
-	int n = buffer->num_buffers;
+	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+		return;
+
+    int n = buffer->num_buffers;
 
     // as it could alter existing PluginSharedMemoryBuffer, it implicitly closes extra shm FDs that are (1)insufficient in size, or (2)not needed anymore.
-	ctx->shm_buffer = std::make_unique<aap::PluginSharedMemoryBuffer>();
+    ctx->shm_buffer = std::make_unique<aap::PluginSharedMemoryBuffer>();
 
     ctx->shm_buffer->allocateClientBuffer(buffer->num_buffers, buffer->num_frames);
 
@@ -84,27 +89,40 @@ void resetBuffers(AAPClientContext *ctx, AndroidAudioPluginBuffer* buffer)
     for (int i = 0; i < n; i++) {
         ::ndk::ScopedFileDescriptor sfd;
         sfd.set(ctx->shm_buffer->getFD(i));
-        auto pmStatus = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
-        assert(pmStatus.isOk());
+        auto status = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
+        if (!status.isOk()) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepareMemory() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+            break;
+        }
     }
 
-	auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
-    assert(status.isOk());
+    if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+        auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
+        if (!status.isOk()) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepare() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        }
+    }
 
-	ctx->previous_buffer = ctx->shm_buffer->getAudioPluginBuffer();
-}
+    ctx->previous_buffer = ctx->shm_buffer->getAudioPluginBuffer();
 
-void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
-{
-	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	resetBuffers(ctx, buffer);
+    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 
 void aap_client_as_plugin_activate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+		return;
+
     auto status = ctx->proxy->activate(ctx->instance_id);
-    assert (status.isOk());
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "activate() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
+
+    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ACTIVE;
 }
 
 void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
@@ -112,6 +130,8 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	long timeoutInNanoseconds)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+		return;
 
 	// FIXME: copy only input ports
 	for (size_t i = 0; i < buffer->num_buffers; i++) {
@@ -121,6 +141,10 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	}
 
 	auto status = ctx->proxy->process(ctx->instance_id, timeoutInNanoseconds);
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "process() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
 
 	// FIXME: copy only output ports
 	for (size_t i = 0; i < buffer->num_buffers; i++) {
@@ -128,29 +152,46 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 			memcpy(buffer->buffers[i], ctx->previous_buffer->buffers[i],
 				   buffer->num_frames * sizeof(float));
 	}
-
-    assert (status.isOk());
 }
 
 void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+		return;
+
 	auto status = ctx->proxy->deactivate(ctx->instance_id);
-    assert (status.isOk());
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "deactivate() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
+
+    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 
 void aap_client_as_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	int size;
+    if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+        return;
+
+    int32_t size;
 	auto status = ctx->proxy->getStateSize(ctx->instance_id, &size);
-    assert (status.isOk());
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "getStateSize() failed: %s", /*status.getDescription().c_str()*/"(due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        return;
+    }
+
 	ensureStateBuffer(ctx, size);
 	// FIXME: Maybe this should be one call for potential state length mismatch, if ever possible (it isn't so far).
 	::ndk::ScopedFileDescriptor fd;
 	fd.set(ctx->state_ashmem_fd);
 	auto status2 = ctx->proxy->getState(ctx->instance_id, fd);
-    assert (status2.isOk());
+    if (!status2.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "getState() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
     result->data_size = ctx->state.data_size;
     result->raw_data = ctx->state.raw_data;
 }
@@ -158,14 +199,21 @@ void aap_client_as_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
 void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+		return;
+
 	// we have to ensure that the pointer is shared memory, so use state buffer inside ctx.
 	ensureStateBuffer(ctx, input->data_size);
 	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
 	::ndk::ScopedFileDescriptor fd;
 	fd.set(ctx->state_ashmem_fd);
 	auto status = ctx->proxy->setState(ctx->instance_id, fd, input->data_size);
-    assert (status.isOk());
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "setState() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
 }
+
 void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
 {
 	return nullptr;
@@ -191,29 +239,55 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     ctx->shared_memory_extension = std::make_unique<aap::AAPXSSharedMemoryStore>();
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
-    assert (status.isOk());
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "beginCreate() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        // It will still return the plugin instance anyways, even though it is not really usable.
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+    } else {
 
-    auto instance = (aap::RemotePluginInstance*) host->context;
+        auto instance = (aap::RemotePluginInstance *) host->context;
 
-	// It is a nasty workaround to not expose Binder back to RemotePluginInstance; we set a callable function for them here.
-	instance->send_extension_message_impl = [ctx](aap::AAPXSClientInstanceWrapper* aapxs, int32_t instanceId, int32_t opcode) {
-		ctx->proxy->extension(instanceId, aapxs->asPublicApi()->uri, opcode);
-	};
+        // It is a nasty workaround to not expose Binder back to RemotePluginInstance; we set a callable function for them here.
+        instance->send_extension_message_impl = [ctx](aap::AAPXSClientInstanceWrapper *aapxs,
+                                                      int32_t instanceId, int32_t opcode) {
+            if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+                auto stat = ctx->proxy->extension(instanceId, aapxs->asPublicApi()->uri, opcode);
+                if (!stat.isOk()) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "extension() failed: %s", /*stat.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+                    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+                }
+            }
+        };
 
-	// Set up shared memory FDs for plugin extension services.
-	// We make use of plugin metadata that should list up required and optional extensions.
-	instance->setupAAPXSInstances([&](AAPXSClientInstance* ext) {
-		// create asharedmem and add as an extension FD, keep it until it is destroyed.
-		auto fd = ASharedMemory_create(ext->uri, ext->data_size);
-		ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
-		if (ext->data_size > 0)
-			ext->data = mmap(nullptr, ext->data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        // Set up shared memory FDs for plugin extension services.
+        // We make use of plugin metadata that should list up required and optional extensions.
+        instance->setupAAPXSInstances([&](AAPXSClientInstance *ext) {
+            // create asharedmem and add as an extension FD, keep it until it is destroyed.
+            auto fd = ASharedMemory_create(ext->uri, ext->data_size);
+            ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);
+            if (ext->data_size > 0)
+                ext->data = mmap(nullptr, ext->data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+                                 0);
 
-		ndk::ScopedFileDescriptor sfd{fd};
-		ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->data_size);
-	});
+            if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+                ndk::ScopedFileDescriptor sfd{fd};
+                auto stat = ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->data_size);
+                if (!stat.isOk()) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "addExtension() failed: %s", /*stat.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+                    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+                }
+            }
+        });
 
-    ctx->proxy->endCreate(ctx->instance_id);
+        if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+            status = ctx->proxy->endCreate(ctx->instance_id);
+            if (!status.isOk()) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "endCreate() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+                ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+            }
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
+        }
+    }
 
 	return new AndroidAudioPlugin {
 		ctx,
@@ -232,6 +306,7 @@ void aap_client_as_plugin_delete(
 		AndroidAudioPlugin *instance)
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
+    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_TERMINATED;
 
 	delete ctx;
 	delete instance;

@@ -15,7 +15,7 @@ extern "C" {
 struct AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
 
-typedef struct {
+typedef struct AndroidAudioPluginBuffer {
 	size_t num_buffers;
 	void **buffers;
 	size_t num_frames;
@@ -26,7 +26,7 @@ typedef struct {
  * how to implement it. AAP is rather a bridge framework and needs simple solution.
  * Anyone can develop something similar session implementation helpers.
  */
-typedef struct {
+typedef struct AndroidAudioPluginState {
 	size_t data_size;
 	const void *raw_data;
 } AndroidAudioPluginState;
@@ -34,7 +34,7 @@ typedef struct {
 /**
  * An entry for plugin extension instance (memory data)
  */
-typedef struct {
+typedef struct AndroidAudioPluginExtension {
 	/** The plugin extension URI */
 	const char *uri;
 	/** The size of shared memory data, if needed */
