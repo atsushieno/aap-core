@@ -1,4 +1,7 @@
 
+#ifndef AAP_EXTENSIONS_SERVICE_IMPL_H
+#define AAP_EXTENSIONS_SERVICE_IMPL_H
+
 #include "aap/core/host/extension-service.h"
 
 
@@ -97,3 +100,6 @@ public:
 
 
 } // namespace aap
+
+
+#endif // AAP_EXTENSIONS_SERVICE_IMPL_H

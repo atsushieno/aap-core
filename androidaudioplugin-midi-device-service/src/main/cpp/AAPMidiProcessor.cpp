@@ -59,7 +59,6 @@ namespace aapmidideviceservice {
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
         channel_count = audioOutChannelCount;
-        client->addCommonHostExtension(AAP_MIDI_CI_EXTENSION_URI, sizeof(MidiCIExtension));
 
         aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
         zix_ring_mlock(aap_input_ring_buffer);
