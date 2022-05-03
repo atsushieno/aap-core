@@ -8,8 +8,6 @@ set (androidaudioplugin_SOURCES
 	"core/extension-service.cpp"
 	"core/extensions/extension-service-impl.cpp"
 	"core/extensions/presets-service.cpp"
-		# FIXME: move out this once we have finished implementation.
-		"core/extensions/test-extension-service.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES
