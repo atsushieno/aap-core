@@ -1,6 +1,8 @@
 #ifndef AAP_STATE_H_INCLUDED
 #define AAP_STATE_H_INCLUDED
 
+// NOT IN USE YET.
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,11 +22,13 @@ typedef struct aap_state_context_t {
     AndroidAudioPlugin* plugin;
 } aap_state_context_t;
 
-typedef int32_t (*state_extension_get_state_t) (aap_state_context_t* context, aap_state_t* destination);
-typedef int32_t (*state_extension_set_state_t) (aap_state_context_t* context, aap_state_t* source);
+typedef int32_t (*state_extension_get_state_size_t) (aap_state_context_t* context);
+typedef void (*state_extension_get_state_t) (aap_state_context_t* context, aap_state_t* destination);
+typedef void (*state_extension_set_state_t) (aap_state_context_t* context, aap_state_t* source);
 
 typedef struct aap_state_extension_t {
     void *context;
+    state_extension_get_state_size_t get_state_size;
     state_extension_get_state_t get_state;
     state_extension_set_state_t set_state;
 } aap_state_extension_t;
