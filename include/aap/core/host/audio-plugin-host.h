@@ -246,9 +246,9 @@ class LocalPluginInstance : public PluginInstance {
 		return func(presetsExt, &context);
 	}
 
-	inline static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char* uri) {
+	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
 		auto thisObj = (LocalPluginInstance*) host->context;
-		return const_cast<void*>(thisObj->getHostExtension(uri));
+		return const_cast<void*>(thisObj->getExtensionData(uri));
 	}
 
 protected:
@@ -259,8 +259,7 @@ public:
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
 
-	// FIXME: we will have to remove host extensions related stuff, maybe up to the public plugin API.
-	const void* getHostExtension(const char* uri)
+	const void* getExtensionData(const char* uri)
 	{
 		for (auto& ext : host_extensions)
 			if (strcmp(ext->uri, uri) == 0)

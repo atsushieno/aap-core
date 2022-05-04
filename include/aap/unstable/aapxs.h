@@ -12,7 +12,6 @@ extern "C" {
 #include <stdint.h>
 #include "aap-core.h"
 
-struct AAPXSClient;
 struct AAPXSFeature;
 struct AAPXSClientInstance;
 
@@ -38,7 +37,7 @@ typedef struct {
 
 // ---------------------------------------------------
 
-typedef void (*aap_plugin_extension_service_client_extension_message_t) (
+typedef void (*aapxs_client_extension_message_t) (
         struct AAPXSClientInstance* aapxsClientInstance,
         int32_t opcode);
 
@@ -63,7 +62,7 @@ typedef struct AAPXSClientInstance {
     int32_t data_size;
 
     /** The function to actually send extension() request. */
-    aap_plugin_extension_service_client_extension_message_t extension_message;
+    aapxs_client_extension_message_t extension_message;
 } AAPXSClientInstance;
 
 // ---------------------------------------------------

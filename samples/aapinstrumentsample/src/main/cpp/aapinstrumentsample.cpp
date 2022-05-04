@@ -317,7 +317,7 @@ AndroidAudioPlugin *sample_plugin_new(
 
     // see if the host supports MIDI CI extension data.
     // Note that it is querying host capability, not the plugin extension.
-    auto data = (aap_midi2_extension_t*) host->get_host_extension(host, AAP_MIDI2_EXTENSION_URI);
+    auto data = (aap_midi2_extension_t*) host->get_extension_data(host, AAP_MIDI2_EXTENSION_URI);
     if (data)
         handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
 
