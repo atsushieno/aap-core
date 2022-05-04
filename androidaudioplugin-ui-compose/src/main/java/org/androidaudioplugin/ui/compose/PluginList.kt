@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Button
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +45,8 @@ fun AvailablePlugins(onItemClick: (PluginInformation) -> Unit = {}, pluginServic
     LazyColumn {
         items(pluginServices.flatMap { s -> s.plugins }) { plugin ->
             Row(
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp)
                     .then(Modifier.clickable { onItemClick(plugin) })
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -75,8 +74,21 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
     var pluginAppliedState by remember { mutableStateOf(false) }
     var waveViewSource = state.preview.inBuf
     var waveState by remember { mutableStateOf(waveViewSource) }
+    var pluginErrorState by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.padding(8.dp).verticalScroll(scrollState)) {
+    if (pluginErrorState != "") {
+        AlertDialog(onDismissRequest = {},
+            confirmButton = {
+                Button(onClick = { pluginErrorState = "" }) { Text("OK") }
+            },
+            title = { Text("Plugin internal error") },
+            text = { Text(pluginErrorState) }
+        )
+    }
+
+    Column(modifier = Modifier
+        .padding(8.dp)
+        .verticalScroll(scrollState)) {
         Row {
             Text(text = plugin.displayName, fontSize = 20.sp)
         }
@@ -129,7 +141,9 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                         pluginAppliedState = true
                     }
                     GlobalScope.launch {
-                        state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters)
+                        state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters) {
+                            pluginErrorState = it.toString()
+                        }
                     }
                 } else {
                     waveState = state.preview.inBuf
@@ -172,7 +186,9 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                     Text(
                         fontSize = 10.sp,
                         text = sliderPosition.toString(),
-                        modifier = Modifier.width(40.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .width(40.dp)
+                            .align(Alignment.CenterVertically)
                     )
                     when (port.content) {
                         PortInformation.PORT_CONTENT_TYPE_AUDIO, PortInformation.PORT_CONTENT_TYPE_MIDI, PortInformation.PORT_CONTENT_TYPE_MIDI2 -> {}
@@ -217,7 +233,10 @@ private fun getSampleVisualizationData(floats: FloatBuffer, size: Int, slots: In
 fun WaveformDrawable(waveData: ByteArray, height : Dp = 64.dp) {
     val floatBuffer = ByteBuffer.wrap(waveData).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
 
-    Canvas(modifier = Modifier.fillMaxWidth().height(height).border(width = 1.dp, color = Color.Gray), onDraw = {
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(height)
+        .border(width = 1.dp, color = Color.Gray), onDraw = {
         val width = this.size.width.toInt()
         val height = this.size.height
 

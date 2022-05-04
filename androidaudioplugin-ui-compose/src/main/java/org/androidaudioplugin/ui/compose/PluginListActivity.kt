@@ -10,6 +10,8 @@ import kotlin.system.exitProcess
 
 open class PluginListActivity : AppCompatActivity() {
 
+    var topAppBarText = "Plugins in this Plugin Service"
+
     open fun shouldListPlugin(info: PluginServiceInformation) =
         info.packageName == application.packageName
 
@@ -20,7 +22,7 @@ open class PluginListActivity : AppCompatActivity() {
         pluginListViewModel = PluginListViewModel(applicationContext)
         pluginListViewModel.setAvailablePluginServices(services.toList())
         setContent {
-            PluginListApp()
+            PluginListApp(topAppBarText)
         }
     }
 

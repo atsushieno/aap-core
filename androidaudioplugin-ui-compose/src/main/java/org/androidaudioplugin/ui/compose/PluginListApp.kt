@@ -12,12 +12,12 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 
 @Composable
-fun PluginListApp() {
-    MaterialTheme { PluginListAppContent() }
+fun PluginListApp(topAppBarText: String = "Plugins in this Plugin Service") {
+    MaterialTheme { PluginListAppContent(topAppBarText) }
 }
 
 @Composable
-fun PluginListAppContent() {
+fun PluginListAppContent(topAppBarText: String = "Plugins in this Plugin Service") {
     Surface {
         val navController = rememberNavController()
         val state = pluginListViewModel.items
@@ -25,7 +25,7 @@ fun PluginListAppContent() {
         NavHost(navController, startDestination="plugin_list") {
             composable("plugin_list") {
                 Scaffold(
-                    topBar = { TopAppBar(title = { Text(text = "Plugins in this Plugin Service") }) },
+                    topBar = { TopAppBar(title = { Text(text = topAppBarText) }) },
                     content = {
                         pluginListViewModel.atTopLevel = true // it feels ugly. There should be some better way...
                         AvailablePlugins(onItemClick = { p ->
