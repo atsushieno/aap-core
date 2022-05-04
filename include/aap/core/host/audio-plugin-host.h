@@ -80,21 +80,6 @@ public:
 	inline PluginClientConnectionList* getConnections() { return connections; }
 
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
-
-    // FIXME: host extensions will disappear. They have to be provd as plugin extensions.
-    //  "Host extensions" will still have to provide AAPXS (otherwise it won't work), and
-    //  setting data through shared pointer would just work.
-	void addCommonHostExtension(const char *uri, int32_t sharedDataSizeToAllocate) {
-		AndroidAudioPluginExtension ext{uri, sharedDataSizeToAllocate, nullptr};
-		common_host_extensions.emplace_back(std::make_unique<AndroidAudioPluginExtension>(ext));
-	}
-
-	std::vector<AndroidAudioPluginExtension*> getCommonHostExtensions() {
-		auto ret = std::vector<AndroidAudioPluginExtension*>{};
-		for (auto &x : common_host_extensions)
-			ret.emplace_back(x.get());
-		return ret;
-	}
 };
 
 //-------------------------------------------------------
