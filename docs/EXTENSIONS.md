@@ -1,18 +1,18 @@
 # AAP Extension Developer Guide
 
-This document explains the AAP Extension Service API a.k.a. "AAPXS" API.
-
-(We abbreviate AAP Extension Service as AAPXS. It is going to be too long if we didn't. Also, the abbreviated name would give "it's not for everyone" feeling, which is scary *and* appropriate. Only extension developers and AAP framework developers should use it.)
-
 ## What Extensibility means for AAP
 
-AAP is designed to be extensible, which means, anyone can define features that can be used by both host and client. Lots of AAP features are implemented as AAP Extensions. Plugin extensbility is conceptually similar to VST-MA, LV2, and CLAP Extensions.
+AAP is designed to be extensible, which means, anyone can define features that can be used by both host and client. Lots of AAP features are implemented as AAP Extensions. Plugin extensbility is conceptually similar to VST-MA, LV2, and CLAP Extensions, to minimize the negative impact of breaking changes. (In principle, breaking changes should not happen, but history tells things happen.)
 
 On the other hand, AAP is unique in that it has to work **across separate processes** (host process and plugin processes), which makes extensibility quite complicated. The most noticeable difference from LV2 and CLAP is that we cannot simply provide functions without IPC (Binder on Android), as the host cannot simply load plugin extension implementations via `dlopen()`.
 
 Therefore, any plugin extension feature has to be explicitly initialized and declared at client host, and passed to plugin service through the instantiation phase. Host can provide a shared data pointer which can be referenced by the plugin at any time (e.g. its `process()` phase).
 
-## Scope of Openness
+We call it AAP Extension Service API a.k.a. "AAPXS" API.
+
+(We abbreviate AAP Extension Service as AAPXS, and name the relevant C header file as `aapxs.h`. It is going to be too long if we didn't. Also, the abbreviated name would give "it's not for everyone" feeling, which is scary *and* appropriate. Only extension developers and AAP framework developers should use it.)
+
+## Scope of openness
 
 Conceptually AAP could come up with multiple implementations i.e. other implementations of `org.androidaudioplugin.AudioPluginService` than our `androidaudioplugin.aar` or `libandroidaudioplugin.so`, but that is not what we aim right now. Therefore, unlike other plugin extensibility design, our extensions are totally based on `libandroidaudioplugin` implementation.
 
@@ -135,6 +135,8 @@ A plugin that supports some extension needs to provide `get_extension()` member 
 
 The extension is then cast to the appropriate type (in the snipped above it is `aap_preset_extension_t`) and its member is to be invoked by the host (actually not directly by host, but it is explained later).
 
+There is an additional advanced concept - use of `AndroidAudioPluginHost`. Some AAP extensions may pass initial data by host. For example, MIDI2 extension may be initialized by host by its supported MIDI protocols (1.0 and/or 2.0). The `instantiate` member function of `AndroidAudioPlugin` is invoked with an `AndroidAudioPluginHost` struct argument. It is an abstraction in AAP plugin API which works as a host feature facade. The facade offers `get_extension_data` function which is supposed to return an implementation of the extension that delegates to "plugin service extension" instance, with the shared storage space.
+
 ### How client (host) developers use extensions
 
 Plugin host developers would also like to use simple API, and they are not supposed to implement the complicated IPC bits. Hosts don't have to implement the extension function members, but they cannot load the plugin's shared library into the host application process. So, hosts use "IPC proxies" that the extension developers provide instead.
@@ -142,63 +144,89 @@ Plugin host developers would also like to use simple API, and they are not suppo
 Therefore, the host code looks like this:
 
 ```
-	aap::RemotePluginInstance* pluginInstance;
-	auto presetsProxy = (aap_preset_extension_t*) pluginInstance->getExtension(AAP_PRESETS_EXTENSION_URI);
-	aap_preset preset;
-	preset.data_size = presetsProxy->get_preset_size(0);
-	presetsProxy->get_preset(0);
+aap::RemotePluginInstance* pluginInstance;
+auto presets = (aap_preset_extension_t*) pluginInstance->getExtension(AAP_PRESETS_EXTENSION_URI);
+aap_preset preset;
+preset.data_size = presets->get_preset_size(0);
+presets->get_preset(0);
 ```
-
-`AndroidAudioPluginHost` struct is an abstraction in AAP plugin API that works as a host feature facade. The facade offers `get_extension` function which is supposed to return an implementation of the Presets extension that delegates to "plugin service extension" instance.
 
 It is what I described "IPC proxies" earlier, but we need a lot more explanation.
 
 ### What Extension developers need to provide
 
-As I wrote earlier, plugin client (host) has to invoke the extension functions via proxies, and it is (should be) actually offered by the extension developers.
+First to mention, an extension developer needs to provide C header for the extension API for plugin developers. The API will be then implemented by each plugin developer.
+
+Then the way bigger second task begins... as I wrote earlier, plugin client (host) has to invoke the extension functions via proxies, and it is (should be) actually offered by the extension developers.
 
 It should also be noted that the messaging framework part that we (AAP developers) implement is actual host code agnostic, which means that we have to make it generic and extension agnostic i.e. we cannot simply switch-case per our official extensions.
 
 Similarly to client side, our AudioPluginService native internals also have to be implemented as extension agnostic.
 
-Therefore we come up with some generic code like this. `onInvoked()` is invoked by AudioPluginService internals, and `getPreset()` in this example is ultimately called by extension host developers (as in `aap_preset_extension_t::get_preset` function member).
+Therefore we come up with some generalized API like this. `onInvoked()` is invoked by AudioPluginService internals, and `getPreset()` in this example is ultimately called by extension host developers (as in `aap_preset_extension_t::get_preset` function member).
+
+To achieve this, AAP comes up with a struct named `AAPXSFeature`, which provides access to those two features, as service `on_invoked` and client `as_proxy`;
 
 ```
-	void (*aap_service_extension_on_invoked_t) (
-		AndroidAudioPluginHost *service,
-		AAPXSServiceInstance* serviceExtension,
-		AndroidAudioPluginExtension* data);
+typedef void (*aapxs_feature_on_invoked_t) (
+        struct AAPXSFeature* feature,
+        void *service,
+        AAPXSServiceInstance* extension,
+        int32_t opcode);
 
-	void* (*aap_service_extension_as_proxy) (AndroidAudioPluginHost *service);
+typedef void* (*aapxs_feature_as_proxy_t) (
+        struct AAPXSFeature* feature,
+        AAPXSClientInstance* extension);
 
-	typedef struct {
-		const char *uri;
-		aap_service_extension_on_invoked_t on_invoked;
-		aap_service_extension_as_proxy as_proxy;
-	} aap_service_extension_t;
+typedef struct {
+	const char *uri;
+    void *context;
+    int32_t shared_memory_size;
+	aap_service_extension_on_invoked_t on_invoked;
+	aap_service_extension_as_proxy_t as_proxy;
+} AAPXSFeature;
 ```
 
-Example use of this API: Presets PluginService extension implementation:
+`AAPXSServiceInstance` and `AAPXSClientInstance` are defined in `aapxs.h`, and provide access to extension instance data such as the extension URI and the shared pointers. They are not to represent the entire AAPXS instances and exist more like the facades:
 
 ```
-	// It is already in aap-core.h
-	typedef struct {
-		const char *uri;
-		int32_t transmit_size;
-		void *data;
-	} AndroidAudioPluginExtension;
+typedef struct {
+    void *context;
+    const char *uri;
+    int32_t plugin_instance_id;
+    void *data;
+    int32_t data_size;
+} AAPXSServiceInstance;
 
-	// implementation details
-	class PresetExtensionService {
+typedef void (*aapxs_client_extension_message_t) (
+        struct AAPXSClientInstance* aapxsClientInstance,
+        int32_t opcode);
+
+typedef struct AAPXSClientInstance {
+    void *context;
+    const char *uri;
+    int32_t plugin_instance_id;
+    void *data;
+    int32_t data_size;
+    aapxs_client_extension_message_t extension_message;
+} AAPXSClientInstance;
+```
+
+Now that we understand what we will implement, let's move to the actual use case of this API: Presets PluginService extension implementation (it is not really updated to match the latest implementation, but would give you the rough idea):
+
+```
+	// C++ implementation details
+	class PresetsExtensionService {
+		AndroidAudioPluginHost host; // set up outside this snippet
 		aap_preset_extension_t proxy;
 
 	public:
 		const int32_t OPCODE_GET_PRESET = 0;
 
+		// service side
 		void onInvoked (
 			AndroidAudioPluginHost *service,
-			AAPXSServiceInstance* serviceExtension,
-			AndroidAudioPluginExtension* data) {
+			AAPXSServiceInstance* serviceExtension) {
 			switch (opcode) {
 			case OPCODE_GET_PRESET:
 				int32_t index = *((int32_t*) ext->data);
@@ -208,117 +236,65 @@ Example use of this API: Presets PluginService extension implementation:
 				*((int32_t*) ext->data) = preset->data_size;
 				memcpy(ext->data + sizeof(int32_t), preset->data, preset->data_size);
 				return;
+			...
 			}
-			assert(0); // should not reach here
 		}
 
+		// client side
 		void getPreset(int32_t index) {
-			*((int32_t*) extensionInstance->data) = index;
-			clientInvokePluginExtension(data, OPCODE_GET_PRESET);
-			int32_t size = *((int32_t*) extensionInstance->data);
-			result->copyFrom(size, *((int32_t*) extensionInstance->data + 1);
+			*((int32_t*) aapxsClientInstance->data) = index;
+			aapxsClientInstance->extension_message(aapxsClientInstance, OPCODE_GET_PRESET);
+			int32_t size = *((int32_t*) aapxsClientInstance->data);
+			result->copyFrom(size, *((int32_t*) aapxsClientInstance->data + 1);
 		}
 
 		void* asProxy(AndroidAudioPluginHost *service) {
 			proxy.context = this;
-			proxy.get_preset = std::bind(&PresetExtensionService::getPreset, this);
+			...
+			proxy.get_preset = internalGetPreset; // static-to-instance (onInvoked) dispatcher
 			return &proxy;
 		}
 	};
 
-	PresetExtensionService svc;
+	void presets_extension_service_on_invoked(
+        struct AAPXSFeature* feature,
+        void *service,
+        AAPXSServiceInstance* extension,
+        int32_t opcode) {
+		auto impl = (PresetsExtensionService*) feature->context;
+		impl->onInvoked(...);
+	}
 
-	aap_service_extension_t presets_plugin_service_extension{
+	aap_presets_extension_t proxy;
+
+	AAPXSFeature presets_aapxs{
 		AAP_PRESETS_EXTENSION_URI,
-		std::bind(PresetExtensionService::onInvoked, svc),
-		std::bind(PresetExtensionService::asProxy, svc)};
+		nullptr,
+		PRESETS_SHARED_MEMORY_SIZE,
+		presets_extension_service_on_invoked,
+		presets_extension_client_on_proxy;
 ```
 
+For `presets` extension, we actually use C++ based implementation defined in `extension-service-impl.h` (the code above is based on the outdated classes from there).
 
 ### What libandroidaudioplugin needs to provide
 
-Each AAP extension service makes use of some framework part. There are two parts that libandroidaudioplugin should care.
+Each AAP extension service makes use of some framework part. There are three parts that libandroidaudioplugin should care.
 
-(1) The PluginService API: each plugin client host needs to provide base implementation for extension messaging.
+(1) The AAPXS API: each plugin client host (written by host developers) and AAPXS-es (by extension developers) need to interact each other, and AAP provides the common C API to achieve that, in `aapxs.h`. They were already explained in the previous section.
 
+(2) The entire AAPXS framework implementation: extension developers provide AAPXS-es, and host developers provide hosts. `libandroidaudioplugin` needs to instantiate AAPXS-es, establish shared memory channels (and technically that needs to be platform-agnostic since we designed the hosting API as such), and set up the public API facades (e.g. `AAPXSClientInstance` and `AAPXSServiceInstance`) to make communication actually happen.
 
-At this state, it is C++; we are unsure if it will be ported to C:
-
-```
-	class AAPXSServiceInstance {
-		virtual const char* getURI() = 0;
-		void clientInvokePluginExtension(AndroidAudioPluginExtension* ext) {
-			// transmit data via Binder
-		}
-		virtual void onServicePluginExtensionInvoked(AndroidAudioPluginExtension* ext) = 0;
-	};
-```
-
-
-
-(2) Plugin extensions need a registry so that host client can work with those plugins via their proxies.
-
+(3) Plugin extensions need a registry so that host client can work with those plugins via their proxies. We should probably come up with better idea for automatic extension lookup, but so far, `AAPXSFeature` can be stored at an instance of `AAPXSRegistry` hosting class.
 
 ```
-	class AAPXSRegistry {
-		virtual AAPXSServiceInstance* create(const char * uri, AndroidAudioPluginHost* host, AndroidAudioPluginExtension *extensionInstance) = 0;
-	};
+class AAPXSRegistry {
+	void add (void add(AAPXSFeature* extensionService);
+	AAPXSFeature* getByUri(const char * uri);
+};
 ```
 
-Extension service implementation needs to be compiled in the host. For plugins, only the extension header is required (the API has to be "implemented" by the plugin developer anyways).
-
-A host application has to prepare its own `AAPXSRegistry` instance, and manage whatever extensions it wants to support. `StandardAAPXSRegistry` should come up with all those standard extensions enabled.
-
-
-## public extension API in C
-
-They must represent everything in the public API (including ones in aap-core.h). Instead, they don't have to expose everything.
-
-- Extension definitions
-  - AAPXSFeature
-- Extension instances
-  - AAPXSServiceInstance
-  - AAPXSClientInstance
-
-## C++ Implementation
-
-They are integrated to audio-plugin-host API, which is still unstable as a whole.
-
-They have to be representable in the public AAPXS API
-
-
-### List of the extension types
-
-OBSOLETE: it needs updates!
-
-Public C API (plugin / extensions API):
-
-| type | header | description | status |
-|-|-|-|-|
-| AndroidAudioPluginExtension | aap-core.h | contains shared data ptr, size, and uri. | do we really need this? |
-| AndroidAudioPluginHost | aap-core.h | facade to aap::PluginClient for plugin users | maybe outdated? |
-| AndroidAudioPluginClient | extensions.h | facade to aap::PluginClient, for host developers | TODO |
-| AAPXSServiceInstance | extensions.h | service extension instance. contains context, uri, and data (AndroidAudioPluginExtension). | partly outdated maybe? |
-| AAPXSClient | facede to aap::PluginClient for extension developers. `extension_message()` | up to date |
-
-Public C++ API (aap/core/host .i.e client):
-
-| type | header | description | status |
-|-|-|-|-|
-| AAPXSRegistry | extension-service.h | The collection of extension service definitions | maybe done |
-| PluginServiceExtensionFeature | extension-service.h |
-| PluginServiceExtension | 
-
-Public C API vs. C++ wrapper API
-
-| C++ | C |
-|-|-|
-| aap::PluginExtensionFeatureImpl | AndroidAudioPluginExtensionFeature |
-| aap::PluginClientExtensionImplBase | - |
-| aap::PluginServiceExtensionImplBase | - |
-| aap::PluginExtension | AndroidAudioPluginExtension |
-| | AndroidAudioPluginServiceExtension |
-
+A host application has to prepare its own `AAPXSRegistry` instance, and manage whatever extensions it wants to support. (It does not exist yet, but something like `StandardAAPXSRegistry` should come up with all those standard extensions enabled.)
 
 
 ## Known design issues.
