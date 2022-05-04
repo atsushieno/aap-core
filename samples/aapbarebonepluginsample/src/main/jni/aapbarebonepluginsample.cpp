@@ -62,7 +62,7 @@ void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState
     // FIXME: implement
 }
 
-void* sample_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri) {
+void* sample_plugin_get_extension(AndroidAudioPlugin *plugin, const char* uri) {
     return nullptr;
 }
 

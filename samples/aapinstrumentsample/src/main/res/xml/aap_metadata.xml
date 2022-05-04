@@ -1,5 +1,9 @@
 <plugins xmlns="urn:org.androidaudioplugin.core" xmlns:pp="urn:org.androidaudioplugin.port">
   <plugin name="Instrument Sample" category="Instrument" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample" library="libaapinstrumentsample.so">
+    <extensions>
+      <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+    </extensions>
     <ports>
       <port direction="input" content="midi" name="MIDI In" />
       <port direction="output" content="midi" name="MIDI Out" />

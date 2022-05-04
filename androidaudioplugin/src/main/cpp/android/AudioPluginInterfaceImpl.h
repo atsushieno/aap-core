@@ -36,13 +36,8 @@ public:
         return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
         auto instance = svc->getInstance(*_aidl_return);
-        auto shm = new SharedMemoryExtension();
+        auto shm = instance->getAAPXSSharedMemoryStore();
         shm->resizePortBuffer(instance->getPluginInformation()->getNumPorts());
-        AndroidAudioPluginExtension ext;
-        ext.uri = AAP_SHARED_MEMORY_EXTENSION_URI;
-        ext.transmit_size = sizeof(SharedMemoryExtension);
-        ext.data = shm;
-        instance->addExtension(ext);
 
         buffers.resize(*_aidl_return + 1);
         auto &buffer = buffers[*_aidl_return];
@@ -58,21 +53,21 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        AndroidAudioPluginExtension extension;
-        extension.uri = in_uri.c_str();
-        auto shmExt = getSharedMemoryExtension(svc->getInstance(in_instanceID));
-        if (shmExt == nullptr)
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
-                    "unable to get shared memory extension");
-        auto fdRemote = in_sharedMemoryFD.get();
-        auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
-        shmExt->getExtensionFDs()->emplace_back(dfd);
-        extension.transmit_size = in_size;
-        extension.data =
-                fdRemote < 0 ? nullptr : mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                                              dfd, 0);
-        svc->getInstance(in_instanceID)->addExtension(extension);
+        auto feature = svc->getExtensionFeature(in_uri.c_str());
+        if (feature == nullptr) {
+            a_log_f(AAP_LOG_LEVEL_WARN, "AAP", "The host requested plugin extension \"%s\", but this plugin service does not support it.", in_uri.c_str());
+        } else {
+            auto aapxsInstance = svc->getInstance(in_instanceID)->setupAAPXSInstanceWrapper(feature, in_size)->asPublicApi();
+            aapxsInstance->plugin_instance_id = in_instanceID;
+            if (in_size > 0) {
+                auto shmExt = svc->getInstance(in_instanceID)->getAAPXSSharedMemoryStore();
+                assert(shmExt != nullptr);
+                auto fdRemote = in_sharedMemoryFD.get();
+                auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
+                shmExt->getExtensionFDs()->emplace_back(dfd);
+                aapxsInstance->data = fdRemote < 0 ? nullptr : mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
+            }
+        }
         return ndk::ScopedAStatus::ok();
     }
 
@@ -96,7 +91,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto shmExt = getSharedMemoryExtension(svc->getInstance(in_instanceID));
+        auto shmExt = svc->getInstance(in_instanceID)->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
@@ -117,7 +112,7 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = svc->getInstance(in_instanceID);
-        auto shmExt = getSharedMemoryExtension(instance);
+        auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
@@ -153,7 +148,7 @@ public:
 
     int resetBuffers(PluginInstance *instance, AndroidAudioPluginBuffer &buffer, int frameCount) {
         int nPorts = instance->getPluginInformation()->getNumPorts();
-        auto shmExt = getSharedMemoryExtension(instance);
+        auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION;
         shmExt->resizePortBuffer(nPorts);
@@ -254,6 +249,15 @@ public:
         auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
         instance->setState(src, in_size);
         munmap(src, in_size);
+        return ndk::ScopedAStatus::ok();
+    }
+
+    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override {
+        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
+        auto instance = svc->getInstance(in_instanceID);
+        instance->controlExtension(in_uri, in_size);
         return ndk::ScopedAStatus::ok();
     }
 

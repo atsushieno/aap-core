@@ -13,11 +13,9 @@ extern "C" {
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;
-typedef struct AndroidAudioPluginFactory AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
-typedef struct AndroidAudioPlugin AndroidAudioPlugin;
 
-typedef struct {
+typedef struct AndroidAudioPluginBuffer {
 	size_t num_buffers;
 	void **buffers;
 	size_t num_frames;
@@ -28,76 +26,72 @@ typedef struct {
  * how to implement it. AAP is rather a bridge framework and needs simple solution.
  * Anyone can develop something similar session implementation helpers.
  */
-typedef struct {
+typedef struct AndroidAudioPluginState {
 	size_t data_size;
 	const void *raw_data;
 } AndroidAudioPluginState;
 
 /**
- * A deprecated type for host extension.
+ * An entry for plugin extension instance (memory data)
  */
-typedef struct {
+typedef struct AndroidAudioPluginExtension {
+	/** The plugin extension URI */
 	const char *uri;
+	/** The size of shared memory data, if needed */
 	int32_t transmit_size;
+	/** The optional shared memory pointer, if it wants */
 	void *data;
 } AndroidAudioPluginExtension;
 
 struct AndroidAudioPluginHost;
 
+typedef void* (*aap_host_get_exntension_data_t) (struct AndroidAudioPluginHost* host, const char *uri);
+
 /**
  * Represents a host from plugin's perspective.
+ * AAP client host is supposed to provide it (aap::PluginClient does so).
+ * Note that it is not to represent a comprehensive host that manages multiple instances, but
+ * to provide minimum information that is exposed to plugin.
  */
 typedef struct AndroidAudioPluginHost {
-	AndroidAudioPluginExtension** extensions;
-
-	inline AndroidAudioPluginExtension* get_extension_entry(const char * uri) {
-		for (size_t i = 0; extensions[i]; i++) {
-			AndroidAudioPluginExtension *ext = extensions[i];
-			if (strcmp(ext->uri, uri) == 0)
-				return ext;
-		}
-		return NULL;
-	}
-
-	inline void* get_extension(const char * uri) {
-		auto entry = get_extension_entry(uri);
-		return entry ? entry->data : NULL;
-	}
+	void *context;
+	/** returns the shared data space that the host provides. */
+	aap_host_get_exntension_data_t get_extension_data;
 } AndroidAudioPluginHost;
 
 /* function types */
-typedef AndroidAudioPlugin* (*aap_instantiate_func_t) (
-	AndroidAudioPluginFactory *pluginFactory,
+typedef struct AndroidAudioPlugin* (*aap_instantiate_func_t) (
+	struct AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
 	int sampleRate,
 	AndroidAudioPluginHost *host);
 
 typedef void (*aap_release_func_t) (
-	AndroidAudioPluginFactory *pluginFactory,
-	AndroidAudioPlugin *instance);
+	struct AndroidAudioPluginFactory *pluginFactory,
+	struct AndroidAudioPlugin *instance);
 
 typedef void (*aap_prepare_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* audioBuffer);
 
-typedef void (*aap_control_func_t) (AndroidAudioPlugin *plugin);
+typedef void (*aap_control_func_t) (struct AndroidAudioPlugin *plugin);
 
 typedef void (*aap_process_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginBuffer* audioBuffer,
 	long timeoutInNanoseconds);
 
 typedef void (*aap_get_state_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *result);
 
 typedef void (*aap_set_state_func_t) (
-	AndroidAudioPlugin *plugin,
+	struct AndroidAudioPlugin *plugin,
 	AndroidAudioPluginState *input);
 
-typedef void* (*aap_get_plugin_extension_func_t) (
-	AndroidAudioPlugin *plugin,
-	const char *extensionURI);
+typedef void* (*aap_get_extension_func_t) (
+		struct AndroidAudioPlugin *plugin,
+		const char *uri);
 
 typedef struct AndroidAudioPlugin {
 	void *plugin_specific;
@@ -107,7 +101,7 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t deactivate;
 	aap_get_state_func_t get_state;
 	aap_set_state_func_t set_state;
-	aap_get_plugin_extension_func_t get_extension;
+	aap_get_extension_func_t get_extension;
 } AndroidAudioPlugin;
 
 
@@ -117,6 +111,7 @@ typedef struct AndroidAudioPluginFactory {
 	void *factory_context;
 } AndroidAudioPluginFactory;
 
+/* All plugin developers are supposed to implement this function, either directly or via some SDKs. */
 AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ();
 
 typedef AndroidAudioPluginFactory* (*aap_factory_t) ();

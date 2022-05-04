@@ -64,6 +64,7 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
 }
 
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
+		*java_extension_information_class_name = "org/androidaudioplugin/ExtensionInformation",
 		*java_port_information_class_name = "org/androidaudioplugin/PortInformation";
 
 static jmethodID
@@ -77,6 +78,10 @@ static jmethodID
 		j_method_get_shared_library_filename,
 		j_method_get_library_entrypoint,
 		j_method_get_category,
+		j_method_get_extension_count,
+		j_method_get_extension,
+		j_method_extension_get_required,
+		j_method_extension_get_uri,
 		j_method_get_port_count,
 		j_method_get_port,
 		j_method_port_get_index,
@@ -97,6 +102,7 @@ void initializeJNIMetadata()
     assert(env);
 
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
+			java_extension_information_class = env->FindClass(java_extension_information_class_name),
 			java_port_information_class = env->FindClass(java_port_information_class_name);
 
 	j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
@@ -122,6 +128,14 @@ void initializeJNIMetadata()
 	j_method_get_category = env->GetMethodID(java_plugin_information_class,
 													   "getCategory",
 													   "()Ljava/lang/String;");
+	j_method_get_extension_count = env->GetMethodID(java_plugin_information_class,
+											   "getExtensionCount", "()I");
+	j_method_get_extension = env->GetMethodID(java_plugin_information_class, "getExtension",
+										 "(I)Lorg/androidaudioplugin/ExtensionInformation;");
+	j_method_extension_get_required = env->GetMethodID(java_extension_information_class, "getRequired",
+											   "()Z");
+	j_method_extension_get_uri = env->GetMethodID(java_extension_information_class, "getUri",
+											  "()Ljava/lang/String;");
 	j_method_get_port_count = env->GetMethodID(java_plugin_information_class,
 											   "getPortCount", "()I");
 	j_method_get_port = env->GetMethodID(java_plugin_information_class, "getPort",
@@ -176,6 +190,16 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 	);
 	for (auto p : freeList)
 		free((void*) p);
+
+	int nExtensions = env->CallIntMethod(pluginInformation, j_method_get_extension_count);
+	for (int i = 0; i < nExtensions; i++) {
+		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_extension, i);
+		auto required = (bool) env->CallBooleanMethod(port, j_method_extension_get_required);
+		auto name = strdup_fromJava(env,
+									(jstring) env->CallObjectMethod(port, j_method_extension_get_uri));
+		aapPI->addExtension(aap::PluginExtensionInformation{required, name});
+		free((void*) name);
+	}
 
 	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_port_count);
 	for (int i = 0; i < nPorts; i++) {

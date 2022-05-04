@@ -24,6 +24,7 @@ enum PluginInstantiationState {
     PLUGIN_INSTANTIATION_STATE_INACTIVE,
     PLUGIN_INSTANTIATION_STATE_ACTIVE,
     PLUGIN_INSTANTIATION_STATE_TERMINATED,
+    PLUGIN_INSTANTIATION_STATE_ERROR
 };
 
 class PortInformation
@@ -79,6 +80,13 @@ public:
     }
 };
 
+class PluginExtensionInformation
+{
+public:
+    bool required{false};
+    std::string uri{};
+};
+
 class PluginInformation
 {
     // hosting information
@@ -97,14 +105,12 @@ class PluginInformation
     std::string metadata_full_path{};
     int64_t last_info_updated_unixtime_milliseconds;
 
-    /* NULL-terminated list of categories, separate by | */
+    /** NULL-terminated list of categories, separate by | */
     std::string primary_category{};
-    /* NULL-terminated list of ports */
+    /** list of ports */
     std::vector<const PortInformation*> ports;
-    /* NULL-terminated list of required extensions */
-    std::vector<std::unique_ptr<std::string>> required_extensions;
-    /* NULL-terminated list of optional extensions */
-    std::vector<std::unique_ptr<std::string>> optional_extensions;
+    /** list of extensions. They may be either required or optional */
+    std::vector<PluginExtensionInformation> extensions;
 
 public:
 
@@ -170,24 +176,14 @@ public:
         return ports[(size_t) index];
     }
 
-    int getNumRequiredExtensions() const
+    int getNumExtensions() const
     {
-        return (int) required_extensions.size();
+        return (int) extensions.size();
     }
 
-    const std::string* getRequiredExtension(int index) const
+    PluginExtensionInformation getExtension(int index) const
     {
-        return required_extensions[(size_t) index].get();
-    }
-
-    int getNumOptionalExtensions() const
-    {
-        return (int) optional_extensions.size();
-    }
-
-    const std::string* getOptionalExtension(int index) const
-    {
-        return optional_extensions[(size_t) index].get();
+        return extensions[(size_t) index];
     }
 
     int64_t getLastInfoUpdateTime() const
@@ -252,9 +248,14 @@ public:
         return is_out_process;
     }
 
+    void addExtension(PluginExtensionInformation extension)
+    {
+        extensions.emplace_back(extension);
+    }
+
     void addPort(PortInformation* port)
     {
-        ports.push_back(port);
+        ports.emplace_back(port);
     }
 };
 

@@ -157,6 +157,14 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
                 Text("Play")
             }
         }
+        Text(text = "Extensions", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
+        Column {
+            for (extension in plugin.extensions) {
+                Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                    Text((if (extension.required) "[req]" else "[opt]") + " " + (extension.uri ?: "(uri unspecified)"), fontSize = 12.sp)
+                }
+            }
+        }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
             for (port in plugin.ports) {

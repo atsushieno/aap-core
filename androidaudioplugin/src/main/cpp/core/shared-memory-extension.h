@@ -5,20 +5,20 @@
 
 namespace aap {
 
-// FIXME: there may be better SharedMemoryExtension/PluginSharedMemoryBuffer unification.
-class SharedMemoryExtension {
+// FIXME: there may be better AAPXSSharedMemoryStore/PluginSharedMemoryBuffer unification.
+class AAPXSSharedMemoryStore {
+    std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};
     std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
     std::unique_ptr<std::vector<int32_t>> cached_shm_fds_for_prepare{nullptr};
-    std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};
 
 public:
-    SharedMemoryExtension() {
+    AAPXSSharedMemoryStore() {
         port_shm_buffers = std::make_unique<PluginSharedMemoryBuffer>();
         extension_fds = std::make_unique<std::vector<int32_t>>();
         cached_shm_fds_for_prepare = std::make_unique<std::vector<int32_t>>();
     }
 
-    ~SharedMemoryExtension() {
+    ~AAPXSSharedMemoryStore() {
         for (int32_t fd: *extension_fds)
             if (fd)
                 close(fd);
@@ -45,10 +45,6 @@ public:
 
     inline std::vector<int32_t> *getExtensionFDs() { return extension_fds.get(); }
 };
-
-inline SharedMemoryExtension *getSharedMemoryExtension(PluginInstance *instance) {
-    return (SharedMemoryExtension *) instance->getExtension(AAP_SHARED_MEMORY_EXTENSION_URI);
-}
 
 }
 

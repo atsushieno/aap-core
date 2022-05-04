@@ -3,11 +3,13 @@
 // Anything Android specific must to into `android` directory.
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <vector>
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/logging.h"
 #include "shared-memory-extension.h"
 #include "audio-plugin-host-internals.h"
-#include <vector>
+#include "extensions/presets-service.h"
+#include "extensions/midi2-service.h"
 
 
 namespace aap
@@ -151,8 +153,7 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	// For remote plugins, the connection has to be established through binder.
 	auto internalCallback = [=](PluginInstance* instance, std::string error) {
 		if (instance != nullptr) {
-			instances.emplace_back(instance);
-			userCallback(instances.size() - 1, "");
+			userCallback(instance->getInstanceId(), "");
 		}
 		else
 			userCallback(-1, error);
@@ -167,6 +168,28 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 			internalCallback(nullptr, ex.what());
 		}
 	}
+}
+
+std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
+std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
+
+PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
+	: plugin_list(contextPluginList)
+{
+	aapxs_registry = std::make_unique<AAPXSRegistry>();
+
+	// presets
+	if (aapxs_presets == nullptr)
+		aapxs_presets = std::make_unique<PresetsExtensionFeature>();
+	aapxs_registry->add(aapxs_presets->asPublicApi());
+	// midi2
+	if (aapxs_midi2 == nullptr)
+		aapxs_midi2 = std::make_unique<Midi2ExtensionFeature>();
+	aapxs_registry->add(aapxs_midi2->asPublicApi());
+}
+
+AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {
+	return aapxs_registry->getByUri(uri);
 }
 
 void PluginHost::destroyInstance(PluginInstance* instance)
@@ -215,7 +238,25 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
 		return nullptr;
 	}
-	return new PluginInstance(descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+	instances.emplace_back(instance);
+	return instance;
+}
+
+LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), service(service) {
+}
+
+AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
+	plugin_host_facade.context = this;
+	plugin_host_facade.get_extension_data = internalGetExtensionData;
+	return &plugin_host_facade;
+}
+
+AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
+    plugin_host_facade.context = this;
+    plugin_host_facade.get_extension_data = nullptr; // we shouldn't need it.
+    return &plugin_host_facade;
 }
 
 void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
@@ -231,7 +272,8 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
 			assert (pluginFactory != nullptr);
-			auto instance = new PluginInstance(descriptor, pluginFactory, sampleRate);
+			auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+			instances.emplace_back(instance);
 			callback(instance, "");
 		}
 		else
@@ -244,35 +286,30 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }
 
-PluginExtension::PluginExtension(AndroidAudioPluginExtension src) {
-	uri.reset(strdup(src.uri));
-	auto dataMem = calloc(1, src.transmit_size);
-	memcpy(dataMem, src.data, src.transmit_size);
-	data.reset((uint8_t*) dataMem);
-	dataSize = src.transmit_size;
-}
-
-AndroidAudioPluginExtension PluginExtension::asTransient() const {
-	AndroidAudioPluginExtension ret;
-	ret.uri = uri.get();
-	ret.data = data.get();
-	ret.transmit_size = dataSize;
-	return ret;
-}
-
 //-----------------------------------
 
-PluginInstance::PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: sample_rate(sampleRate),
-		pluginInfo(pluginInformation),
-		plugin_factory(loadedPluginFactory),
-		plugin(nullptr),
-		instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL) {
+		  instance_id(instanceId),
+		  pluginInfo(pluginInformation),
+		  plugin_factory(loadedPluginFactory),
+		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
+		  plugin(nullptr) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
+
+	aapxs_shared_memory_store = new AAPXSSharedMemoryStore();
 }
 
 PluginInstance::~PluginInstance() { dispose(); }
+
+void PluginInstance::dispose() {
+	instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
+	if (plugin != nullptr)
+		plugin_factory->release(plugin_factory, plugin);
+	plugin = nullptr;
+	delete aapxs_shared_memory_store;
+}
 
 int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames) {
 	assert(!plugin_buffer);
@@ -290,16 +327,8 @@ void PluginInstance::completeInstantiation()
 {
 	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
 
-	AndroidAudioPluginExtension extArr[extensions.size() + 1];
-	for (size_t i = 0; i < extensions.size(); i++)
-		extArr[i] = extensions[i]->asTransient();
-	AndroidAudioPluginExtension* extPtrArr[extensions.size() + 1];
-	for (size_t i = 0; i < extensions.size(); i++)
-		extPtrArr[i] = &extArr[i];
-	extPtrArr[extensions.size()] = nullptr;
-	AndroidAudioPluginHost asPluginAPI;
-	asPluginAPI.extensions = extPtrArr;
-	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, &asPluginAPI);
+	AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
+	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
 	assert(plugin);
 
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
@@ -331,6 +360,5 @@ void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string
                                                       plugin->getPluginLocalName());
 	return nullptr;
 }
-
 
 } // namespace

@@ -18,6 +18,8 @@ interface AudioPluginInterface {
 	void getState(int instanceID, in ParcelFileDescriptor sharedMemoryFD);
 	void setState(int instanceID, in ParcelFileDescriptor sharedMemoryFD, int size);
 
+	void extension(int instanceID, String uri, int size);
+
 	void prepare(int instanceID, int frameCount, int portCount);
 	void prepareMemory(int instanceID, int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
 	void activate(int instanceID);

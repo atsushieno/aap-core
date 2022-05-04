@@ -37,7 +37,7 @@ There is also `AudioPluginHost` example in [aap-juce](https://github.com/atsushi
 
 ## Fundamentals
 
-The diagram below illustrates how remote plugins are instantiated.
+The diagram below illustrates how remote plugins are instantiated. (NOTE: this diagram is partly outdated, and it gives wrong impression that we depend on JUCE. We don't; it is an example use case that shows how we imported JUCE AudioPluginHost in AAP world.)
 
 ![Instantiating remote plugins](images/aap-components.drawio.svg)
 

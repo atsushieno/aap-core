@@ -14,15 +14,23 @@ class PluginInformation(var packageName: String, var localName: String, var disp
         const val PRIMARY_CATEGORY_INSTRUMENT = "Instrument"
     }
 
+    var extensions = mutableListOf<ExtensionInformation>()
+
     var ports = mutableListOf<PortInformation>()
 
-    /** These obvious members are for use in C interop and not expected to be consumed by user developers. */
+    // These obvious members are for use in C interop and not expected to be consumed by user developers.
+    fun getExtensionCount() : Int
+    {
+        return extensions.size
+    }
+    fun getExtension(index : Int) : ExtensionInformation
+    {
+        return extensions[index]
+    }
     fun getPortCount() : Int
     {
         return ports.size
     }
-
-    /** These obvious members are for use in C interop and not expected to be consumed by user developers. */
     fun getPort(index : Int) : PortInformation
     {
         return ports[index]
