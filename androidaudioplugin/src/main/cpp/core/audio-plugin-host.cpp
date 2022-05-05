@@ -204,7 +204,7 @@ int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "libandroidaudioplugin", "Plugin information was not found for: %s ", identifier.c_str());
 		return -1;
 	}
-	instances.emplace_back(instantiateLocalPlugin(info, sampleRate));
+	instantiateLocalPlugin(info, sampleRate);
 	return instances.size() - 1;
 }
 
