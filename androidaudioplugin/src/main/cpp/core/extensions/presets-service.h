@@ -76,13 +76,20 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         void getPreset(int32_t index, bool skipBinary, aap_preset_t *result) {
+            // request (offset-range: content)
+            // - 0..3 : int32_t index
+            // - 4..7 : bool skip binary or not
             *((int32_t *) aapxsInstance->data) = index;
-            *(bool *) ((int32_t *) aapxsInstance->data + 1) = skipBinary;
+            *((int32_t *) aapxsInstance->data + 1) = skipBinary ? 1 : 0;
             clientInvokePluginExtension(OPCODE_GET_PRESET_DATA);
+            // response (offset-range: content)
+            // - 0..3 : data size
+            // - 4..259 : name (fixed length char buffer)
+            // - 260..* : data (if requested)
             result->data_size = *((int32_t *) aapxsInstance->data);
-            strncpy(result->name, (const char *) ((int32_t *) aapxsInstance->data + 1), 256);
+            strncpy(result->name, (const char *) ((uint8_t *) aapxsInstance->data + sizeof(int32_t)), AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
             if (!skipBinary)
-                memcpy(result->data, ((int32_t *) aapxsInstance->data + 1), result->data_size);
+                memcpy(result->data, (uint8_t *) aapxsInstance->data + sizeof(int32_t), result->data_size);
         }
 
         int32_t getPresetIndex() {
