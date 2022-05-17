@@ -30,6 +30,9 @@ android {
     buildFeatures {
         compose = true
     }
+    composeOptions {
+        kotlinCompilerExtensionVersion = compose_version
+    }
 }
 
 apply { from ("../publish-pom.gradle") }
@@ -43,7 +46,7 @@ dependencies {
     implementation ("androidx.compose.ui:ui:$compose_version")
     implementation ("androidx.compose.material:material:$compose_version")
     implementation ("androidx.compose.ui:ui-tooling:$compose_version")
-    implementation ("androidx.navigation:navigation-compose:2.4.1")
+    implementation ("androidx.navigation:navigation-compose:2.4.2")
     testImplementation ("junit:junit:4.13.2")
     androidTestImplementation ("androidx.test.ext:junit:1.1.3")
     androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
