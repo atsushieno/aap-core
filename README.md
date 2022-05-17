@@ -23,31 +23,21 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 ## AAP features, characteristics, unique points
 
-**Android is supported, and it is the first citizen** : no other audio plugin frameworks achieve that (except for [AudioRoute SDK](https://github.com/AudioRoute/AudioRoute-SDK), as far as @atsushieno knows). To make it possible, we have some other characteristics explained below.
+**Android is supported, and it is the first citizen** : no other audio plugin frameworks achieve that (except for [AudioRoute SDK](https://github.com/AudioRoute/AudioRoute-SDK), as far as @atsushieno knows). Hosts and plugins are distributed as different apps and therefore live in different process spaces.
 
 **out-process model, between host activities and plugin services** : AAP is designed to work for Android platform, which has strict separation on each application process space. Namely, we cannot load arbitrary shared libraries from random plugins. Thus AAP DAWs (plugin hosts) and AAPs (plugins) have to communicate through IPC mechanism. AAP uses Binder IPC through NdkBinder API which was introduced at Android 10. Also, the framework makes full use of Android shared memory (ashmem) throughout the audio/MIDI buffer processing.
 
 ![AAP process model](docs/images/aap-process-model.png)
 
-**Extensibility** : plugin feature extensibility is provided through plugin extensibility messaging API and host context data, i.e.
+**Extensibility** : plugin feature extensibility is provided through plugin extensibility messaging API and host context data, through shared memory. Plugins cannot perform any operation over host features. Anyone can define an extension, bound to its own URI, but unlike typical extensibility API in other audio plugin frameworks, the extension developer has to provide plugin service messaging implementation for Binder that connect host (client) and plugin (service). We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
 
-(1) Plugin extension API thatplugin developers implement, and host developers operate, on top of Android Binder framework "in current version" and asynchronous MIDI request/reply message pairs "in the future".
-(2) Host context data that plugin can retrieve, through shared memory. Plugins cannot perform any operation over host features.
-
-Anyone can define an extension, bound to its own URI, but unlike typical extensibility API in other audio plugin frameworks, the extension developer has to provide plugin service messaging implementation for Binder that connect host (client) and plugin (service). We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
-
-
-**Basically declarative parameter meta data** : like LV2, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports. (The design details are going to change, but we would remain declerative.)
-
-**C/C++ and Kotlin supported**: C/C++ is supported for developing plugin and hosting, Kotlin for hosting.
+**Basically declarative parameter meta data** : like LV2, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports. (The design details are going to change, but we would remain declarative.)
 
 **Permissive licensing** : It is released under the MIT license. Same as CLAP, similar to LV2 (ISC), unlike VST3 or JUCE (GPLv3).
 
-**API unstability** : unlike other audio plugin frameworks, we don't really offer API stability. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP. I believe this is how CLAP is still evolving in 2022 too.
-
-AAP will be API stable "at some stage", but that is not planned. The compatibility at Binder message was pretty stable from 2020 to 2022 though.
-
 **MIDI Device Service** : AAP has ability to turn an instrument plugin into a [Android MidiDeviceService](https://developer.android.com/reference/android/media/midi/package-summary).
+
+**C/C++ and Kotlin supported**: public plugin API is provided through C API. For hosting, some utilized API is implemented for C++ and Kotlin, but officially it is only for reference purpose without stability. While the compatibility at Binder message was pretty stable from 2020 to 2022, AAP is still at infancy and we wouldn't really consider our API as stable. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP. I believe this is how CLAP is still evolving in 2022 too.
 
 
 ## How AAPs work: technical background
@@ -62,8 +52,6 @@ From app packagers perspective and users perspective, it can be distributed like
 AAP developers create audio plugin in native code using Android NDK, create plugin "metadata" as an Android XML resource (`aap_metadata.xml`), and optionally implement `org.androidaudioplugin.AudioPluginService` which handles audio plugin connections using Android SDK, then package them together. The metadata provides developer details, port details (as long as they are known), and feature requirement details.
 
 TODO: The plugins and their ports can NOT be dynamically changed, at least as of the current specification stage. We should seriously reconsider this. It will be mandatory when we support so-called plugin wrappers.
-
-AAP is similar to what [AudioRoute](https://audioroute.ntrack.com/developer-guide.php) hosted apps do. We are rather native oriented for reusing existing code. (I believe they also aim to implement plugins in native code, but not sure. The SDK is not frequently updated.)
 
 
 ## How to create AAP plugins
