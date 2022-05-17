@@ -15,6 +15,8 @@ import java.nio.ByteOrder
 
 const val PROCESS_AUDIO_NATIVE = false
 const val FRAMES_PER_TICK = 100
+const val AUDIO_BUFFER_SIZE = 4096
+const val DEFAULT_CONTROL_BUFFER_SIZE = 4096
 // In this Plugin preview example engine, we don't really use the best sampling rate for the device
 // as it only performs static audio processing and does not involve device audio inputs.
 // We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
@@ -36,11 +38,13 @@ class PluginPreview(context: Context) {
 
     fun applyPlugin(service: PluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
     {
+        host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
+        host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
+
         host.instantiatePluginAsync(plugin) { instance, error ->
             if (instance != null) {
                 this.instance = instance
-                val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-                instance.prepare(floatCount)
+                instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
                 if (instance.proxyError != null) {
                     errorCallback(instance.proxyError!!)
                 } else {
@@ -96,7 +100,8 @@ class PluginPreview(context: Context) {
             }
         }
 
-        val bufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+        val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
+        val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
         (0 until plugin.ports.count()).map { i ->
             if (plugin.ports[i].direction == PortInformation.PORT_DIRECTION_OUTPUT)
@@ -108,10 +113,11 @@ class PluginPreview(context: Context) {
             if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI2)
                 return@map
             else {
+                // FIXME: support non-float data type (but we have to determine data type semantics first)
                 val c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                 c.position(0)
                 val v = parameters[i]
-                (0 until bufferFrameSize).forEach { _ -> c.put(v) }
+                (0 until controlBufferFrameSize).forEach { _ -> c.put(v) }
             }
         }
 
@@ -128,16 +134,16 @@ class PluginPreview(context: Context) {
         // For such usage, there should be native audio callback based on Oboe or AAudio
         // (not in Kotlin).
         while (currentFrame < inBuf.size / 2 / 4) { // channels / sizeof(float)
-            deinterleaveInput(currentFrame, bufferFrameSize)
+            deinterleaveInput(currentFrame, audioBufferFrameSize)
 
             if (audioInL >= 0) {
                 val instanceInL = instance.getPortBuffer(audioInL)
                 instanceInL.position(0)
-                instanceInL.put(host.audioInputs[0], 0, bufferFrameSize * 4)
+                instanceInL.put(host.audioInputs[0], 0, audioBufferFrameSize * 4)
                 if (audioInR > audioInL) {
                     val instanceInR = instance.getPortBuffer(audioInR)
                     instanceInR.position(0)
-                    instanceInR.put(host.audioInputs[1], 0, bufferFrameSize * 4)
+                    instanceInR.put(host.audioInputs[1], 0, audioBufferFrameSize * 4)
                 }
             }
             if (midiIn >= 0) {
@@ -152,7 +158,7 @@ class PluginPreview(context: Context) {
                 midiBuffer.position(resetMidiBuffer(midiBuffer))
                 var midiDataLengthInLoop = 0
 
-                while (nextMidi1EventFrame < currentFrame + bufferFrameSize) {
+                while (nextMidi1EventFrame < currentFrame + controlBufferFrameSize) {
                     val timedEvent = nextMidi1Group.first()
                     var deltaTimeTmp = MidiHelper.getFirstMidi1EventDuration(timedEvent)
                     var deltaTimeBytes = 1
@@ -160,7 +166,7 @@ class PluginPreview(context: Context) {
                         deltaTimeBytes++
                         deltaTimeTmp /= 0x80
                     }
-                    val diffFrame = nextMidi1EventFrame % bufferFrameSize
+                    val diffFrame = nextMidi1EventFrame % controlBufferFrameSize
                     val diffMTC = MidiHelper.toMidiTimeCode(FRAMES_PER_TICK, host.sampleRate, diffFrame)
                     val b0 = 0.toUByte()
                     val diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
@@ -182,21 +188,21 @@ class PluginPreview(context: Context) {
             if (audioOutL >= 0) {
                 val instanceOutL = instance.getPortBuffer(audioOutL)
                 instanceOutL.position(0)
-                instanceOutL.get(host.audioOutputs[0], 0, bufferFrameSize * 4)
+                instanceOutL.get(host.audioOutputs[0], 0, audioBufferFrameSize * 4)
                 if (audioOutR > audioOutL) {
                     val instanceOutR = instance.getPortBuffer(audioOutR)
                     instanceOutR.position(0)
-                    instanceOutR.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
+                    instanceOutR.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
                 } else {
                     // mono output
                     instanceOutL.position(0)
-                    instanceOutL.get(host.audioOutputs[1], 0, bufferFrameSize * 4)
+                    instanceOutL.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
                 }
             }
 
-            interleaveOutput(currentFrame, bufferFrameSize)
+            interleaveOutput(currentFrame, audioBufferFrameSize)
 
-            currentFrame += bufferFrameSize
+            currentFrame += audioBufferFrameSize
         }
 
         instance.deactivate()

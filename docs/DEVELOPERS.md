@@ -111,6 +111,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
     - `pp:type` attribute: specifies value restriction.
     - `pp:minimum`, `pp:maximum` attributes: specifies value ranges.
     - `pp:default` attribute: specifies the default value.
+    - `pp:minimumSize` attribute: specifies the minimum buffer size in bytes.
     - `<pp:enumeration>` element: specifies a candidate value.
       - `label` attribute: value label that is shown to user.
       - `value` attribute: the actual value.

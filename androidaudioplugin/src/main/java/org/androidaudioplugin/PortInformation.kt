@@ -36,4 +36,6 @@ class PortInformation(var index: Int, var name: String, var direction: Int, var 
             hasValueRange = true
             field = value
         }
+
+    var minimumSizeInBytes: Int = 0
 }

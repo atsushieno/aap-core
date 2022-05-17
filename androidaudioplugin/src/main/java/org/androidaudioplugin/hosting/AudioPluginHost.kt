@@ -25,7 +25,7 @@ class AudioPluginHost(private var applicationContext: Context)
             resetInputBuffer()
             resetOutputBuffer()
         }
-    var controlBufferSizeInBytes = 4096 * 4
+    var defaultControlBufferSizeInBytes = 4096 * 4
         set(value) {
             field = value
             resetControlBuffer()
@@ -47,7 +47,7 @@ class AudioPluginHost(private var applicationContext: Context)
             field = value
             resetControlBuffer()
         }
-    private fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, controlBufferSizeInBytes)
+    private fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, defaultControlBufferSizeInBytes)
 
     var outputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
         set(value) {

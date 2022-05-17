@@ -49,7 +49,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     memcpy(buffer->buffers[3], buffer->buffers[1], size);
     */
 
-    // skip dummy parameter (buffers[4])
+    // buffers[8]-buffers[11] are dummy parameters, but try accessing buffers[8], which has
+    // pp:minimumSize = 8192, to verify that buffers[8][8191] is touchable!
+    int x = ((uint8_t*) buffer->buffers[8])[8191];
+    if (x > 256)
+        return; // NOOP
 }
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}

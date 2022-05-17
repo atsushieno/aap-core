@@ -7,6 +7,7 @@ import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.AudioPluginInterface
+import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 
 class AudioPluginInstance
@@ -58,16 +59,25 @@ class AudioPluginInstance
         }
     }
 
-    fun prepare(samplesPerBlock: Int) {
+    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int = 0) {
+        val controlBytesPerBlock =
+            if (defaultControlBytesPerBlock <= 0) audioSamplesPerBlock * 4
+            else defaultControlBytesPerBlock
         runCatchingRemoteException {
             (0 until pluginInfo.getPortCount()).forEach { i ->
-                var shm = SharedMemory.create(null, samplesPerBlock * 4)
-                var shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
-                var buffer = shm.mapReadWrite()
+                val port = pluginInfo.getPort(i)
+                val isAudio = port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO
+                val size =
+                    if (port.minimumSizeInBytes > 0) port.minimumSizeInBytes
+                    else if (isAudio) audioSamplesPerBlock * 4
+                    else controlBytesPerBlock
+                val shm = SharedMemory.create(null, size)
+                val shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
+                val buffer = shm.mapReadWrite()
                 shm_list.add(SharedMemoryBuffer(shm, shmFD, buffer))
                 proxy.prepareMemory(instanceId, i, ParcelFileDescriptor.adoptFd(shmFD))
             }
-            proxy.prepare(instanceId, samplesPerBlock, pluginInfo.ports.size)
+            proxy.prepare(instanceId, audioSamplesPerBlock, pluginInfo.ports.size)
 
             state = InstanceState.INACTIVE
         }

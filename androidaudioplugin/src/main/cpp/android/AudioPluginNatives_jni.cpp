@@ -91,7 +91,8 @@ static jmethodID
 		j_method_port_has_value_range,
 		j_method_port_get_default,
 		j_method_port_get_minimum,
-		j_method_port_get_maximum;
+		j_method_port_get_maximum,
+		j_method_port_get_minimum_size_in_bytes;
 
 void initializeJNIMetadata()
 {
@@ -156,6 +157,8 @@ void initializeJNIMetadata()
 												 "()F");
 	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
 												 "()F");
+	j_method_port_get_minimum_size_in_bytes = env->GetMethodID(java_port_information_class, "getMinimumSizeInBytes",
+												 "()I");
 }
 
 const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
@@ -214,6 +217,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 			nativePort->setPropertyValueString(AAP_PORT_MINIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_minimum)));
 			nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_maximum)));
 		}
+		nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes)));
 		aapPI->addPort(nativePort);
 		free((void*) name);
 	}
