@@ -15,7 +15,7 @@ Android lacks commonly used Audio Plugin Framework. On Windows and other desktop
 
 There is no such thing in Android. Android Audio Plugin (AAP) Framework is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for audio plugin, adoped to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin specifications like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on (not necessarily meant that *we* write code for them).
+What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin specifications like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on (not necessarily meant that *we* write code for them).
 
 On the other hand it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support, ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF). Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
 

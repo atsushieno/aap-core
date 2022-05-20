@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cassert>
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
 #include "aap/unstable/logging.h"
