@@ -161,8 +161,6 @@ public:
 
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
 	{
-		// It is not a TODO here, but if pointers have changed, we have to reconnect
-		// LV2 ports.
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
 	}
 
