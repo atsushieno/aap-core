@@ -66,10 +66,6 @@ android {
     buildFeatures {
         prefabPublishing true
     }
-    // Workaround for https://issuetracker.google.com/issues/168777344#comment5
-    packagingOptions {
-        exclude '**.so'
-    }
     prefab {
         androidaudioplugin {
             name 'androidaudioplugin'
