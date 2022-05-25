@@ -31,7 +31,7 @@ for sample in "${ALL_APPS[@]}"; do
     mkdir -p $SAMPLE/jniLibs/$a ;
     # This is causing unresponsive debugger. Do not use it. Load asan so at using System.loadLibrary() instead.
     mkdir -p $SAMPLE_RES/$a
-    cp -R $ANDROID_NDK_PATH/wrap.sh/asan.sh $SAMPLE_RES/$a/wrap.sh
+    cp -R asan-wrap-bugfixed.sh $SAMPLE_RES/$a/wrap.sh
     dos2unix $SAMPLE_RES/$a/wrap.sh
   done
 

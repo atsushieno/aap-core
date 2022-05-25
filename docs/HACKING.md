@@ -59,7 +59,7 @@ To enable asan in this project, there are three things to do:
   - In the top-level `build.gradle.kts`, change `enable_asan` value to `true`. It will delegate the option to cmake as well as enable the ASAN settings in the library modules as well as sample apps.
 - In your app module (or ours outside this repo e.g. `aap-juce-plugin-host/app`):
   - Similarly to `./setup-asan-for-debugging.sh` in this repo, you will have to copy ASAN libraries and `wrap.sh` into the app module. For more details, see [NDK documentation](https://developer.android.com/ndk/guides/asan).
-    - **WARNING**: as of May 2022 there is a blocking NDK bug that prevents you from debugging ASAN-enabled code. See [this issue](https://github.com/android/ndk/issues/933) and find the latest script fix.
+    - **WARNING**: as of May 2022 there is a blocking NDK bug that prevents you from debugging ASAN-enabled code. See [this issue](https://github.com/android/ndk/issues/933) and find the latest script fix. We now have a temporary fix and actually use the script from there, but as it often happens, such a stale file could lead to future issues when the issue is fixed in the NDK upgrades. It should be removed whenever the issue goes away.
   - Add `android { packagingOptions { jniLibs { useLegacyPackaging = true } } }` (you would most likely have to copy "part of" this script in your existing build script e.g. only within `androoid { ... }` part)
   - Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
 
