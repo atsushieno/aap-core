@@ -134,20 +134,26 @@ fun PluginDetails(plugin: PluginInformation, state: PluginListViewModel.State) {
         }
         WaveformDrawable(waveData = waveState)
         Row {
-            Button(onClick = {
+            val buttonStatePerRow = remember { mutableStateOf(true) }
+            Button(enabled = buttonStatePerRow.value, onClick = {
                 if (!pluginAppliedState) {
+                    buttonStatePerRow.value = false
                     state.preview.processAudioCompleted = {
                         waveState = state.preview.outBuf
                         pluginAppliedState = true
+                        buttonStatePerRow.value = true
                     }
                     GlobalScope.launch {
                         state.preview.applyPlugin(state.availablePluginServices.first(), plugin, parameters) {
                             pluginErrorState = it.toString()
+                            buttonStatePerRow.value = true
                         }
                     }
                 } else {
+                    buttonStatePerRow.value = false
                     waveState = state.preview.inBuf
                     pluginAppliedState = false
+                    buttonStatePerRow.value = true
                 }
             }) { Text(if (pluginAppliedState) "On" else "Off") }
             Button(onClick = {}) { Text("UI") }
