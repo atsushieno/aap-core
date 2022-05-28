@@ -1,4 +1,5 @@
 package org.androidaudioplugin;
+import org.androidaudioplugin.AudioPluginInterfaceCallback;
 
 interface AudioPluginInterface {
     const int AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1;
@@ -7,7 +8,12 @@ interface AudioPluginInterface {
     const int AAP_BINDER_ERROR_MMAP_FAILED = 11;
     const int AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12;
     const int AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20;
+    const int AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30;
 
+    // ServiceConnection operations
+	void setCallback(in AudioPluginInterfaceCallback callback);
+
+    // Instance operations
 	int beginCreate(String pluginId, int sampleRate);
 	void addExtension(int instanceID, String uri, in ParcelFileDescriptor sharedMemoryFD, int size);
 	void endCreate(int instanceID);

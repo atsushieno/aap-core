@@ -10,6 +10,7 @@
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
+#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 
 namespace aidl {
 namespace org {
@@ -26,26 +27,29 @@ public:
   enum : int32_t { AAP_BINDER_ERROR_MMAP_FAILED = 11 };
   enum : int32_t { AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12 };
   enum : int32_t { AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20 };
-  static constexpr uint32_t TRANSACTION_beginCreate = FIRST_CALL_TRANSACTION + 0;
-  static constexpr uint32_t TRANSACTION_addExtension = FIRST_CALL_TRANSACTION + 1;
-  static constexpr uint32_t TRANSACTION_endCreate = FIRST_CALL_TRANSACTION + 2;
-  static constexpr uint32_t TRANSACTION_isPluginAlive = FIRST_CALL_TRANSACTION + 3;
-  static constexpr uint32_t TRANSACTION_getStateSize = FIRST_CALL_TRANSACTION + 4;
-  static constexpr uint32_t TRANSACTION_getState = FIRST_CALL_TRANSACTION + 5;
-  static constexpr uint32_t TRANSACTION_setState = FIRST_CALL_TRANSACTION + 6;
-  static constexpr uint32_t TRANSACTION_extension = FIRST_CALL_TRANSACTION + 7;
-  static constexpr uint32_t TRANSACTION_prepare = FIRST_CALL_TRANSACTION + 8;
-  static constexpr uint32_t TRANSACTION_prepareMemory = FIRST_CALL_TRANSACTION + 9;
-  static constexpr uint32_t TRANSACTION_activate = FIRST_CALL_TRANSACTION + 10;
-  static constexpr uint32_t TRANSACTION_process = FIRST_CALL_TRANSACTION + 11;
-  static constexpr uint32_t TRANSACTION_deactivate = FIRST_CALL_TRANSACTION + 12;
-  static constexpr uint32_t TRANSACTION_destroy = FIRST_CALL_TRANSACTION + 13;
+  enum : int32_t { AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30 };
+  static constexpr uint32_t TRANSACTION_setCallback = FIRST_CALL_TRANSACTION + 0;
+  static constexpr uint32_t TRANSACTION_beginCreate = FIRST_CALL_TRANSACTION + 1;
+  static constexpr uint32_t TRANSACTION_addExtension = FIRST_CALL_TRANSACTION + 2;
+  static constexpr uint32_t TRANSACTION_endCreate = FIRST_CALL_TRANSACTION + 3;
+  static constexpr uint32_t TRANSACTION_isPluginAlive = FIRST_CALL_TRANSACTION + 4;
+  static constexpr uint32_t TRANSACTION_getStateSize = FIRST_CALL_TRANSACTION + 5;
+  static constexpr uint32_t TRANSACTION_getState = FIRST_CALL_TRANSACTION + 6;
+  static constexpr uint32_t TRANSACTION_setState = FIRST_CALL_TRANSACTION + 7;
+  static constexpr uint32_t TRANSACTION_extension = FIRST_CALL_TRANSACTION + 8;
+  static constexpr uint32_t TRANSACTION_prepare = FIRST_CALL_TRANSACTION + 9;
+  static constexpr uint32_t TRANSACTION_prepareMemory = FIRST_CALL_TRANSACTION + 10;
+  static constexpr uint32_t TRANSACTION_activate = FIRST_CALL_TRANSACTION + 11;
+  static constexpr uint32_t TRANSACTION_process = FIRST_CALL_TRANSACTION + 12;
+  static constexpr uint32_t TRANSACTION_deactivate = FIRST_CALL_TRANSACTION + 13;
+  static constexpr uint32_t TRANSACTION_destroy = FIRST_CALL_TRANSACTION + 14;
 
   static std::shared_ptr<IAudioPluginInterface> fromBinder(const ::ndk::SpAIBinder& binder);
   static binder_status_t writeToParcel(AParcel* parcel, const std::shared_ptr<IAudioPluginInterface>& instance);
   static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IAudioPluginInterface>* instance);
   static bool setDefaultImpl(const std::shared_ptr<IAudioPluginInterface>& impl);
   static const std::shared_ptr<IAudioPluginInterface>& getDefaultImpl();
+  virtual ::ndk::ScopedAStatus setCallback(const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) = 0;
   virtual ::ndk::ScopedAStatus beginCreate(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) = 0;
   virtual ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) = 0;
   virtual ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) = 0;
@@ -65,6 +69,7 @@ private:
 };
 class IAudioPluginInterfaceDefault : public IAudioPluginInterface {
 public:
+  ::ndk::ScopedAStatus setCallback(const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override;
   ::ndk::ScopedAStatus beginCreate(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) override;
   ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override;
   ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override;

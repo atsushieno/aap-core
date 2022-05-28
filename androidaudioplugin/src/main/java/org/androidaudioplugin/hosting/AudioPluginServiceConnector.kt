@@ -21,7 +21,8 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             Log.d("AAP", "AudioPluginServiceConnector: onServiceConnected")
-            parent.registerNewConnection(PluginServiceConnection(serviceInfo, binder))
+            if (binder != null)
+                parent.registerNewConnection(PluginServiceConnection(serviceInfo, binder))
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {

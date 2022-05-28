@@ -19,6 +19,7 @@ set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"android/binder-client-as-plugin.cpp"
 	"android/gen/org/androidaudioplugin/AudioPluginInterface.cpp"
+	"android/gen/org/androidaudioplugin/AudioPluginInterfaceCallback.cpp"
 	"android/android-application-context.cpp"
 	"android/AudioPluginNatives_jni.cpp"
 	"android/audio-plugin-host-android-internal.cpp"

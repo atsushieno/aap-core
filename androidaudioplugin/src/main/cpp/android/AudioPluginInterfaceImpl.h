@@ -21,12 +21,23 @@ class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPl
     PluginListSnapshot plugins;
     std::unique_ptr<PluginService> svc;
     std::vector<AndroidAudioPluginBuffer> buffers{};
+    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback{nullptr};
 
 public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
         svc.reset(new PluginService(&plugins));
+    }
+
+    ::ndk::ScopedAStatus setCallback(const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override {
+        if (callback.get()) {
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CALLBACK_ALREADY_SET, "failed to create AAP service instance.");
+        }
+        callback.reset(in_callback.get());
+
+        return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,
