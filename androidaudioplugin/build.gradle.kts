@@ -61,6 +61,11 @@ android {
         disable.add("EnsureInitializerMetadata")
     }
 
+    // https://github.com/google/prefab/issues/127
+    packagingOptions {
+        jniLibs.excludes.add("**/libc++_shared.so")
+    }
+
     // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
     /*
     buildFeatures {

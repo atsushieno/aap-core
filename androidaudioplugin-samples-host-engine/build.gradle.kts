@@ -33,8 +33,10 @@ android {
         prefab true
     }
     */
+
+    // https://github.com/google/prefab/issues/127
     packagingOptions {
-        exclude ("**libc++_shared.so")
+        jniLibs.excludes.add("**/libc++_shared.so")
     }
 }
 

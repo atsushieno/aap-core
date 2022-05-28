@@ -27,10 +27,5 @@ android {
         jvmTarget = '1.8'
         useIR = true
     }
-
-    // https://github.com/google/prefab/issues/127
-    packagingOptions {
-        jniLibs.excludes.add("**/libc++_shared.so")
-    }
 }
 

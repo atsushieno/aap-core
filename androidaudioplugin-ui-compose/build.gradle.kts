@@ -33,6 +33,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = compose_version
     }
+
+    // https://github.com/google/prefab/issues/127
+    packagingOptions {
+        jniLibs.excludes.add("**/libc++_shared.so")
+    }
 }
 
 apply { from ("../publish-pom.gradle") }
