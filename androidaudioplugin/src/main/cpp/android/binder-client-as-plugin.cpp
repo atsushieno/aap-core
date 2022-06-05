@@ -29,7 +29,8 @@ public:
 	std::unique_ptr<aap::PluginSharedMemoryBuffer> shm_buffer{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
-	AndroidAudioPluginState state{};
+	aap_state_extension_t state_ext;
+	aap_state_t state{};
     aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
 	int state_ashmem_fd{0};
 
@@ -48,8 +49,8 @@ public:
 
 void releaseStateBuffer(AAPClientContext *ctx)
 {
-	if (ctx->state.raw_data)
-		munmap((void*) ctx->state.raw_data, (size_t) ctx->state.data_size);
+	if (ctx->state.data)
+		munmap((void*) ctx->state.data, (size_t) ctx->state.data_size);
 	if (ctx->state_ashmem_fd)
 		close(ctx->state_ashmem_fd);
 }
@@ -64,12 +65,12 @@ AAPClientContext::~AAPClientContext() {
 
 void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
 {
-	if (ctx->state.raw_data && ctx->state.data_size >= bufferSize)
+	if (ctx->state.data && ctx->state.data_size >= bufferSize)
 		return;
 	releaseStateBuffer(ctx);
 	ctx->state_ashmem_fd = ASharedMemory_create(ctx->unique_id, bufferSize);
 	ctx->state.data_size = bufferSize;
-	ctx->state.raw_data = mmap(nullptr, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->state_ashmem_fd, 0);
+	ctx->state.data = mmap(nullptr, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->state_ashmem_fd, 0);
 }
 
 void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer* buffer)
@@ -169,7 +170,22 @@ void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
     ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 
-void aap_client_as_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState* result)
+int32_t aap_client_as_plugin_get_state_size(AndroidAudioPlugin* plugin) {
+    auto ctx = (AAPClientContext *) plugin->plugin_specific;
+    if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+        return 0;
+
+    int32_t size;
+    auto status = ctx->proxy->getStateSize(ctx->instance_id, &size);
+    if (!status.isOk()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "getStateSize() failed: %s", /*status.getDescription().c_str()*/"(due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        return 0;
+    }
+    return size;
+}
+
+void aap_client_as_plugin_get_state(AndroidAudioPlugin* plugin, aap_state_t* result)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
     if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
@@ -193,10 +209,10 @@ void aap_client_as_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
         ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
     }
     result->data_size = ctx->state.data_size;
-    result->raw_data = ctx->state.raw_data;
+    result->data = ctx->state.data;
 }
 
-void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input)
+void aap_client_as_plugin_set_state(AndroidAudioPlugin* plugin, aap_state_t *input)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
@@ -204,7 +220,7 @@ void aap_client_as_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPlug
 
 	// we have to ensure that the pointer is shared memory, so use state buffer inside ctx.
 	ensureStateBuffer(ctx, input->data_size);
-	memcpy((void*) ctx->state.raw_data, input->raw_data, (size_t) input->data_size);
+	memcpy((void*) ctx->state.data, input->data, (size_t) input->data_size);
 	::ndk::ScopedFileDescriptor fd;
 	fd.set(ctx->state_ashmem_fd);
 	auto status = ctx->proxy->setState(ctx->instance_id, fd, input->data_size);
@@ -232,6 +248,9 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();
+    ctx->state_ext.get_state_size = aap_client_as_plugin_get_state_size;
+    ctx->state_ext.get_state = aap_client_as_plugin_get_state;
+    ctx->state_ext.set_state = aap_client_as_plugin_set_state;
     ctx->binder = (AIBinder*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
@@ -295,8 +314,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_activate,
 		aap_client_as_plugin_process,
 		aap_client_as_plugin_deactivate,
-		aap_client_as_plugin_get_state,
-		aap_client_as_plugin_set_state,
 		aap_client_as_plugin_get_extension
 		};
 }

@@ -239,7 +239,7 @@ public:
                     "invalid shared memory fd was passed");
         auto dfd = dup(fdRemote);
         auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
-        memcpy(dst, state.raw_data, state.data_size);
+        memcpy(dst, state.data, state.data_size);
         munmap(dst, state.data_size);
         return ndk::ScopedAStatus::ok();
     }

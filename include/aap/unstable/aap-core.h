@@ -21,16 +21,6 @@ typedef struct AndroidAudioPluginBuffer {
 	size_t num_frames;
 } AndroidAudioPluginBuffer;
 
-/* A minimum state support is provided in AAP framework itself.
- * LV2 has State extension, but it is provided to rather guide plugin developers
- * how to implement it. AAP is rather a bridge framework and needs simple solution.
- * Anyone can develop something similar session implementation helpers.
- */
-typedef struct AndroidAudioPluginState {
-	size_t data_size;
-	const void *raw_data;
-} AndroidAudioPluginState;
-
 /**
  * An entry for plugin extension instance (memory data)
  */
@@ -81,14 +71,6 @@ typedef void (*aap_process_func_t) (
 	AndroidAudioPluginBuffer* audioBuffer,
 	long timeoutInNanoseconds);
 
-typedef void (*aap_get_state_func_t) (
-	struct AndroidAudioPlugin *plugin,
-	AndroidAudioPluginState *result);
-
-typedef void (*aap_set_state_func_t) (
-	struct AndroidAudioPlugin *plugin,
-	AndroidAudioPluginState *input);
-
 typedef void* (*aap_get_extension_func_t) (
 		struct AndroidAudioPlugin *plugin,
 		const char *uri);
@@ -99,8 +81,6 @@ typedef struct AndroidAudioPlugin {
 	aap_control_func_t activate;
 	aap_process_func_t process;
 	aap_control_func_t deactivate;
-	aap_get_state_func_t get_state;
-	aap_set_state_func_t set_state;
 	aap_get_extension_func_t get_extension;
 } AndroidAudioPlugin;
 

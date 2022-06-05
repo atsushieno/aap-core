@@ -4,6 +4,7 @@
 #include <math.h>
 #include <aap/unstable/logging.h>
 #include <aap/unstable/presets.h>
+#include <aap/unstable/state.h>
 
 extern "C" {
 
@@ -235,13 +236,23 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {
     context->active = false;
 }
 
-void sample_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *state) {
+int32_t sample_plugin_get_state_size(AndroidAudioPlugin* plugin) {
+    // FIXME: implement
+    return 0;
+}
+
+void sample_plugin_get_state(AndroidAudioPlugin* plugin, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input) {
+void sample_plugin_set_state(AndroidAudioPlugin* plugin, aap_state_t* input) {
     // FIXME: implement
 }
+
+aap_state_extension_t state_extension{sample_plugin_get_state_size,
+                                          sample_plugin_get_state,
+                                          sample_plugin_set_state,
+};
 
 // Preset support
 uint8_t preset_data[][3] {{10}, {20}, {30}};
@@ -287,6 +298,8 @@ aap_presets_extension_t presets_extension{&presets_context,
                                 sample_plugin_set_preset_index};
 
 void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
+    if (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0)
+        return &state_extension;
     if (strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0)
         return &presets_extension;
     return nullptr;
@@ -327,8 +340,6 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_activate,
             sample_plugin_process,
             sample_plugin_deactivate,
-            sample_plugin_get_state,
-            sample_plugin_set_state,
             sample_plugin_get_extension
     };
 }

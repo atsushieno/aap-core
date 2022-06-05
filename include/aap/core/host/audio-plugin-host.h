@@ -18,6 +18,7 @@
 #include "aap/port-properties.h"
 #include "aap/unstable/logging.h"
 #include "aap/unstable/presets.h"
+#include "aap/unstable/state.h"
 #include "plugin-information.h"
 #include "extension-service.h"
 
@@ -99,7 +100,7 @@ class PluginInstance
 	AndroidAudioPluginFactory *plugin_factory;
 	AAPXSSharedMemoryStore *aapxs_shared_memory_store;
 	PluginInstantiationState instantiation_state;
-	AndroidAudioPluginState plugin_state{0, nullptr};
+	aap_state_t plugin_state{nullptr, 0};
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
 	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames);
@@ -173,37 +174,49 @@ public:
 
 	size_t getStateSize()
 	{
-		AndroidAudioPluginState result{0, nullptr};
-		plugin->get_state(plugin, &result);
+		aap_state_extension_t* stateExt =
+				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
+		if (!stateExt)
+			return 0;
+		aap_state_t result;
+		stateExt->get_state(plugin, &result);
 		return result.data_size;
 	}
 
-	const AndroidAudioPluginState& getState()
+	const aap_state_t& getState()
 	{
-		AndroidAudioPluginState result{0, nullptr};
-		plugin->get_state(plugin, &result);
+		aap_state_extension_t* stateExt =
+				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
+		if (!stateExt)
+			return plugin_state;
+		aap_state_t result;
+		stateExt->get_state(plugin, &result);
 		if (plugin_state.data_size < result.data_size) {
-			if (plugin_state.raw_data != nullptr)
-				free((void*) plugin_state.raw_data);
-			plugin_state.raw_data = calloc(result.data_size, 1);
+			if (plugin_state.data != nullptr)
+				free((void *) plugin_state.data);
+			plugin_state.data = calloc(result.data_size, 1);
 		}
 		plugin_state.data_size = result.data_size;
-		plugin->get_state(plugin, &plugin_state);
-
+		stateExt->get_state(plugin, &plugin_state);
 		return plugin_state;
 	}
 	
 	void setState(const void* data, size_t sizeInBytes)
 	{
-		AndroidAudioPluginState state;
-		state.data_size = sizeInBytes;
-		state.raw_data = data;
-		plugin->set_state(plugin, &state);
+		if (plugin_state.data == nullptr || plugin_state.data_size < sizeInBytes) {
+			if (plugin_state.data)
+				free(plugin_state.data);
+			plugin_state.data = calloc(1, sizeInBytes);
+		}
+		memcpy(plugin_state.data, data, sizeInBytes);
+		aap_state_extension_t* stateExt =
+				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
+		stateExt->set_state(plugin, &plugin_state);
 	}
 	
 	uint32_t getTailTimeInMilliseconds()
 	{
-		// TODO: FUTURE (v0.6) - most likely just a matter of plugin property
+		// TODO: FUTURE (v0.7) - most likely just a matter of plugin property
 		return 0;
 	}
 };

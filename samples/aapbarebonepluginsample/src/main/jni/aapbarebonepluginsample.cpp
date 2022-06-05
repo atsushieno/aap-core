@@ -1,5 +1,6 @@
 
 #include <aap/android-audio-plugin.h>
+#include <aap/unstable/state.h>
 #include <cstring>
 
 extern "C" {
@@ -58,11 +59,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-void sample_plugin_get_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *state) {
+void sample_plugin_get_state(AndroidAudioPlugin *plugin, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPlugin *plugin, AndroidAudioPluginState *input) {
+void sample_plugin_set_state(AndroidAudioPlugin *plugin, aap_state_t* input) {
     // FIXME: implement
 }
 
@@ -81,8 +82,6 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_activate,
             sample_plugin_process,
             sample_plugin_deactivate,
-            sample_plugin_get_state,
-            sample_plugin_set_state,
             sample_plugin_get_extension
     };
 }
