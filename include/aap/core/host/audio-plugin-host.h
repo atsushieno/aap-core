@@ -24,6 +24,18 @@
 
 namespace aap {
 
+/**
+ * An entry for plugin extension instance (memory data)
+ */
+typedef struct AndroidAudioPluginExtension {
+	/** The plugin extension URI */
+	const char *uri;
+	/** The size of shared memory data, if needed */
+	int32_t transmit_size;
+	/** The optional shared memory pointer, if it wants */
+	void *data;
+} AndroidAudioPluginExtension;
+
 //-------------------------------------------------------
 
 class PluginInstance;
@@ -172,36 +184,36 @@ public:
 	virtual void setCurrentPresetIndex(int index) = 0;
 	virtual std::string getCurrentPresetName(int index) = 0;
 
-	size_t getStateSize()
+	virtual size_t getStateSize()
 	{
 		aap_state_extension_t* stateExt =
 				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
 		if (!stateExt)
 			return 0;
 		aap_state_t result;
-		stateExt->get_state(plugin, &result);
+		stateExt->get_state(AndroidAudioPluginExtensionTarget{plugin, this}, &result);
 		return result.data_size;
 	}
 
-	const aap_state_t& getState()
+	virtual const aap_state_t& getState()
 	{
 		aap_state_extension_t* stateExt =
 				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
 		if (!stateExt)
 			return plugin_state;
 		aap_state_t result;
-		stateExt->get_state(plugin, &result);
+		stateExt->get_state(AndroidAudioPluginExtensionTarget{plugin, this}, &result);
 		if (plugin_state.data_size < result.data_size) {
 			if (plugin_state.data != nullptr)
 				free((void *) plugin_state.data);
 			plugin_state.data = calloc(result.data_size, 1);
 		}
 		plugin_state.data_size = result.data_size;
-		stateExt->get_state(plugin, &plugin_state);
+		stateExt->get_state(AndroidAudioPluginExtensionTarget{plugin, this}, &plugin_state);
 		return plugin_state;
 	}
-	
-	void setState(const void* data, size_t sizeInBytes)
+
+	virtual void setState(const void* data, size_t sizeInBytes)
 	{
 		if (plugin_state.data == nullptr || plugin_state.data_size < sizeInBytes) {
 			if (plugin_state.data)
@@ -211,7 +223,7 @@ public:
 		memcpy(plugin_state.data, data, sizeInBytes);
 		aap_state_extension_t* stateExt =
 				(aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
-		stateExt->set_state(plugin, &plugin_state);
+		stateExt->set_state(AndroidAudioPluginExtensionTarget{plugin, this}, &plugin_state);
 	}
 	
 	uint32_t getTailTimeInMilliseconds()
@@ -327,13 +339,17 @@ class RemotePluginInstance : public PluginInstance {
 	AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
 
-	inline static void* internalGetExtensionProxy(AndroidAudioPluginHost *host, const char* uri) {
-		auto thisObj = (RemotePluginInstance*) host->context;
-		return const_cast<void*>(thisObj->getExtensionProxy(uri));
+	template<typename T> T withStateExtension(T defaultValue, std::function<T(aap_state_extension_t*)> func) {
+		auto proxyContext = getExtensionProxy(AAP_STATE_EXTENSION_URI);
+		auto stateExt = (aap_state_extension_t*) proxyContext.extension;
+		if (stateExt == nullptr)
+			return defaultValue;
+		return func(stateExt);
 	}
 
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
-		auto presetsExt = (aap_presets_extension_t*) getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
+		auto aapxsHostContext = getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
+		auto presetsExt = (aap_presets_extension_t*) aapxsHostContext.extension;
 		if (presetsExt == nullptr)
 			return defaultValue;
 		aap_presets_context_t context;
@@ -390,13 +406,12 @@ public:
 	}
 
 	// For host developers, it is the only entry point to get extension.
-	// Therefore the return value is the (strongly typed) extension proxy value.
-	// When we AAP developers implement the internals, we need another wrapper around this function.
-	void* getExtensionProxy(const char* uri) {
+	// The return value is AAPXSProxyContext which contains the (strongly typed) extension proxy value.
+	AAPXSProxyContext getExtensionProxy(const char* uri) {
 		auto aapxsWrapper = getAAPXSWrapper(uri);
 		if (!aapxsWrapper) {
 			aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
-			return nullptr;
+			return AAPXSProxyContext{nullptr, nullptr};
 		}
 		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
 		assert(aapxsClientInstance);
@@ -420,6 +435,28 @@ public:
 	}
 
 	// FIXME: we should probably move them to dedicated class for standard extensions.
+
+	/*
+	size_t getStateSize() override {
+		return withStateExtension<size_t>(0, [&](aap_state_extension_t* ext) {
+			return PluginInstance::getStateSize();
+		});
+	}
+
+	aap_state_t dummy_state{nullptr, 0};
+	const aap_state_t& getState() override {
+		return withStateExtension<const aap_state_t&>(dummy_state, [&](aap_state_extension_t* ext) {
+			return PluginInstance::getState();
+		});
+	}
+
+	void setState(const void* data, size_t sizeInBytes) override {
+		withStateExtension<int>(0, [&](aap_state_extension_t* ext) {
+			PluginInstance::setState(data, sizeInBytes);
+			return 0;
+		});
+	}
+	*/
 
 	int32_t getPresetCount() override
 	{

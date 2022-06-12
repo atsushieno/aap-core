@@ -69,13 +69,13 @@ void proxy_bar (example_test_extension_t* test, char *msg) {
     // no need to retrieve
 }
 
-void* test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSClientInstance *extension) {
+AAPXSProxyContext test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSClientInstance *extension) {
     // This `proxy.context` is managed and used by this extension service developer like this, not by anyone else.
     // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
     //proxy.context = extension;
     proxy.foo = proxy_foo;
     proxy.bar = proxy_bar;
-    return &proxy;
+    return AAPXSProxyContext {extension, &proxy };
 }
 
 AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,

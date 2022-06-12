@@ -15,9 +15,9 @@ typedef struct {
     int32_t data_size;
 } aap_state_t;
 
-typedef int32_t (*state_extension_get_state_size_t) (AndroidAudioPlugin* plugin);
-typedef void (*state_extension_get_state_t) (AndroidAudioPlugin* plugin, aap_state_t* destination);
-typedef void (*state_extension_set_state_t) (AndroidAudioPlugin* plugin, aap_state_t* source);
+typedef int32_t (*state_extension_get_state_size_t) (AndroidAudioPluginExtensionTarget target);
+typedef void (*state_extension_get_state_t) (AndroidAudioPluginExtensionTarget target, aap_state_t* destination);
+typedef void (*state_extension_set_state_t) (AndroidAudioPluginExtensionTarget target, aap_state_t* source);
 
 typedef struct aap_state_extension_t {
     state_extension_get_state_size_t get_state_size;

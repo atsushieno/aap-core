@@ -236,16 +236,16 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {
     context->active = false;
 }
 
-int32_t sample_plugin_get_state_size(AndroidAudioPlugin* plugin) {
+int32_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
     // FIXME: implement
     return 0;
 }
 
-void sample_plugin_get_state(AndroidAudioPlugin* plugin, aap_state_t* state) {
+void sample_plugin_get_state(AndroidAudioPluginExtensionTarget target, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPlugin* plugin, aap_state_t* input) {
+void sample_plugin_set_state(AndroidAudioPluginExtensionTarget target, aap_state_t* input) {
     // FIXME: implement
 }
 

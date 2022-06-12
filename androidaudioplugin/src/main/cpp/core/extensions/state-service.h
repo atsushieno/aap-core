@@ -27,11 +27,11 @@ namespace aap {
 
             aap_state_extension_t proxy{};
 
-            static int32_t internalGetStateSize(AndroidAudioPlugin *plugin);
+            static int32_t internalGetStateSize(AndroidAudioPluginExtensionTarget target);
 
-            static void internalGetState(AndroidAudioPlugin *plugin, aap_state_t *state);
+            static void internalGetState(AndroidAudioPluginExtensionTarget target, aap_state_t *state);
 
-            static void internalSetState(AndroidAudioPlugin *plugin, aap_state_t *state);
+            static void internalSetState(AndroidAudioPluginExtensionTarget target, aap_state_t *state);
 
             StatePluginClientExtension *owner;
             AAPXSClientInstance* aapxsInstance;
@@ -102,7 +102,7 @@ namespace aap {
         template<typename T>
         void withStateExtension(aap::LocalPluginInstance *instance, T defaultValue,
                                  std::function<void(aap_state_extension_t *,
-                                                    AndroidAudioPlugin *)> func);
+                                                    AndroidAudioPluginExtensionTarget)> func);
 
     public:
         StatePluginServiceExtension()

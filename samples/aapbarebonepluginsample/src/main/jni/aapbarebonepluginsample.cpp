@@ -59,15 +59,25 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-void sample_plugin_get_state(AndroidAudioPlugin *plugin, aap_state_t* state) {
+int32_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
+    return 0;
+}
+
+void sample_plugin_get_state(AndroidAudioPluginExtensionTarget target, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPlugin *plugin, aap_state_t* input) {
+void sample_plugin_set_state(AndroidAudioPluginExtensionTarget target, aap_state_t* input) {
     // FIXME: implement
 }
 
-void* sample_plugin_get_extension(AndroidAudioPlugin *plugin, const char* uri) {
+aap_state_extension_t state_extension{sample_plugin_get_state_size,
+                                      sample_plugin_get_state,
+                                      sample_plugin_set_state};
+
+void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
+    if (strcmp(uri, AAP_STATE_EXTENSION_URI))
+        return &state_extension;
     return nullptr;
 }
 

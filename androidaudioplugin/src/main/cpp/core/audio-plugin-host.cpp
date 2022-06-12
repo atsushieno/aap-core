@@ -170,6 +170,7 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 	}
 }
 
+std::unique_ptr<StateExtensionFeature> aapxs_state{nullptr};
 std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
 std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
 
@@ -178,6 +179,10 @@ PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 {
 	aapxs_registry = std::make_unique<AAPXSRegistry>();
 
+	// state
+	if (aapxs_state == nullptr)
+		aapxs_state = std::make_unique<StateExtensionFeature>();
+	aapxs_registry->add(aapxs_state->asPublicApi());
 	// presets
 	if (aapxs_presets == nullptr)
 		aapxs_presets = std::make_unique<PresetsExtensionFeature>();

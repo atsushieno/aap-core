@@ -66,12 +66,12 @@ class PluginExtensionFeatureImpl {
     std::unique_ptr<const char> uri;
     std::unique_ptr<AAPXSFeature> pub;
 
-    static void* internalAsProxy(AAPXSFeature *feature, AAPXSClientInstance* extension) {
+    static AAPXSProxyContext internalAsProxy(AAPXSFeature *feature, AAPXSClientInstance* extension) {
         auto thisObj = (PluginExtensionFeatureImpl*) feature->context;
         assert(thisObj);
         auto impl = thisObj->getClient();
         assert(impl);
-        return impl->asProxy(extension);
+        return AAPXSProxyContext {extension, impl->asProxy(extension) };
     }
 
     static void internalOnInvoked(AAPXSFeature* feature, void *instance, AAPXSServiceInstance* extension, int32_t opcode) {

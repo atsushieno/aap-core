@@ -43,7 +43,7 @@ typedef void (*aapxs_client_extension_message_t) (
 
 typedef struct AAPXSClientInstance {
     /** Custom context that AAP framework may assign.
-     * In libandroidaudioplugin it is RemotePluginInstance
+     * In libandroidaudioplugin it is RemotePluginInstance. It may be different on other implementations.
      */
     void *context;
 
@@ -67,6 +67,17 @@ typedef struct AAPXSClientInstance {
 
 // ---------------------------------------------------
 
+typedef AndroidAudioPlugin* (*aapxs_host_context_get_plugin_t) (void* frameworkContext);
+
+typedef struct AAPXSProxyContext {
+    /** It is assigned by the extension hosting implementation.
+     *  In libandroidaudioplugin, AAPXSClientInstance holds RemoteClientInstance as its context.
+     *  Along with the instance ID, it is used to retrieve AndroidAudioPlugin. */
+    AAPXSClientInstance *framework_context;
+    /** The actual extension proxy of the same type as non-AAPXS extension. */
+    void *extension;
+} AAPXSProxyContext;
+
 typedef void (*aapxs_feature_on_invoked_t) (
         struct AAPXSFeature* feature,
         /** opaque pointer to the plugin service, provided by AAP framework. */
@@ -74,7 +85,7 @@ typedef void (*aapxs_feature_on_invoked_t) (
         AAPXSServiceInstance* extension,
         int32_t opcode);
 
-typedef void* (*aapxs_feature_as_proxy_t) (
+typedef AAPXSProxyContext (*aapxs_feature_as_proxy_t) (
         struct AAPXSFeature* feature,
         AAPXSClientInstance* extension);
 
