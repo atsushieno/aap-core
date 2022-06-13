@@ -24,14 +24,13 @@ typedef struct aap_presets_context_t {
     AndroidAudioPlugin* plugin;
 } aap_presets_context_t;
 
-typedef int32_t (*presets_extension_get_preset_count_func_t) (aap_presets_context_t* context);
-typedef int32_t (*presets_extension_get_preset_data_size_func_t) (aap_presets_context_t* context, int32_t index);
-typedef void (*presets_extension_get_preset_func_t) (aap_presets_context_t* context, int32_t index, bool skipBinary, aap_preset_t *preset);
-typedef int32_t (*presets_extension_get_preset_index_func_t) (aap_presets_context_t* context);
-typedef void (*presets_extension_set_preset_index_func_t) (aap_presets_context_t* context, int32_t index);
+typedef int32_t (*presets_extension_get_preset_count_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef int32_t (*presets_extension_get_preset_data_size_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
+typedef void (*presets_extension_get_preset_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index, bool skipBinary, aap_preset_t *preset);
+typedef int32_t (*presets_extension_get_preset_index_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef void (*presets_extension_set_preset_index_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
 
 typedef struct aap_presets_extension_t {
-    void *context;
     presets_extension_get_preset_count_func_t get_preset_count;
     presets_extension_get_preset_data_size_func_t get_preset_data_size;
     presets_extension_get_preset_func_t get_preset;

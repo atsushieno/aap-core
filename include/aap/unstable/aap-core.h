@@ -112,6 +112,10 @@ typedef struct AndroidAudioPluginExtensionTarget {
      * Those Standard Extensions that need plugin information take a pointer to this struct as their first
      */
     AndroidAudioPlugin *plugin;
+    /**
+     * AAPXS-specific data. It will be Instance in presetsx extension and state extension.
+     * It is only for remote clients. For local plugin processing, it is set to nullptr.
+     */
     void *aapxs_context;
 } AndroidAudioPluginExtensionTarget;
 

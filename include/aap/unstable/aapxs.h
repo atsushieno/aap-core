@@ -73,8 +73,9 @@ typedef struct AAPXSProxyContext {
     /** It is assigned by the extension hosting implementation.
      *  In libandroidaudioplugin, AAPXSClientInstance holds RemoteClientInstance as its context.
      *  Along with the instance ID, it is used to retrieve AndroidAudioPlugin. */
-    AAPXSClientInstance *framework_context;
+    AAPXSClientInstance *host_context;
     /** The actual extension proxy of the same type as non-AAPXS extension. */
+    void *aapxs_context;
     void *extension;
 } AAPXSProxyContext;
 

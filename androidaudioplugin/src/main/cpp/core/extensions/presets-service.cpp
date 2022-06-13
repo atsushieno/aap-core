@@ -6,16 +6,13 @@ namespace aap {
 template<typename T>
 void PresetsPluginServiceExtension::withPresetExtension(aap::LocalPluginInstance *instance,
                                                         T defaultValue,
-                                                        std::function<void(aap_presets_extension_t *, aap_presets_context_t *)> func) {
+                                                        std::function<void(aap_presets_extension_t *, AndroidAudioPluginExtensionTarget)> func) {
     // This instance->getExtension() should return an extension from the loaded plugin.
     auto plugin = instance->getPlugin();
     assert(plugin);
     auto presetsExtension = (aap_presets_extension_t *) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
     assert(presetsExtension);
-    aap_presets_context_t context;
-    context.plugin = plugin;
-    context.context = presetsExtension->context;
-    func(presetsExtension, &context);
+    func(presetsExtension, AndroidAudioPluginExtensionTarget{plugin, nullptr});
 }
 
 void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
@@ -25,22 +22,21 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
     switch (opcode) {
     case OPCODE_GET_PRESET_COUNT:
         withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
-                                                      aap_presets_context_t *context) {
-            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_count(context)
+                                                      AndroidAudioPluginExtensionTarget target) {
+            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_count(target)
                                                          : 0;
         });
         break;
     case OPCODE_GET_PRESET_DATA_SIZE:
         withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
-                                                      aap_presets_context_t *context) {
+                                                      AndroidAudioPluginExtensionTarget target) {
             int32_t index = *((int32_t *) extensionInstance->data);
-            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_data_size(
-                    context, index) : 0;
+            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_data_size(target, index) : 0;
         });
         break;
     case OPCODE_GET_PRESET_DATA:
         withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
-                                                      aap_presets_context_t *context) {
+                                                      AndroidAudioPluginExtensionTarget target) {
             // request (offset-range: content)
             // - 0..3 : int32_t index
             // - 4..7 : bool skip binary or not
@@ -50,7 +46,7 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
             // set its destination location to the shared buffer buffer, offset to the actual data (int size + nameLength).
             if (!skipBinary)
                 preset.data = (uint8_t *) extensionInstance->data + sizeof(int32_t) + AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH;
-            ext->get_preset(context, index, skipBinary, &preset);
+            ext->get_preset(target, index, skipBinary, &preset);
             // response (offset-range: content)
             // - 0..3 : data size
             // - 4..259 : name (fixed length char buffer)
@@ -63,16 +59,15 @@ void PresetsPluginServiceExtension::onInvoked(void* contextInstance, AAPXSServic
         break;
     case OPCODE_GET_PRESET_INDEX:
         withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
-                                                      aap_presets_context_t *context) {
-            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_index(context)
-                                                         : 0;
+                                                      AndroidAudioPluginExtensionTarget target) {
+            *((int32_t *) extensionInstance->data) = ext ? ext->get_preset_index(target) : 0;
         });
         break;
     case OPCODE_SET_PRESET_INDEX:
         withPresetExtension<int32_t>(instance, 0, [=](aap_presets_extension_t *ext,
-                                                      aap_presets_context_t *context) {
+                                                      AndroidAudioPluginExtensionTarget target) {
             int32_t index = *((int32_t *) extensionInstance->data);
-            ext->set_preset_index(context, index);
+            ext->set_preset_index(target, index);
         });
         break;
     default:

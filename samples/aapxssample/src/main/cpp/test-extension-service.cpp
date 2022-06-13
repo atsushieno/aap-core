@@ -75,7 +75,7 @@ AAPXSProxyContext test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSCl
     //proxy.context = extension;
     proxy.foo = proxy_foo;
     proxy.bar = proxy_bar;
-    return AAPXSProxyContext {extension, &proxy };
+    return AAPXSProxyContext {extension, nullptr, &proxy };
 }
 
 AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,

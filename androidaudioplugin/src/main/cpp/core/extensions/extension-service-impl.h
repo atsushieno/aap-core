@@ -27,7 +27,7 @@ public:
         clientInstance->extension_message(clientInstance, opcode);
     }
 
-    virtual void* asProxy(AAPXSClientInstance *clientInstance) = 0;
+    virtual AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) = 0;
 };
 
 /**
@@ -71,7 +71,7 @@ class PluginExtensionFeatureImpl {
         assert(thisObj);
         auto impl = thisObj->getClient();
         assert(impl);
-        return AAPXSProxyContext {extension, impl->asProxy(extension) };
+        return impl->asProxy(extension);
     }
 
     static void internalOnInvoked(AAPXSFeature* feature, void *instance, AAPXSServiceInstance* extension, int32_t opcode) {

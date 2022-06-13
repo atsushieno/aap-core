@@ -31,6 +31,7 @@ typedef struct {
     bool active;
     bool note_on_state[3];
     int32_t midi_protocol;
+    int32_t preset_index{-1};
 } AyumiHandle;
 
 
@@ -263,15 +264,15 @@ aap_preset_t presets[3] {
     {2, "preset3", preset_data[2], sizeof(preset_data[2])}
 };
 
-int32_t sample_plugin_get_preset_count(aap_presets_context_t* /*context*/) {
+int32_t sample_plugin_get_preset_count(AndroidAudioPluginExtensionTarget /*target*/) {
     return sizeof(presets) / sizeof(aap_preset_t);
 }
 
-int32_t sample_plugin_get_preset_data_size(aap_presets_context_t* /*context*/, int32_t index) {
+int32_t sample_plugin_get_preset_data_size(AndroidAudioPluginExtensionTarget /*target*/, int32_t index) {
     return presets[index].data_size; // just for testing, no actual content.
 }
 
-void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int32_t index, bool skipContent, aap_preset_t* preset) {
     preset->index = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
     preset->data_size = presets[index].data_size;
@@ -279,23 +280,21 @@ void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index,
         memcpy(preset->data, presets[index].data, preset->data_size);
 }
 
-int32_t sample_plugin_get_preset_index(aap_presets_context_t* context) {
-    return (int32_t) (int64_t) context->context;
+int32_t sample_plugin_get_preset_index(AndroidAudioPluginExtensionTarget target) {
+    auto handle = (AyumiHandle*) target.plugin->plugin_specific;
+    return handle->preset_index;
 }
 
-void sample_plugin_set_preset_index(aap_presets_context_t* context, int32_t index) {
-    context->context = (void*) index;
+void sample_plugin_set_preset_index(AndroidAudioPluginExtensionTarget target, int32_t index) {
+    auto handle = (AyumiHandle*) target.plugin->plugin_specific;
+    handle->preset_index = index;
 }
 
-// Its context will be used to store index.
-aap_presets_context_t presets_context{nullptr, nullptr};
-
-aap_presets_extension_t presets_extension{&presets_context,
-                                sample_plugin_get_preset_count,
-                                sample_plugin_get_preset_data_size,
-                                sample_plugin_get_preset,
-                                sample_plugin_get_preset_index,
-                                sample_plugin_set_preset_index};
+aap_presets_extension_t presets_extension{sample_plugin_get_preset_count,
+                                          sample_plugin_get_preset_data_size,
+                                          sample_plugin_get_preset,
+                                          sample_plugin_get_preset_index,
+                                          sample_plugin_set_preset_index};
 
 void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
     if (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0)

@@ -60,11 +60,11 @@ namespace aap {
                 clientInvokePluginExtension(OPCODE_SET_STATE);
             }
 
-            void *asProxy() {
+            AAPXSProxyContext asProxy() {
                 proxy.get_state_size = internalGetStateSize;
                 proxy.get_state = internalGetState;
                 proxy.set_state = internalSetState;
-                return &proxy;
+                return AAPXSProxyContext{aapxsInstance, this, &proxy};
             }
         };
     private:
@@ -83,7 +83,7 @@ namespace aap {
                 : PluginClientExtensionImplBase() {
         }
 
-        void *asProxy(AAPXSClientInstance *clientInstance) override {
+        AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) override {
             size_t last = 0;
             for (; last < STATE_MAX_INSTANCE_COUNT; last++) {
                 if (instances[last] == nullptr)

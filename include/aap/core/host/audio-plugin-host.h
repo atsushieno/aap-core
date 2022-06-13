@@ -244,14 +244,11 @@ class LocalPluginInstance : public PluginInstance {
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
-	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
+	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) {
 		auto presetsExt = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
 		if (presetsExt == nullptr)
 			return defaultValue;
-		aap_presets_context_t context;
-		context.context = presetsExt->context; // it should be PresetsPluginClientExtension::Instance
-		context.plugin = plugin;
-		return func(presetsExt, &context);
+		return func(presetsExt, AndroidAudioPluginExtensionTarget{plugin, nullptr});
 	}
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
@@ -296,31 +293,31 @@ public:
 
 	int32_t getPresetCount() override
 	{
-		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			return ext->get_preset_count(ctx);
+		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			return ext->get_preset_count(target);
 		});
 	}
 
 	int32_t getCurrentPresetIndex() override
 	{
-		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			return ext->get_preset_index(ctx);
+		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			return ext->get_preset_index(target);
 		});
 	}
 
 	void setCurrentPresetIndex(int index) override
 	{
-		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			ext->set_preset_index(ctx, index);
+		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			ext->set_preset_index(target, index);
 			return 0;
 		});
 	}
 
 	std::string getCurrentPresetName(int index) override
 	{
-		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
 			aap_preset_t result;
-			ext->get_preset(ctx, index, true, &result);
+			ext->get_preset(target, index, true, &result);
 			return std::string{result.name};
 		});
 	}
@@ -347,15 +344,15 @@ class RemotePluginInstance : public PluginInstance {
 		return func(stateExt);
 	}
 
-	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, aap_presets_context_t*)> func) {
+	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) {
 		auto aapxsHostContext = getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
 		auto presetsExt = (aap_presets_extension_t*) aapxsHostContext.extension;
 		if (presetsExt == nullptr)
 			return defaultValue;
-		aap_presets_context_t context;
-		context.context = presetsExt->context; // it should be PresetsPluginClientExtension::Instance
-		context.plugin = plugin;
-		return func(presetsExt, &context);
+		AndroidAudioPluginExtensionTarget target;
+		target.aapxs_context = aapxsHostContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
+		target.plugin = plugin;
+		return func(presetsExt, target);
 	}
 
     void sendExtensionMessage(const char *uri, int32_t opcode) {
@@ -411,7 +408,7 @@ public:
 		auto aapxsWrapper = getAAPXSWrapper(uri);
 		if (!aapxsWrapper) {
 			aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
-			return AAPXSProxyContext{nullptr, nullptr};
+			return AAPXSProxyContext{nullptr, nullptr, nullptr};
 		}
 		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
 		assert(aapxsClientInstance);
@@ -460,31 +457,31 @@ public:
 
 	int32_t getPresetCount() override
 	{
-		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			return ext->get_preset_count(ctx);
+		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			return ext->get_preset_count(target);
 		});
 	}
 
 	int32_t getCurrentPresetIndex() override
 	{
-		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			return ext->get_preset_index(ctx);
+		return withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			return ext->get_preset_index(target);
 		});
 	}
 
 	void setCurrentPresetIndex(int index) override
 	{
-		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
-			ext->set_preset_index(ctx, index);
+		withPresetsExtension<int32_t>(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			ext->set_preset_index(target, index);
 			return 0;
 		});
 	}
 
 	std::string getCurrentPresetName(int index) override
 	{
-		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, aap_presets_context_t *ctx) {
+		return withPresetsExtension<std::string>("", [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
 			aap_preset_t result;
-			ext->get_preset(ctx, index, true, &result);
+			ext->get_preset(target, index, true, &result);
 			return std::string{result.name};
 		});
 	}

@@ -38,9 +38,9 @@ class Midi2PluginClientExtension : public PluginClientExtensionImplBase {
         }
         */
 
-        void *asProxy() {
+        AAPXSProxyContext asProxy() {
             proxy.context = this;
-            return &proxy;
+            return AAPXSProxyContext{aapxsInstance, nullptr, &proxy};
         }
     };
 
@@ -58,7 +58,7 @@ public:
             : PluginClientExtensionImplBase() {
     }
 
-    void *asProxy(AAPXSClientInstance *clientInstance) override {
+    AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) override {
         size_t last = 0;
         for (; last < MIDI2_AAPXS_MAX_INSTANCE_COUNT; last++) {
             if (instances[last] == nullptr)
