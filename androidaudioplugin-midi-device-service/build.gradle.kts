@@ -46,12 +46,25 @@ android {
     }
     externalNativeBuild {
         cmake {
-            version = "3.18.1"
+            version = "3.22.1"
             path ("src/main/cpp/CMakeLists.txt")
         }
     }
+
+    buildFeatures {
+        prefab = true
+        prefabPublishing = true
+    }
+    prefab {
+        create("androidaudioplugin-midi-device-service") {
+            name = "aapmidideviceservice"
+        }
+    }
+
+    // https://github.com/google/prefab/issues/127
     packagingOptions {
-        jniLibs.excludes.add ("**libc++_shared.so")
+        jniLibs.excludes.add("**/libc++_shared.so")
+        jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }
 }
 
@@ -70,11 +83,5 @@ dependencies {
 // This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
 gradle.projectsEvaluated {
     tasks["buildCMakeDebug"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeDebugNativeLibs"])
-    // It is super awkward in AGP or Android Studio, but gradlew --tasks does not list
-    // `buildCMakeRelease` while `buildCMakeDebug` is there!
-    // Fortunately(?) we can rely on another awkwardness that we reference *debug* version of
-    //  -;androidaudioplugin in CMakeLists.txt for target_link_directories() so we can skip
-    //  release dependency here (technically we need debug build *always* happen before
-    //  release builds, but it always seems to happen.
-//    tasks["buildCMakeRelease"].dependsOn(rootProject.project("androidaudioplugin").mergeReleaseNativeLibs)
+    tasks["buildCMakeRelWithDebInfo"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeReleaseNativeLibs"])
 }

@@ -23,16 +23,13 @@ android {
             }
         }
     }
-    // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
-    /*
     buildFeatures {
-        prefab true
+        prefab = true
     }
-    */
     externalNativeBuild {
         cmake {
             version = "3.18.1"
-            path ("CMakeLists.txt")
+            path ("src/main/cpp/CMakeLists.txt")
         }
     }
     buildTypes {

@@ -52,7 +52,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            version = "3.18.1"
+            version = "3.22.1"
             path ("src/main/cpp/CMakeLists.txt")
         }
     }
@@ -61,27 +61,20 @@ android {
         disable.add("EnsureInitializerMetadata")
     }
 
+    buildFeatures {
+        prefabPublishing = true
+    }
+    prefab {
+        create("androidaudioplugin") {
+            name = "androidaudioplugin"
+            headers = "../include"
+        }
+    }
+
     // https://github.com/google/prefab/issues/127
     packagingOptions {
         jniLibs.excludes.add("**/libc++_shared.so")
     }
-
-    // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
-    /*
-    buildFeatures {
-        prefabPublishing true
-    }
-    prefab {
-        androidaudioplugin {
-            name 'androidaudioplugin'
-            // WARNING: It's not working https://github.com/atsushieno/android-audio-plugin-framework/issues/57
-            // There is no way to specify more than one include directory.
-            // headers '../native/androidaudioplugin/android/include'
-            // FIXME: remove this dummy headers dir hack once https://issuetracker.google.com/issues/172105145 is supported.
-            headers '../dummy-prefab-headers/include'
-        }
-    }
-    */
 
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
     // It's been long time until I got this working, and I have no idea why it started working.

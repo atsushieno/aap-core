@@ -46,6 +46,11 @@ target_link_libraries (androidaudioplugin
   ${androidaudioplugin_LIBS}
   )
 
+target_compile_definitions (androidaudioplugin
+		PUBLIC
+		ANDROID=${ANDROID}
+		)
+
 # You can set it via build.gradle.
 if (${AAP_ENABLE_ASAN})
 target_compile_options (androidaudioplugin

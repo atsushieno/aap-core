@@ -18,25 +18,6 @@ set (aapmidideviceservice_SOURCES
 	"zix/ring.cpp"
 	)
 
-set (aapmidideviceservice_INCLUDES
-		.
-		${TOPDIR}/external/cmidi2
-		${TOPDIR}/include
-		)
-
-set (aapmidideviceservice_LIBDIRS
-		# FIXME: do not depend on `debug` here.
-		"${TOPDIR}/androidaudioplugin/build/intermediates/merged_native_libs/debug/out/lib/${CMAKE_ANDROID_ARCH_ABI}"
-		)
-
-set (aapmidideviceservice_LIBS
-		androidaudioplugin
-		android
-		log
-		binder_ndk
-		oboe
-		)
-
 add_library ( # Specifies the name of the library.
 		aapmidideviceservice
 
@@ -45,6 +26,14 @@ add_library ( # Specifies the name of the library.
 
 		# Provides a relative path to your source file(s).
 		${aapmidideviceservice_SOURCES}
+		)
+
+find_package(androidaudioplugin REQUIRED CONFIG)
+
+set (aapmidideviceservice_INCLUDES
+		.
+		${TOPDIR}/external/cmidi2
+		${TOPDIR}/include
 		)
 
 target_include_directories (aapmidideviceservice
@@ -62,13 +51,18 @@ target_compile_options (aapmidideviceservice
 		-DHAVE_MLOCK=1
         )
 
-target_link_directories(aapmidideviceservice
+target_link_libraries (aapmidideviceservice
 		PRIVATE
-		${aapmidideviceservice_LIBDIRS}
+		android
+		log
+		binder_ndk
+		oboe
+		androidaudioplugin::androidaudioplugin
 		)
 
-target_link_libraries (aapmidideviceservice
-		${aapmidideviceservice_LIBS}
+target_compile_definitions (aapmidideviceservice
+		PUBLIC
+		ANDROID=${ANDROID}
 		)
 
 

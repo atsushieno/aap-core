@@ -20,12 +20,9 @@ android {
         applicationId = "org.androidaudioplugin.aaphostsample"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    // FIXME: PREFAB: enable these sections once we migrate to prefab-based solution.
-    /*
     buildFeatures {
-        prefab true
+        prefab = true
     }
-    */
     buildTypes {
         debug {
             packagingOptions {

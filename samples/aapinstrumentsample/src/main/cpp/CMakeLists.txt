@@ -17,14 +17,14 @@ add_library( # Specifies the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        "src/main/cpp/aapinstrumentsample.cpp"
-        "src/main/cpp/ayumi.c"
+        "aapinstrumentsample.cpp"
+        "ayumi.c"
         )
 
 target_include_directories(aapinstrumentsample
         PRIVATE
-        ../../include
-        ../../external/cmidi2
+        ../../../../../include
+        ../../../../../external/cmidi2
         )
 
 target_compile_options(aapinstrumentsample

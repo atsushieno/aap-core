@@ -17,12 +17,12 @@ add_library( # Specifies the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        "src/main/jni/aapbarebonepluginsample.cpp"
+        aapbarebonepluginsample.cpp
         )
 
 target_include_directories(aapbarebonepluginsample
         PRIVATE
-        ../../include
+        ../../../../../include
         )
 
 target_compile_options(aapbarebonepluginsample

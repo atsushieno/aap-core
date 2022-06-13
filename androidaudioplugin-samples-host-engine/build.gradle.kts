@@ -26,18 +26,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-
-    // FIXME: enable these sections once we migrated to prefab.
-    /*
-    buildFeatures {
-        prefab true
-    }
-    */
-
-    // https://github.com/google/prefab/issues/127
-    packagingOptions {
-        jniLibs.excludes.add("**/libc++_shared.so")
-    }
 }
 
 apply { from ("../publish-pom.gradle") }
