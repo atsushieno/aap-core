@@ -1,8 +1,6 @@
 
 #include "state-service.h"
 
-std::map<AndroidAudioPlugin*,aap::StatePluginClientExtension::Instance*> state_xs_instance_map{};
-
 namespace aap {
 
     template<typename T>
@@ -49,29 +47,4 @@ namespace aap {
                 break;
         }
     }
-
-    StatePluginClientExtension::Instance::Instance(StatePluginClientExtension *owner,
-                                                   AAPXSClientInstance *clientInstance)
-            : owner(owner)
-    {
-        aapxsInstance = clientInstance;
-    }
-
-    int32_t
-    StatePluginClientExtension::Instance::internalGetStateSize(AndroidAudioPluginExtensionTarget target) {
-        return state_xs_instance_map[target.plugin] ? state_xs_instance_map[target.plugin]->getStateSize() : 0;
-    }
-
-    void StatePluginClientExtension::Instance::internalGetState(AndroidAudioPluginExtensionTarget target,
-                                                                aap_state_t *state) {
-        if (state_xs_instance_map[target.plugin])
-            state_xs_instance_map[target.plugin]->getState(state);
-    }
-
-    void StatePluginClientExtension::Instance::internalSetState(AndroidAudioPluginExtensionTarget target,
-                                                                aap_state_t *state) {
-        if (state_xs_instance_map[target.plugin])
-            state_xs_instance_map[target.plugin]->setState(state);
-    }
-
 } // namespace aap

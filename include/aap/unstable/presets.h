@@ -19,11 +19,6 @@ typedef struct aap_preset_t {
     int32_t data_size;
 } aap_preset_t;
 
-typedef struct aap_presets_context_t {
-    void *context;
-    AndroidAudioPlugin* plugin;
-} aap_presets_context_t;
-
 typedef int32_t (*presets_extension_get_preset_count_func_t) (AndroidAudioPluginExtensionTarget target);
 typedef int32_t (*presets_extension_get_preset_data_size_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
 typedef void (*presets_extension_get_preset_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index, bool skipBinary, aap_preset_t *preset);

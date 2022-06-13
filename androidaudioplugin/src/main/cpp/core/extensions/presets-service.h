@@ -142,7 +142,7 @@ public:
     }
 };
 
-    class PresetsPluginServiceExtension : public PluginServiceExtensionImplBase {
+class PresetsPluginServiceExtension : public PluginServiceExtensionImplBase {
 
     template<typename T>
     void withPresetExtension(aap::LocalPluginInstance *instance, T defaultValue,
