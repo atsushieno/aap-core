@@ -49,6 +49,7 @@ dependencies {
     implementation ("androidx.preference:preference-ktx:1.2.0")
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-midi-device-service"))
+    runtimeOnly ("dev.atsushieno:libcxx-provider:24.0.8215888")
     implementation ("com.google.android.material:material:1.6.0")
     implementation ("androidx.compose.ui:ui:$compose_version")
     implementation ("androidx.compose.material:material:$compose_version")

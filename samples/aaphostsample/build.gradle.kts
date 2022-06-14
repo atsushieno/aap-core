@@ -26,7 +26,7 @@ android {
     buildTypes {
         debug {
             packagingOptions {
-                doNotStrip ("**/*.so")
+                jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
         release {
@@ -62,6 +62,8 @@ dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-samples-host-engine"))
     implementation (project(":androidaudioplugin-ui-compose"))
+
+    runtimeOnly ("dev.atsushieno:libcxx-provider:24.0.8215888")
 
     implementation ("androidx.core:core-ktx:1.7.0")
     implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
