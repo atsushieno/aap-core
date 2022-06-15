@@ -26,7 +26,7 @@ class StatePluginClientExtension : public PluginClientExtensionImplBase {
 
         aap_state_extension_t proxy{};
 
-        static int32_t internalGetStateSize(AndroidAudioPluginExtensionTarget target) {
+        static size_t internalGetStateSize(AndroidAudioPluginExtensionTarget target) {
             return ((Instance *) target.aapxs_context)->getStateSize();
         }
 
@@ -52,19 +52,19 @@ class StatePluginClientExtension : public PluginClientExtensionImplBase {
             owner->clientInvokePluginExtension(aapxsInstance, opcode);
         }
 
-        int32_t getStateSize() {
+        size_t getStateSize() {
             clientInvokePluginExtension(OPCODE_GET_STATE_SIZE);
-            return *((int32_t *) aapxsInstance->data);
+            return (size_t) *((int32_t *) aapxsInstance->data);
         }
 
         void getState(aap_state_t* result) {
             clientInvokePluginExtension(OPCODE_GET_STATE);
-            result->data_size = *((int32_t *) aapxsInstance->data);
+            result->data_size = (size_t) *((int32_t *) aapxsInstance->data);
             memcpy(result->data, (int32_t*) aapxsInstance->data + 1, result->data_size);
         }
 
         void setState(aap_state_t* source) {
-            *((int32_t *) aapxsInstance->data) = source->data_size;
+            *((int32_t *) aapxsInstance->data) = (int32_t) source->data_size;
             memcpy((int32_t*) aapxsInstance->data + 1, source->data, source->data_size);
             clientInvokePluginExtension(OPCODE_SET_STATE);
         }

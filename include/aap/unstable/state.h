@@ -12,10 +12,10 @@ extern "C" {
 
 typedef struct {
     void* data;
-    int32_t data_size;
+    size_t data_size;
 } aap_state_t;
 
-typedef int32_t (*state_extension_get_state_size_t) (AndroidAudioPluginExtensionTarget target);
+typedef size_t (*state_extension_get_state_size_t) (AndroidAudioPluginExtensionTarget target);
 typedef void (*state_extension_get_state_t) (AndroidAudioPluginExtensionTarget target, aap_state_t* destination);
 typedef void (*state_extension_set_state_t) (AndroidAudioPluginExtensionTarget target, aap_state_t* source);
 

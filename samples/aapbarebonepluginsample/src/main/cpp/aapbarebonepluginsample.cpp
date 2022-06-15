@@ -59,7 +59,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-int32_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
+size_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
     return 0;
 }
 
