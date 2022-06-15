@@ -336,21 +336,24 @@ class RemotePluginInstance : public PluginInstance {
 	AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
 
-	template<typename T> T withStateExtension(T defaultValue, std::function<T(aap_state_extension_t*)> func) {
+	template<typename T> T withStateExtension(T defaultValue, std::function<T(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) {
 		auto proxyContext = getExtensionProxy(AAP_STATE_EXTENSION_URI);
 		auto stateExt = (aap_state_extension_t*) proxyContext.extension;
 		if (stateExt == nullptr)
 			return defaultValue;
-		return func(stateExt);
+		AndroidAudioPluginExtensionTarget target;
+		target.aapxs_context = proxyContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
+		target.plugin = plugin;
+		return func(stateExt, target);
 	}
 
 	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) {
-		auto aapxsHostContext = getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
-		auto presetsExt = (aap_presets_extension_t*) aapxsHostContext.extension;
+		auto proxyContext = getExtensionProxy(AAP_PRESETS_EXTENSION_URI);
+		auto presetsExt = (aap_presets_extension_t*) proxyContext.extension;
 		if (presetsExt == nullptr)
 			return defaultValue;
 		AndroidAudioPluginExtensionTarget target;
-		target.aapxs_context = aapxsHostContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
+		target.aapxs_context = proxyContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
 		target.plugin = plugin;
 		return func(presetsExt, target);
 	}
@@ -433,27 +436,41 @@ public:
 
 	// FIXME: we should probably move them to dedicated class for standard extensions.
 
-	/*
+	aap_state_t dummy_state{nullptr, 0}, state{nullptr, 0};
+
+#define DEFAULT_STATE_BUFFER_SIZE 65536
+
+	void ensureStateBuffer(size_t sizeInBytes) {
+		if (state.data == nullptr) {
+			state.data = calloc(1, DEFAULT_STATE_BUFFER_SIZE);
+			state.data_size = DEFAULT_STATE_BUFFER_SIZE;
+		} else if (state.data_size >= sizeInBytes) {
+			free(state.data);
+			state.data = calloc(1, state.data_size * 2);
+			state.data_size *= 2;
+		}
+	}
+
 	size_t getStateSize() override {
-		return withStateExtension<size_t>(0, [&](aap_state_extension_t* ext) {
-			return PluginInstance::getStateSize();
+		return withStateExtension<size_t>(0, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			return ext->get_state_size(target);
 		});
 	}
 
-	aap_state_t dummy_state{nullptr, 0};
 	const aap_state_t& getState() override {
-		return withStateExtension<const aap_state_t&>(dummy_state, [&](aap_state_extension_t* ext) {
-			return PluginInstance::getState();
+		return withStateExtension<const aap_state_t&>(dummy_state, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			ext->get_state(target, &state);
+			return state;
 		});
 	}
 
 	void setState(const void* data, size_t sizeInBytes) override {
-		withStateExtension<int>(0, [&](aap_state_extension_t* ext) {
-			PluginInstance::setState(data, sizeInBytes);
+		withStateExtension<int>(0, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+			ensureStateBuffer(sizeInBytes);
+			ext->set_state(target, &state);
 			return 0;
 		});
 	}
-	*/
 
 	int32_t getPresetCount() override
 	{
