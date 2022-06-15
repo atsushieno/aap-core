@@ -249,7 +249,9 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 }
 
 LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate), service(service) {
+	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+	service(service),
+	standards(this) {
 }
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -338,6 +340,26 @@ void PluginInstance::completeInstantiation()
 
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 }
+
+template<typename T, typename X> T RemotePluginInstanceStandardExtensions::withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
+	auto proxyContext = owner->getExtensionProxy(extensionUri);
+	auto ext = (X*) proxyContext.extension;
+	if (ext == nullptr)
+		return defaultValue;
+	AndroidAudioPluginExtensionTarget target;
+	target.aapxs_context = proxyContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
+	target.plugin = owner->plugin;
+	return func(ext, target);
+}
+
+template<typename T, typename X> T LocalPluginInstanceStandardExtensions::withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
+	auto plugin = owner->plugin;
+	auto ext = (X*) plugin->get_extension(plugin, extensionUri);
+	if (ext == nullptr)
+		return defaultValue;
+	return func(ext, AndroidAudioPluginExtensionTarget{plugin, nullptr});
+}
+
 
 PluginListSnapshot PluginListSnapshot::queryServices() {
     PluginListSnapshot ret{};
