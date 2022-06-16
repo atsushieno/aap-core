@@ -6,10 +6,10 @@
 #include <vector>
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/logging.h"
-#include "shared-memory-extension.h"
+#include "shared-memory-store.h"
 #include "audio-plugin-host-internals.h"
-#include "extensions/presets-service.h"
-#include "extensions/midi2-service.h"
+#include "../extensions/presets-service.h"
+#include "../extensions/midi2-service.h"
 
 
 namespace aap

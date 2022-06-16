@@ -2,7 +2,7 @@
 #ifndef AAP_EXTENSIONS_SERVICE_IMPL_H
 #define AAP_EXTENSIONS_SERVICE_IMPL_H
 
-#include "aap/core/host/extension-service.h"
+#include "aap/core/aapxs/extension-service.h"
 
 
 namespace aap {

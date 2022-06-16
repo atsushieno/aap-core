@@ -8,10 +8,10 @@
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
-#include "aap/core/host/extension-service.h"
+#include "aap/core/aapxs/extension-service.h"
 #include "aap/unstable/logging.h"
 #include "AudioPluginInterfaceImpl.h"
-#include "../core/audio-plugin-host-internals.h"
+#include "../core/hosting/audio-plugin-host-internals.h"
 #include "audio-plugin-host-android-internal.h"
 #include "AudioPluginNative_jni.h"
 

@@ -4,7 +4,7 @@
  *
  */
 
-#include "aap/core/host/extension-service.h"
+#include "aap/core/aapxs/extension-service.h"
 #include "aap/examples/aapxs/test-extension.h"
 
 // Extension Service ----------------------------------

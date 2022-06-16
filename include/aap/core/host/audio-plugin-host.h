@@ -19,8 +19,8 @@
 #include "aap/unstable/logging.h"
 #include "aap/unstable/presets.h"
 #include "aap/unstable/state.h"
-#include "plugin-information.h"
-#include "extension-service.h"
+#include "../plugin-information.h"
+#include "../aapxs/extension-service.h"
 
 namespace aap {
 
