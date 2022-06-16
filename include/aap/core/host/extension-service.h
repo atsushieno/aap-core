@@ -102,8 +102,6 @@ protected:
 public:
     virtual ~AAPXSClientInstanceManager() {}
 
-    aapxs_client_extension_message_t static_send_extension_message_func{nullptr};
-
     virtual AndroidAudioPlugin* getPlugin() = 0;
     virtual AAPXSFeature* getExtensionFeature(const char* uri) = 0;
     virtual const PluginInformation* getPluginInformation() = 0;

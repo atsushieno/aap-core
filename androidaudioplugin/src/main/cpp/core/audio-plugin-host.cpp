@@ -358,7 +358,7 @@ AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *featur
 		dataSize = feature->shared_memory_size;
 	aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->getInstanceId(), nullptr, dataSize}));
 	auto ret = aapxsClientInstances.get(uri);
-	ret->extension_message = static_send_extension_message_func;
+	ret->extension_message = staticSendExtensionMessage;
 	return ret;
 }
 

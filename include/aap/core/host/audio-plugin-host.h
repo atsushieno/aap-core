@@ -294,7 +294,6 @@ protected:
 public:
     RemoteAAPXSManager(RemotePluginInstance* owner)
             : owner(owner) {
-        static_send_extension_message_func = staticSendExtensionMessage;
     }
 
     const PluginInformation* getPluginInformation() override { return owner->getPluginInformation(); }
