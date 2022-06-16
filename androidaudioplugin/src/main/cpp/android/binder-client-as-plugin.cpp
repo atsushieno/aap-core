@@ -204,10 +204,10 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         auto instance = (aap::RemotePluginInstance *) host->context;
 
         // It is a nasty workaround to not expose Binder back to RemotePluginInstance; we set a callable function for them here.
-        instance->send_extension_message_impl = [ctx](aap::AAPXSClientInstanceWrapper *aapxs,
+        instance->send_extension_message_impl = [ctx](const char* uri,
                                                       int32_t instanceId, int32_t opcode) {
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-                auto stat = ctx->proxy->extension(instanceId, aapxs->asPublicApi()->uri, opcode);
+                auto stat = ctx->proxy->extension(instanceId, uri, opcode);
                 if (!stat.isOk()) {
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "extension() failed: %s", /*stat.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
                     ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;

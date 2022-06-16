@@ -16,13 +16,11 @@ AAPXSClientInstanceWrapper::AAPXSClientInstanceWrapper(RemotePluginInstance* plu
 //----
 
 AAPXSProxyContext AAPXSClientInstanceManager::getExtensionProxy(const char* uri) {
-    auto aapxsWrapper = getAAPXSWrapper(uri);
-    if (!aapxsWrapper) {
+    auto aapxsClientInstance = getInstanceFor(uri);
+    if (!aapxsClientInstance) {
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
         return AAPXSProxyContext{nullptr, nullptr, nullptr};
     }
-    auto aapxsClientInstance = aapxsWrapper->asPublicApi();
-    assert(aapxsClientInstance);
     auto feature = getExtensionFeature(uri);
     assert(strlen(feature->uri) > 0);
     assert(feature->as_proxy != nullptr);
@@ -35,7 +33,7 @@ void AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSCli
         auto info = pluginInfo->getExtension(i);
         auto feature = getExtensionFeature(info.uri.c_str());
         assert (feature != nullptr || info.required);
-        func(setupAAPXSInstanceWrapper(feature)->asPublicApi());
+        func(setupAAPXSInstance(feature));
     }
 }
 

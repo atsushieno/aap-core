@@ -416,7 +416,7 @@ public:
     RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
     /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-    std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
+    std::function<void(const char*, int32_t, int32_t)> send_extension_message_impl;
 
 	inline PluginClient* getClient() { return client; }
 
@@ -445,7 +445,7 @@ public:
     AAPXSFeature* getExtensionFeature(const char* uri) override {
         return owner->getClient()->getExtensionFeature(uri);
     }
-    AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize) override;
+    AAPXSClientInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) override;
 };
 
 } // namespace

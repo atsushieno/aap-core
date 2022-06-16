@@ -362,7 +362,7 @@ template<typename T, typename X> T LocalPluginInstanceStandardExtensions::withEx
 
 //----
 
-AAPXSClientInstanceWrapper* RemoteAAPXSManager::setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize) {
+AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
 	const char* uri = feature->uri;
 	assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
 	if (dataSize < 0)
@@ -370,7 +370,7 @@ AAPXSClientInstanceWrapper* RemoteAAPXSManager::setupAAPXSInstanceWrapper(AAPXSF
 	aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(owner, uri, nullptr, dataSize));
 	auto ret = aapxsClientInstanceWrappers.get(uri);
 	ret->asPublicApi()->extension_message = static_send_extension_message_func;
-	return ret;
+	return ret->asPublicApi();
 }
 
 void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
@@ -389,13 +389,13 @@ RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanc
 
 
 void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode) {
-	auto aapxsInstance = (AAPXSClientInstanceWrapper *) aapxs_manager->getAAPXSWrapper(uri);
+	auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
 	// Here we have to get a native plugin instance and send extension message.
 	// It is kind af annoying because we used to implement Binder-specific part only within the
 	// plugin API (binder-client-as-plugin.cpp)...
 	// So far, instead of rewriting a lot of code to do so, we let AAPClientContext
 	// assign its implementation details that handle Binder messaging as a std::function.
-	send_extension_message_impl(aapxsInstance, getInstanceId(), opcode);
+	send_extension_message_impl(aapxsInstance->uri, getInstanceId(), opcode);
 }
 
 //----

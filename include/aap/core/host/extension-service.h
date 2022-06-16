@@ -171,12 +171,12 @@ public:
     virtual AndroidAudioPlugin* getPlugin() = 0;
     virtual AAPXSFeature* getExtensionFeature(const char* uri) = 0;
     virtual const PluginInformation* getPluginInformation() = 0;
-    virtual AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) = 0;
+    virtual AAPXSClientInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) = 0;
 
-    AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
+    AAPXSClientInstance* getInstanceFor(const char* uri) {
         auto ret = aapxsClientInstanceWrappers.get(uri);
         assert(ret);
-        return ret;
+        return ret->asPublicApi();
     }
 
     // For host developers, it is the only entry point to get extension.
