@@ -24,18 +24,6 @@
 
 namespace aap {
 
-/**
- * An entry for plugin extension instance (memory data)
- */
-typedef struct AndroidAudioPluginExtension {
-	/** The plugin extension URI */
-	const char *uri;
-	/** The size of shared memory data, if needed */
-	int32_t transmit_size;
-	/** The optional shared memory pointer, if it wants */
-	void *data;
-} AndroidAudioPluginExtension;
-
 //-------------------------------------------------------
 
 class PluginInstance;
@@ -80,7 +68,6 @@ public:
 
 class PluginClient : public PluginHost {
 	PluginClientConnectionList* connections;
-	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> common_host_extensions{};
 
 	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
@@ -327,7 +314,6 @@ class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	AAPXSInstanceMap<AAPXSServiceInstanceWrapper> aapxsServiceInstanceWrappers;
-	std::vector<std::unique_ptr<AndroidAudioPluginExtension>> host_extensions{};
 	LocalPluginInstanceStandardExtensions standards;
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
@@ -340,8 +326,7 @@ class LocalPluginInstance : public PluginInstance {
 	}
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
-		auto thisObj = (LocalPluginInstance*) host->context;
-		return const_cast<void*>(thisObj->getExtensionData(uri));
+		return nullptr;
 	}
 
 protected:
@@ -351,14 +336,6 @@ public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
-
-	const void* getExtensionData(const char* uri)
-	{
-		for (auto& ext : host_extensions)
-			if (strcmp(ext->uri, uri) == 0)
-				return ext->data;
-		return nullptr;
-	}
 
 	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
 	// which is way simpler.
