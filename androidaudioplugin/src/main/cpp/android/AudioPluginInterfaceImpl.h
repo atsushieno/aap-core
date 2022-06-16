@@ -221,7 +221,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        *_aidl_return = svc->getInstance(in_instanceID)->getStateSize();
+        *_aidl_return = svc->getInstance(in_instanceID)->getStandardExtensions().getStateSize();
         return ndk::ScopedAStatus::ok();
     }
 
@@ -231,7 +231,7 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = svc->getInstance(in_instanceID);
-        auto state = instance->getState();
+        auto state = instance->getStandardExtensions().getState();
         auto fdRemote = in_sharedMemoryFD.get();
         if (fdRemote < 0)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
@@ -258,7 +258,7 @@ public:
                     "invalid shared memory fd was passed");
         auto dfd = dup(fdRemote);
         auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
-        instance->setState(src, in_size);
+        instance->getStandardExtensions().setState(src, in_size);
         munmap(src, in_size);
         return ndk::ScopedAStatus::ok();
     }

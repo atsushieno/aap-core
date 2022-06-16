@@ -87,94 +87,6 @@ public:
 
 class PluginBuffer;
 class AAPXSSharedMemoryStore;
-class StandardExtensions;
-
-class StandardExtensions {
-
-	// Since we cannot define template function as virtual, they are defined using macros instead...
-#define DEFINE_WITH_STATE_EXTENSION(TYPE) \
-virtual TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) = 0;
-
-	DEFINE_WITH_STATE_EXTENSION(size_t)
-	DEFINE_WITH_STATE_EXTENSION(const aap_state_t&)
-	virtual void withStateExtension(std::function<void(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) = 0;
-
-#define DEFINE_WITH_PRESETS_EXTENSION(TYPE) \
-virtual TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) = 0;
-
-	DEFINE_WITH_PRESETS_EXTENSION(int32_t)
-	DEFINE_WITH_PRESETS_EXTENSION(std::string)
-	virtual void withPresetsExtension(std::function<void(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) = 0;
-
-	aap_state_t dummy_state{nullptr, 0}, state{nullptr, 0};
-
-#define DEFAULT_STATE_BUFFER_SIZE 65536
-
-	void ensureStateBuffer(size_t sizeInBytes) {
-		if (state.data == nullptr) {
-			state.data = calloc(1, DEFAULT_STATE_BUFFER_SIZE);
-			state.data_size = DEFAULT_STATE_BUFFER_SIZE;
-		} else if (state.data_size >= sizeInBytes) {
-			free(state.data);
-			state.data = calloc(1, state.data_size * 2);
-			state.data_size *= 2;
-		}
-	}
-
-public:
-	size_t getStateSize() {
-		return withStateExtension/*<size_t>*/(0, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			return ext->get_state_size(target);
-		});
-	}
-
-	const aap_state_t& getState() {
-		return withStateExtension/*<const aap_state_t&>*/(dummy_state, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			ext->get_state(target, &state);
-			return state;
-		});
-	}
-
-	void setState(const void* data, size_t sizeInBytes) {
-		withStateExtension/*<int>*/(0, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			ensureStateBuffer(sizeInBytes);
-			memcpy(state.data, data, sizeInBytes);
-			ext->set_state(target, &state);
-			return 0;
-		});
-	}
-
-	int32_t getPresetCount()
-	{
-		return withPresetsExtension/*<int32_t>*/(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			return ext->get_preset_count(target);
-		});
-	}
-
-	int32_t getCurrentPresetIndex()
-	{
-		return withPresetsExtension/*<int32_t>*/(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			return ext->get_preset_index(target);
-		});
-	}
-
-	void setCurrentPresetIndex(int index)
-	{
-		withPresetsExtension/*<int32_t>*/(0, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			ext->set_preset_index(target, index);
-			return 0;
-		});
-	}
-
-	std::string getCurrentPresetName(int index)
-	{
-		return withPresetsExtension/*<std::string>*/("", [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			aap_preset_t result;
-			ext->get_preset(target, index, true, &result);
-			return std::string{result.name};
-		});
-	}
-};
 
 class PluginInstance
 {
@@ -256,16 +168,6 @@ public:
 
 	virtual StandardExtensions& getStandardExtensions() = 0;
 
-	// FIXME: we should remove them from this class, now that we have StandardExtensions.
-
-	size_t getStateSize() { return getStandardExtensions().getStateSize(); }
-	const aap_state_t& getState() { return getStandardExtensions().getState(); }
-	void setState(const void* data, size_t sizeInBytes) { return getStandardExtensions().setState(data, sizeInBytes); }
-	int32_t getPresetCount() { return getStandardExtensions().getPresetCount(); }
-	int32_t getCurrentPresetIndex() { return getStandardExtensions().getCurrentPresetIndex(); }
-	void setCurrentPresetIndex(int index) { getStandardExtensions().setCurrentPresetIndex(index); }
-	std::string getCurrentPresetName(int index) { return getStandardExtensions().getCurrentPresetName(index); }
-
 	uint32_t getTailTimeInMilliseconds()
 	{
 		// TODO: FUTURE (v0.7) - most likely just a matter of plugin property
@@ -273,39 +175,14 @@ public:
 	}
 };
 
-class LocalPluginInstanceStandardExtensions : public StandardExtensions {
+class LocalPluginInstanceStandardExtensionsImpl : public LocalPluginInstanceStandardExtensions {
 	LocalPluginInstance *owner;
 
-	template<typename T, typename X> T withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func);
-
-#define DEFINE_WITH_STATE_EXTENSION_LOCAL(TYPE) \
-	TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(defaultValue, AAP_STATE_EXTENSION_URI, func); }
-
-	DEFINE_WITH_STATE_EXTENSION_LOCAL(size_t)
-	DEFINE_WITH_STATE_EXTENSION_LOCAL(const aap_state_t&)
-	void withStateExtension(std::function<void(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override {
-		withExtension<int, aap_state_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			func(ext, target);
-			return 0;
-		});
-	}
-
-#define DEFINE_WITH_PRESETS_EXTENSION_LOCAL(TYPE) \
-	TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
-
-	DEFINE_WITH_PRESETS_EXTENSION_LOCAL(int32_t)
-	DEFINE_WITH_PRESETS_EXTENSION_LOCAL(std::string)
-	virtual void withPresetsExtension(std::function<void(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
-		withExtension<int, aap_presets_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			func(ext, target);
-			return 0;
-		});
-	}
-
 public:
-		LocalPluginInstanceStandardExtensions(LocalPluginInstance* owner)
+	LocalPluginInstanceStandardExtensionsImpl(LocalPluginInstance* owner)
 			: owner(owner) {
 	}
+	AndroidAudioPlugin* getPlugin() override;
 };
 
 /**
@@ -315,7 +192,7 @@ class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
-	LocalPluginInstanceStandardExtensions standards;
+	LocalPluginInstanceStandardExtensionsImpl standards;
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
 	//  They only differ at getExtension() or getExtensionService() so far.
@@ -366,45 +243,22 @@ public:
 	}
 };
 
-class RemotePluginInstanceStandardExtensions : public StandardExtensions {
+class RemotePluginInstanceStandardExtensionsImpl : public RemotePluginInstanceStandardExtensions {
 	RemotePluginInstance *owner;
 
-	template<typename T, typename X> T withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func);
-
-#define DEFINE_WITH_STATE_EXTENSION_REMOTE(TYPE) \
-    TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(defaultValue, AAP_STATE_EXTENSION_URI, func); }
-
-	DEFINE_WITH_STATE_EXTENSION_REMOTE(size_t)
-	DEFINE_WITH_STATE_EXTENSION_REMOTE(const aap_state_t&)
-	void withStateExtension(std::function<void(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override {
-		withExtension<int, aap_state_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			func(ext, target);
-			return 0;
-		});
-	}
-
-#define DEFINE_WITH_PRESETS_EXTENSION_REMOTE(TYPE) \
-    TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
-
-	DEFINE_WITH_PRESETS_EXTENSION_REMOTE(int32_t)
-	DEFINE_WITH_PRESETS_EXTENSION_REMOTE(std::string)
-	virtual void withPresetsExtension(std::function<void(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
-		withExtension<int, aap_presets_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-			func(ext, target);
-			return 0;
-		});
-	}
-
 public:
-	RemotePluginInstanceStandardExtensions(RemotePluginInstance* owner)
+	RemotePluginInstanceStandardExtensionsImpl(RemotePluginInstance* owner)
 			: owner(owner) {
 	}
+
+	AndroidAudioPlugin* getPlugin() override;
+	AAPXSClientInstanceManager* getAAPXSManager() override;
 };
 
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
 	AndroidAudioPluginHost plugin_host_facade{};
-    RemotePluginInstanceStandardExtensions standards;
+    RemotePluginInstanceStandardExtensionsImpl standards;
     std::unique_ptr<AAPXSClientInstanceManager> aapxs_manager;
 
     friend class RemoteAAPXSManager;
@@ -418,6 +272,8 @@ public:
 
     /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
     std::function<void(const char*, int32_t, int32_t)> send_extension_message_impl;
+
+	inline AndroidAudioPlugin* getPlugin() { return plugin; }
 
 	inline PluginClient* getClient() { return client; }
 
