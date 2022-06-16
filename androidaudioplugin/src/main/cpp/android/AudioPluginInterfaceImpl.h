@@ -68,7 +68,7 @@ public:
         if (feature == nullptr) {
             a_log_f(AAP_LOG_LEVEL_WARN, "AAP", "The host requested plugin extension \"%s\", but this plugin service does not support it.", in_uri.c_str());
         } else {
-            auto aapxsInstance = svc->getInstance(in_instanceID)->setupAAPXSInstanceWrapper(feature, in_size)->asPublicApi();
+            auto aapxsInstance = svc->getInstance(in_instanceID)->setupAAPXSInstance(feature, in_size);
             aapxsInstance->plugin_instance_id = in_instanceID;
             if (in_size > 0) {
                 auto shmExt = svc->getInstance(in_instanceID)->getAAPXSSharedMemoryStore();

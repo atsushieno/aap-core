@@ -4,17 +4,6 @@
 
 namespace aap {
 
-AAPXSClientInstanceWrapper::AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize)
-        : uri(strdup(extensionUri)), remote_plugin_instance(pluginInstance) {
-    client.context = pluginInstance;
-    client.plugin_instance_id = pluginInstance->getInstanceId();
-    client.uri = uri.get();
-    client.data = shmData;
-    client.data_size = shmDataSize;
-}
-
-//----
-
 AAPXSProxyContext AAPXSClientInstanceManager::getExtensionProxy(const char* uri) {
     auto aapxsClientInstance = getInstanceFor(uri);
     if (!aapxsClientInstance) {

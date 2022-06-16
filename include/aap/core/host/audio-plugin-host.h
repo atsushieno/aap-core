@@ -28,6 +28,7 @@ namespace aap {
 
 class PluginInstance;
 class LocalPluginInstance;
+class RemotePluginInstance;
 
 /* Common foundation for both Plugin service and Plugin client. */
 class PluginHost
@@ -313,7 +314,7 @@ public:
 class LocalPluginInstance : public PluginInstance {
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
-	AAPXSInstanceMap<AAPXSServiceInstanceWrapper> aapxsServiceInstanceWrappers;
+	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
 	LocalPluginInstanceStandardExtensions standards;
 
 	// FIXME: should we commonize these members with ClientPluginInstance?
@@ -339,17 +340,17 @@ public:
 
 	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
 	// which is way simpler.
-	AAPXSServiceInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) {
-		const char* uri = feature->uri;
-		assert (aapxsServiceInstanceWrappers.get(uri) == nullptr);
+	AAPXSServiceInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) {
+		const char* uri = aapxsServiceInstances.getInterned(feature->uri);
+		assert (aapxsServiceInstances.get(uri) == nullptr);
 		if (dataSize < 0)
 			dataSize = feature->shared_memory_size;
-		aapxsServiceInstanceWrappers.add(uri, std::make_unique<AAPXSServiceInstanceWrapper>(this, uri, nullptr, dataSize));
-		return aapxsServiceInstanceWrappers.get(uri);
+		aapxsServiceInstances.add(uri, std::make_unique<AAPXSServiceInstance>(AAPXSServiceInstance{this, uri, getInstanceId(), nullptr, dataSize}));
+		return aapxsServiceInstances.get(uri);
 	}
 
-	AAPXSServiceInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		auto ret = aapxsServiceInstanceWrappers.get(uri);
+	AAPXSServiceInstance* getInstanceFor(const char* uri) {
+		auto ret = aapxsServiceInstances.get(uri);
 		assert(ret);
 		return ret;
 	}
@@ -359,9 +360,9 @@ public:
 	// It is invoked by AudioPluginInterfaceImpl, and supposed to dispatch request to extension service
 	void controlExtension(const std::string &uri, int32_t opcode)
 	{
-		auto extensionWrapper = getAAPXSWrapper(uri.c_str());
+		auto aapxsInstance = getInstanceFor(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
-		feature->on_invoked(feature, this, extensionWrapper->asPublicApi(), opcode);
+		feature->on_invoked(feature, this, aapxsInstance, opcode);
 	}
 };
 

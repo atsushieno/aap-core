@@ -363,14 +363,14 @@ template<typename T, typename X> T LocalPluginInstanceStandardExtensions::withEx
 //----
 
 AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
-	const char* uri = feature->uri;
-	assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
+	const char* uri = aapxsClientInstances.getInterned(feature->uri);
+	assert (aapxsClientInstances.get(uri) == nullptr);
 	if (dataSize < 0)
 		dataSize = feature->shared_memory_size;
-	aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(owner, uri, nullptr, dataSize));
-	auto ret = aapxsClientInstanceWrappers.get(uri);
-	ret->asPublicApi()->extension_message = static_send_extension_message_func;
-	return ret->asPublicApi();
+	aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->getInstanceId(), nullptr, dataSize}));
+	auto ret = aapxsClientInstances.get(uri);
+	ret->extension_message = static_send_extension_message_func;
+	return ret;
 }
 
 void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {

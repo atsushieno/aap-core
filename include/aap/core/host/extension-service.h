@@ -13,10 +13,6 @@
 
 namespace aap {
 
-class PluginClient;
-class LocalPluginInstance;
-class RemotePluginInstance;
-
 template<typename T>
 class AAPXSInstanceMap {
     std::vector<std::unique_ptr<const char>> uris{};
@@ -68,40 +64,6 @@ public:
     }
 };
 
-// FIXME: should this be "AAPXSLocalInstanceWrapper" ?
-//  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
-class AAPXSServiceInstanceWrapper {
-    std::string uri;
-    LocalPluginInstance* local_plugin_instance;
-    AAPXSServiceInstance service;
-
-public:
-    AAPXSServiceInstanceWrapper(LocalPluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize)
-        : local_plugin_instance(pluginInstance) {
-        uri = extensionUri;
-        service.uri = uri.c_str();
-        service.data = shmData;
-        service.data_size = shmDataSize;
-    }
-
-    LocalPluginInstance* getPluginInstance() { return local_plugin_instance; }
-    AAPXSServiceInstance* asPublicApi() { return &service; }
-};
-
-// FIXME: should this be "AAPXSRemoteInstanceWrapper" ?
-//  It should be consistent in terms of "remote" vs. "local" instead of "client" vs. "service".
-class AAPXSClientInstanceWrapper {
-    std::unique_ptr<const char> uri;  // argument extensionUri is not persistent, returned by std::string.c_str(). We need another persistent-ish one.
-    RemotePluginInstance* remote_plugin_instance;
-    AAPXSClientInstance client{};
-
-public:
-    AAPXSClientInstanceWrapper(RemotePluginInstance* pluginInstance, const char* extensionUri, void* shmData, int32_t shmDataSize);
-
-    RemotePluginInstance* getPluginInstance() { return remote_plugin_instance; }
-    AAPXSClientInstance* asPublicApi() { return &client; }
-};
-
 class AAPXSRegistry {
     std::vector<std::unique_ptr<const char>> stringpool{};
     AAPXSInstanceMap<AAPXSFeature> extension_services{};
@@ -122,37 +84,11 @@ public:
     inline AAPXSFeature* getByUri(const char * uri) {
         return (AAPXSFeature*) extension_services.get(uri);
     }
-
-    /*
-    class StandardAAPXSRegistry {
-        aap_presets_context_t *preset_context{nullptr};
-    public:
-        int32_t getPresetCount(PluginClient *client, int32_t instanceId) {
-            auto instance = client->getInstance(instanceId);
-            auto extension = (aap_presets_extension_t *) instance->getExtension(AAP_PRESETS_EXTENSION_URI);
-            return extension->get_preset_count(preset_context);
-        }
-
-        int32_t getPresetDataSize(PluginClient *client, int32_t instanceId, int32_t index) {
-            auto instance = client->getInstance(instanceId);
-            auto extension = (aap_presets_extension_t *) instance->getExtension(AAP_PRESETS_EXTENSION_URI);
-            return extension->get_preset_data_size(preset_context, index);
-        }
-
-        void getPreset(PluginClient *client, int32_t instanceId, int32_t index, bool skipBinary, aap_preset_t *preset) {
-            auto instance = client->getInstance(instanceId);
-            auto extension = (aap_presets_extension_t*) instance->getExtension(AAP_PRESETS_EXTENSION_URI);
-            extension->get_preset(preset_context, index, skipBinary, preset);
-        }
-    };
-    */
 };
 
 /**
- * This class aims to isolate AAPXS client instance management job from RemotePluginInstance.
- *
- * RemotePluginInstance is a native hosting feature, and hence core of libandroidaudioplugin
- * hosting implementation.
+ * This class aims to isolate AAPXS client instance management job from native hosting
+ * implementation such as RemotePluginInstance.
  * For other implementations (e.g. we also have Kotlin hosting API), we still want to manage
  * AAPXS, and then we need something that is independent of the native hosting implementation.
  *
@@ -161,7 +97,7 @@ public:
  */
 class AAPXSClientInstanceManager {
 protected:
-    AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
+    AAPXSInstanceMap<AAPXSClientInstance> aapxsClientInstances{};
 
 public:
     virtual ~AAPXSClientInstanceManager() {}
@@ -174,18 +110,22 @@ public:
     virtual AAPXSClientInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) = 0;
 
     AAPXSClientInstance* getInstanceFor(const char* uri) {
-        auto ret = aapxsClientInstanceWrappers.get(uri);
+        auto ret = aapxsClientInstances.get(uri);
         assert(ret);
-        return ret->asPublicApi();
+        return ret;
     }
 
-    // For host developers, it is the only entry point to get extension.
-    // The return value is AAPXSProxyContext which contains the (strongly typed) extension proxy value.
+    /**
+     * For host developers, it is the only entry point to get extension.
+     * The return value is AAPXSProxyContext which contains the (strongly typed) extension proxy value.
+     */
     AAPXSProxyContext getExtensionProxy(const char* uri);
 
-    // It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
-    // for each supported extension, while leaving this function to determine what extensions to provide.
-    // It is called at completeInstantiation() step, for each plugin instance.
+    /**
+     * It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
+     * for each supported extension, while leaving this function to determine what extensions to provide.
+     * It is called at completeInstantiation() step, for each plugin instance.
+     */
     void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func);
 };
 
