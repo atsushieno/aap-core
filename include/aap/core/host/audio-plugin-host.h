@@ -402,89 +402,50 @@ public:
 
 class RemotePluginInstance : public PluginInstance {
 	PluginClient *client;
-	AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
 	AndroidAudioPluginHost plugin_host_facade{};
     RemotePluginInstanceStandardExtensions standards;
+    std::unique_ptr<AAPXSClientInstanceManager> aapxs_manager;
 
-    void sendExtensionMessage(const char *uri, int32_t opcode) {
-		auto aapxsInstance = (AAPXSClientInstanceWrapper *) getAAPXSWrapper(uri);
-		// Here we have to get a native plugin instance and send extension message.
-		// It is kind af annoying because we used to implement Binder-specific part only within the
-		// plugin API (binder-client-as-plugin.cpp)...
-		// So far, instead of rewriting a lot of code to do so, we let AAPClientContext
-		// assign its implementation details that handle Binder messaging as a std::function.
-		send_extension_message_impl(aapxsInstance, getInstanceId(), opcode);
-    }
-
-	static void staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
-		auto thisObj = (RemotePluginInstance*) clientInstance->context;
-		thisObj->sendExtensionMessage(clientInstance->uri, opcode);
-	}
-
+    friend class RemoteAAPXSManager;
 protected:
 	AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() override;
 
 public:
 	// The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
 	// (binder-client-as-plugin does so, and desktop implementation should do so too.)
-    RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-		: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
-		client(client),
-		standards(this) {
-	}
+    RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+    /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
+    std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
 
 	inline PluginClient* getClient() { return client; }
 
-	/** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-	std::function<void(AAPXSClientInstanceWrapper*, int32_t, int32_t)> send_extension_message_impl;
+    AAPXSClientInstanceManager* getAAPXSManager() { return aapxs_manager.get(); }
 
-	AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) {
-		const char* uri = feature->uri;
-		assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
-		if (dataSize < 0)
-			dataSize = feature->shared_memory_size;
-		aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(this, uri, nullptr, dataSize));
-		auto ret = aapxsClientInstanceWrappers.get(uri);
-		ret->asPublicApi()->extension_message = staticSendExtensionMessage;
-		return ret;
-	}
-
-	AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
-		auto ret = aapxsClientInstanceWrappers.get(uri);
-		assert(ret);
-		return ret;
-	}
-
-	// For host developers, it is the only entry point to get extension.
-	// The return value is AAPXSProxyContext which contains the (strongly typed) extension proxy value.
-	AAPXSProxyContext getExtensionProxy(const char* uri) {
-		auto aapxsWrapper = getAAPXSWrapper(uri);
-		if (!aapxsWrapper) {
-			aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
-			return AAPXSProxyContext{nullptr, nullptr, nullptr};
-		}
-		auto aapxsClientInstance = aapxsWrapper->asPublicApi();
-		assert(aapxsClientInstance);
-		auto feature = client->getExtensionFeature(uri);
-		assert(strlen(feature->uri) > 0);
-		assert(feature->as_proxy != nullptr);
-		return feature->as_proxy(feature, aapxsClientInstance);
-	}
-
-	// It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
-	// for each supported extension, while leaving this function to determine what extensions to provide.
-	// It is called at completeInstantiation() step, for each plugin instance.
-	void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
-		auto pluginInfo = getPluginInformation();
-		for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
-			auto info = pluginInfo->getExtension(i);
-			auto feature = getClient()->getExtensionFeature(info.uri.c_str());
-			assert (feature != nullptr || info.required);
-			func(setupAAPXSInstanceWrapper(feature)->asPublicApi());
-		}
-	}
+    void sendExtensionMessage(const char *uri, int32_t opcode);
 
 	StandardExtensions& getStandardExtensions() override { return standards; }
+};
+
+class RemoteAAPXSManager : public AAPXSClientInstanceManager {
+    RemotePluginInstance *owner;
+
+protected:
+
+    static void staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode);
+
+public:
+    RemoteAAPXSManager(RemotePluginInstance* owner)
+            : owner(owner) {
+        static_send_extension_message_func = staticSendExtensionMessage;
+    }
+
+    const PluginInformation* getPluginInformation() override { return owner->getPluginInformation(); }
+    AndroidAudioPlugin* getPlugin() override { return owner->plugin; }
+    AAPXSFeature* getExtensionFeature(const char* uri) override {
+        return owner->getClient()->getExtensionFeature(uri);
+    }
+    AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize) override;
 };
 
 } // namespace

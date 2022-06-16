@@ -13,4 +13,30 @@ AAPXSClientInstanceWrapper::AAPXSClientInstanceWrapper(RemotePluginInstance* plu
     client.data_size = shmDataSize;
 }
 
+//----
+
+AAPXSProxyContext AAPXSClientInstanceManager::getExtensionProxy(const char* uri) {
+    auto aapxsWrapper = getAAPXSWrapper(uri);
+    if (!aapxsWrapper) {
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "AAPXS Proxy for extension '%s' is not found", uri);
+        return AAPXSProxyContext{nullptr, nullptr, nullptr};
+    }
+    auto aapxsClientInstance = aapxsWrapper->asPublicApi();
+    assert(aapxsClientInstance);
+    auto feature = getExtensionFeature(uri);
+    assert(strlen(feature->uri) > 0);
+    assert(feature->as_proxy != nullptr);
+    return feature->as_proxy(feature, aapxsClientInstance);
+}
+
+void AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
+    auto pluginInfo = getPluginInformation();
+    for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
+        auto info = pluginInfo->getExtension(i);
+        auto feature = getExtensionFeature(info.uri.c_str());
+        assert (feature != nullptr || info.required);
+        func(setupAAPXSInstanceWrapper(feature)->asPublicApi());
+    }
+}
+
 } // namespace aap

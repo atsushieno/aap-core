@@ -217,7 +217,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
         // Set up shared memory FDs for plugin extension services.
         // We make use of plugin metadata that should list up required and optional extensions.
-        instance->setupAAPXSInstances([&](AAPXSClientInstance *ext) {
+        instance->getAAPXSManager()->setupAAPXSInstances([&](AAPXSClientInstance *ext) {
             // create asharedmem and add as an extension FD, keep it until it is destroyed.
             auto fd = ASharedMemory_create(ext->uri, ext->data_size);
             ctx->shared_memory_extension->getExtensionFDs()->emplace_back(fd);

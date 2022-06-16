@@ -9,6 +9,7 @@
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
 #include "aap/unstable/logging.h"
+#include "plugin-information.h"
 
 namespace aap {
 
@@ -145,6 +146,47 @@ public:
         }
     };
     */
+};
+
+/**
+ * This class aims to isolate AAPXS client instance management job from RemotePluginInstance.
+ *
+ * RemotePluginInstance is a native hosting feature, and hence core of libandroidaudioplugin
+ * hosting implementation.
+ * For other implementations (e.g. we also have Kotlin hosting API), we still want to manage
+ * AAPXS, and then we need something that is independent of the native hosting implementation.
+ *
+ * Though it is not achieved yet, because AAPXSClientInstanceWrapper depends on
+ * RemotePluginInstance. We need further isolation.
+ */
+class AAPXSClientInstanceManager {
+protected:
+    AAPXSInstanceMap<AAPXSClientInstanceWrapper> aapxsClientInstanceWrappers{};
+
+public:
+    virtual ~AAPXSClientInstanceManager() {}
+
+    aapxs_client_extension_message_t static_send_extension_message_func{nullptr};
+
+    virtual AndroidAudioPlugin* getPlugin() = 0;
+    virtual AAPXSFeature* getExtensionFeature(const char* uri) = 0;
+    virtual const PluginInformation* getPluginInformation() = 0;
+    virtual AAPXSClientInstanceWrapper* setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize = -1) = 0;
+
+    AAPXSClientInstanceWrapper* getAAPXSWrapper(const char* uri) {
+        auto ret = aapxsClientInstanceWrappers.get(uri);
+        assert(ret);
+        return ret;
+    }
+
+    // For host developers, it is the only entry point to get extension.
+    // The return value is AAPXSProxyContext which contains the (strongly typed) extension proxy value.
+    AAPXSProxyContext getExtensionProxy(const char* uri);
+
+    // It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
+    // for each supported extension, while leaving this function to determine what extensions to provide.
+    // It is called at completeInstantiation() step, for each plugin instance.
+    void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func);
 };
 
 } // namespace aap

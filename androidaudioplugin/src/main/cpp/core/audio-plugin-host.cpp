@@ -342,7 +342,7 @@ void PluginInstance::completeInstantiation()
 }
 
 template<typename T, typename X> T RemotePluginInstanceStandardExtensions::withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
-	auto proxyContext = owner->getExtensionProxy(extensionUri);
+	auto proxyContext = owner->getAAPXSManager()->getExtensionProxy(extensionUri);
 	auto ext = (X*) proxyContext.extension;
 	if (ext == nullptr)
 		return defaultValue;
@@ -360,6 +360,45 @@ template<typename T, typename X> T LocalPluginInstanceStandardExtensions::withEx
 	return func(ext, AndroidAudioPluginExtensionTarget{plugin, nullptr});
 }
 
+//----
+
+AAPXSClientInstanceWrapper* RemoteAAPXSManager::setupAAPXSInstanceWrapper(AAPXSFeature *feature, int32_t dataSize) {
+	const char* uri = feature->uri;
+	assert (aapxsClientInstanceWrappers.get(uri) == nullptr);
+	if (dataSize < 0)
+		dataSize = feature->shared_memory_size;
+	aapxsClientInstanceWrappers.add(uri, std::make_unique<AAPXSClientInstanceWrapper>(owner, uri, nullptr, dataSize));
+	auto ret = aapxsClientInstanceWrappers.get(uri);
+	ret->asPublicApi()->extension_message = static_send_extension_message_func;
+	return ret;
+}
+
+void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
+	auto thisObj = (RemotePluginInstance*) clientInstance->context;
+	thisObj->sendExtensionMessage(clientInstance->uri, opcode);
+}
+
+//----
+
+RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+	client(client),
+	standards(this),
+	aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
+}
+
+
+void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode) {
+	auto aapxsInstance = (AAPXSClientInstanceWrapper *) aapxs_manager->getAAPXSWrapper(uri);
+	// Here we have to get a native plugin instance and send extension message.
+	// It is kind af annoying because we used to implement Binder-specific part only within the
+	// plugin API (binder-client-as-plugin.cpp)...
+	// So far, instead of rewriting a lot of code to do so, we let AAPClientContext
+	// assign its implementation details that handle Binder messaging as a std::function.
+	send_extension_message_impl(aapxsInstance, getInstanceId(), opcode);
+}
+
+//----
 
 PluginListSnapshot PluginListSnapshot::queryServices() {
     PluginListSnapshot ret{};
