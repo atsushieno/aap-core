@@ -21,8 +21,9 @@ void AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSCli
     for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
         auto info = pluginInfo->getExtension(i);
         auto feature = getExtensionFeature(info.uri.c_str());
-        assert (feature != nullptr || info.required);
-        func(setupAAPXSInstance(feature));
+        assert (feature != nullptr || !info.required);
+        if (feature)
+            func(setupAAPXSInstance(feature));
     }
 }
 

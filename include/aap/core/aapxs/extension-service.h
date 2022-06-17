@@ -110,9 +110,7 @@ public:
     virtual AAPXSClientInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) = 0;
 
     AAPXSClientInstance* getInstanceFor(const char* uri) {
-        auto ret = aapxsClientInstances.get(uri);
-        assert(ret);
-        return ret;
+        return aapxsClientInstances.get(uri);
     }
 
     /**
