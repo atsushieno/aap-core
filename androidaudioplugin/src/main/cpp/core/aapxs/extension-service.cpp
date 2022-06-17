@@ -16,15 +16,26 @@ AAPXSProxyContext AAPXSClientInstanceManager::getExtensionProxy(const char* uri)
     return feature->as_proxy(feature, aapxsClientInstance);
 }
 
-void AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
+bool AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func) {
     auto pluginInfo = getPluginInformation();
     for (int i = 0, n = pluginInfo->getNumExtensions(); i < n; i++) {
         auto info = pluginInfo->getExtension(i);
         auto feature = getExtensionFeature(info.uri.c_str());
-        assert (feature != nullptr || !info.required);
-        if (feature)
-            func(setupAAPXSInstance(feature));
+        if (feature == nullptr && info.required) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP", "The extension '%s' is declared as required, but was actually not found.", info.uri.c_str());
+            return false;
+        }
+        if (feature) {
+            auto aapxsInstance = setupAAPXSInstance(feature);
+            if (!aapxsInstance) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP", "Failed to set up AAPXS Proxy for extension '%s'. There may be corresponding failure log from the plugin too.", feature->uri);
+                return false;
+            }
+            else
+                func(aapxsInstance);
+        }
     }
+    return true;
 }
 
 } // namespace aap

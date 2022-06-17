@@ -123,8 +123,10 @@ public:
      * It is invoked by AAP framework (actually binder-client-as-plugin) to set up AAPXS client instance
      * for each supported extension, while leaving this function to determine what extensions to provide.
      * It is called at completeInstantiation() step, for each plugin instance.
+     *
+     * Returns false if any error occured.
      */
-    void setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func);
+    [[nodiscard]] bool setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func);
 };
 
 //----
