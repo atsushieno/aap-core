@@ -352,7 +352,7 @@ AndroidAudioPlugin* LocalPluginInstanceStandardExtensionsImpl::getPlugin() { ret
 //----
 
 AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
-	const char* uri = aapxsClientInstances.getInterned(feature->uri);
+	const char* uri = aapxsClientInstances.addOrGetUri(feature->uri);
 	assert (aapxsClientInstances.get(uri) == nullptr);
 	if (dataSize < 0)
 		dataSize = feature->shared_memory_size;

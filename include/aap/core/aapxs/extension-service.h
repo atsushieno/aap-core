@@ -51,14 +51,16 @@ public:
         return -1;
     }
 
-    inline int32_t addOrGetUri(const char* uri) {
+    inline const char* addOrGetUri(const char* uri) {
         auto i = getUriIndex(uri);
-        return i >= 0 ? i : addUri(uri);
+        if (i < 0)
+            addUri(uri);
+        return getInterned(uri);
     }
 
     inline void add(const char* uri, std::unique_ptr<T> newInstance) {
-        assert(getUriIndex(uri) < 0);
-        map[addUri(uri)] = std::move(newInstance);
+        auto interned = addOrGetUri(uri);
+        map[getUriIndex(interned, true)] = std::move(newInstance);
     }
 
     inline T* get(const char* uri, bool onlyInterned = false) {
@@ -81,7 +83,7 @@ public:
         e->on_invoked = f->on_invoked;
         extension_services.add(f->uri, std::move(e));
         // It is somewhat ugly, but we have to replace uri field with interned one here.
-        extension_services.get(f->uri)->uri = extension_services.getInterned(f->uri);
+        extension_services.get(f->uri)->uri = extension_services.addOrGetUri(f->uri);
     }
 
     inline AAPXSFeature* getByUri(const char * uri) {
@@ -93,7 +95,7 @@ public:
  * This class aims to isolate AAPXS client instance management job from native hosting
  * implementation such as RemotePluginInstance.
  * For other implementations (e.g. we also have Kotlin hosting API), we still want to manage
- * AAPXS, and then we need something that is independent of the native hosting implementation.
+ * AAPXS, and then we need something that is independent of the native hosting implementation, like this.
  */
 class AAPXSClientInstanceManager {
 protected:
