@@ -177,6 +177,8 @@ std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	: plugin_list(contextPluginList)
 {
+	assert(contextPluginList);
+
 	aapxs_registry = std::make_unique<AAPXSRegistry>();
 
 	// state

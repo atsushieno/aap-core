@@ -218,7 +218,7 @@ public:
 	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
 	// which is way simpler.
 	AAPXSServiceInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) {
-		const char* uri = aapxsServiceInstances.getInterned(feature->uri);
+		const char* uri = aapxsServiceInstances.addOrGetUri(feature->uri);
 		assert (aapxsServiceInstances.get(uri) == nullptr);
 		if (dataSize < 0)
 			dataSize = feature->shared_memory_size;
