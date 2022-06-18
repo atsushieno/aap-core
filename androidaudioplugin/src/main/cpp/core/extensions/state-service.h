@@ -109,7 +109,7 @@ public:
 class StatePluginServiceExtension : public PluginServiceExtensionImplBase {
 
     template<typename T>
-    void withStateExtension(aap::LocalPluginInstance *instance, T defaultValue,
+    void withStateExtension(AndroidAudioPlugin* plugin, T defaultValue,
                              std::function<void(aap_state_extension_t *,
                                                 AndroidAudioPluginExtensionTarget)> func);
 
@@ -119,7 +119,7 @@ public:
     }
 
     // invoked by AudioPluginService
-    void onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
+    void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override;
 };
 

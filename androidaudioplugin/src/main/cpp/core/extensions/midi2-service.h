@@ -79,7 +79,7 @@ public:
     }
 
     // invoked by AudioPluginService
-    void onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
+    void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override {
         assert(false); // should not happen
     }

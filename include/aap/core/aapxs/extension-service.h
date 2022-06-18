@@ -17,7 +17,7 @@
 namespace aap {
 
 template<typename T>
-class AAPXSInstanceMap {
+class AAPXSFeatureMap {
     std::vector<std::unique_ptr<const char>> uris{};
     std::map<size_t, std::unique_ptr<T>> map;
 
@@ -28,6 +28,7 @@ class AAPXSInstanceMap {
     }
 
 public:
+
     // LV2 URID alike: the interned pointer can be used for quick lookup.
     // Use it with `onlyInterned = true` in getUriIndex() and get().
     inline const char* getInterned(const char* uri) {
@@ -69,9 +70,20 @@ public:
     }
 };
 
+template<typename T>
+class AAPXSInstanceMap : public AAPXSFeatureMap<T> {
+    std::function<AndroidAudioPlugin*()> get_plugin;
+public:
+    AAPXSInstanceMap(std::function<AndroidAudioPlugin*()> getPluginFunc)
+            : get_plugin(getPluginFunc) {
+    }
+
+    AndroidAudioPlugin *getPlugin() { return get_plugin(); }
+};
+
 class AAPXSRegistry {
     std::vector<std::unique_ptr<const char>> stringpool{};
-    AAPXSInstanceMap<AAPXSFeature> extension_services{};
+    AAPXSFeatureMap<AAPXSFeature> extension_services{};
 
 public:
     inline void add(AAPXSFeature* extensionService) {
@@ -99,7 +111,7 @@ public:
  */
 class AAPXSClientInstanceManager {
 protected:
-    AAPXSInstanceMap<AAPXSClientInstance> aapxsClientInstances{};
+    AAPXSFeatureMap<AAPXSClientInstance> aapxsClientInstances{};
 
 public:
     virtual ~AAPXSClientInstanceManager() {}

@@ -239,7 +239,7 @@ public:
 	{
 		auto aapxsInstance = getInstanceFor(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
-		feature->on_invoked(feature, this, aapxsInstance, opcode);
+		feature->on_invoked(feature, getPlugin(), aapxsInstance, opcode);
 	}
 };
 

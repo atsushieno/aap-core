@@ -19,7 +19,7 @@ char instance_message_buffer[1024];
 
 void test_extension_feature_on_invoked(
     AAPXSFeature* feature,
-    void* userContext,
+    AndroidAudioPlugin* plugin,
     AAPXSServiceInstance *extension,
     int32_t opcode) {
 

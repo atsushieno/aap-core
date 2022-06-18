@@ -253,6 +253,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
 	service(service),
+	aapxsServiceInstances([&]() { return getPlugin(); }),
 	standards(this) {
 }
 
@@ -365,7 +366,7 @@ AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *featur
 }
 
 void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
-	auto thisObj = (RemotePluginInstance*) clientInstance->context;
+	auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
 	thisObj->sendExtensionMessage(clientInstance->uri, opcode);
 }
 

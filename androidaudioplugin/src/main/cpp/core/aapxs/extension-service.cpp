@@ -1,5 +1,4 @@
 
-#include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/aapxs/extension-service.h"
 
 namespace aap {

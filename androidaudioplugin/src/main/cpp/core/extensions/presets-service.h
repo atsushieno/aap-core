@@ -7,7 +7,6 @@
 #include "aap/unstable/aapxs.h"
 #include "aap/unstable/presets.h"
 #include "aap/unstable/logging.h"
-#include "aap/core/host/audio-plugin-host.h" // FIXME: we should eliminate dependency on types from this header.
 #include "aap/core/aapxs/extension-service.h"
 #include "extension-service-impl.h"
 #include "state-service.h"
@@ -145,7 +144,7 @@ public:
 class PresetsPluginServiceExtension : public PluginServiceExtensionImplBase {
 
     template<typename T>
-    void withPresetExtension(aap::LocalPluginInstance *instance, T defaultValue,
+    void withPresetExtension(AndroidAudioPlugin* plugin, T defaultValue,
                              std::function<void(aap_presets_extension_t *,
                                                 AndroidAudioPluginExtensionTarget)> func);
 
@@ -155,7 +154,7 @@ public:
     }
 
     // invoked by AudioPluginService
-    void onInvoked(void* contextInstance, AAPXSServiceInstance *extensionInstance,
+    void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override;
 };
 

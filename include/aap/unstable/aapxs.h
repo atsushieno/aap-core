@@ -22,6 +22,7 @@ struct AAPXSClientInstance;
  * - serviceHandle, which is AudioPluginInterfaceImpl on Android.
  */
 typedef struct {
+    /** AAPXS implementation context that is used and should be assigned only by the extension developer. */
     void *context;
     /** The extension URI */
     const char *uri;
@@ -45,7 +46,7 @@ typedef struct AAPXSClientInstance {
     /** Custom context that AAP framework may assign.
      * In libandroidaudioplugin it is RemotePluginInstance. It may be different on other implementations.
      */
-    void *context;
+    void *host_context;
 
     /** The extension URI */
     const char *uri;
@@ -81,8 +82,7 @@ typedef struct AAPXSProxyContext {
 
 typedef void (*aapxs_feature_on_invoked_t) (
         struct AAPXSFeature* feature,
-        /** opaque pointer to the plugin service, provided by AAP framework. */
-        void *service,
+        AndroidAudioPlugin* plugin,
         AAPXSServiceInstance* extension,
         int32_t opcode);
 

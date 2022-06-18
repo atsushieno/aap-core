@@ -50,8 +50,7 @@ public:
     /** Optionally override this for additional termination and resource releases */
     virtual void terminate() {}
 
-    // `instance` is actually aap::LocalPluginInstance, but we don't expose the host type to extension developers.
-    virtual void onInvoked(void *contextInstance, AAPXSServiceInstance *extensionInstance,
+    virtual void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                            int32_t opcode) = 0;
 
     AAPXSServiceInstance asTransient() {
@@ -74,9 +73,9 @@ class PluginExtensionFeatureImpl {
         return impl->asProxy(extension);
     }
 
-    static void internalOnInvoked(AAPXSFeature* feature, void *instance, AAPXSServiceInstance* extension, int32_t opcode) {
+    static void internalOnInvoked(AAPXSFeature* feature, AndroidAudioPlugin* plugin, AAPXSServiceInstance* extension, int32_t opcode) {
         auto thisObj = (PluginExtensionFeatureImpl*) feature->context;
-        thisObj->getService()->onInvoked(instance, extension, opcode);
+        thisObj->getService()->onInvoked(plugin, extension, opcode);
     }
 
 public:
