@@ -1,6 +1,9 @@
 #ifndef AAP_CORE_PLUGIN_INFORMATION_H
 #define AAP_CORE_PLUGIN_INFORMATION_H
 
+#include <string>
+#include <vector>
+#include <map>
 #include "aap/port-properties.h"
 
 namespace aap {
