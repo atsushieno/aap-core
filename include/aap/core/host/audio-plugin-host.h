@@ -21,6 +21,7 @@
 #include "aap/unstable/state.h"
 #include "../plugin-information.h"
 #include "../aapxs/extension-service.h"
+#include "../aapxs/standard-extensions.h"
 
 namespace aap {
 
