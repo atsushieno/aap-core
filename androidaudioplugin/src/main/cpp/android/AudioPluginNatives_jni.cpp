@@ -11,6 +11,8 @@
 #include "aap/core/host/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "audio-plugin-host-android-internal.h"
+#include "AudioPluginNative_jni.h"
+
 
 template <typename T>
 T usingJNIEnv(std::function<T(JNIEnv*)> func) {
@@ -385,3 +387,20 @@ Java_org_androidaudioplugin_AudioPluginNatives_closeSharedMemoryFD(JNIEnv *env, 
 	close(fd);
 }
 } // extern "C"
+
+
+AndroidAudioPlugin *JNIClientAAPXSManager::getPlugin() {
+    return nullptr;
+}
+
+AAPXSFeature *JNIClientAAPXSManager::getExtensionFeature(const char *uri) {
+	return nullptr;
+}
+
+const aap::PluginInformation *JNIClientAAPXSManager::getPluginInformation() {
+	return nullptr;
+}
+
+AAPXSClientInstance *JNIClientAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
+	return nullptr;
+}

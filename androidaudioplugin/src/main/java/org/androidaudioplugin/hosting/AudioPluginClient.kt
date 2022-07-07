@@ -1,77 +1,73 @@
 package org.androidaudioplugin.hosting
 
 import android.content.Context
-import android.media.AudioManager
-import org.androidaudioplugin.AudioPluginExtensionData
-import org.androidaudioplugin.AudioPluginInterfaceCallback
-import org.androidaudioplugin.AudioPluginNatives
-import org.androidaudioplugin.PluginInformation
+import java.lang.UnsupportedOperationException
 
-open class AudioPluginClient(private val applicationContext: Context) {
-    // Service connection
-    val serviceConnector = AudioPluginServiceConnector(applicationContext)
+/** This class not to endorse any official API for hosting AAP.
+ * Its implementation is hacky and not really with decent API design.
+ * It is to provide usable utilities for plugin developers as a proof of concept.
+ */
+class AudioPluginClient(private var applicationContext: Context)
+    : AudioPluginClientBase(applicationContext) {
 
-    val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
+    // Audio buses and buffers management
 
-    val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
+    var audioInputs = mutableListOf<ByteArray>()
+    var controlInputs = mutableListOf<ByteArray>()
+    var audioOutputs = mutableListOf<ByteArray>()
 
-    val extensions = mutableListOf<AudioPluginExtensionData>()
+    private var isActive = false
 
-    fun dispose() {
-        for (instance in instantiatedPlugins)
-            instance.destroy()
-        serviceConnector.close()
-    }
-
-    private fun withPluginConnection(packageName: String, callback: (PluginServiceConnection?, Exception?) -> Unit) {
-        val conn = serviceConnector.findExistingServiceConnection(packageName)
-        if (conn == null) {
-            var serviceConnectedListener: (PluginServiceConnection?, Exception?) -> Unit = { _, _ -> }
-            serviceConnectedListener = { c, e ->
-                serviceConnector.serviceConnectedListeners.remove(serviceConnectedListener)
-                callback(c, e)
-            }
-            serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
-            val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
-                .first { c -> c.packageName == packageName }
-            serviceConnector.bindAudioPluginService(service)
+    var audioBufferSizeInBytes = 4096 * 4
+        set(value) {
+            field = value
+            resetInputBuffer()
+            resetOutputBuffer()
         }
-        else
-            callback(conn, null)
-
-    }
-
-    fun setCallback(pluginInfo: PluginInformation, callback: AudioPluginInterfaceCallback, onError: (Exception) -> Unit) {
-        withPluginConnection(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
-            if (conn != null)
-                conn.setCallback(callback)
-            else
-                onError(error!!)
+    var defaultControlBufferSizeInBytes = 4096 * 4
+        set(value) {
+            field = value
+            resetControlBuffer()
         }
-    }
 
-    // Plugin instancing
+    private fun throwIfRunning() { if (isActive) throw UnsupportedOperationException("AudioPluginHost is already running") }
 
-    fun instantiatePluginAsync(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) -> Unit)
-    {
-        withPluginConnection(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
-            if (conn != null) {
-                val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
-                instantiatedPlugins.add(instance)
-                pluginInstantiatedListeners.forEach { l -> l(instance) }
-                callback(instance, null)
-            }
-            else
-                callback(null, error)
+    var inputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
+        set(value) {
+            throwIfRunning()
+            field = value
+            resetInputBuffer()
         }
-    }
+    private fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
 
-    var sampleRate : Int
+    var inputControlBus = AudioBusPresets.mono
+        set(value) {
+            throwIfRunning()
+            field = value
+            resetControlBuffer()
+        }
+    private fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, defaultControlBufferSizeInBytes)
+
+    var outputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
+        set(value) {
+            throwIfRunning()
+            field = value
+            resetOutputBuffer()
+        }
+    private fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
+
+    private fun expandBufferArrays(list : MutableList<ByteArray>, newSize : Int, bufferSize : Int) {
+        if (newSize > list.size)
+            (0 until newSize - list.size).forEach {list.add(ByteArray(bufferSize)) }
+        while (newSize < list.size)
+            list.remove(list.last())
+        for (i in 0 until newSize)
+            if (list[i].size < bufferSize)
+                list[i] = ByteArray(bufferSize)
+    }
 
     init {
-        AudioPluginNatives.initializeAAPJni(applicationContext)
-
-        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
+        inputAudioBus = AudioBusPresets.stereo
+        outputAudioBus = AudioBusPresets.stereo
     }
 }

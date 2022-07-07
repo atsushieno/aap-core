@@ -2,7 +2,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 
 import android.content.Context
 import junit.framework.Assert.assertEquals
-import org.androidaudioplugin.hosting.AudioPluginHost
+import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 
@@ -19,7 +19,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     }
 
     private fun testInstancingAndProcessing(pluginInfo: PluginInformation) {
-        val host = AudioPluginHost(applicationContext)
+        val host = AudioPluginClient(applicationContext)
 
         for (i in 0..3) {
             // we should come up with appropriate locks...

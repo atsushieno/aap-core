@@ -29,15 +29,15 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 ![AAP process model](docs/images/aap-process-model.png)
 
-**Extensibility** : plugin feature extensibility is provided through plugin extensibility messaging API and host context data, through shared memory. Plugins cannot perform any operation over host features. Anyone can define an extension, bound to its own URI, but unlike typical extensibility API in other audio plugin frameworks, the extension developer has to provide plugin service messaging implementation for Binder that connect host (client) and plugin (service). We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
+**Extensibility** : AAP provides extensibility foundation as well as some Standard Extensions such as state and presets (not quite enough to name yet), that are queried by URI. But unlike desktop audio plugin frameworks, a host has to interact with a plugin through Binder messaging (as they live in separate processes by Android platform nature), and therefore an extension has to also provide the messaging implementation called AAPXS (AAP extensibility service) apart from the API itself. We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
 
-**Basically declarative parameter meta data** : like LV2, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports. (The design details are going to change, but we would remain declarative.)
+**Basically declarative parameter meta data** : like LV2, unlike VST, AU or CLAP, we expect plugin metadata `res/xml/aap_metadata.xml`, described its ports. (The design details are going to change, but we would remain declarative.)
 
 **Permissive licensing** : It is released under the MIT license. Same as CLAP, similar to LV2 (ISC), unlike VST3 or JUCE (GPLv3).
 
 **MIDI Device Service** : AAP has ability to turn an instrument plugin into a [Android MidiDeviceService](https://developer.android.com/reference/android/media/midi/package-summary).
 
-**C/C++ and Kotlin supported**: public plugin API is provided through C API. For hosting, some utilized API is implemented for C++ and Kotlin, but officially it is only for reference purpose without stability. While the compatibility at Binder message was pretty stable from 2020 to 2022, AAP is still at infancy and we wouldn't really consider our API as stable. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP. I believe this is how CLAP is still evolving in 2022 too.
+**C/C++ and Kotlin supported**: public plugin API is provided as the C API. For hosting, some utilized API is implemented for C++ and Kotlin, but officially it is only for reference purpose without stability. While the compatibility at Binder message was pretty stable from 2020 to 2022, AAP is still at infancy and we wouldn't really consider our API as stable. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP.
 
 
 ## How AAPs work: technical background

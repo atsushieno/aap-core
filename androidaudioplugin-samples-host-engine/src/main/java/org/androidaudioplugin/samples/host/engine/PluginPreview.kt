@@ -5,10 +5,8 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.androidaudioplugin.*
-import org.androidaudioplugin.hosting.AudioPluginHost
+import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -25,7 +23,7 @@ const val PCM_DATA_SAMPLERATE = 44100
 @ExperimentalUnsignedTypes
 class PluginPreview(context: Context) {
 
-    private var host : AudioPluginHost = AudioPluginHost(context.applicationContext)
+    private var host : AudioPluginClient = AudioPluginClient(context.applicationContext)
     var instance : AudioPluginInstance? = null
 
     val inBuf : ByteArray

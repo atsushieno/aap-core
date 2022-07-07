@@ -2,15 +2,13 @@ package org.androidaudioplugin.midideviceservice
 
 import android.content.Context
 import android.media.AudioManager
-import org.androidaudioplugin.hosting.AudioPluginClient
-import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 
 // Unlike MidiReceiver, it is instantiated whenever the port is opened, and disposed every time it is closed.
 // By isolating most of the implementation here, it makes better lifetime management.
 class AudioPluginMidiDeviceInstance private constructor(
     // It is used to manage Service connections, not instancing (which is managed by native code).
-    private val client: AudioPluginClient) {
+    private val client: AudioPluginClientBase) {
 
     companion object {
         fun createAsync(pluginId: String, ownerService: AudioPluginMidiDeviceService, callback: (AudioPluginMidiDeviceInstance?, Exception?) -> Unit) {
@@ -18,7 +16,7 @@ class AudioPluginMidiDeviceInstance private constructor(
             val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
             val oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
 
-            val client = AudioPluginClient(ownerService.applicationContext)
+            val client = AudioPluginClientBase(ownerService.applicationContext)
 
             val ret = AudioPluginMidiDeviceInstance(client)
 
