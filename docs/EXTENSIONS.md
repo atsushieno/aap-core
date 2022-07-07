@@ -46,7 +46,7 @@ For example, consider "Presets" extension. Plugins that support this extension w
 
 Thus it looks like:
 
-```
+```C++
 #define AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH 256
 
 typedef struct {
@@ -56,16 +56,11 @@ typedef struct {
 	int32_t data_size;
 } aap_preset_t;
 
-typedef struct aap_presets_context_t {
-    void *context;
-    AndroidAudioPlugin* plugin;
-} aap_presets_context_t;
-
-typedef int32_t (*presets_extension_get_preset_count_func_t) (aap_presets_context_t* context);
-typedef int32_t (*presets_extension_get_preset_data_size_func_t) (aap_presets_context_t* context, int32_t index);
-typedef void (*presets_extension_get_preset_func_t) (aap_presets_context_t* context, int32_t index, bool skipBinary, aap_preset_t *preset);
-typedef int32_t (*presets_extension_get_preset_index_func_t) (aap_presets_context_t* context);
-typedef void (*presets_extension_set_preset_index_func_t) (aap_presets_context_t* context, int32_t index);
+typedef int32_t (*presets_extension_get_preset_count_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef int32_t (*presets_extension_get_preset_data_size_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
+typedef void (*presets_extension_get_preset_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index, bool skipBinary, aap_preset_t *preset);
+typedef int32_t (*presets_extension_get_preset_index_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef void (*presets_extension_set_preset_index_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
 
 typedef struct aap_presets_extension_t {
     void *context;
@@ -81,7 +76,7 @@ To make it implementable in C, the functions are defined as function pointers in
 
 Here is an example plugin that supports this Presets extension:
 
-```
+```C++
 uint8_t preset_data[][3] {{10}, {20}, {30}};
 
 aap_preset_t presets[3] {
@@ -90,15 +85,15 @@ aap_preset_t presets[3] {
     {2, "preset3", preset_data[2], sizeof(preset_data[2])}
 };
 
-int32_t sample_plugin_get_preset_count(aap_presets_context_t* /*context*/) {
+int32_t sample_plugin_get_preset_count(AndroidAudioPluginExtensionTarget /*target*/) {
     return sizeof(presets) / sizeof(aap_preset_t);
 }
 
-int32_t sample_plugin_get_preset_data_size(aap_presets_context_t* /*context*/, int32_t index) {
+int32_t sample_plugin_get_preset_data_size(AndroidAudioPluginExtensionTarget /*target*/, int32_t index) {
     return presets[index].data_size; // just for testing, no actual content.
 }
 
-void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int32_t index, bool skipContent, aap_preset_t* preset) {
     preset->index = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
     preset->data_size = presets[index].data_size;
@@ -106,12 +101,12 @@ void sample_plugin_get_preset(aap_presets_context_t* /*context*/, int32_t index,
         memcpy(preset->data, presets[index].data, preset->data_size);
 }
 
-int32_t sample_plugin_get_preset_index(aap_presets_context_t* context) {
-    return (int32_t) (int64_t) context->context;
+int32_t sample_plugin_get_preset_index(AndroidAudioPluginExtensionTarget target) {
+    return (int32_t) (int64_t) target->aapxs_context;
 }
 
-void sample_plugin_set_preset_index(aap_presets_context_t* context, int32_t index) {
-    context->context = (void*) index;
+void sample_plugin_set_preset_index(AndroidAudioPluginExtensionTarget target, int32_t index) {
+    target->aa@xs_context = (void*) index;
 }
 
 // AAP Presets extension (instance) that this Foo plugin implements
@@ -143,7 +138,7 @@ Plugin host developers would also like to use simple API, and they are not suppo
 
 Therefore, the host code looks like this:
 
-```
+```C++
 aap::RemotePluginInstance* pluginInstance;
 auto presets = (aap_preset_extension_t*) pluginInstance->getExtension(AAP_PRESETS_EXTENSION_URI);
 aap_preset preset;
@@ -167,7 +162,7 @@ Therefore we come up with some generalized API like this. `onInvoked()` is invok
 
 To achieve this, AAP comes up with a struct named `AAPXSFeature`, which provides access to those two features, as service `on_invoked` and client `as_proxy`;
 
-```
+```C++
 typedef void (*aapxs_feature_on_invoked_t) (
         struct AAPXSFeature* feature,
         void *service,
@@ -189,7 +184,7 @@ typedef struct {
 
 `AAPXSServiceInstance` and `AAPXSClientInstance` are defined in `aapxs.h`, and provide access to extension instance data such as the extension URI and the shared pointers. They are not to represent the entire AAPXS instances and exist more like the facades:
 
-```
+```C++
 typedef struct {
     void *context;
     const char *uri;
@@ -214,7 +209,7 @@ typedef struct AAPXSClientInstance {
 
 Now that we understand what we will implement, let's move to the actual use case of this API: Presets PluginService extension implementation (it is not really updated to match the latest implementation, but would give you the rough idea):
 
-```
+```C++
 	// C++ implementation details
 	class PresetsExtensionService {
 		AndroidAudioPluginHost host; // set up outside this snippet
@@ -287,7 +282,7 @@ Each AAP extension service makes use of some framework part. There are three par
 
 (3) Plugin extensions need a registry so that host client can work with those plugins via their proxies. We should probably come up with better idea for automatic extension lookup, but so far, `AAPXSFeature` can be stored at an instance of `AAPXSRegistry` hosting class.
 
-```
+```C++
 class AAPXSRegistry {
 	void add (void add(AAPXSFeature* extensionService);
 	AAPXSFeature* getByUri(const char * uri);
