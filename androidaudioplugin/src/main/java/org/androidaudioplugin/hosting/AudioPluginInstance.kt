@@ -105,10 +105,6 @@ class AudioPluginInstance
         }
     }
 
-    fun extensionRaw(uri: String, size: Int) {
-        proxy.extension(instanceId, uri, size)
-    }
-
     fun getState() : ByteArray {
         return runCatchingRemoteExceptionFor(byteArrayOf()) {
             val size = proxy.getStateSize(instanceId)

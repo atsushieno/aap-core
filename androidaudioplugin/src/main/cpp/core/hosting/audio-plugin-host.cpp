@@ -144,7 +144,22 @@ int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& cl
 
 //-----------------------------------
 
+PluginClient::Result<int32_t> PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
+{
+	Result<int32_t> result;
+	createInstanceImpl(false, identifier, sampleRate, isRemoteExplicit, [&result](int32_t instanceId, std::string error) {
+		result.value = instanceId;
+		result.error = error;
+	});
+	return result;
+}
+
 void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
+{
+	createInstanceImpl(true, identifier, sampleRate, isRemoteExplicit, userCallback);
+}
+
+void PluginClient::createInstanceImpl(bool canDynamicallyConnect, std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
 {
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
@@ -159,7 +174,7 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
 			userCallback(-1, error);
 	};
 	if (isRemoteExplicit || descriptor->isOutProcess())
-		instantiateRemotePlugin(descriptor, sampleRate, internalCallback);
+		instantiateRemotePlugin(canDynamicallyConnect, descriptor, sampleRate, internalCallback);
 	else {
 		try {
 			auto instance = instantiateLocalPlugin(descriptor, sampleRate);
@@ -269,7 +284,7 @@ AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiat
     return &plugin_host_facade;
 }
 
-void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
+void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
 	// We first ensure to bind the remote plugin service, and then create a plugin instance.
 	//  Since binding the plugin service must be asynchronous while instancing does not have to be,
@@ -292,6 +307,8 @@ void PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, 
 	auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
 	if (service != nullptr)
 		internalCallback("");
+	else if (!canDynamicallyConnect)
+		internalCallback(std::string{"Plugin service for "} + descriptor->getPluginID() + " is not started yet.");
 	else
 		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }

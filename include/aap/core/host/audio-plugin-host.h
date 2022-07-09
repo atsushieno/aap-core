@@ -19,7 +19,7 @@
 #include "aap/unstable/logging.h"
 #include "aap/unstable/presets.h"
 #include "aap/unstable/state.h"
-#include "../plugin-information.h"
+#include "plugin-connections.h"
 #include "../aapxs/extension-service.h"
 #include "../aapxs/standard-extensions.h"
 
@@ -71,8 +71,9 @@ public:
 class PluginClient : public PluginHost {
 	PluginClientConnectionList* connections;
 
-	void instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
+	void instantiateRemotePlugin(bool canDynamicallyConnect, const PluginInformation *pluginInfo, int sampleRate, std::function<void(PluginInstance*, std::string)> callback);
 
+	void createInstanceImpl(bool canDynamicallyConnect, std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 public:
 	PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList)
 		: PluginHost(contextPluginList), connections(pluginConnections)
@@ -81,6 +82,17 @@ public:
 
 	inline PluginClientConnectionList* getConnections() { return connections; }
 
+    template<typename T>
+    struct Result {
+        T value;
+        std::string error;
+    };
+
+	// Synchronous version that does not expect service connection on the fly (fails immediately).
+	// It is probably better suited for Kotlin client to avoid complicated JNI interop.
+	Result<int32_t> createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit);
+
+	// Asynchronous version that allows service connection on the fly.
 	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
 };
 
