@@ -23,7 +23,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
         serviceConnector.close()
     }
 
-    private fun withPluginConnection(packageName: String, callback: (PluginServiceConnection?, Exception?) -> Unit) {
+    fun connectToPluginServiceAsync(packageName: String, callback: (PluginServiceConnection?, Exception?) -> Unit) {
         val conn = serviceConnector.findExistingServiceConnection(packageName)
         if (conn == null) {
             var serviceConnectedListener: (PluginServiceConnection?, Exception?) -> Unit = { _, _ -> }
@@ -38,23 +38,19 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
         }
         else
             callback(conn, null)
-
     }
 
-    fun setCallback(pluginInfo: PluginInformation, callback: AudioPluginInterfaceCallback, onError: (Exception) -> Unit) {
-        withPluginConnection(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
-            if (conn != null)
-                conn.setCallback(callback)
-            else
-                onError(error!!)
-        }
+    fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
+        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
+        assert(conn != null)
+        val instance = conn!!.instantiatePlugin(pluginInfo, sampleRate, extensions)
+        instantiatedPlugins.add(instance)
+        return instance
     }
-
-    // Plugin instancing
 
     fun instantiatePluginAsync(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) -> Unit)
     {
-        withPluginConnection(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
+        connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
             if (conn != null) {
                 val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
                 instantiatedPlugins.add(instance)

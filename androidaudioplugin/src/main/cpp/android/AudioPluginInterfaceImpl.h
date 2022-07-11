@@ -68,10 +68,10 @@ public:
         if (feature == nullptr) {
             a_log_f(AAP_LOG_LEVEL_WARN, "AAP", "The host requested plugin extension \"%s\", but this plugin service does not support it.", in_uri.c_str());
         } else {
-            auto aapxsInstance = svc->getInstance(in_instanceID)->setupAAPXSInstance(feature, in_size);
+            auto aapxsInstance = svc->getLocalInstance(in_instanceID)->setupAAPXSInstance(feature, in_size);
             aapxsInstance->plugin_instance_id = in_instanceID;
             if (in_size > 0) {
-                auto shmExt = svc->getInstance(in_instanceID)->getAAPXSSharedMemoryStore();
+                auto shmExt = svc->getLocalInstance(in_instanceID)->getAAPXSSharedMemoryStore();
                 assert(shmExt != nullptr);
                 auto fdRemote = in_sharedMemoryFD.get();
                 auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
@@ -267,7 +267,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = svc->getInstance(in_instanceID);
+        auto instance = svc->getLocalInstance(in_instanceID);
         instance->controlExtension(in_uri, in_size);
         return ndk::ScopedAStatus::ok();
     }

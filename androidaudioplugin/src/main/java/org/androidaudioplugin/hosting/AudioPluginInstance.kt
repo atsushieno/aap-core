@@ -4,14 +4,11 @@ import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import android.os.SharedMemory
 import android.util.Log
+import org.androidaudioplugin.*
 import org.androidaudioplugin.AudioPluginNatives
-import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.AudioPluginInterface
-import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 
-class AudioPluginInstance
-{
+interface AudioPluginInstance {
     enum class InstanceState {
         UNPREPARED,
         INACTIVE,
@@ -20,33 +17,46 @@ class AudioPluginInstance
         ERROR
     }
 
+    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int = 0)
+    fun activate()
+    fun deactivate()
+    fun process()
+    fun destroy()
+
+    fun getPortBuffer(port: Int): ByteBuffer
+
+    var pluginInfo: PluginInformation
+    var proxyError : Exception?
+}
+
+@Deprecated("It is deprecated and removed soon; it will not work once we fix issue #112")
+class AudioPluginInstanceImpl : AudioPluginInstance
+{
     private class SharedMemoryBuffer (var shm : SharedMemory, var fd : Int, var buffer: ByteBuffer)
 
     private var shm_list = mutableListOf<SharedMemoryBuffer>()
 
     val proxy : AudioPluginInterface
     var instanceId: Int
-    var pluginInfo: PluginInformation
-    var service: PluginServiceConnection
-    var state = InstanceState.UNPREPARED
-    var proxyError : Exception? = null
+    override var pluginInfo: PluginInformation
+    var state = AudioPluginInstance.InstanceState.UNPREPARED
+    override var proxyError : Exception? = null
 
     internal constructor (instanceId: Int, pluginInfo: PluginInformation, service: PluginServiceConnection) {
         this.instanceId = instanceId
         this.pluginInfo = pluginInfo
-        this.service = service
         proxy = AudioPluginInterface.Stub.asInterface(service.binder!!)
     }
 
-    fun getPortBuffer(port: Int) = shm_list[port].buffer
+    override fun getPortBuffer(port: Int) = shm_list[port].buffer
 
     private fun <T> runCatchingRemoteExceptionFor(default: T, func: () -> T) : T {
-        if (state == InstanceState.ERROR)
+        if (state == AudioPluginInstance.InstanceState.ERROR)
             return default
         return try {
             func()
         } catch (ex: RemoteException) {
-            state = InstanceState.ERROR
+            state = AudioPluginInstance.InstanceState.ERROR
             proxyError = ex
             Log.e("AAP", "AudioPluginInstance received RemoteException: ${ex.message ?: ""}\n{${ex.stackTraceToString()}")
             default
@@ -59,7 +69,7 @@ class AudioPluginInstance
         }
     }
 
-    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int = 0) {
+    override fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int) {
         val controlBytesPerBlock =
             if (defaultControlBytesPerBlock <= 0) audioSamplesPerBlock * 4
             else defaultControlBytesPerBlock
@@ -79,29 +89,29 @@ class AudioPluginInstance
             }
             proxy.prepare(instanceId, audioSamplesPerBlock, pluginInfo.ports.size)
 
-            state = InstanceState.INACTIVE
+            state = AudioPluginInstance.InstanceState.INACTIVE
         }
     }
 
-    fun activate() {
+    override fun activate() {
         runCatchingRemoteException {
             proxy.activate(instanceId)
 
-            state = InstanceState.ACTIVE
+            state = AudioPluginInstance.InstanceState.ACTIVE
         }
     }
 
-    fun process() {
+    override fun process() {
         runCatchingRemoteException {
             proxy.process(instanceId, 0)
         }
     }
 
-    fun deactivate() {
+    override fun deactivate() {
         runCatchingRemoteException {
             proxy.deactivate(instanceId)
 
-            state = InstanceState.INACTIVE
+            state = AudioPluginInstance.InstanceState.INACTIVE
         }
     }
 
@@ -129,10 +139,10 @@ class AudioPluginInstance
         }
     }
 
-    fun destroy() {
-        if (state == InstanceState.ACTIVE)
+    override fun destroy() {
+        if (state == AudioPluginInstance.InstanceState.ACTIVE)
             deactivate()
-        if (state == InstanceState.INACTIVE || state == InstanceState.ERROR) {
+        if (state == AudioPluginInstance.InstanceState.INACTIVE || state == AudioPluginInstance.InstanceState.ERROR) {
             try {
                 proxy.destroy(instanceId)
             } catch (ex: Exception) {
@@ -142,7 +152,7 @@ class AudioPluginInstance
                 shm.shm.close()
             }
 
-            state = InstanceState.DESTROYED
+            state = AudioPluginInstance.InstanceState.DESTROYED
         }
     }
 }

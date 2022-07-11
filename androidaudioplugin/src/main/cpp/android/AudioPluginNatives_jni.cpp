@@ -432,7 +432,11 @@ Java_org_androidaudioplugin_hosting_RemotePluginInstance_destroyAudioPluginBuffe
 																				  jclass clazz,
 																				  jlong pointer) {
 	assert(pointer);
-	delete (AndroidAudioPluginBuffer*) pointer;
+	auto buffer = (AndroidAudioPluginBuffer*) pointer;
+	for (int i = 0; i < buffer->num_buffers; i++)
+		if (buffer->buffers[i])
+			munmap(buffer->buffers[i], buffer->num_frames * sizeof(float));
+	delete buffer;
 }
 
 extern "C"
@@ -447,27 +451,40 @@ Java_org_androidaudioplugin_hosting_PluginClient_newInstance(JNIEnv *env, jclass
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL
+JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_createRemotePluginInstance(
 		JNIEnv *env, jclass clazz, jstring plugin_id, jint sampleRate, jlong clientPointer) {
-	// TODO: implement createRemotePluginInstance()
+	assert(clientPointer != 0);
 	auto client = (aap::PluginClient*) (void*) clientPointer;
 	return usingJString<jlong>(plugin_id, [&](const char* pluginId) {
 		auto result = client->createInstance(pluginId, sampleRate, true);
-		if (result.error.empty())
-			return (jlong) result.value;
-		else
-			aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
-		return (jlong) -1;
+		if (!result.error.empty()) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
+            return (jlong) -1;
+        }
+        auto instance = client->getInstance(result.value);
+        instance->completeInstantiation();
+        return (jlong) result.value;
 	});
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_RemotePluginInstance_prepare(JNIEnv *env, jclass clazz,
-																	   jlong native,
+Java_org_androidaudioplugin_hosting_RemotePluginInstance_beginPrepare(JNIEnv *env, jclass clazz,
+																	   jlong nativeClient,
+                                                                       jint instanceId,
 																	   jlong audioBufferPointer) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+	// nothing to do so far?
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_RemotePluginInstance_endPrepare(JNIEnv *env, jclass clazz,
+																  jlong nativeClient,
+																  jint instanceId,
+																	jlong audioBufferPointer) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
 	auto buffer = (AndroidAudioPluginBuffer*) audioBufferPointer;
 	instance->prepare(buffer->num_frames, buffer);
 }
@@ -475,18 +492,22 @@ Java_org_androidaudioplugin_hosting_RemotePluginInstance_prepare(JNIEnv *env, jc
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_activate(JNIEnv *env, jclass clazz,
-																		jlong native) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+                                                                  jlong nativeClient,
+                                                                  jint instanceId) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	instance->activate();
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_process(JNIEnv *env, jclass clazz,
-																	   jlong native,
+                                                                       jlong nativeClient,
+                                                                       jint instanceId,
 																	   jlong nativeAudioPluginBuffer,
 																	   jint timeout_in_nanoseconds) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	auto buffer = (AndroidAudioPluginBuffer*) (void*) nativeAudioPluginBuffer;
 	instance->process(buffer, timeout_in_nanoseconds);
 }
@@ -494,16 +515,20 @@ Java_org_androidaudioplugin_hosting_RemotePluginInstance_process(JNIEnv *env, jc
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_deactivate(JNIEnv *env, jclass clazz,
-																		  jlong native) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+                                                                    jlong nativeClient,
+                                                                    jint instanceId) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	instance->deactivate();
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_destroy(JNIEnv *env, jclass clazz,
-																	   jlong native) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+                                                                 jlong nativeClient,
+                                                                 jint instanceId) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	delete instance;
 }
 
@@ -511,17 +536,21 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_getStateSize(JNIEnv *env,
 																			jclass clazz,
-																			jlong native) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+                                                                      jlong nativeClient,
+                                                                      jint instanceId) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	return instance->getStandardExtensions().getStateSize();
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_getState(JNIEnv *env, jclass clazz,
-																		jlong native,
+                                                                  jlong nativeClient,
+                                                                  jint instanceId,
 																		jbyteArray data) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	auto state = instance->getStandardExtensions().getState();
 	env->SetByteArrayRegion(data, 0, state.data_size, static_cast<const jbyte *>(state.data));
 }
@@ -529,13 +558,26 @@ Java_org_androidaudioplugin_hosting_RemotePluginInstance_getState(JNIEnv *env, j
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_RemotePluginInstance_setState(JNIEnv *env, jclass clazz,
-																		jlong native,
+                                                                  jlong nativeClient,
+                                                                  jint instanceId,
 																		jbyteArray data) {
-	auto instance = (aap::RemotePluginInstance*) (void*) native;
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = client->getInstance(instanceId);
 	auto length = env->GetArrayLength(data);
 	jboolean wasCopy;
 	auto buf = env->GetByteArrayElements(data, &wasCopy);
 	instance->getStandardExtensions().setState(buf, length);
 	if (wasCopy)
 		free(buf);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_RemotePluginInstance_setSharedMemoryToPluginBuffer(JNIEnv *env,
+																					   jclass clazz,
+																					   jlong nativeAudioPluginBuffer,
+																					   jint index,
+																					   jint fd) {
+	auto buffer = (AndroidAudioPluginBuffer*) (void*) nativeAudioPluginBuffer;
+	buffer->buffers[index] = mmap(nullptr, buffer->num_frames * sizeof(float), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 }

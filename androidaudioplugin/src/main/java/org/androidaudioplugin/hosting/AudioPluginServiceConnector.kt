@@ -10,9 +10,7 @@ import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 
 /*
-  Manages one or more connections to AudioPluginServices.
-
-  A plugin host instance holds an instance of this class.
+  A host client class that manages one or more connections to AudioPluginServices.
 
   Native hosts also use this class to instantiate plugins and manage them.
  */
@@ -22,7 +20,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             Log.d("AAP", "AudioPluginServiceConnector: onServiceConnected")
             if (binder != null)
-                parent.registerNewConnection(PluginServiceConnection(serviceInfo, binder))
+                parent.registerNewConnection(this, serviceInfo, binder)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -71,7 +69,8 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         assert(applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 
-    private fun registerNewConnection(conn: PluginServiceConnection) {
+    private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) {
+        val conn = PluginServiceConnection(this, serviceConnection, serviceInfo, binder)
         AudioPluginNatives.addBinderForClient(
             instanceId,
             conn.serviceInfo.packageName,
@@ -99,6 +98,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             conn.serviceInfo.packageName,
             conn.serviceInfo.className
         )
+        applicationContext.unbindService(conn.platformServiceConnection)
     }
 
     override fun close() {

@@ -308,7 +308,7 @@ void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const Plu
 	if (service != nullptr)
 		internalCallback("");
 	else if (!canDynamicallyConnect)
-		internalCallback(std::string{"Plugin service for "} + descriptor->getPluginID() + " is not started yet.");
+		internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
 	else
 		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }

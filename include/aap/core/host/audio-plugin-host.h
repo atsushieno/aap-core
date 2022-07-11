@@ -52,8 +52,8 @@ public:
 
 	size_t getInstanceCount() { return instances.size(); }
 
-	inline LocalPluginInstance* getInstance(int32_t instanceId) {
-		return (LocalPluginInstance*) instances[(size_t) instanceId];
+	inline PluginInstance* getInstance(int32_t instanceId) {
+		return instances[(size_t) instanceId];
 	}
 };
 
@@ -66,6 +66,10 @@ public:
 	}
 
 	int createInstance(std::string identifier, int sampleRate);
+
+	inline LocalPluginInstance* getLocalInstance(int32_t instanceId) {
+		return (LocalPluginInstance*) getInstance(instanceId);
+	}
 };
 
 class PluginClient : public PluginHost {

@@ -4,14 +4,12 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.util.Log
 import org.androidaudioplugin.*
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-const val PROCESS_AUDIO_NATIVE = false
 const val FRAMES_PER_TICK = 100
 const val AUDIO_BUFFER_SIZE = 4096
 const val DEFAULT_CONTROL_BUFFER_SIZE = 4096
@@ -39,25 +37,18 @@ class PluginPreview(context: Context) {
         host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
         host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
 
-        host.instantiatePluginAsync(plugin) { instance, error ->
-            if (instance != null) {
-                this.instance = instance
-                instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
-                if (instance.proxyError != null) {
-                    errorCallback(instance.proxyError!!)
-                } else {
-                    android.os.Looper.getMainLooper().queue.run {
-                        processPluginOnce(parametersOnUI)
-
-                        releasePluginInstance(instance)
-                    }
-                    if (instance.proxyError != null)
-                        errorCallback(instance.proxyError!!)
+        host.connectToPluginServiceAsync(plugin.packageName) { _, error ->
+            val instance = host.instantiatePlugin(plugin)
+            this.instance = instance
+            instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
+            if (instance.proxyError != null) {
+                errorCallback(instance.proxyError!!)
+            } else {
+                android.os.Looper.getMainLooper().queue.run {
+                    processPluginOnce(parametersOnUI)
                 }
-            }
-            else {
-                Log.e("AAP", "PluginPreview: $error")
-                errorCallback(error)
+                if (instance.proxyError != null)
+                    errorCallback(instance.proxyError!!)
             }
         }
     }
@@ -207,6 +198,8 @@ class PluginPreview(context: Context) {
 
 
         processAudioCompleted()
+
+        releasePluginInstance(instance)
     }
 
     private fun resetMidiBuffer(mb: ByteBuffer) : Int
@@ -283,8 +276,7 @@ class PluginPreview(context: Context) {
         instance.destroy()
         this.instance = null
 
-        val serviceInfo = instance.service.serviceInfo
-        host.serviceConnector.unbindAudioPluginService(serviceInfo.packageName)
+        host.serviceConnector.unbindAudioPluginService(instance.pluginInfo.packageName)
     }
 
     init {
