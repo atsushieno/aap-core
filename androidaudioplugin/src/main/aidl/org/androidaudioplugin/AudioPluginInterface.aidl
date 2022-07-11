@@ -20,11 +20,6 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive(int instanceID);
 
-    // FIXME: remove them from AIDL. They should be invoked only via AAPXS, hopefully before 0.7.2 release.
-	int getStateSize(int instanceID);
-	void getState(int instanceID, in ParcelFileDescriptor sharedMemoryFD);
-	void setState(int instanceID, in ParcelFileDescriptor sharedMemoryFD, int size);
-
 	void extension(int instanceID, String uri, int size);
 
 	void prepare(int instanceID, int frameCount, int portCount);

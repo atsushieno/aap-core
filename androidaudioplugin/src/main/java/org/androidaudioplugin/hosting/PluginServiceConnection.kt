@@ -11,7 +11,7 @@ class PluginServiceConnection(private val owner: AudioPluginServiceConnector, va
     val instances = mutableListOf<AudioPluginInstance>()
 
     fun instantiatePlugin(pluginInfo : PluginInformation, sampleRate: Int, extensions: List<AudioPluginExtensionData>) : AudioPluginInstance {
-        return AudioPluginInstanceNW(owner, this, pluginInfo, sampleRate, extensions)
+        return AudioPluginInstance(owner, this, pluginInfo, sampleRate, extensions)
     }
 
     /*

@@ -9,7 +9,7 @@ import java.lang.UnsupportedOperationException
  */
 class AudioPluginClient(private var applicationContext: Context) : AudioPluginClientBase(applicationContext) {
 
-    val client = PluginClient(sampleRate, serviceConnector)
+    val client = NativePluginClient(sampleRate, serviceConnector)
 
     // Audio buses and buffers management
 

@@ -217,52 +217,6 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus getStateSize(int32_t in_instanceID, int32_t *_aidl_return) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        *_aidl_return = svc->getInstance(in_instanceID)->getStandardExtensions().getStateSize();
-        return ndk::ScopedAStatus::ok();
-    }
-
-    ::ndk::ScopedAStatus
-    getState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor &in_sharedMemoryFD) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = svc->getInstance(in_instanceID);
-        auto state = instance->getStandardExtensions().getState();
-        auto fdRemote = in_sharedMemoryFD.get();
-        if (fdRemote < 0)
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD,
-                    "invalid shared memory fd was passed");
-        auto dfd = dup(fdRemote);
-        auto dst = mmap(nullptr, state.data_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
-        memcpy(dst, state.data, state.data_size);
-        munmap(dst, state.data_size);
-        return ndk::ScopedAStatus::ok();
-    }
-
-    ::ndk::ScopedAStatus
-    setState(int32_t in_instanceID, const ::ndk::ScopedFileDescriptor &in_sharedMemoryFD,
-             int32_t in_size) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = svc->getInstance(in_instanceID);
-        auto fdRemote = in_sharedMemoryFD.get();
-        if (fdRemote < 0)
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD,
-                    "invalid shared memory fd was passed");
-        auto dfd = dup(fdRemote);
-        auto src = mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
-        instance->getStandardExtensions().setState(src, in_size);
-        munmap(src, in_size);
-        return ndk::ScopedAStatus::ok();
-    }
-
     ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override {
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
