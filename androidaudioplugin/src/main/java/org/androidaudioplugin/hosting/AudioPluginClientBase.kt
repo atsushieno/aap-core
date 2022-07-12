@@ -43,7 +43,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        val instance = conn!!.instantiatePlugin(pluginInfo, sampleRate, extensions)
+        val instance = AudioPluginInstance(serviceConnector, conn!!, pluginInfo, sampleRate, extensions)
         instantiatedPlugins.add(instance)
         return instance
     }
@@ -52,7 +52,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     {
         connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
             if (conn != null) {
-                val instance = conn.instantiatePlugin(pluginInfo, sampleRate, extensions)
+                val instance = AudioPluginInstance(serviceConnector, conn, pluginInfo, sampleRate, extensions)
                 instantiatedPlugins.add(instance)
                 pluginInstantiatedListeners.forEach { l -> l(instance) }
                 callback(instance, null)

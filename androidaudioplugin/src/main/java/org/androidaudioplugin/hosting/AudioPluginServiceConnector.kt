@@ -70,7 +70,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
     }
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) {
-        val conn = PluginServiceConnection(this, serviceConnection, serviceInfo, binder)
+        val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder)
         AudioPluginNatives.addBinderForClient(
             instanceId,
             conn.serviceInfo.packageName,
