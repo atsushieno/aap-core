@@ -8,6 +8,7 @@
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/core/host/audio-plugin-host.h"
+#include "../core/hosting/plugin-client-system.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
 #include "aap/core/host/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
@@ -17,9 +18,9 @@
 
 namespace aap {
 
-class AndroidPluginHostPAL : public PluginHostPAL {
+class AndroidPluginClientSystem : public PluginClientSystem {
 public:
-    virtual inline ~AndroidPluginHostPAL() {}
+    virtual inline ~AndroidPluginClientSystem() {}
 
     inline int32_t createSharedMemory(size_t size) override {
         return ASharedMemory_create(nullptr, size);

@@ -1,6 +1,6 @@
 #include <sys/mman.h>
 #include "aap/unstable/logging.h"
-#include "aap/unstable/aap-midi2.h"
+#include "aap/ext/aap-midi2.h"
 #include "AAPMidiProcessor.h"
 
 namespace aapmidideviceservice {

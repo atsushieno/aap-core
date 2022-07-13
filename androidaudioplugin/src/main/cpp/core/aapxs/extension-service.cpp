@@ -38,3 +38,4 @@ bool AAPXSClientInstanceManager::setupAAPXSInstances(std::function<void(AAPXSCli
 }
 
 } // namespace aap
+

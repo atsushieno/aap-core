@@ -8,6 +8,7 @@
 #include "aap/unstable/logging.h"
 #include "shared-memory-store.h"
 #include "audio-plugin-host-internals.h"
+#include "plugin-client-system.h"
 #include "../extensions/presets-service.h"
 #include "../extensions/midi2-service.h"
 
@@ -47,16 +48,6 @@ PluginInformation::PluginInformation(bool isOutProcess, const char* pluginPackag
 	free(cp);
 }
 
-
-//-----------------------------------
-
-std::vector<PluginInformation*> PluginHostPAL::getInstalledPlugins(bool returnCacheIfExists, std::vector<std::string>* searchPaths) {
-	std::vector<std::string> aapPaths{};
-	for (auto path : getPluginPaths())
-		getAAPMetadataPaths(path, aapPaths);
-	auto ret = getPluginsFromMetadataPaths(aapPaths);
-	return ret;
-}
 
 //-----------------------------------
 
@@ -104,7 +95,7 @@ int32_t PluginSharedMemoryBuffer::allocateClientBuffer(size_t numPorts, size_t n
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
 
 	for (size_t i = 0; i < numPorts; i++) {
-		int32_t fd = getPluginHostPAL()->createSharedMemory(memSize);
+		int32_t fd = PluginClientSystem::getInstance()->createSharedMemory(memSize);
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
 		shared_memory_fds->emplace_back(fd);
@@ -143,6 +134,76 @@ int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& cl
 }
 
 //-----------------------------------
+
+std::unique_ptr<StateExtensionFeature> aapxs_state{nullptr};
+std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
+std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
+
+PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
+	: plugin_list(contextPluginList)
+{
+	assert(contextPluginList);
+
+	aapxs_registry = std::make_unique<AAPXSRegistry>();
+
+	// state
+	if (aapxs_state == nullptr)
+		aapxs_state = std::make_unique<StateExtensionFeature>();
+	aapxs_registry->add(aapxs_state->asPublicApi());
+	// presets
+	if (aapxs_presets == nullptr)
+		aapxs_presets = std::make_unique<PresetsExtensionFeature>();
+	aapxs_registry->add(aapxs_presets->asPublicApi());
+	// midi2
+	if (aapxs_midi2 == nullptr)
+		aapxs_midi2 = std::make_unique<Midi2ExtensionFeature>();
+	aapxs_registry->add(aapxs_midi2->asPublicApi());
+}
+
+AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {
+	return aapxs_registry->getByUri(uri);
+}
+
+void PluginHost::destroyInstance(PluginInstance* instance)
+{
+	instances.erase(std::find(instances.begin(), instances.end(), instance));
+	delete instance;
+}
+
+PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
+{
+	dlerror(); // clean up any previous error state
+	auto file = descriptor->getLocalPluginSharedLibrary();
+	auto metadataFullPath = descriptor->getMetadataFullPath();
+	if (!metadataFullPath.empty()) {
+		size_t idx = metadataFullPath.find_last_of('/');
+		if (idx > 0) {
+			auto soFullPath = metadataFullPath.substr(0, idx + 1) + file;
+			struct stat st;
+			if (stat(soFullPath.c_str(), &st) == 0)
+				file = soFullPath;
+		}
+	}
+	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
+	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
+	if (dl == nullptr) {
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP library %s could not be loaded.\n", file.c_str());
+		return nullptr;
+	}
+	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
+	if (factoryGetter == nullptr) {
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
+		return nullptr;
+	}
+	auto pluginFactory = factoryGetter();
+	if (pluginFactory == nullptr) {
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
+		return nullptr;
+	}
+	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+	instances.emplace_back(instance);
+	return instance;
+}
 
 PluginClient::Result<int32_t> PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
 {
@@ -185,39 +246,33 @@ void PluginClient::createInstanceImpl(bool canDynamicallyConnect, std::string id
 	}
 }
 
-std::unique_ptr<StateExtensionFeature> aapxs_state{nullptr};
-std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
-std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
-
-PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
-	: plugin_list(contextPluginList)
+void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
 {
-	assert(contextPluginList);
-
-	aapxs_registry = std::make_unique<AAPXSRegistry>();
-
-	// state
-	if (aapxs_state == nullptr)
-		aapxs_state = std::make_unique<StateExtensionFeature>();
-	aapxs_registry->add(aapxs_state->asPublicApi());
-	// presets
-	if (aapxs_presets == nullptr)
-		aapxs_presets = std::make_unique<PresetsExtensionFeature>();
-	aapxs_registry->add(aapxs_presets->asPublicApi());
-	// midi2
-	if (aapxs_midi2 == nullptr)
-		aapxs_midi2 = std::make_unique<Midi2ExtensionFeature>();
-	aapxs_registry->add(aapxs_midi2->asPublicApi());
-}
-
-AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {
-	return aapxs_registry->getByUri(uri);
-}
-
-void PluginHost::destroyInstance(PluginInstance* instance)
-{
-	instances.erase(std::find(instances.begin(), instances.end(), instance));
-	delete instance;
+    // We first ensure to bind the remote plugin service, and then create a plugin instance.
+    //  Since binding the plugin service must be asynchronous while instancing does not have to be,
+    //  we call ensureServiceConnected() first and pass the rest as its callback.
+    auto internalCallback = [=](std::string error) {
+        if (error.empty()) {
+#if ANDROID
+            auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
+#else
+            auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
+#endif
+            assert (pluginFactory != nullptr);
+            auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+            instances.emplace_back(instance);
+            callback(instance, "");
+        }
+        else
+            callback(nullptr, error);
+    };
+    auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
+    if (service != nullptr)
+        internalCallback("");
+    else if (!canDynamicallyConnect)
+        internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
+    else
+        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }
 
 int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
@@ -228,89 +283,6 @@ int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 	}
 	instantiateLocalPlugin(info, sampleRate);
 	return instances.size() - 1;
-}
-
-PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
-{
-	dlerror(); // clean up any previous error state
-	auto file = descriptor->getLocalPluginSharedLibrary();
-	auto metadataFullPath = descriptor->getMetadataFullPath();
-	if (!metadataFullPath.empty()) {
-		size_t idx = metadataFullPath.find_last_of('/');
-		if (idx > 0) {
-			auto soFullPath = metadataFullPath.substr(0, idx + 1) + file;
-			struct stat st;
-			if (stat(soFullPath.c_str(), &st) == 0)
-				file = soFullPath;
-		}
-	}
-	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
-	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
-	if (dl == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP library %s could not be loaded.\n", file.c_str());
-		return nullptr;
-	}
-	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
-	if (factoryGetter == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
-		return nullptr;
-	}
-	auto pluginFactory = factoryGetter();
-	if (pluginFactory == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
-		return nullptr;
-	}
-	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
-	instances.emplace_back(instance);
-	return instance;
-}
-
-LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
-	service(service),
-	aapxsServiceInstances([&]() { return getPlugin(); }),
-	standards(this) {
-}
-
-AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
-	plugin_host_facade.context = this;
-	plugin_host_facade.get_extension_data = internalGetExtensionData;
-	return &plugin_host_facade;
-}
-
-AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
-    plugin_host_facade.context = this;
-    plugin_host_facade.get_extension_data = nullptr; // we shouldn't need it.
-    return &plugin_host_facade;
-}
-
-void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
-{
-	// We first ensure to bind the remote plugin service, and then create a plugin instance.
-	//  Since binding the plugin service must be asynchronous while instancing does not have to be,
-	//  we call ensureServiceConnected() first and pass the rest as its callback.
-	auto internalCallback = [=](std::string error) {
-		if (error.empty()) {
-#if ANDROID
-			auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
-#else
-			auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
-#endif
-			assert (pluginFactory != nullptr);
-			auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
-			instances.emplace_back(instance);
-			callback(instance, "");
-		}
-		else
-			callback(nullptr, error);
-	};
-	auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
-	if (service != nullptr)
-		internalCallback("");
-	else if (!canDynamicallyConnect)
-		internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
-	else
-		getPluginHostPAL()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
 }
 
 //-----------------------------------
@@ -361,6 +333,48 @@ void PluginInstance::completeInstantiation()
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 }
 
+//----
+
+RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+        : PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+          client(client),
+          standards(this),
+          aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
+}
+
+AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
+    plugin_host_facade.context = this;
+    plugin_host_facade.get_extension_data = nullptr; // we shouldn't need it.
+    return &plugin_host_facade;
+}
+
+void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode) {
+    auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
+    // Here we have to get a native plugin instance and send extension message.
+    // It is kind af annoying because we used to implement Binder-specific part only within the
+    // plugin API (binder-client-as-plugin.cpp)...
+    // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
+    // assign its implementation details that handle Binder messaging as a std::function.
+    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), opcode);
+}
+
+//----
+
+LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+        : PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+          service(service),
+          aapxsServiceInstances([&]() { return getPlugin(); }),
+          standards(this) {
+}
+
+AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
+    plugin_host_facade.context = this;
+    plugin_host_facade.get_extension_data = internalGetExtensionData;
+    return &plugin_host_facade;
+}
+
+//----
+
 AndroidAudioPlugin* RemotePluginInstanceStandardExtensionsImpl::getPlugin() { return owner->getPlugin(); }
 
 AAPXSClientInstanceManager* RemotePluginInstanceStandardExtensionsImpl::getAAPXSManager() {
@@ -386,54 +400,4 @@ void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientI
 	auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
 	thisObj->sendExtensionMessage(clientInstance->uri, opcode);
 }
-
-//----
-
-RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-	: PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
-	client(client),
-	standards(this),
-	aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
-}
-
-
-void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode) {
-	auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
-	// Here we have to get a native plugin instance and send extension message.
-	// It is kind af annoying because we used to implement Binder-specific part only within the
-	// plugin API (binder-client-as-plugin.cpp)...
-	// So far, instead of rewriting a lot of code to do so, we let AAPClientContext
-	// assign its implementation details that handle Binder messaging as a std::function.
-	send_extension_message_impl(aapxsInstance->uri, getInstanceId(), opcode);
-}
-
-//----
-
-PluginListSnapshot PluginListSnapshot::queryServices() {
-    PluginListSnapshot ret{};
-	for (auto p : getPluginHostPAL()->getInstalledPlugins())
-		ret.plugins.emplace_back(p);
-	return ret;
-}
-
-void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string packageName, std::string className)
-{
-	for (int i = 0; i < serviceConnections.size(); i++) {
-		auto s = serviceConnections[i];
-		if (s->getPackageName() == packageName && s->getClassName() == className)
-			return serviceConnections[i]->getConnectionData();
-	}
-	return nullptr;
-}
-
-void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string pluginId)
-{
-	auto pl = getPluginHostPAL()->getInstalledPlugins();
-	for (auto &plugin : pl)
-		if (plugin->getPluginID() == pluginId)
-			return getServiceHandleForConnectedPlugin(plugin->getPluginPackageName(),
-                                                      plugin->getPluginLocalName());
-	return nullptr;
-}
-
 } // namespace

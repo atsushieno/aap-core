@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "aap-core.h"
-#include <stdint.h>
+#include "../unstable/aap-core.h"
+#include "../../../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/24.0.8215888/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1/stdint.h"
 
 #define AAP_STATE_EXTENSION_URI "urn://androidaudioplugin.org/extensions/state/v1"
 

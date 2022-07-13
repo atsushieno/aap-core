@@ -5,6 +5,58 @@
 
 namespace aap {
 
+class PluginSharedMemoryBuffer {
+    enum PluginBufferOrigin {
+        PLUGIN_BUFFER_ORIGIN_UNALLOCATED,
+        PLUGIN_BUFFER_ORIGIN_LOCAL,
+        PLUGIN_BUFFER_ORIGIN_REMOTE
+    };
+
+    std::unique_ptr<std::vector<int32_t>> shared_memory_fds{nullptr};
+    std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
+    PluginBufferOrigin memory_origin{PLUGIN_BUFFER_ORIGIN_UNALLOCATED};
+
+public:
+    enum PluginMemoryAllocatorResult {
+        PLUGIN_MEMORY_ALLOCATOR_SUCCESS,
+        PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC,
+        PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE,
+        PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP
+    };
+
+    PluginSharedMemoryBuffer() {
+        buffer = std::make_unique<AndroidAudioPluginBuffer>();
+        assert(buffer);
+        buffer->num_buffers = 0;
+        buffer->num_frames = 0;
+        shared_memory_fds = std::make_unique<std::vector<int32_t>>();
+        assert(shared_memory_fds);
+    }
+
+    ~PluginSharedMemoryBuffer() {
+        if (buffer) {
+            for (size_t i = 0; i < buffer->num_buffers; i++) {
+                if (buffer->buffers[i])
+                    munmap(buffer->buffers[i], buffer->num_frames * sizeof(float *));
+            }
+            if (buffer->buffers)
+                free(buffer->buffers);
+        }
+        if (memory_origin == PLUGIN_BUFFER_ORIGIN_LOCAL) {
+            for (size_t i = 0; i < this->shared_memory_fds->size(); i++)
+                close(shared_memory_fds->at(i));
+        }
+    }
+
+    int32_t allocateClientBuffer(size_t numPorts, size_t numFrames);
+
+    int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames);
+
+    inline int32_t getFD(size_t index) { return shared_memory_fds->at(index); }
+
+    AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
+};
+
 // FIXME: there may be better AAPXSSharedMemoryStore/PluginSharedMemoryBuffer unification.
 class AAPXSSharedMemoryStore {
     std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};

@@ -3,14 +3,14 @@
 #include <cstring>
 #include <math.h>
 #include <aap/unstable/logging.h>
-#include <aap/unstable/presets.h>
-#include <aap/unstable/state.h>
+#include <aap/ext/presets.h>
+#include <aap/ext/state.h>
 
 extern "C" {
 
 #include "ayumi.h"
 #include "cmidi2.h"
-#include "aap/unstable/aap-midi2.h"
+#include "aap/ext/aap-midi2.h"
 
 #define AYUMI_AAP_MIDI2_IN_PORT 0
 #define AYUMI_AAP_MIDI2_OUT_PORT 1

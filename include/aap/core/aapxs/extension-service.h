@@ -7,12 +7,12 @@
 #include <map>
 #include <cassert>
 #include "aap/unstable/aapxs.h"
-#include "aap/unstable/presets.h"
+#include "aap/ext/presets.h"
 #include "aap/unstable/logging.h"
 #include "../plugin-information.h"
 #include "aap/android-audio-plugin.h"
-#include "aap/unstable/presets.h"
-#include "aap/unstable/state.h"
+#include "aap/ext/presets.h"
+#include "aap/ext/state.h"
 
 namespace aap {
 

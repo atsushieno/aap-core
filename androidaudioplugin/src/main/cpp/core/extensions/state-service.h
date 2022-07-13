@@ -5,7 +5,7 @@
 #include <functional>
 #include "aap/android-audio-plugin.h"
 #include "aap/unstable/aapxs.h"
-#include "aap/unstable/state.h"
+#include "aap/ext/state.h"
 #include "aap/unstable/logging.h"
 #include "aap/core/host/audio-plugin-host.h" // FIXME: we should eliminate dependency on types from this header.
 #include "aap/core/aapxs/extension-service.h"

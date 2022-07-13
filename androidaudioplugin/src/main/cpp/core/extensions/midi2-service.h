@@ -6,7 +6,7 @@
 #include <functional>
 #include "aap/android-audio-plugin.h"
 #include "aap/unstable/aapxs.h"
-#include "aap/unstable/aap-midi2.h"
+#include "aap/ext/aap-midi2.h"
 #include "aap/unstable/logging.h"
 #include "aap/core/aapxs/extension-service.h"
 #include "extension-service-impl.h"

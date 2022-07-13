@@ -258,9 +258,9 @@ Currently, the Hosting API is provided only in C++. They are in `aap` namespace.
 
 - Types
   - `class PluginHost`
-  - `class PluginHostPAL`
-    - `class AndroidPluginHostPAL`
-    - `class DesktopPluginHostPAL`
+  - `class PluginClientSystem`
+    - `class AndroidPluginClientSystem`
+    - `class DesktopPluginClientSystem` (it does not exist yet)
   - `class PluginInformation`
   - `class PortInformation`
   - `class PluginInstance`

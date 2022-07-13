@@ -1,6 +1,6 @@
 
 #include <aap/android-audio-plugin.h>
-#include <aap/unstable/state.h>
+#include <aap/ext/state.h>
 #include <cstring>
 
 extern "C" {
