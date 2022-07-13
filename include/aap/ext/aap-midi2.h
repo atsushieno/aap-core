@@ -19,11 +19,6 @@ typedef struct AAPMidiBufferHeader {
     uint32_t reserved[6];
 } AAPMidiBufferHeader;
 
-typedef struct aap_midi2_context_t {
-    void *context;
-    AndroidAudioPlugin* plugin;
-} aap_midi2_context_t;
-
 typedef struct aap_midi2_extension_t {
     void *context;
     int32_t protocol{0}; // 0: Unspecified / 1: MIDI1 / 2: MIDI2
