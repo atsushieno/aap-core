@@ -16,8 +16,7 @@ class AudioPluginInstance(
     serviceConnector: AudioPluginServiceConnector,
     conn: PluginServiceConnection,
     var pluginInfo: PluginInformation,
-    sampleRate: Int,
-    extensions: List<AudioPluginExtensionData>) {
+    sampleRate: Int) {
 
     enum class InstanceState {
         UNPREPARED,

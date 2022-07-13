@@ -2,8 +2,6 @@ package org.androidaudioplugin.hosting
 
 import android.content.Context
 import android.media.AudioManager
-import org.androidaudioplugin.AudioPluginExtensionData
-import org.androidaudioplugin.AudioPluginInterfaceCallback
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 
@@ -14,8 +12,6 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
 
     val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
-
-    val extensions = mutableListOf<AudioPluginExtensionData>()
 
     fun dispose() {
         for (instance in instantiatedPlugins)
@@ -43,7 +39,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        val instance = AudioPluginInstance(serviceConnector, conn!!, pluginInfo, sampleRate, extensions)
+        val instance = AudioPluginInstance(serviceConnector, conn!!, pluginInfo, sampleRate)
         instantiatedPlugins.add(instance)
         return instance
     }
@@ -52,7 +48,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     {
         connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
             if (conn != null) {
-                val instance = AudioPluginInstance(serviceConnector, conn, pluginInfo, sampleRate, extensions)
+                val instance = AudioPluginInstance(serviceConnector, conn, pluginInfo, sampleRate)
                 instantiatedPlugins.add(instance)
                 pluginInstantiatedListeners.forEach { l -> l(instance) }
                 callback(instance, null)
