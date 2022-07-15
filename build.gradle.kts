@@ -1,7 +1,7 @@
 
 buildscript {
-    val kotlin_version: String by extra("1.6.10")
-    val dokka_version: String by extra("1.6.10")
+    val kotlin_version: String by extra("1.7.0")
+    val dokka_version: String by extra("1.7.0")
     val compose_version: String by extra("1.1.1")
     val aap_version: String by extra("0.7.3")
     val enable_asan: Boolean by extra(false)

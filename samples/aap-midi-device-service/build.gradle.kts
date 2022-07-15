@@ -32,7 +32,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = compose_version
+        kotlinCompilerExtensionVersion = "1.2.0"
     }
     packagingOptions {
         exclude ("META-INF/AL2.0")
