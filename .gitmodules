@@ -7,3 +7,6 @@
 [submodule "external/cmidi2"]
 	path = external/cmidi2
 	url = https://github.com/atsushieno/cmidi2.git
+[submodule "external/LabSound"]
+	path = external/LabSound
+	url = https://github.com/LabSound/LabSound.git
