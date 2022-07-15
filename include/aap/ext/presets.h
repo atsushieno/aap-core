@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include "../unstable/aap-core.h"
-#include "../../../../../../../../../../../../../home/atsushi/Android/Sdk/ndk/24.0.8215888/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1/stdint.h"
+#include "stdint.h"
 
 #define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v1"
 
