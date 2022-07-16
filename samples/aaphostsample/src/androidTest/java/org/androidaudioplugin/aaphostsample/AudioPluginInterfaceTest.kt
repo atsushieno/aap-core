@@ -21,6 +21,9 @@ class AudioPluginInterfaceTest {
     fun dummy() {
     }
 
+    /* We don't really expect binder based AudioPluginInterface proxy do the right job anymore.
+       Test NativeRemotePluginInstance instead.
+
     // It likely requires shared memory extension, but well, only if we really would like to test it...
     //@Test
     fun basicDirectServiceOperations() {
@@ -64,4 +67,5 @@ class AudioPluginInterfaceTest {
 
         serviceRule.unbindService()
     }
+    */
 }

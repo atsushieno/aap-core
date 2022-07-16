@@ -82,8 +82,9 @@ static jmethodID
 		j_method_get_extension,
 		j_method_extension_get_required,
 		j_method_extension_get_uri,
-		j_method_get_port_count,
-		j_method_get_port,
+		j_method_get_declared_port_count,
+		j_method_get_declared_port,
+		j_method_port_ctor,
 		j_method_port_get_index,
 		j_method_port_get_name,
 		j_method_port_get_direction,
@@ -137,10 +138,12 @@ void initializeJNIMetadata()
 											   "()Z");
 	j_method_extension_get_uri = env->GetMethodID(java_extension_information_class, "getUri",
 											  "()Ljava/lang/String;");
-	j_method_get_port_count = env->GetMethodID(java_plugin_information_class,
-											   "getPortCount", "()I");
-	j_method_get_port = env->GetMethodID(java_plugin_information_class, "getPort",
+	j_method_get_declared_port_count = env->GetMethodID(java_plugin_information_class,
+														"getDeclaredPortCount", "()I");
+	j_method_get_declared_port = env->GetMethodID(java_plugin_information_class, "getDeclaredPort",
 										 "(I)Lorg/androidaudioplugin/PortInformation;");
+	j_method_port_ctor = env->GetMethodID(java_port_information_class, "<init>",
+                                          "(ILjava/lang/String;IIFFF)V");
 	j_method_port_get_index = env->GetMethodID(java_port_information_class, "getIndex",
 											  "()I");
 	j_method_port_get_name = env->GetMethodID(java_port_information_class, "getName",
@@ -204,9 +207,9 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 		free((void*) name);
 	}
 
-	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_port_count);
+	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_declared_port_count);
 	for (int i = 0; i < nPorts; i++) {
-		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_port, i);
+		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_declared_port, i);
 		auto index = (uint32_t) env->CallIntMethod(port, j_method_port_get_index);
 		auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(port, j_method_port_get_name));
 		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
@@ -218,7 +221,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 			nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_maximum)));
 		}
 		nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes)));
-		aapPI->addPort(nativePort);
+		aapPI->addDeclaredPort(nativePort);
 		free((void*) name);
 	}
 
@@ -630,4 +633,29 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getCurrentPresetN
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstance(instanceId);
 	return env->NewStringUTF(instance->getStandardExtensions().getCurrentPresetName(index).c_str());
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortCount(JNIEnv *env,
+                                                                            jclass clazz,
+                                                                            jlong nativeClient,
+                                                                            jint instanceId) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	return instance->getNumPorts();
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *env, jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId,
+																	   jint index) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	auto port = instance->getPort(index);
+	auto klass = env->FindClass(java_port_information_class_name);
+	assert(klass);
+	return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(), env->NewStringUTF(port->getName()), (jint) port->getPortDirection(), (jint) port->getContentType(), port->getDefaultValue(), port->getMinimumValue(), port->getMaximumValue());
 }

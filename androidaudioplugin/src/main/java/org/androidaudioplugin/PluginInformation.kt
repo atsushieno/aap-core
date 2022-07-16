@@ -27,12 +27,21 @@ class PluginInformation(var packageName: String, var localName: String, var disp
     {
         return extensions[index]
     }
+    @Deprecated("Use getDeclaredPortCount()", replaceWith = ReplaceWith("getDeclaredPortCount"))
     fun getPortCount() : Int
     {
         return ports.size
     }
+    fun getDeclaredPortCount() : Int
+    {
+        return ports.size
+    }
+    @Deprecated("Use getDeclaredPort()", replaceWith = ReplaceWith("getDeclaredPort(index)"))
     fun getPort(index : Int) : PortInformation
     {
+        return ports[index]
+    }
+    fun getDeclaredPort(index : Int) : PortInformation {
         return ports[index]
     }
 }

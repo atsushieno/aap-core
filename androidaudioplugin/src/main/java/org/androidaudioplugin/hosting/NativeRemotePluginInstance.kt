@@ -1,6 +1,7 @@
 package org.androidaudioplugin.hosting
 
 import android.os.ParcelFileDescriptor
+import org.androidaudioplugin.PortInformation
 import kotlin.properties.Delegates
 
 
@@ -36,6 +37,9 @@ class NativeRemotePluginInstance(val pluginId: String,
     // aap::RemotePluginInstance*
     private val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
     private var nativeAudioPluginBuffer by Delegates.notNull<Long>()
+
+    fun getPortCount() = getPortCount(client.native, instanceId)
+    fun getPort(index: Int) = getPort(client.native, instanceId, index)
 
     companion object {
         @JvmStatic
@@ -80,5 +84,11 @@ class NativeRemotePluginInstance(val pluginId: String,
         external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
         @JvmStatic
         external fun getCurrentPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
+
+        @JvmStatic
+        external fun getPortCount(nativeClient: Long, instanceId: Int) : Int
+
+        @JvmStatic
+        external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
     }
 }

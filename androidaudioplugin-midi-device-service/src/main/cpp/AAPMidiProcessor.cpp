@@ -144,7 +144,6 @@ namespace aapmidideviceservice {
             return;
         }
 
-        int32_t numPorts = pluginInfo->getNumPorts();
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "host is going to instantiate %s", pluginId.c_str());
         client->createInstanceAsync(pluginId, sample_rate, true, [&](int32_t instanceId, std::string error) {
             if (instanceId < 0) {
@@ -158,6 +157,7 @@ namespace aapmidideviceservice {
 
             instrument_instance_id = instanceId;
 
+            int32_t numPorts = instance->getNumPorts();
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
             instance->completeInstantiation();
@@ -166,7 +166,7 @@ namespace aapmidideviceservice {
             data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
 
             for (int i = 0; i < numPorts; i++) {
-                auto port = pluginInfo->getPort(i);
+                auto port = instance->getPort(i);
                 if (port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO &&
                     port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT)
                     data->getAudioOutPorts()->emplace_back(i);

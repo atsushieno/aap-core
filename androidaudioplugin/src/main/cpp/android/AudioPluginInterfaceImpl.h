@@ -48,7 +48,7 @@ public:
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
         auto instance = svc->getInstance(*_aidl_return);
         auto shm = instance->getAAPXSSharedMemoryStore();
-        shm->resizePortBuffer(instance->getPluginInformation()->getNumPorts());
+        shm->resizePortBuffer(instance->getNumPorts());
 
         buffers.resize(*_aidl_return + 1);
         auto &buffer = buffers[*_aidl_return];
@@ -158,7 +158,7 @@ public:
     }
 
     int resetBuffers(PluginInstance *instance, AndroidAudioPluginBuffer &buffer, int frameCount) {
-        int nPorts = instance->getPluginInformation()->getNumPorts();
+        int nPorts = instance->getNumPorts();
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION;

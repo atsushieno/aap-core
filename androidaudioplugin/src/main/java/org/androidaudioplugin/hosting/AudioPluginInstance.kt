@@ -68,8 +68,8 @@ class AudioPluginInstance(
             else defaultControlBytesPerBlock
         runCatchingRemoteException {
             proxy.beginPrepare(audioSamplesPerBlock, pluginInfo.ports.size)
-            (0 until pluginInfo.getPortCount()).forEach { i ->
-                val port = pluginInfo.getPort(i)
+            (0 until proxy.getPortCount()).forEach { i ->
+                val port = proxy.getPort(i)
                 val isAudio = port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO
                 val size =
                     if (port.minimumSizeInBytes > 0) port.minimumSizeInBytes

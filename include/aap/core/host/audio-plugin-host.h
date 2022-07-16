@@ -146,6 +146,15 @@ public:
 		return pluginInfo;
 	}
 
+	int32_t getNumPorts() {
+		// FIXME: return dynamic instantiation results. Metadata is incomplete.
+		return pluginInfo->getNumDeclaredPorts();
+	}
+
+	const PortInformation* getPort(int32_t index) {
+		return pluginInfo->getDeclaredPort(index);
+	}
+
 	void completeInstantiation();
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)

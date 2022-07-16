@@ -171,14 +171,37 @@ public:
         return primary_category;
     }
 
+    [[deprecated("It will vanish in any later versions. Use getNumDeclaredPorts(), or PluginInstance::getNumPorts().")]]
     int getNumPorts() const
     {
         return (int) ports.size();
     }
 
+    int getNumDeclaredPorts() const
+    {
+        return (int) ports.size();
+    }
+
+    [[deprecated("It will vanish in any later versions. Use getDeclaredPort(), or PluginInstance::getPort().")]]
     const PortInformation* getPort(int index) const
     {
         return ports[(size_t) index];
+    }
+
+    const PortInformation* getDeclaredPort(int index) const
+    {
+        return ports[(size_t) index];
+    }
+
+    [[deprecated("It will vanish in any later versions. Use addDeclaredPort(), or PluginInstance::addPort().")]]
+    void addPort(PortInformation* port)
+    {
+        ports.emplace_back(port);
+    }
+
+    void addDeclaredPort(PortInformation* port)
+    {
+        ports.emplace_back(port);
     }
 
     int getNumExtensions() const
@@ -213,6 +236,7 @@ public:
         return strstr(getPrimaryCategory().c_str(), "Instrument") != nullptr;
     }
 
+    /* It is deleted. But if it we couldn't fix other parts (aap-lv2, aap-juce) it will be back.
     bool hasMidi2Ports() const
     {
         for (auto port : ports)
@@ -220,17 +244,18 @@ public:
                 return true;
         return false;
     }
+    */
 
     bool hasSharedContainer() const
     {
-        // TODO: FUTURE (v0.8) It may be something AAP should support because
+        // TODO: FUTURE It may be something AAP should support because
         // context switching over outprocess plugins can be quite annoying...
         return false;
     }
 
     bool hasEditor() const
     {
-        // TODO: FUTURE (v0.7)
+        // TODO: FUTURE
         return false;
     }
 
@@ -256,11 +281,6 @@ public:
     void addExtension(PluginExtensionInformation extension)
     {
         extensions.emplace_back(extension);
-    }
-
-    void addPort(PortInformation* port)
-    {
-        ports.emplace_back(port);
     }
 };
 
