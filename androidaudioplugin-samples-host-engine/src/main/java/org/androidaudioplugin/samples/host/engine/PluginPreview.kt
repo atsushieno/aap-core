@@ -18,7 +18,6 @@ const val DEFAULT_CONTROL_BUFFER_SIZE = 4096
 // We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
 const val PCM_DATA_SAMPLERATE = 44100
 
-@ExperimentalUnsignedTypes
 class PluginPreview(context: Context) {
 
     private var host : AudioPluginClient = AudioPluginClient(context.applicationContext)

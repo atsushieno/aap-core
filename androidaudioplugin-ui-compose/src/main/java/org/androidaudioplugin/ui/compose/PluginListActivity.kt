@@ -6,11 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.samples.host.engine.PluginPreview
 import kotlin.system.exitProcess
 
 open class PluginListActivity : AppCompatActivity() {
 
-    var topAppBarText = "Plugins in this Plugin Service"
+    protected lateinit var model: PluginListModel
+    protected lateinit var viewModel : PluginListViewModel
 
     open fun shouldListPlugin(info: PluginServiceInformation) =
         info.packageName == application.packageName
@@ -19,17 +21,17 @@ open class PluginListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
             .filter { s -> shouldListPlugin(s) }
-        pluginListViewModel = PluginListViewModel(applicationContext)
-        pluginListViewModel.setAvailablePluginServices(services.toList())
+        model = PluginListModel("Plugins in this AAP Service", services.toMutableList(), PluginPreview(applicationContext))
+        viewModel = PluginListViewModel(model)
         setContent {
-            PluginListApp(topAppBarText)
+            PluginListApp(viewModel)
         }
     }
 
     private var lastBackPressed = System.currentTimeMillis()
 
     override fun onBackPressed() {
-        if (!pluginListViewModel.atTopLevel) {
+        if (!viewModel.atTopLevel.value) {
             super.onBackPressed()
             return
         }

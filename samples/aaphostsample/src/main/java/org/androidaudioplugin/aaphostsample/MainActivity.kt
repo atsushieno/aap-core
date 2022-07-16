@@ -7,6 +7,6 @@ class MainActivity : PluginListActivity() {
     override fun shouldListPlugin(info: PluginServiceInformation) = true
 
     init {
-        topAppBarText = "Plugins on this device"
+        viewModel.topAppBarText = "Plugins on this device"
     }
 }
