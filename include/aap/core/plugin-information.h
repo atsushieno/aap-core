@@ -236,7 +236,7 @@ public:
         return strstr(getPrimaryCategory().c_str(), "Instrument") != nullptr;
     }
 
-    /* It is deleted. But if it we couldn't fix other parts (aap-lv2, aap-juce) it will be back.
+    /* They are deleted. But if it we couldn't fix other parts (aap-lv2, aap-juce) it will be back.
     bool hasMidi2Ports() const
     {
         for (auto port : ports)
@@ -244,7 +244,6 @@ public:
                 return true;
         return false;
     }
-    */
 
     bool hasSharedContainer() const
     {
@@ -252,6 +251,7 @@ public:
         // context switching over outprocess plugins can be quite annoying...
         return false;
     }
+    */
 
     bool hasEditor() const
     {

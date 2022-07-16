@@ -152,6 +152,7 @@ public:
 	}
 
 	const PortInformation* getPort(int32_t index) {
+		// FIXME: return dynamic instantiation results. Metadata is incomplete.
 		return pluginInfo->getDeclaredPort(index);
 	}
 
@@ -196,7 +197,7 @@ public:
 
 	uint32_t getTailTimeInMilliseconds()
 	{
-		// TODO: FUTURE (v0.7) - most likely just a matter of plugin property
+		// TODO: FUTURE - most likely just a matter of plugin property
 		return 0;
 	}
 };
@@ -219,15 +220,6 @@ class LocalPluginInstance : public PluginInstance {
 	AndroidAudioPluginHost plugin_host_facade{};
 	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
 	LocalPluginInstanceStandardExtensionsImpl standards;
-
-	// FIXME: should we commonize these members with ClientPluginInstance?
-	//  They only differ at getExtension() or getExtensionService() so far.
-	template<typename T> T withPresetsExtension(T defaultValue, std::function<T(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) {
-		auto presetsExt = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
-		if (presetsExt == nullptr)
-			return defaultValue;
-		return func(presetsExt, AndroidAudioPluginExtensionTarget{plugin, nullptr});
-	}
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
 		return nullptr;
