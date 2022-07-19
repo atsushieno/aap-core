@@ -5,12 +5,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.samples.host.engine.PluginPreview
 
 class PluginListViewModel(model: PluginListModel) {
-    var topAppBarText by mutableStateOf(model.topAppBarText)
+    var topAppBarText = mutableStateOf(model.topAppBarText)
 
     val availablePluginServices = mutableStateListOf<PluginServiceInformation>()
-    val preview by mutableStateOf(model.preview)
+    val preview = mutableStateOf(model.preview)
+    var errorMessage = mutableStateOf(model.errorMessage)
 
     var atTopLevel = mutableStateOf(true)
 

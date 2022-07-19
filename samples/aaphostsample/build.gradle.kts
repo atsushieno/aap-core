@@ -72,6 +72,8 @@ dependencies {
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
 
+    implementation ("androidx.compose.ui:ui:$compose_version")
+
     testImplementation ("junit:junit:4.13.2")
 
     androidTestImplementation ("androidx.test:core:1.4.0")

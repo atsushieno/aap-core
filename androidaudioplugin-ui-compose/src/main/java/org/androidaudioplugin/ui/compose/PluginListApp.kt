@@ -7,6 +7,9 @@ import androidx.compose.material.Surface
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -20,11 +23,12 @@ fun PluginListApp(viewModel: PluginListViewModel) {
 fun PluginListAppContent(viewModel: PluginListViewModel) {
     Surface {
         val navController = rememberNavController()
+        val previewState by remember { viewModel.preview }
 
         NavHost(navController, startDestination="plugin_list") {
             composable("plugin_list") {
                 Scaffold(
-                    topBar = { TopAppBar(title = { Text(text = viewModel.topAppBarText) }) },
+                    topBar = { TopAppBar(title = { Text(text = viewModel.topAppBarText.value) }) },
                     content = {
                         viewModel.atTopLevel.value = true // it feels ugly. There should be some better way...
                         PluginList(onItemClick = { p ->
@@ -39,12 +43,12 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                 val pluginId = it.arguments?.getString("pluginId")
                 if (pluginId != null) {
                     viewModel.atTopLevel.value = false // it feels ugly. There should be some better way...
-                    val plugin = viewModel.availablePluginServices.flatMap { s -> s.plugins }
-                        .firstOrNull { p -> p.pluginId == pluginId }
+                    val plugin by remember { mutableStateOf(viewModel.availablePluginServices.flatMap { s -> s.plugins }
+                        .firstOrNull { p -> p.pluginId == pluginId }) }
                     if (plugin != null) {
                         Scaffold(
-                            topBar = { TopAppBar(title = { Text(text = plugin.displayName) }) },
-                            content = { PluginDetails(plugin, viewModel) })
+                            topBar = { TopAppBar(title = { Text(text = plugin!!.displayName) }) },
+                            content = { PluginDetails(plugin!!, viewModel) })
                     }
                 }
             }

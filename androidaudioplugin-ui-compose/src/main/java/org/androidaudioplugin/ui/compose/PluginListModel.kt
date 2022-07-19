@@ -7,5 +7,6 @@ import org.androidaudioplugin.samples.host.engine.PluginPreview
 data class PluginListModel constructor(
     var topAppBarText: String,
     val availablePluginServices: MutableList<PluginServiceInformation>,
-    val preview: PluginPreview
+    val preview: PluginPreview,
+    var errorMessage: String
 )

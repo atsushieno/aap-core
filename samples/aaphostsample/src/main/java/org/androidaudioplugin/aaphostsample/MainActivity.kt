@@ -4,11 +4,12 @@ import android.os.Bundle
 import org.androidaudioplugin.ui.compose.PluginListActivity
 import org.androidaudioplugin.*
 
+
 class MainActivity : PluginListActivity() {
     override fun shouldListPlugin(info: PluginServiceInformation) = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.topAppBarText = "Plugins on this device"
+        viewModel.topAppBarText.value = "Plugins on this device"
     }
 }

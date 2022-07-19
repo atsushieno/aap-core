@@ -21,7 +21,7 @@ open class PluginListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
             .filter { s -> shouldListPlugin(s) }
-        model = PluginListModel("Plugins in this AAP Service", services.toMutableList(), PluginPreview(applicationContext))
+        model = PluginListModel("Plugins in this AAP Service", services.toMutableList(), PluginPreview(applicationContext), "")
         viewModel = PluginListViewModel(model)
         setContent {
             PluginListApp(viewModel)

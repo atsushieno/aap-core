@@ -21,7 +21,8 @@ const val PCM_DATA_SAMPLERATE = 44100
 class PluginPreview(context: Context) {
 
     private var host : AudioPluginClient = AudioPluginClient(context.applicationContext)
-    var instance : AudioPluginInstance? = null
+    var instance: AudioPluginInstance? = null
+    private var lastError: Exception? = null
 
     val inBuf : ByteArray
     val outBuf : ByteArray
@@ -31,7 +32,29 @@ class PluginPreview(context: Context) {
         host.dispose()
     }
 
-    fun applyPlugin(service: PluginServiceInformation, plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
+    fun loadPlugin(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) ->Unit = {_,_ -> }) {
+        if (instance != null)
+            return
+        host.instantiatePluginAsync(pluginInfo) { instance, error ->
+            if (error != null) {
+                lastError = error
+                callback(null, error)
+            } else
+                this.instance = instance
+            callback(instance, null)
+        }
+    }
+
+    fun unloadPlugin() {
+        val instance = this.instance
+        if (instance != null) {
+            if (instance.state == AudioPluginInstance.InstanceState.ACTIVE)
+                instance.deactivate()
+            instance.destroy()
+        }
+    }
+
+    fun applyPlugin(plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
     {
         host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
         host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
@@ -39,16 +62,20 @@ class PluginPreview(context: Context) {
         host.connectToPluginServiceAsync(plugin.packageName) { _, error ->
             val instance = host.instantiatePlugin(plugin)
             this.instance = instance
-            instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
-            if (instance.proxyError != null) {
+            applyPlugin(parametersOnUI, errorCallback)
+        }
+    }
+
+    fun applyPlugin(parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
+        val instance = this.instance ?: return
+
+        instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
+        if (instance.proxyError != null) {
+            errorCallback(instance.proxyError!!)
+        } else {
+            processPluginOnce(parametersOnUI)
+            if (instance.proxyError != null)
                 errorCallback(instance.proxyError!!)
-            } else {
-                android.os.Looper.getMainLooper().queue.run {
-                    processPluginOnce(parametersOnUI)
-                }
-                if (instance.proxyError != null)
-                    errorCallback(instance.proxyError!!)
-            }
         }
     }
 

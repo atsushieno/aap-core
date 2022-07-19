@@ -11,11 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,12 +20,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
-import java.nio.FloatBuffer
 
 
 @Composable
@@ -60,14 +54,15 @@ private fun ColumnHeader(text: String) {
 }
 
 @Composable
-fun PluginDetails(plugin: PluginInformation, model: PluginListViewModel) {
+fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     val scrollState = rememberScrollState(0)
 
     val parameters by remember { mutableStateOf(plugin.ports.map { p -> p.default }.toFloatArray()) }
     var pluginAppliedState by remember { mutableStateOf(false) }
-    val waveViewSource = model.preview.inBuf
+    val previewState by remember { viewModel.preview }
+    val waveViewSource = previewState.inBuf
     var waveState by remember { mutableStateOf(waveViewSource) }
-    var pluginErrorState by remember { mutableStateOf("") }
+    var pluginErrorState by remember { viewModel.errorMessage }
 
     if (pluginErrorState != "") {
         AlertDialog(onDismissRequest = {},
@@ -115,7 +110,7 @@ fun PluginDetails(plugin: PluginInformation, model: PluginListViewModel) {
         }
         if (plugin.manufacturer != null) {
             Row {
-                ColumnHeader("manfufacturer: ")
+                ColumnHeader("manufacturer: ")
             }
             Row {
                 Text(plugin.manufacturer ?: "")
@@ -128,30 +123,38 @@ fun PluginDetails(plugin: PluginInformation, model: PluginListViewModel) {
         WaveformDrawable(waveData = waveState)
         Row {
             val buttonStatePerRow = remember { mutableStateOf(true) }
+            val coroutineScope = rememberCoroutineScope()
             Button(enabled = buttonStatePerRow.value, onClick = {
                 if (!pluginAppliedState) {
                     buttonStatePerRow.value = false
-                    model.preview.processAudioCompleted = {
-                        waveState = model.preview.outBuf
+                    previewState.processAudioCompleted = {
+                        waveState = previewState.outBuf
                         pluginAppliedState = true
                         buttonStatePerRow.value = true
                     }
-                    GlobalScope.launch {
-                        model.preview.applyPlugin(model.availablePluginServices.first(), plugin, parameters) {
-                            pluginErrorState = it.toString()
-                            buttonStatePerRow.value = true
+                    coroutineScope.launch {
+                        previewState.loadPlugin(plugin!!) { instance, error ->
+                            if (error != null)
+                                viewModel.errorMessage.value = error.toString()
+                            else {
+                                previewState.applyPlugin(parameters) {
+                                    pluginErrorState = it.toString()
+                                    buttonStatePerRow.value = true
+                                }
+                                previewState.unloadPlugin()
+                            }
                         }
                     }
                 } else {
                     buttonStatePerRow.value = false
-                    waveState = model.preview.inBuf
+                    waveState = previewState.inBuf
                     pluginAppliedState = false
                     buttonStatePerRow.value = true
                 }
             }) { Text(if (pluginAppliedState) "On" else "Off") }
             Button(onClick = {}) { Text("UI") }
             Button(onClick = {
-                GlobalScope.launch { model.preview.playSound(pluginAppliedState) }
+                coroutineScope.launch { previewState.playSound(pluginAppliedState) }
                 }) {
                 Text("Play")
             }
