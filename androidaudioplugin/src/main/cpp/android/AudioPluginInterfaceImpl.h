@@ -128,7 +128,10 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
                     "unable to get shared memory extension");
-        shmExt->completeInitialization(in_frameCount);
+        if (!shmExt->completeServiceInitialization(in_frameCount))
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
+                    "failed to allocate shared memory");
         int ret = prepare(svc->getInstance(in_instanceID), buffers[in_instanceID], in_frameCount,
                           in_portCount);
         if (ret != 0)

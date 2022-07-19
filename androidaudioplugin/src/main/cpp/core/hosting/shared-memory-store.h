@@ -6,6 +6,9 @@
 namespace aap {
 
 class PluginSharedMemoryBuffer {
+    /*
+     * Memory allocation and mmap-ing strategy differ between client and service.
+     */
     enum PluginBufferOrigin {
         PLUGIN_BUFFER_ORIGIN_UNALLOCATED,
         PLUGIN_BUFFER_ORIGIN_LOCAL,
@@ -43,14 +46,15 @@ public:
                 free(buffer->buffers);
         }
         if (memory_origin == PLUGIN_BUFFER_ORIGIN_LOCAL) {
-            for (size_t i = 0; i < this->shared_memory_fds->size(); i++)
+            for (size_t i = 0; i < shared_memory_fds->size(); i++)
                 close(shared_memory_fds->at(i));
+            shared_memory_fds->clear();
         }
     }
 
-    int32_t allocateClientBuffer(size_t numPorts, size_t numFrames);
+    [[nodiscard]] int32_t allocateClientBuffer(size_t numPorts, size_t numFrames);
 
-    int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames);
+    [[nodiscard]] int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames);
 
     inline int32_t getFD(size_t index) { return shared_memory_fds->at(index); }
 
@@ -77,6 +81,8 @@ public:
         extension_fds->clear();
     }
 
+    inline aap::PluginSharedMemoryBuffer* getShmBuffer() { return port_shm_buffers.get(); }
+
     // Stores clone of port buffer FDs passed from client via Binder.
     inline void resizePortBuffer(size_t newSize) {
         cached_shm_fds_for_prepare->resize(newSize);
@@ -90,9 +96,10 @@ public:
         cached_shm_fds_for_prepare->at(index) = fd;
     }
 
-    void completeInitialization(size_t numFrames) {
-        port_shm_buffers->allocateServiceBuffer(*cached_shm_fds_for_prepare, numFrames);
+    [[nodiscard]] bool completeServiceInitialization(size_t numFrames) {
+        auto ret = port_shm_buffers->allocateServiceBuffer(*cached_shm_fds_for_prepare, numFrames) == PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
         cached_shm_fds_for_prepare->clear();
+        return ret;
     }
 
     inline std::vector<int32_t> *getExtensionFDs() { return extension_fds.get(); }
