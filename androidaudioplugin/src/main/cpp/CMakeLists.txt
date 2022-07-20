@@ -14,7 +14,7 @@ set (androidaudioplugin_SOURCES
 	)
 
 set (androidaudioplugin_INCLUDES
-	"include/"
+	"../../../../include/"
 	"android/gen/include"
 	)
 
