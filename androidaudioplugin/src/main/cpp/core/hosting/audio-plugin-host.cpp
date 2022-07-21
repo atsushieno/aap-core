@@ -84,49 +84,49 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
 
 //-----------------------------------
 
-int32_t PluginSharedMemoryBuffer::allocateClientBuffer(size_t numPorts, size_t numFrames) {
+int32_t PluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, size_t numFrames) {
 	memory_origin = PLUGIN_BUFFER_ORIGIN_LOCAL;
 
 	size_t memSize = numFrames * sizeof(float);
-	buffer->num_buffers = numPorts;
-	buffer->num_frames = numFrames;
-	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
-	if (!buffer->buffers)
+	port_buffer->num_buffers = numPorts;
+	port_buffer->num_frames = numFrames;
+	port_buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
+	if (!port_buffer->buffers)
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
 
 	for (size_t i = 0; i < numPorts; i++) {
 		int32_t fd = PluginClientSystem::getInstance()->createSharedMemory(memSize);
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
-		shared_memory_fds->emplace_back(fd);
-		buffer->buffers[i] = mmap(nullptr, memSize,
+		port_buffer_fds->emplace_back(fd);
+        port_buffer->buffers[i] = mmap(nullptr, memSize,
 								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-		if (!buffer->buffers[i])
+		if (!port_buffer->buffers[i])
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
 }
 
-int32_t PluginSharedMemoryBuffer::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames) {
+int32_t PluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames) {
 	memory_origin = PLUGIN_BUFFER_ORIGIN_REMOTE;
 
 	size_t numPorts = clientFDs.size();
 	size_t memSize = numFrames * sizeof(float);
-	buffer->num_buffers = numPorts;
-	buffer->num_frames = numFrames;
-	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
-	if (!buffer->buffers)
+	port_buffer->num_buffers = numPorts;
+	port_buffer->num_frames = numFrames;
+	port_buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
+	if (!port_buffer->buffers)
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
 
 	for (size_t i = 0; i < numPorts; i++) {
 		int32_t fd = clientFDs[i];
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
-		shared_memory_fds->emplace_back(fd);
-		buffer->buffers[i] = mmap(nullptr, memSize,
+		port_buffer_fds->emplace_back(fd);
+        port_buffer->buffers[i] = mmap(nullptr, memSize,
 								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-		if (!buffer->buffers[i])
+		if (!port_buffer->buffers[i])
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
 	}
 
@@ -297,7 +297,7 @@ PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* plug
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
 
-	aapxs_shared_memory_store = new AAPXSSharedMemoryStore();
+	aapxs_shared_memory_store = new PluginSharedMemoryStore();
 }
 
 PluginInstance::~PluginInstance() { dispose(); }

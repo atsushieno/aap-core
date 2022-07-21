@@ -24,8 +24,7 @@ public:
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
 	ndk::SpAIBinder spAIBinder{nullptr};
-	std::unique_ptr<aap::AAPXSSharedMemoryStore> shm_store{nullptr};
-	[[nodiscard]] aap::PluginSharedMemoryBuffer* getShmBuffer() const { return shm_store->getShmBuffer(); }
+	std::unique_ptr<aap::PluginSharedMemoryStore> shm_store{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
 	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	aap_state_extension_t state_ext;
@@ -62,23 +61,13 @@ AAPClientContext::~AAPClientContext() {
 	}
 }
 
-void ensureStateBuffer(AAPClientContext *ctx, int bufferSize)
-{
-	if (ctx->state.data && ctx->state.data_size >= bufferSize)
-		return;
-	releaseStateBuffer(ctx);
-	ctx->state_ashmem_fd = ASharedMemory_create(ctx->unique_id, bufferSize);
-	ctx->state.data_size = bufferSize;
-	ctx->state.data = mmap(nullptr, bufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->state_ashmem_fd, 0);
-}
-
 const char* getMemoryAllocationErrorMessage(int32_t code) {
 	switch (code) {
-	case aap::PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC:
+	case aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC:
 		return "Plugin client failed at allocating memory.";
-	case aap::PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE:
+	case aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE:
 		return "Plugin client failed at creating shm.";
-	case aap::PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP:
+	case aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP:
 		return "Plugin client failed at mmap.";
 	default:
 		return nullptr;
@@ -93,9 +82,9 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
 
     int n = buffer->num_buffers;
 
-	assert(ctx->getShmBuffer()->getAudioPluginBuffer()->num_buffers == 0);
-    auto code = ctx->getShmBuffer()->allocateClientBuffer(buffer->num_buffers, buffer->num_frames);
-	if (code != aap::PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
+	assert(ctx->shm_store->getAudioPluginBuffer()->num_buffers == 0);
+    auto code = ctx->shm_store->allocateClientBuffer(buffer->num_buffers, buffer->num_frames);
+	if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
 		aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", getMemoryAllocationErrorMessage(code));
 		ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
 		return;
@@ -104,7 +93,7 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
     // allocate shm FDs, first locally, then send it to the target AAP.
     for (int i = 0; i < n; i++) {
         ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(ctx->getShmBuffer()->getFD(i));
+        sfd.set(ctx->shm_store->getPortBufferFD(i));
         auto status = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         if (!status.isOk()) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepareMemory() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
@@ -120,7 +109,7 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
         }
 
-		ctx->previous_buffer = ctx->getShmBuffer()->getAudioPluginBuffer();
+		ctx->previous_buffer = ctx->shm_store->getAudioPluginBuffer();
 
 		ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
     }
@@ -207,7 +196,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))
 		return nullptr;
-    ctx->shm_store = std::make_unique<aap::AAPXSSharedMemoryStore>();
+    ctx->shm_store = std::make_unique<aap::PluginSharedMemoryStore>();
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     if (!status.isOk()) {
@@ -235,10 +224,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         if (!instance->getAAPXSManager()->setupAAPXSInstances([&](AAPXSClientInstance *ext) {
             // create asharedmem and add as an extension FD, keep it until it is destroyed.
             auto fd = ASharedMemory_create(ext->uri, ext->data_size);
-            ctx->shm_store->getExtensionFDs()->emplace_back(fd);
-            if (ext->data_size > 0)
-                ext->data = mmap(nullptr, ext->data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
-                                 0);
+            ext->data = ctx->shm_store->addExtensionFD(fd, ext->data_size);
 
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
                 ndk::ScopedFileDescriptor sfd{fd};

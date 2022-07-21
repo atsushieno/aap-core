@@ -5,7 +5,7 @@
 
 namespace aap {
 
-class PluginSharedMemoryBuffer {
+class PluginSharedMemoryStore {
     /*
      * Memory allocation and mmap-ing strategy differ between client and service.
      */
@@ -15,9 +15,25 @@ class PluginSharedMemoryBuffer {
         PLUGIN_BUFFER_ORIGIN_REMOTE
     };
 
-    std::unique_ptr<std::vector<int32_t>> shared_memory_fds{nullptr};
-    std::unique_ptr<AndroidAudioPluginBuffer> buffer{nullptr};
     PluginBufferOrigin memory_origin{PLUGIN_BUFFER_ORIGIN_UNALLOCATED};
+
+    // They are created by client-as-plugin.
+    std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
+    std::unique_ptr<std::vector<void*>> extension_buffers{nullptr};
+    std::unique_ptr<std::vector<int32_t>> extension_buffer_sizes{nullptr};
+
+    // This is a temporary FD store for plugin services.
+    // The unknown number of calls of AIDL prepareMemory() precedes prepare(), so we have to
+    // first store those FDs somewhere.
+    // Within the AIDL, we first receive unknown number of shm FDs.
+    std::unique_ptr<std::vector<int32_t>> cached_shm_fds_for_prepare{nullptr};
+
+    // ex-PluginSharedMemoryBuffer members
+    std::unique_ptr<std::vector<int32_t>> port_buffer_fds{nullptr};
+
+    // When shms are locally allocated (PLUGIN_BUFFER_ORIGIN_LOCAL), then those buffers are locally calloc()-ed.
+    // Otherwise they are just mmap()-ed and should not be freed by own.
+    std::unique_ptr<AndroidAudioPluginBuffer> port_buffer{nullptr};
 
 public:
     enum PluginMemoryAllocatorResult {
@@ -27,82 +43,97 @@ public:
         PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP
     };
 
-    PluginSharedMemoryBuffer() {
-        buffer = std::make_unique<AndroidAudioPluginBuffer>();
-        assert(buffer);
-        buffer->num_buffers = 0;
-        buffer->num_frames = 0;
-        shared_memory_fds = std::make_unique<std::vector<int32_t>>();
-        assert(shared_memory_fds);
-    }
-
-    ~PluginSharedMemoryBuffer() {
-        if (buffer) {
-            for (size_t i = 0; i < buffer->num_buffers; i++) {
-                if (buffer->buffers[i])
-                    munmap(buffer->buffers[i], buffer->num_frames * sizeof(float *));
-            }
-            if (buffer->buffers)
-                free(buffer->buffers);
-        }
-        if (memory_origin == PLUGIN_BUFFER_ORIGIN_LOCAL) {
-            for (size_t i = 0; i < shared_memory_fds->size(); i++)
-                close(shared_memory_fds->at(i));
-            shared_memory_fds->clear();
-        }
-    }
-
-    [[nodiscard]] int32_t allocateClientBuffer(size_t numPorts, size_t numFrames);
-
-    [[nodiscard]] int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames);
-
-    inline int32_t getFD(size_t index) { return shared_memory_fds->at(index); }
-
-    AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
-};
-
-// FIXME: there may be better AAPXSSharedMemoryStore/PluginSharedMemoryBuffer unification.
-class AAPXSSharedMemoryStore {
-    std::unique_ptr<PluginSharedMemoryBuffer> port_shm_buffers{nullptr};
-    std::unique_ptr<std::vector<int32_t>> extension_fds{nullptr};
-    std::unique_ptr<std::vector<int32_t>> cached_shm_fds_for_prepare{nullptr};
-
-public:
-    AAPXSSharedMemoryStore() {
-        port_shm_buffers = std::make_unique<PluginSharedMemoryBuffer>();
+    PluginSharedMemoryStore() {
+        // They are all added only via addExtensionFD().
+        // Buffers are only mmap()-ed and should always be munmap()-ed at destructor.
         extension_fds = std::make_unique<std::vector<int32_t>>();
+        extension_buffers = std::make_unique<std::vector<void*>>();
+        extension_buffer_sizes = std::make_unique<std::vector<int32_t>>();
         cached_shm_fds_for_prepare = std::make_unique<std::vector<int32_t>>();
+
+        // ex-PluginSharedMemoryBuffer part
+        port_buffer = std::make_unique<AndroidAudioPluginBuffer>();
+        assert(port_buffer);
+        port_buffer->num_buffers = 0;
+        port_buffer->num_frames = 0;
+        port_buffer_fds = std::make_unique<std::vector<int32_t>>();
+        assert(port_buffer_fds);
     }
 
-    ~AAPXSSharedMemoryStore() {
-        for (int32_t fd: *extension_fds)
-            if (fd)
+    ~PluginSharedMemoryStore() {
+        disposeExtensionFDs();
+        disposeAudioBufferFDs();
+    }
+
+    void disposeExtensionFDs() {
+        for (int i = 0; i < extension_fds->size(); i++) {
+            if (extension_buffers->at(i))
+                munmap(extension_buffers->at(i), (size_t) extension_buffer_sizes->at(i));
+            // close the fd. AudioPluginService also dup()-s it, so it has to be closed too.
+            auto fd = extension_fds->at(i);
+            if (fd >= 0)
                 close(fd);
-        extension_fds->clear();
+            extension_fds->clear();
+        }
     }
 
-    inline aap::PluginSharedMemoryBuffer* getShmBuffer() { return port_shm_buffers.get(); }
+    void disposeAudioBufferFDs() {
+        // ex-PluginSharedMemoryBuffer part
+        if (port_buffer) {
+            for (size_t i = 0; i < port_buffer->num_buffers; i++) {
+                if (port_buffer->buffers[i])
+                    munmap(port_buffer->buffers[i], port_buffer->num_frames * sizeof(float *));
+            }
+            if (port_buffer->buffers)
+                free(port_buffer->buffers);
+        }
+        // close the fd. AudioPluginService also dup()-s it, so it has to be closed too.
+        for (size_t i = 0; i < port_buffer_fds->size(); i++) {
+            auto fd = port_buffer_fds->at(i);
+            if (fd >= 0)
+                close(fd);
+        }
+        port_buffer_fds->clear();
+    }
 
     // Stores clone of port buffer FDs passed from client via Binder.
     inline void resizePortBuffer(size_t newSize) {
         cached_shm_fds_for_prepare->resize(newSize);
     }
 
-    inline int32_t getPortBufferFD(size_t index) {
-        return port_shm_buffers->getFD(index);
-    }
+    // used by AudioPluginInterfaceImpl.
+    inline int32_t getPortBufferFD(size_t index) { return port_buffer_fds->at(index); }
 
+    // called by AudioPluginInterfaceImpl::prepareMemory().
+    // `fd` is an already-duplicated FD.`
     inline void setPortBufferFD(size_t index, int32_t fd) {
         cached_shm_fds_for_prepare->at(index) = fd;
     }
 
     [[nodiscard]] bool completeServiceInitialization(size_t numFrames) {
-        auto ret = port_shm_buffers->allocateServiceBuffer(*cached_shm_fds_for_prepare, numFrames) == PluginSharedMemoryBuffer::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
+        auto ret = allocateServiceBuffer(*cached_shm_fds_for_prepare, numFrames) == PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
         cached_shm_fds_for_prepare->clear();
         return ret;
     }
 
-    inline std::vector<int32_t> *getExtensionFDs() { return extension_fds.get(); }
+    void* addExtensionFD(int fd, int dataSize) {
+        extension_fds->emplace_back(fd);
+        extension_buffer_sizes->emplace_back(dataSize);
+        if (fd >= 0 && dataSize > 0)
+            extension_buffers->emplace_back(mmap(nullptr, dataSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd,0));
+        else
+            extension_buffers->emplace_back(nullptr);
+        return extension_buffers->at(extension_buffers->size() - 1);
+    }
+
+    // ex-PluginSharedMemoryBuffer members
+
+    [[nodiscard]] int32_t allocateClientBuffer(size_t numPorts, size_t numFrames);
+
+    [[nodiscard]] int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames);
+
+    // So far it is used only by aap_client_as_plugin.
+    AndroidAudioPluginBuffer* getAudioPluginBuffer() { return port_buffer.get(); }
 };
 
 }

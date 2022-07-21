@@ -75,8 +75,7 @@ public:
                 assert(shmExt != nullptr);
                 auto fdRemote = in_sharedMemoryFD.get();
                 auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
-                shmExt->getExtensionFDs()->emplace_back(dfd);
-                aapxsInstance->data = fdRemote < 0 ? nullptr : mmap(nullptr, in_size, PROT_READ | PROT_WRITE, MAP_SHARED, dfd, 0);
+                aapxsInstance->data = shmExt->addExtensionFD(dfd, in_size);
             }
         }
         return ndk::ScopedAStatus::ok();
@@ -165,6 +164,7 @@ public:
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION;
+        // FIXME: duplicate resize?
         shmExt->resizePortBuffer(nPorts);
         if (buffer.num_buffers != nPorts)
             freeBuffers(instance, buffer);

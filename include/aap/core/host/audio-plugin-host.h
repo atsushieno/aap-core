@@ -103,7 +103,7 @@ public:
 //-------------------------------------------------------
 
 class PluginBuffer;
-class AAPXSSharedMemoryStore;
+class PluginSharedMemoryStore;
 
 class PluginInstance
 {
@@ -117,7 +117,7 @@ class PluginInstance
 	int instance_id;
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
-	AAPXSSharedMemoryStore *aapxs_shared_memory_store;
+	PluginSharedMemoryStore *aapxs_shared_memory_store;
 	PluginInstantiationState instantiation_state;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
@@ -136,9 +136,10 @@ public:
 
 	inline int32_t getInstanceId() { return instance_id; }
 
-	inline AAPXSSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
+	inline PluginSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
 
-    // It may or may not be shared memory buffer. Available only after prepare().
+    // It may or may not be shared memory buffer.
+	// As numPorts is required, the client and the plugin need agreement on how many ports will be used first (not including AAPXS).
 	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts, size_t numFrames);
 
 	const PluginInformation* getPluginInformation()
