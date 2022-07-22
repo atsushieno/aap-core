@@ -60,14 +60,13 @@ class AudioPluginInstance(
         }
     }
 
-    fun getPortBuffer(port: Int) = shmList[port].buffer
-
     fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int = 0) {
         val controlBytesPerBlock =
             if (defaultControlBytesPerBlock <= 0) audioSamplesPerBlock * 4
             else defaultControlBytesPerBlock
         runCatchingRemoteException {
-            proxy.beginPrepare(audioSamplesPerBlock, pluginInfo.ports.size)
+            proxy.prepare(audioSamplesPerBlock, pluginInfo.ports.size)
+            /*
             (0 until proxy.getPortCount()).forEach { i ->
                 val port = proxy.getPort(i)
                 val isAudio = port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO
@@ -79,9 +78,9 @@ class AudioPluginInstance(
                 val shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
                 val buffer = shm.mapReadWrite()
                 shmList.add(SharedMemoryBuffer(shm, shmFD, buffer))
-                proxy.prepareMemory(i, ParcelFileDescriptor.adoptFd(shmFD))
+                proxy.prepareMemory(i, shmFD)
             }
-            proxy.endPrepare()
+            */
 
             state = InstanceState.INACTIVE
         }
@@ -118,13 +117,20 @@ class AudioPluginInstance(
             } catch (ex: Exception) {
                 // nothing we can do here
             }
+            /*
             shmList.forEach { shm ->
                 shm.shm.close()
             }
+            */
 
             state = InstanceState.DESTROYED
         }
     }
+
+    // port/buffer manipulation
+    fun getPortCount() = proxy.getPortCount()
+    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.getPortBuffer(portIndex, buffer, size)
+    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.setPortBuffer(portIndex, buffer, size)
 
     // Standard Extensions
 

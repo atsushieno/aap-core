@@ -98,6 +98,7 @@ int32_t PluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, size_t nu
 		int32_t fd = PluginClientSystem::getInstance()->createSharedMemory(memSize);
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!! allocateClientBuffer fd %d", fd);
 		port_buffer_fds->emplace_back(fd);
         port_buffer->buffers[i] = mmap(nullptr, memSize,
 								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -123,6 +124,7 @@ int32_t PluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& cli
 		int32_t fd = clientFDs[i];
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
+		aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!! allocateServiceBuffer fd %d", fd);
 		port_buffer_fds->emplace_back(fd);
         port_buffer->buffers[i] = mmap(nullptr, memSize,
 								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -317,8 +319,11 @@ int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFra
 }
 
 AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, size_t numFrames) {
-	if (!plugin_buffer)
-		allocateAudioPluginBuffer(numPorts, numFrames);
+	if (!plugin_buffer) {
+        assert(numPorts >= 0);
+        assert(numFrames > 0);
+        allocateAudioPluginBuffer(numPorts, numFrames);
+    }
 	return plugin_buffer->getAudioPluginBuffer();
 }
 

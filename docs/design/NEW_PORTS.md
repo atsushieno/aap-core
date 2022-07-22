@@ -128,7 +128,7 @@ There are couple of key components that makes "parameter changes" possible:
 
 Another idea I had was that it would be possible to provide GUI editors for audio plugin parameters apart from the plugin app itself e.g. an editor in app A that controls plugin parameter of app B whose instance is hosted at app C. While it could be ideal for common patterns of GUI parameter editors (that is what MIDI 2.0 Profile Configuration kind of expects), but it requires access permission controls over the hosted plugins - otherwise plugins can be arbitrarily accessed by random other apps which potentially harms host's internal state management. It is more straightforward if the host app C receives requrests those GUI parameter editor A and forwards them to plugin app B.
 
-### Parameters and Parameter CV ports
+### Parameters and CV ports
 
 As mentioned a couple of time earlier, there will be a new plugin property called parameters. A `port` used to work like a parameter with its own control port. Just like port, parameters come with an index that has to be **unique** among the entire parameter indices and port indices. It is because parameters may populate ports. Also they have to be stable across plugin versions so that state can be restored with no problem.
 

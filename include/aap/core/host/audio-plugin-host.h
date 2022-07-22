@@ -139,8 +139,9 @@ public:
 	inline PluginSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
 
     // It may or may not be shared memory buffer.
+	// Arguments are optional; when they are skipped then it just cannot allocate memory.
 	// As numPorts is required, the client and the plugin need agreement on how many ports will be used first (not including AAPXS).
-	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts, size_t numFrames);
+	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts = 0, size_t numFrames = 0);
 
 	const PluginInformation* getPluginInformation()
 	{

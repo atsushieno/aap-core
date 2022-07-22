@@ -58,6 +58,7 @@ AAPClientContext::~AAPClientContext() {
 	if (instance_id >= 0) {
 		releaseStateBuffer(this);
 		proxy->destroy(instance_id);
+        instance_id = -1;
 	}
 }
 
@@ -92,8 +93,9 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
 
     // allocate shm FDs, first locally, then send it to the target AAP.
     for (int i = 0; i < n; i++) {
-        ::ndk::ScopedFileDescriptor sfd;
-        sfd.set(ctx->shm_store->getPortBufferFD(i));
+		auto fd = ctx->shm_store->getPortBufferFD(i);
+        ::ndk::ScopedFileDescriptor sfd{dup(fd)};
+		aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! aap_client_as_plugin_prepare() fd %d -> dup %d", fd, sfd.get());
         auto status = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         if (!status.isOk()) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepareMemory() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
@@ -227,7 +229,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             ext->data = ctx->shm_store->addExtensionFD(fd, ext->data_size);
 
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-                ndk::ScopedFileDescriptor sfd{fd};
+                ndk::ScopedFileDescriptor sfd{dup(fd)};
                 auto stat = ctx->proxy->addExtension(ctx->instance_id, ext->uri, sfd, ext->data_size);
                 if (!stat.isOk()) {
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "addExtension() failed: %s", /*stat.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
@@ -235,7 +237,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
                 }
             }
         }))
-			ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
 
         if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
             status = ctx->proxy->endCreate(ctx->instance_id);
@@ -262,7 +264,6 @@ void aap_client_as_plugin_delete(
 		AndroidAudioPlugin *instance)
 {
 	auto ctx = (AAPClientContext*) instance->plugin_specific;
-    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_TERMINATED;
 
 	delete ctx;
 	delete instance;

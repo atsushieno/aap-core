@@ -48,7 +48,7 @@ public:
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
         auto instance = svc->getInstance(*_aidl_return);
         auto shm = instance->getAAPXSSharedMemoryStore();
-        shm->resizePortBuffer(instance->getNumPorts());
+        shm->resizePortBufferByCount(instance->getNumPorts());
 
         buffers.resize(*_aidl_return + 1);
         auto &buffer = buffers[*_aidl_return];
@@ -112,6 +112,7 @@ public:
                     AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD,
                     "invalid shared memory fd was passed");
         auto dfd = dup(fdRemote);
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!! prepareMemory fd %d -> %d", fdRemote, dfd);
         shmExt->setPortBufferFD(in_shmFDIndex, dfd);
         return ndk::ScopedAStatus::ok();
     }
@@ -165,10 +166,10 @@ public:
         if (shmExt == nullptr)
             return AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION;
         // FIXME: duplicate resize?
-        shmExt->resizePortBuffer(nPorts);
+        shmExt->resizePortBufferByCount(nPorts);
         if (buffer.num_buffers != nPorts)
             freeBuffers(instance, buffer);
-        shmExt->resizePortBuffer(nPorts);
+        shmExt->resizePortBufferByCount(nPorts);
 
         buffer.num_buffers = nPorts;
         buffer.num_frames = frameCount;
@@ -230,6 +231,7 @@ public:
     }
 
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override {
+        aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! Service destroy() binder call !!!!!!!");
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");

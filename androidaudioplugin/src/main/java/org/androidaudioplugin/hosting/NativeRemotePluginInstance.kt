@@ -2,6 +2,7 @@ package org.androidaudioplugin.hosting
 
 import android.os.ParcelFileDescriptor
 import org.androidaudioplugin.PortInformation
+import java.nio.ByteBuffer
 import kotlin.properties.Delegates
 
 
@@ -9,19 +10,13 @@ import kotlin.properties.Delegates
 class NativeRemotePluginInstance(val pluginId: String,
                                  sampleRate: Int,
                                  val client: NativePluginClient) {
-    fun beginPrepare(frameCount: Int, portCount: Int) {
-        nativeAudioPluginBuffer = createAudioPluginBuffer(frameCount, portCount)
-        beginPrepare(client.native, instanceId, nativeAudioPluginBuffer)
+    fun prepare(frameCount: Int, portCount: Int) {
+        prepare(client.native, instanceId, frameCount, portCount)
     }
-    fun prepareMemory(index: Int, fd: ParcelFileDescriptor) {
-        setSharedMemoryToPluginBuffer(nativeAudioPluginBuffer, index, fd.fd)
-    }
-    fun endPrepare() = endPrepare(client.native, instanceId, nativeAudioPluginBuffer)
     fun activate() = activate(client.native, instanceId)
-    fun process(timeoutInNanoseconds: Int) = process(client.native, instanceId, nativeAudioPluginBuffer, timeoutInNanoseconds)
+    fun process(timeoutInNanoseconds: Int) = process(client.native, instanceId, timeoutInNanoseconds)
     fun deactivate() = deactivate(client.native, instanceId)
     fun destroy() {
-        destroyAudioPluginBuffer(nativeAudioPluginBuffer)
         destroy(client.native, instanceId)
     }
 
@@ -36,34 +31,41 @@ class NativeRemotePluginInstance(val pluginId: String,
 
     // aap::RemotePluginInstance*
     private val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
-    private var nativeAudioPluginBuffer by Delegates.notNull<Long>()
 
     fun getPortCount() = getPortCount(client.native, instanceId)
     fun getPort(index: Int) = getPort(client.native, instanceId, index)
+    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client.native, instanceId, portIndex, buffer, size)
+    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client.native, instanceId, portIndex, buffer, size)
 
     companion object {
-        @JvmStatic
-        private external fun createAudioPluginBuffer(frameCount: Int, portCount: Int) : Long
-        @JvmStatic
-        private external fun destroyAudioPluginBuffer(pointer: Long)
         // Note that it returns an instanceId within the client, not the pointer to the instance.
         // Therefore it returns Int, not Long.
         @JvmStatic
         private external fun createRemotePluginInstance(pluginId: String, sampleRate: Int, nativeClient: Long) : Int
         @JvmStatic
-        external fun setSharedMemoryToPluginBuffer(nativeAudioPluginBuffer: Long, index: Int, fd: Int)
+        external fun getPortBufferFD(nativeClient: Long, instanceId: Int, index: Int) : Int
         @JvmStatic
-        external fun beginPrepare(nativeClient: Long, instanceId: Int, nativeAudioPluginBuffer: Long)
-        @JvmStatic
-        external fun endPrepare(nativeClient: Long, instanceId: Int, nativeAudioPluginBuffer: Long)
+        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, portCount: Int)
         @JvmStatic
         external fun activate(nativeClient: Long, instanceId: Int)
         @JvmStatic
-        external fun process(nativeClient: Long, instanceId: Int, nativeAudioPluginBuffer: Long, timeoutInNanoseconds: Int)
+        external fun process(nativeClient: Long, instanceId: Int, timeoutInNanoseconds: Int)
         @JvmStatic
         external fun deactivate(nativeClient: Long, instanceId: Int)
         @JvmStatic
         external fun destroy(nativeClient: Long, instanceId: Int)
+
+        @JvmStatic
+        external fun getPortCount(nativeClient: Long, instanceId: Int) : Int
+
+        @JvmStatic
+        external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
+
+        @JvmStatic
+        external fun getPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
+
+        @JvmStatic
+        external fun setPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
 
         // Standard Extensions
 
@@ -84,11 +86,5 @@ class NativeRemotePluginInstance(val pluginId: String,
         external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
         @JvmStatic
         external fun getCurrentPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
-
-        @JvmStatic
-        external fun getPortCount(nativeClient: Long, instanceId: Int) : Int
-
-        @JvmStatic
-        external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
     }
 }

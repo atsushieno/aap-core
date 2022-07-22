@@ -70,11 +70,13 @@ public:
             if (extension_buffers->at(i))
                 munmap(extension_buffers->at(i), (size_t) extension_buffer_sizes->at(i));
             // close the fd. AudioPluginService also dup()-s it, so it has to be closed too.
+            // FIXME: comment above is likely wrong
             auto fd = extension_fds->at(i);
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!!! closing extension FD %d / memory_origin %d !!!!!", fd, memory_origin);
             if (fd >= 0)
                 close(fd);
-            extension_fds->clear();
         }
+        extension_fds->clear();
     }
 
     void disposeAudioBufferFDs() {
@@ -90,6 +92,7 @@ public:
         // close the fd. AudioPluginService also dup()-s it, so it has to be closed too.
         for (size_t i = 0; i < port_buffer_fds->size(); i++) {
             auto fd = port_buffer_fds->at(i);
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!!! closing audio FD %d / memory_origin %d !!!!!", fd, memory_origin);
             if (fd >= 0)
                 close(fd);
         }
@@ -97,7 +100,7 @@ public:
     }
 
     // Stores clone of port buffer FDs passed from client via Binder.
-    inline void resizePortBuffer(size_t newSize) {
+    inline void resizePortBufferByCount(size_t newSize) {
         cached_shm_fds_for_prepare->resize(newSize);
     }
 

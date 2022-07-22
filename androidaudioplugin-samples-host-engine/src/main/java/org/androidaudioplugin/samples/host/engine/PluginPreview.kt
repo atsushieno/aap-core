@@ -10,22 +10,29 @@ import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-const val FRAMES_PER_TICK = 100
-const val AUDIO_BUFFER_SIZE = 4096
-const val DEFAULT_CONTROL_BUFFER_SIZE = 4096
-// In this Plugin preview example engine, we don't really use the best sampling rate for the device
-// as it only performs static audio processing and does not involve device audio inputs.
-// We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
-const val PCM_DATA_SAMPLERATE = 44100
-
 class PluginPreview(context: Context) {
 
-    private var host : AudioPluginClient = AudioPluginClient(context.applicationContext)
-    var instance: AudioPluginInstance? = null
+    companion object {
+        const val FRAMES_PER_TICK = 100
+        const val AUDIO_BUFFER_SIZE = 4096
+        const val DEFAULT_CONTROL_BUFFER_SIZE = 4096
+        // In this Plugin preview example engine, we don't really use the best sampling rate for the device
+        // as it only performs static audio processing and does not involve device audio inputs.
+        // We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
+        const val PCM_DATA_SAMPLE_RATE = 44100
+    }
+
+    private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
+    private var instance: AudioPluginInstance? = null
+    private var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
 
     val inBuf : ByteArray
     val outBuf : ByteArray
+
+    // FIXME: maybe we don't need per-port allocation?
+    private val audioProcessingBuffers = mutableListOf<ByteBuffer>()
+    private val audioProcessingBufferSizesInBytes = mutableListOf<Int>()
 
     fun dispose() {
         track.release()
@@ -35,6 +42,7 @@ class PluginPreview(context: Context) {
     fun loadPlugin(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) ->Unit = {_,_ -> }) {
         if (instance != null)
             return
+        this.pluginInfo = pluginInfo
         host.instantiatePluginAsync(pluginInfo) { instance, error ->
             if (error != null) {
                 lastError = error
@@ -52,13 +60,11 @@ class PluginPreview(context: Context) {
                 instance.deactivate()
             instance.destroy()
         }
+        pluginInfo = null
     }
 
     fun applyPlugin(plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
     {
-        host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
-        host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
-
         host.connectToPluginServiceAsync(plugin.packageName) { _, error ->
             val instance = host.instantiatePlugin(plugin)
             this.instance = instance
@@ -68,6 +74,14 @@ class PluginPreview(context: Context) {
 
     fun applyPlugin(parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
         val instance = this.instance ?: return
+        val pluginInfo = this.pluginInfo ?: return
+
+        (0 until instance.getPortCount()).forEach {
+            val size = AUDIO_BUFFER_SIZE.coerceAtLeast(pluginInfo.ports[it].minimumSizeInBytes)
+            // Note that you will have to use allocateDirecT() here, otherwise ART crashes at accessing it on JNI.
+            audioProcessingBuffers.add(ByteBuffer.allocateDirect(size))
+            audioProcessingBufferSizesInBytes.add(size)
+        }
 
         instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
         if (instance.proxyError != null) {
@@ -129,10 +143,11 @@ class PluginPreview(context: Context) {
                 return@map
             else {
                 // FIXME: support non-float data type (but we have to determine data type semantics first)
-                val c = instance.getPortBuffer(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                val c = audioProcessingBuffers[i].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                 c.position(0)
-                val v = parameters[i]
-                (0 until controlBufferFrameSize).forEach { _ -> c.put(v) }
+                // just put one float value
+                c.put(parameters[i])
+                instance.setPortBuffer(i, audioProcessingBuffers[i], audioProcessingBufferSizesInBytes[i])
             }
         }
 
@@ -152,13 +167,15 @@ class PluginPreview(context: Context) {
             deinterleaveInput(currentFrame, audioBufferFrameSize)
 
             if (audioInL >= 0) {
-                val instanceInL = instance.getPortBuffer(audioInL)
-                instanceInL.position(0)
-                instanceInL.put(host.audioInputs[0], 0, audioBufferFrameSize * 4)
+                val localBufferL = audioProcessingBuffers[audioInL]
+                localBufferL.position(0)
+                localBufferL.put(host.audioInputs[0], 0, audioBufferFrameSize * 4)
+                instance.setPortBuffer(audioInL, localBufferL, audioProcessingBufferSizesInBytes[audioInL])
                 if (audioInR > audioInL) {
-                    val instanceInR = instance.getPortBuffer(audioInR)
-                    instanceInR.position(0)
-                    instanceInR.put(host.audioInputs[1], 0, audioBufferFrameSize * 4)
+                    val localBufferR = audioProcessingBuffers[audioInR]
+                    localBufferR.position(0)
+                    localBufferR.put(host.audioInputs[1], 0, audioBufferFrameSize * 4)
+                    instance.setPortBuffer(audioInR, localBufferR, audioProcessingBufferSizesInBytes[audioInR])
                 }
             }
             if (midiIn >= 0) {
@@ -168,7 +185,7 @@ class PluginPreview(context: Context) {
                 // - i32 MIDI buffer size
                 // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
 
-                val midiBuffer = instance.getPortBuffer(midiIn).order(ByteOrder.LITTLE_ENDIAN)
+                val midiBuffer = audioProcessingBuffers[midiIn].order(ByteOrder.LITTLE_ENDIAN)
                 midiBuffer.position(0)
                 midiBuffer.position(resetMidiBuffer(midiBuffer))
                 var midiDataLengthInLoop = 0
@@ -196,22 +213,26 @@ class PluginPreview(context: Context) {
                 }
                 midiBuffer.position(4)
                 midiBuffer.putInt(midiDataLengthInLoop)
+                midiBuffer.position(0) // do we need this??
+                instance.setPortBuffer(midiIn, midiBuffer, audioProcessingBufferSizesInBytes[midiIn])
             }
 
             instance.process()
 
             if (audioOutL >= 0) {
-                val instanceOutL = instance.getPortBuffer(audioOutL)
-                instanceOutL.position(0)
-                instanceOutL.get(host.audioOutputs[0], 0, audioBufferFrameSize * 4)
+                val localBufferL = audioProcessingBuffers[audioOutL]
+                instance.getPortBuffer(audioOutL, localBufferL, audioProcessingBufferSizesInBytes[audioOutL])
+                localBufferL.position(0)
+                localBufferL.get(host.audioOutputs[0], 0, audioBufferFrameSize * 4)
                 if (audioOutR > audioOutL) {
-                    val instanceOutR = instance.getPortBuffer(audioOutR)
-                    instanceOutR.position(0)
-                    instanceOutR.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
+                    val localBufferR = audioProcessingBuffers[audioOutR]
+                    instance.getPortBuffer(audioOutR, localBufferR, audioProcessingBufferSizesInBytes[audioOutR])
+                    localBufferR.position(0)
+                    localBufferR.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
                 } else {
-                    // mono output
-                    instanceOutL.position(0)
-                    instanceOutL.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
+                    // mono output - copy plugin L output to host R output.
+                    localBufferL.position(0)
+                    localBufferL.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
                 }
             }
 
@@ -306,6 +327,9 @@ class PluginPreview(context: Context) {
     }
 
     init {
+        host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
+        host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
+
         val assets = context.applicationContext.assets
         val wavAsset = assets.open("sample.wav")
         inBuf = wavAsset.readBytes().drop(88).toByteArray()
@@ -314,9 +338,9 @@ class PluginPreview(context: Context) {
 
         // set up AudioTrack
         // FIXME: once we support resampling then support platform audio configuration.
-        val sampleRate = PCM_DATA_SAMPLERATE
+        val sampleRate = PCM_DATA_SAMPLE_RATE
         audioTrackBufferSizeInBytes = AudioTrack.getMinBufferSize(
-            PCM_DATA_SAMPLERATE,
+            PCM_DATA_SAMPLE_RATE,
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_FLOAT
         )

@@ -416,31 +416,6 @@ AAPXSClientInstance *JNIClientAAPXSManager::setupAAPXSInstance(AAPXSFeature *fea
 
 aap::PluginListSnapshot cached_plugin_list{};
 
-extern "C"
-JNIEXPORT jlong JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createAudioPluginBuffer(JNIEnv *env,
-																					   jclass clazz,
-																					   jint frameCount,
-																					   jint portCount) {
-	auto buffer = new AndroidAudioPluginBuffer();
-	buffer->num_frames = frameCount;
-	buffer->num_buffers = portCount;
-	buffer->buffers = (void**) calloc(sizeof(void*), portCount);
-	return (jlong) (void*) buffer;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroyAudioPluginBuffer(JNIEnv *env,
-																						jclass clazz,
-																						jlong pointer) {
-	assert(pointer);
-	auto buffer = (AndroidAudioPluginBuffer*) pointer;
-	for (int i = 0; i < buffer->num_buffers; i++)
-		if (buffer->buffers[i])
-			munmap(buffer->buffers[i], buffer->num_frames * sizeof(float));
-	delete buffer;
-}
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -473,23 +448,17 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_beginPrepare(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_prepare(JNIEnv *env, jclass clazz,
 																			jlong nativeClient,
 																			jint instanceId,
-																			jlong audioBufferPointer) {
-	// nothing to do so far?
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_endPrepare(JNIEnv *env, jclass clazz,
-																		  jlong nativeClient,
-																		  jint instanceId,
-																		  jlong audioBufferPointer) {
+																			jint frameCount,
+																			jint portCount) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstance(instanceId);
-	auto buffer = (AndroidAudioPluginBuffer*) audioBufferPointer;
-	instance->prepare(buffer->num_frames, buffer);
+    auto shm = instance->getAAPXSSharedMemoryStore();
+    shm->resizePortBufferByCount(portCount);
+	auto buffer = instance->getAudioPluginBuffer(portCount, frameCount);
+	instance->prepare(frameCount, buffer);
 }
 
 extern "C"
@@ -507,11 +476,10 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_process(JNIEnv *env, jclass clazz,
 																	   jlong nativeClient,
 																	   jint instanceId,
-																	   jlong nativeAudioPluginBuffer,
 																	   jint timeout_in_nanoseconds) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstance(instanceId);
-	auto buffer = (AndroidAudioPluginBuffer*) (void*) nativeAudioPluginBuffer;
+	auto buffer = (AndroidAudioPluginBuffer*) instance->getAudioPluginBuffer();
 	instance->process(buffer, timeout_in_nanoseconds);
 }
 
@@ -532,7 +500,9 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroy(JNIEnv *e
 																	   jint instanceId) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstance(instanceId);
-	delete instance;
+    aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! deleting instance !!!!!!!");
+    client->destroyInstance(instance);
+    aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! deleted instance !!!!!!!");
 }
 
 // State extensions
@@ -577,14 +547,15 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setState(JNIEnv *
 }
 
 extern "C"
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setSharedMemoryToPluginBuffer(JNIEnv *env,
-																							 jclass clazz,
-																							 jlong nativeAudioPluginBuffer,
-																							 jint index,
-																							 jint fd) {
-	auto buffer = (AndroidAudioPluginBuffer*) (void*) nativeAudioPluginBuffer;
-	buffer->buffers[index] = mmap(nullptr, buffer->num_frames * sizeof(float), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortBufferFD(JNIEnv *env,
+																			 jclass clazz,
+																			 jlong nativeClient,
+																			 jint instanceId,
+																			 jint index) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	return (jint) instance->getAAPXSSharedMemoryStore()->getPortBufferFD(index);
 }
 
 // Presets extensions
@@ -658,4 +629,37 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *e
 	auto klass = env->FindClass(java_port_information_class_name);
 	assert(klass);
 	return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(), env->NewStringUTF(port->getName()), (jint) port->getPortDirection(), (jint) port->getContentType(), port->getDefaultValue(), port->getMinimumValue(), port->getMaximumValue());
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortBuffer(JNIEnv *env,
+		jclass clazz,
+		jlong nativeClient,
+		jint instanceId,
+		jint portIndex,
+        // Note that you will have to pass native buffer (using ByteBuffer.allocateDirecT()), otherwise ART crashes.
+		jobject buffer,
+		jint size) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	auto src = instance->getAudioPluginBuffer()->buffers[portIndex];
+    auto dst = env->GetDirectBufferAddress(buffer);
+	memcpy(dst, src, size);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNIEnv *env,
+		jclass clazz,
+		jlong nativeClient,
+		jint instanceId,
+		jint portIndex,
+        // Note that you will have to pass native buffer (using ByteBuffer.allocateDirecT()), otherwise ART crashes.
+		jobject buffer,
+		jint size) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstance(instanceId);
+    auto src = env->GetDirectBufferAddress(buffer);
+	auto dst = instance->getAudioPluginBuffer()->buffers[portIndex];
+	memcpy(dst, src, size);
 }
