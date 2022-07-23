@@ -501,9 +501,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroy(JNIEnv *e
 																	   jint instanceId) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstance(instanceId);
-    aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! deleting instance !!!!!!!");
     client->destroyInstance(instance);
-    aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! deleted instance !!!!!!!");
 }
 
 // State extensions

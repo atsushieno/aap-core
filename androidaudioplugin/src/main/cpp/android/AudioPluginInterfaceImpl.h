@@ -112,7 +112,6 @@ public:
                     AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD,
                     "invalid shared memory fd was passed");
         auto dfd = dup(fdRemote);
-        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!! prepareMemory fd %d -> %d", fdRemote, dfd);
         shmExt->setPortBufferFD(in_shmFDIndex, dfd);
         return ndk::ScopedAStatus::ok();
     }
@@ -231,7 +230,6 @@ public:
     }
 
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override {
-        aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! Service destroy() binder call !!!!!!!");
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");

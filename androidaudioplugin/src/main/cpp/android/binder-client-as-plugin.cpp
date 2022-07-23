@@ -95,7 +95,6 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
     for (int i = 0; i < n; i++) {
 		auto fd = ctx->shm_store->getPortBufferFD(i);
         ::ndk::ScopedFileDescriptor sfd{dup(fd)};
-		aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP_DEBUG", "!!!!!!! aap_client_as_plugin_prepare() fd %d -> dup %d", fd, sfd.get());
         auto status = ctx->proxy->prepareMemory(ctx->instance_id, i, sfd);
         if (!status.isOk()) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepareMemory() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
