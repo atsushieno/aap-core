@@ -65,23 +65,7 @@ class AudioPluginInstance(
             if (defaultControlBytesPerBlock <= 0) audioSamplesPerBlock * 4
             else defaultControlBytesPerBlock
         runCatchingRemoteException {
-            proxy.prepare(audioSamplesPerBlock, pluginInfo.ports.size)
-            /*
-            (0 until proxy.getPortCount()).forEach { i ->
-                val port = proxy.getPort(i)
-                val isAudio = port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO
-                val size =
-                    if (port.minimumSizeInBytes > 0) port.minimumSizeInBytes
-                    else if (isAudio) audioSamplesPerBlock * 4
-                    else controlBytesPerBlock
-                val shm = SharedMemory.create(null, size)
-                val shmFD = AudioPluginNatives.getSharedMemoryFD(shm)
-                val buffer = shm.mapReadWrite()
-                shmList.add(SharedMemoryBuffer(shm, shmFD, buffer))
-                proxy.prepareMemory(i, shmFD)
-            }
-            */
-
+            proxy.prepare(audioSamplesPerBlock, defaultControlBytesPerBlock)
             state = InstanceState.INACTIVE
         }
     }

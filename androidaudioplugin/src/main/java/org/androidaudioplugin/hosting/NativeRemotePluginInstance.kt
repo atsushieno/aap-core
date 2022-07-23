@@ -10,9 +10,7 @@ import kotlin.properties.Delegates
 class NativeRemotePluginInstance(val pluginId: String,
                                  sampleRate: Int,
                                  val client: NativePluginClient) {
-    fun prepare(frameCount: Int, portCount: Int) {
-        prepare(client.native, instanceId, frameCount, portCount)
-    }
+    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client.native, instanceId, frameCount, defaultControlBytesPerBlock)
     fun activate() = activate(client.native, instanceId)
     fun process(timeoutInNanoseconds: Int) = process(client.native, instanceId, timeoutInNanoseconds)
     fun deactivate() = deactivate(client.native, instanceId)
@@ -45,7 +43,7 @@ class NativeRemotePluginInstance(val pluginId: String,
         @JvmStatic
         external fun getPortBufferFD(nativeClient: Long, instanceId: Int, index: Int) : Int
         @JvmStatic
-        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, portCount: Int)
+        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, defaultControlBytesPerBlock: Int)
         @JvmStatic
         external fun activate(nativeClient: Long, instanceId: Int)
         @JvmStatic

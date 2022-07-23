@@ -452,12 +452,13 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_prepare(JNIEnv *e
 																			jlong nativeClient,
 																			jint instanceId,
 																			jint frameCount,
-																			jint portCount) {
+																			jint defaultControlBytesPerBlock) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstance(instanceId);
     auto shm = instance->getAAPXSSharedMemoryStore();
-    shm->resizePortBufferByCount(portCount);
-	auto buffer = instance->getAudioPluginBuffer(portCount, frameCount);
+    auto numPorts = instance->getNumPorts();
+    shm->resizePortBufferByCount(numPorts);
+	auto buffer = instance->getAudioPluginBuffer(numPorts, frameCount, defaultControlBytesPerBlock);
 	instance->prepare(frameCount, buffer);
 }
 

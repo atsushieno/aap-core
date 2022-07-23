@@ -59,14 +59,14 @@ PluginBuffer::~PluginBuffer() {
 	}
 }
 
-bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
+bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames, PluginInstance& instance, size_t defaultControlBytesPerBlock) {
 	assert(!buffer); // already allocated
 
 	buffer = std::make_unique<AndroidAudioPluginBuffer>();
 	if (!buffer)
 		return false;
 
-	size_t memSize = numFrames * sizeof(float);
+	size_t defaultAudioMemSize = numFrames * sizeof(float);
 	buffer->num_buffers = numPorts;
 	buffer->num_frames = numFrames;
 	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
@@ -74,6 +74,9 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames) {
 		return false;
 
 	for (size_t i = 0; i < numPorts; i++) {
+		size_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
+		int minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
+        int memSize = std::max(minSize, (int) defaultMemSize);
 		buffer->buffers[i] = calloc(1, memSize);
 		if (!buffer->buffers[i])
 			return false;
@@ -312,17 +315,17 @@ void PluginInstance::dispose() {
 	delete aapxs_shared_memory_store;
 }
 
-int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames) {
+int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
 	assert(!plugin_buffer);
 	plugin_buffer = std::make_unique<PluginBuffer>();
-	return plugin_buffer->allocateBuffer(numPorts, numFrames);
+	return plugin_buffer->allocateBuffer(numPorts, numFrames, *this, defaultControlBytesPerBlock);
 }
 
-AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, size_t numFrames) {
+AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
 	if (!plugin_buffer) {
         assert(numPorts >= 0);
         assert(numFrames > 0);
-        allocateAudioPluginBuffer(numPorts, numFrames);
+        allocateAudioPluginBuffer(numPorts, numFrames, defaultControlBytesPerBlock);
     }
 	return plugin_buffer->getAudioPluginBuffer();
 }

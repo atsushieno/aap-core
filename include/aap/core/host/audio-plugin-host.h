@@ -121,7 +121,7 @@ class PluginInstance
 	PluginInstantiationState instantiation_state;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
-	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames);
+	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock);
 
 protected:
 	AndroidAudioPlugin *plugin;
@@ -141,7 +141,7 @@ public:
     // It may or may not be shared memory buffer.
 	// Arguments are optional; when they are skipped then it just cannot allocate memory.
 	// As numPorts is required, the client and the plugin need agreement on how many ports will be used first (not including AAPXS).
-	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts = 0, size_t numFrames = 0);
+	AndroidAudioPluginBuffer* getAudioPluginBuffer(size_t numPorts = 0, size_t numFrames = 0, size_t defaultControlBytesPerBlock = 0);
 
 	const PluginInformation* getPluginInformation()
 	{

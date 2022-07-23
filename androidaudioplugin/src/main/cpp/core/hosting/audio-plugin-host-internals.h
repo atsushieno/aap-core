@@ -21,7 +21,7 @@ class PluginBuffer
 public:
     ~PluginBuffer();
 
-    bool allocateBuffer(size_t numPorts, size_t numFrames);
+    bool allocateBuffer(size_t numPorts, size_t numFrames, PluginInstance& instance, size_t defaultControlBytesPerBlock);
 
     AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
 };
