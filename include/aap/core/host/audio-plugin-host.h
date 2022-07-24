@@ -117,7 +117,6 @@ class PluginInstance
 	int instance_id;
 	const PluginInformation *pluginInfo;
 	AndroidAudioPluginFactory *plugin_factory;
-	PluginSharedMemoryStore *aapxs_shared_memory_store;
 	PluginInstantiationState instantiation_state;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
@@ -125,6 +124,7 @@ class PluginInstance
 
 protected:
 	AndroidAudioPlugin *plugin;
+	PluginSharedMemoryStore *aapxs_shared_memory_store;
 
 	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
@@ -135,8 +135,6 @@ public:
     virtual ~PluginInstance();
 
 	inline int32_t getInstanceId() { return instance_id; }
-
-	inline PluginSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
 
     // It may or may not be shared memory buffer.
 	// Arguments are optional; when they are skipped then it just cannot allocate memory.
@@ -190,6 +188,7 @@ public:
 	
 	void dispose();
 
+	// FIXME: we could simply remove this buffer argument, as nowadays it is acquired from getAudioPluginBuffer()
 	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
 	{
 		plugin->process(plugin, buffer, timeoutInNanoseconds);
@@ -234,6 +233,9 @@ public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
+
+	// It often moved between LocalPluginInstance and PluginInstance - currently client does not need it.
+	inline PluginSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
 
 	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
 	// which is way simpler.

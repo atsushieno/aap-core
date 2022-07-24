@@ -7,7 +7,7 @@ import kotlin.properties.Delegates
 
 
 /* maps to aap::RemotePluginInstance */
-class NativeRemotePluginInstance(val pluginId: String,
+internal class NativeRemotePluginInstance(val pluginId: String,
                                  sampleRate: Int,
                                  val client: NativePluginClient) {
     fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client.native, instanceId, frameCount, defaultControlBytesPerBlock)
@@ -40,8 +40,6 @@ class NativeRemotePluginInstance(val pluginId: String,
         // Therefore it returns Int, not Long.
         @JvmStatic
         private external fun createRemotePluginInstance(pluginId: String, sampleRate: Int, nativeClient: Long) : Int
-        @JvmStatic
-        external fun getPortBufferFD(nativeClient: Long, instanceId: Int, index: Int) : Int
         @JvmStatic
         external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, defaultControlBytesPerBlock: Int)
         @JvmStatic

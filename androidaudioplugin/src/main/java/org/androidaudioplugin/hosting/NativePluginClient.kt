@@ -3,7 +3,7 @@ package org.androidaudioplugin.hosting
 /*
   This class wraps native aap::PluginClient and provides the corresponding features to the native API, to some extent.
  */
-class NativePluginClient(private val sampleRate: Int, val serviceConnector: AudioPluginServiceConnector) {
+internal class NativePluginClient(private val sampleRate: Int, val serviceConnector: AudioPluginServiceConnector) {
 
     // aap::PluginClient*
     val native: Long = newInstance(serviceConnector.instanceId)

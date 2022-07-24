@@ -455,9 +455,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_prepare(JNIEnv *e
 																			jint defaultControlBytesPerBlock) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstance(instanceId);
-    auto shm = instance->getAAPXSSharedMemoryStore();
     auto numPorts = instance->getNumPorts();
-    shm->resizePortBufferByCount(numPorts);
 	auto buffer = instance->getAudioPluginBuffer(numPorts, frameCount, defaultControlBytesPerBlock);
 	instance->prepare(frameCount, buffer);
 }
@@ -543,18 +541,6 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setState(JNIEnv *
 	instance->getStandardExtensions().setState(buf, length);
 	if (wasCopy)
 		free(buf);
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortBufferFD(JNIEnv *env,
-																			 jclass clazz,
-																			 jlong nativeClient,
-																			 jint instanceId,
-																			 jint index) {
-	auto client = (aap::PluginClient *) (void *) nativeClient;
-	auto instance = client->getInstance(instanceId);
-	return (jint) instance->getAAPXSSharedMemoryStore()->getPortBufferFD(index);
 }
 
 // Presets extensions

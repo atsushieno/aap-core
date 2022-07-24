@@ -9,10 +9,8 @@ import java.lang.UnsupportedOperationException
  */
 class AudioPluginClient(private var applicationContext: Context) : AudioPluginClientBase(applicationContext) {
 
-    val client = NativePluginClient(sampleRate, serviceConnector)
-
     // Audio buses and buffers management
-
+    // FIXME: maybe we should reconsider the API.
     var audioInputs = mutableListOf<ByteArray>()
     var controlInputs = mutableListOf<ByteArray>()
     var audioOutputs = mutableListOf<ByteArray>()

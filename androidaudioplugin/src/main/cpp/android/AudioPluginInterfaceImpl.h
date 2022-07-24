@@ -46,7 +46,7 @@ public:
         if (*_aidl_return < 0)
         return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
-        auto instance = svc->getInstance(*_aidl_return);
+        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(*_aidl_return));
         auto shm = instance->getAAPXSSharedMemoryStore();
         shm->resizePortBufferByCount(instance->getNumPorts());
 
@@ -101,7 +101,8 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto shmExt = svc->getInstance(in_instanceID)->getAAPXSSharedMemoryStore();
+        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(in_instanceID));
+        auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
@@ -121,7 +122,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = svc->getInstance(in_instanceID);
+        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(in_instanceID));
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
@@ -131,7 +132,7 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
                     "failed to allocate shared memory");
-        int ret = prepare(svc->getInstance(in_instanceID), buffers[in_instanceID], in_frameCount,
+        int ret = prepare(instance, buffers[in_instanceID], in_frameCount,
                           in_portCount);
         if (ret != 0)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
@@ -140,14 +141,14 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    void freeBuffers(PluginInstance *instance, AndroidAudioPluginBuffer &buffer) {
+    void freeBuffers(LocalPluginInstance *instance, AndroidAudioPluginBuffer &buffer) {
         if (buffer.buffers)
             for (int i = 0; i < buffer.num_buffers; i++)
                 if (buffer.buffers[i])
                     munmap(buffer.buffers[i], buffer.num_buffers * sizeof(float));
     }
 
-    int prepare(PluginInstance *instance, AndroidAudioPluginBuffer &buffer, int32_t frameCount,
+    int prepare(LocalPluginInstance *instance, AndroidAudioPluginBuffer &buffer, int32_t frameCount,
                 int32_t portCount) {
         int ret = resetBuffers(instance, buffer, frameCount);
         if (ret != 0) {
@@ -159,7 +160,7 @@ public:
         return 0;
     }
 
-    int resetBuffers(PluginInstance *instance, AndroidAudioPluginBuffer &buffer, int frameCount) {
+    int resetBuffers(LocalPluginInstance *instance, AndroidAudioPluginBuffer &buffer, int frameCount) {
         int nPorts = instance->getNumPorts();
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)

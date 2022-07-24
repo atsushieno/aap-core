@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 /*
   AudioPluginInstance implementation that is based on native `RemotePluginInstance`.
  */
-class AudioPluginInstance(
+class AudioPluginInstance internal constructor(
     serviceConnector: AudioPluginServiceConnector,
     conn: PluginServiceConnection,
     var pluginInfo: PluginInformation,
