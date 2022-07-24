@@ -1,12 +1,15 @@
 
 # AAP Developers Guide
 
+## What this documentation is for
+
+The most important and difficult mission for an audio plugin framework like AAP is to get more plugins (hopefully more "quality" plugins, but that is next). Therefore AAP is designed to make existing things reusable. We have aap-juce to import JUCE plugins and aap-lv2 to import LV2 plugins to AAP world, to achieve this goal.
+
+Ideally, as long as you have your plugin in either of those plugin structures, you could just import it, as long as the code is designed to work on Android (i.e. not resorting to desktop specifics such as files, or avoid "sync" API such as those in JUCE FileChooser), If you got things working along with these ways, you would't have to understand the AAP architecture described below.
 
 ## AAP package bundle
 
 An AAP (plugin) is packaged as an apk. The plugin is implemented in native code, built as a set of shared libraries.
-
-The most important and difficult mission for an audio plugin framework is to get more plugins (hopefully more "quality" plugins, but that is next). Therefore AAP is designed to make existing things reusable. There are some packaging sub-formats e.g. AAP-VST3 or AAP-LV2, to ease plugin developers to reuse existing packaging system.
 
 There is some complexity on how those files are packaged. At the "AAP package helpers" section we describe how things are packaged for each migration pattern.
 
@@ -138,7 +141,7 @@ For `pp:type` attribute, currently one of `integer`, `toggled`, `float`, `double
 
 They are by no means stable and are subject to any changes. For stable development, we recommend to rather depend on LV2 API and use aap-lv2, or JUCE API and ues aap-juce.
 
-There is also an AIDL within the repo, but it is meant to be totally for internal use only.
+There is also an AIDL within the repo. For better backward compatibility we very rarely change it, but it is meant to be totally for internal use only.
 
 ### plugin API
 
@@ -207,8 +210,6 @@ AndroidAudioPlugin* sample_plugin_new(
 		sample_plugin_activate,
 		sample_plugin_process,
 		sample_plugin_deactivate,
-		sample_plugin_get_state,
-		sample_plugin_set_state,
 		sample_plugin_get_extension
 		};
 }
@@ -223,7 +224,7 @@ AndroidAudioPluginFactory* GetAndroidAudioPluginFactory ()
 
 ## Hosting AAP
 
-We have an AAP proof-of-concept host in `samples/aaphostsample` directory.
+We have an AAP proof-of-concept host in `samples/aaphostsample` directory. Note that it is a static audio geenrator, not a live audio processing client.
 
 AAP plugins are queried via `AudioPluginHost.queryAudioPluginServices()` which subsequently issues `PackageManager.queryIntentServices()`, connected using binder. `aaphostsample` issues queries and lists only remote AAPs.
 
@@ -248,6 +249,14 @@ LV2 support is implemented in `androidaudioplugin-lv2` (in [aap-lv2](https://git
 VST3 support would be considered similarly, with vst3sdk in mind (but with no actual concrete plan). This (again) does not necessarily mean that *we* provide the bridge.
 
 
+### AAP Kotlin hosting API
+
+AAP hosting API is exposed to Kotlin to some extent, but it is for kind of compromised feature. Kotlin is not designed to be realtime safe, Android Binder for applications is not RT-safe either, but that's another story, we'd keep trying to make native implementation closer to RT-safe.
+
+At the same time, even with the native API, we still have to resort to Kotlin (JVM) API, as there is no NDK API to query and bind Android Service. Therefore, in some AAP native API, we dynamically query and bind AudioPluginServices. We actually manage client's bound AudioPluginServices using `org.androidaudioplugin.hosting.AudioPluginServiceConnector` and `org.androidaudioplugin.hosting.PluginServiceConnection`.
+
+
+
 ### AAP native hosting API
 
 It is similar to LV2. Ports are connected only by index and no port instance structure for runtime buffers.
@@ -258,23 +267,41 @@ Currently, the Hosting API is provided only in C++. They are in `aap` namespace.
 
 - Types
   - `class PluginHost`
+    - `class PluginService` for service implementation (not really intended for public use)
+    - `class PluginClient` for hosting implementation
   - `class PluginClientSystem`
     - `class AndroidPluginClientSystem`
     - `class DesktopPluginClientSystem` (it does not exist yet)
   - `class PluginInformation`
   - `class PortInformation`
   - `class PluginInstance`
+    - `class LocalPluginInstance` for service's plugin instances
+    - `class RemotePluginInstance` for client's plugin instances
   - `enum aap::ContentType`
   - `enum aap::PortDirection`
   - `enum aap::PluginInstantiationState`
 
-The API is not really well-thought at this state and subject to any changes.
-
-There are some incomplete Kotlin API too, which is similarly subject to any changes.
+The API is still not really well-thought at this state and subject to any changes.
 
 ### Accessing Remote plugin
 
-This section describes some internals about `aap::PluginHost::instantiatePlugin()`. Plugin host developers can just use this function.
+Plugin developers don't really have to deal with hosting. The only connected point would be extensions, which is explained in [`EXTENSIONS.md`](./EXTENSIONS.md).
+
+Host developers would use `PluginClient` class to instantiate plugins from various (one or more) AudioPluginServices. It requires live connection list instance (`PluginClientConnectionList*`) and a snapshot of plugin list (`PluginListSnapshot*`), which require some JNI interaction on Android.
+
+`PluginListSnapshot` is easy to acquire - there is `PluginListSnapshot::queryServices()` that dispatches query to Intent Service via Android (Java) API and get results. `PluginClientConnectionList` is a little bit more complicated - you can create new `PluginClientConnection` object with NdkBinder, which can be acquired only through `android.content.Context.bindService()` i.e. via Android (Java) API (again).
+
+Plugins that have the bound service in `PluginClientConnectionList` can be instantiated in synchronous API `PluginClient::createInstance()`. For others, asynchronous `PluginClient::createInstanceAsync()` has to be used. It dispatches instantiation process to `PluginClientSystem` to dynamically bind service. For Android it is `AndroidPluginClientSystem`which simply runs `Context.bindService()`. (There could be desktop version of the API feature parity, which is not implemented yet.)
+
+Those create~ methods only returns the instance ID, but you can easily get the actual `aap::RemotePluginInstance` instance via `getInstance()`. This instance lets you do the rest of the plugin processing (prepare/activate/process/deactivate).
+
+There may be further changes to the API around there, but so far that's how things would work.
+
+### native PluginClient instancing internals
+
+(TODO: this section should probably go into HACKING.md)
+
+This section describes some internals about `aap::PluginClient::createInstanceAsync()`. Plugin host developers can just use this function.
 
 Remote plugins can be accessed through AAP "client bridge" which is publicly just an AAP plugin (so that general AAP Hosts can instantiate locally), while it implements the API as a Service client, using NdkBinder API.
 
@@ -296,9 +323,6 @@ interface AudioPluginInterface {
 	void activate(int instanceID);
 	void process(int instanceID, int timeoutInNanoseconds);
 	void deactivate(int instanceID);
-	int getStateSize(int instanceID);
-	void getState(int instanceID, in ParcelFileDescriptor sharedMemoryFD);
-	void setState(int instanceID, in ParcelFileDescriptor sharedMemoryFD, int size);
 	
 	void destroy(int instanceID);
 }
