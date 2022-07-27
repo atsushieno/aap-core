@@ -133,16 +133,9 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                         buttonStatePerRow.value = true
                     }
                     coroutineScope.launch {
-                        previewState.loadPlugin(plugin!!) { instance, error ->
-                            if (error != null)
-                                viewModel.errorMessage.value = error.toString()
-                            else {
-                                previewState.applyPlugin(parameters) {
-                                    pluginErrorState = it.toString()
-                                    buttonStatePerRow.value = true
-                                }
-                                previewState.unloadPlugin()
-                            }
+                        previewState.applyPlugin(parameters) {
+                            pluginErrorState = it.toString()
+                            buttonStatePerRow.value = true
                         }
                     }
                 } else {

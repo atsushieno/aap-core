@@ -32,8 +32,13 @@ class MidiHelper {
         }
 
         private fun getNoteSeq(note1: Int, note2: Int, note3: Int) : MutableList<UByte> {
+            // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames.
+            // But if we just use 110 on both noteOn and noteOff, the preview does not complete note-off
+            // and it will keep note-on state even if it is deactivated, then extra note output will
+            // happen in the second processing. We workaround it by adjusting the note length.
+            // (It's a hacky preview example anyways!)
             val noteOnSeq = arrayOf(
-                110, 0x90, note1, 0x78, // 1 tick = 100 frames (FRAMES_PER_TICK), 110 ticks = 11000 frames
+                100, 0x90, note1, 0x78,
                 0, 0x90, note2, 0x78,
                 0, 0x90, note3, 0x78)
                 .map {i -> i.toUByte() }
@@ -47,6 +52,7 @@ class MidiHelper {
 
         internal fun getMidiSequence() : List<UByte> {
             // Maybe we should simply use ktmidi API from fluidsynth-midi-service-j repo ...
+            val seq0 = arrayOf(0, 0xB0, 120, 0, 0, 0xB0, 123, 0).map { it.toUByte() }.toMutableList() // all sound off + all notes off
             val seq1 = getNoteSeq(0x39, 0x3D, 0x40)
             val seq2 = getNoteSeq(0x3B, 0x3F, 0x42)
             val seq3 = getNoteSeq(0x3D, 0x41, 0x44)
@@ -55,7 +61,7 @@ class MidiHelper {
             val seq6 = getNoteSeq(0x42, 0x46, 0x49)
             val seq7 = getNoteSeq(0x44, 0x48, 0x4B)
             val seq8 = getNoteSeq(0x45, 0x49, 0x4C)
-            return seq1 + seq2 + seq3 + seq4 + seq5 + seq5 + seq5 + seq6 + seq7 + seq8
+            return seq0 + seq1 + seq2 + seq3 + seq4 + seq5 + seq5 + seq5 + seq6 + seq7 + seq8
         }
 
         internal fun groupMidi1EventsByTiming(events: Sequence<List<UByte>>) = sequence {

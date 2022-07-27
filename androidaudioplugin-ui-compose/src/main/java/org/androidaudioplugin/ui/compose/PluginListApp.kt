@@ -1,15 +1,18 @@
 package org.androidaudioplugin.ui.compose
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -23,7 +26,8 @@ fun PluginListApp(viewModel: PluginListViewModel) {
 fun PluginListAppContent(viewModel: PluginListViewModel) {
     Surface {
         val navController = rememberNavController()
-        val previewState by remember { viewModel.preview }
+        val preview by remember { viewModel.preview }
+        var errorMessage by remember { mutableStateOf("") }
 
         NavHost(navController, startDestination="plugin_list") {
             composable("plugin_list") {
@@ -31,26 +35,41 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                     topBar = { TopAppBar(title = { Text(text = viewModel.topAppBarText.value) }) },
                     content = {
                         viewModel.atTopLevel.value = true // it feels ugly. There should be some better way...
-                        PluginList(onItemClick = { p ->
-                            navController.navigate("plugin_details/" + Uri.encode(p.pluginId))
-                        }, pluginServices = viewModel.availablePluginServices)
+                        Column {
+                            if (errorMessage != "")
+                                Text(errorMessage, modifier = Modifier.padding(14.dp))
+                            PluginList(onItemClick = { p ->
+                                if (preview.pluginInfo != null)
+                                    preview.unloadPlugin()
+                                val pluginId = p.pluginId
+                                if (pluginId == null) {
+                                    errorMessage = "pluginId is missing"
+                                    return@PluginList
+                                }
+                                val pluginInfo = viewModel.getPluginInfo(pluginId)
+                                if (pluginInfo == null) {
+                                    errorMessage =
+                                        "plugin $pluginId is somehow not found on the system."
+                                    return@PluginList
+                                }
+                                preview.loadPlugin(pluginInfo) { _, error ->
+                                    if (error == null)
+                                        navController.navigate("plugin_details/" + Uri.encode(p.pluginId))
+                                    else
+                                        errorMessage = error.message ?: ""
+                                }
+                            }, pluginServices = viewModel.availablePluginServices)
+                        }
                     }
                 )
             }
 
             composable("plugin_details/{pluginId}",
                 arguments = listOf(navArgument("pluginId") { type = NavType.StringType })) {
-                val pluginId = it.arguments?.getString("pluginId")
-                if (pluginId != null) {
-                    viewModel.atTopLevel.value = false // it feels ugly. There should be some better way...
-                    val plugin by remember { mutableStateOf(viewModel.availablePluginServices.flatMap { s -> s.plugins }
-                        .firstOrNull { p -> p.pluginId == pluginId }) }
-                    if (plugin != null) {
-                        Scaffold(
-                            topBar = { TopAppBar(title = { Text(text = plugin!!.displayName) }) },
-                            content = { PluginDetails(plugin!!, viewModel) })
-                    }
-                }
+                viewModel.atTopLevel.value = false // it feels ugly. There should be some better way...
+                Scaffold(
+                    topBar = { TopAppBar(title = { Text(text = preview.pluginInfo!!.displayName) }) },
+                    content = { PluginDetails(preview.pluginInfo!!, viewModel) })
             }
         }
     }

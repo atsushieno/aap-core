@@ -16,6 +16,9 @@ class PluginListViewModel(model: PluginListModel) {
 
     var atTopLevel = mutableStateOf(true)
 
+    fun getPluginInfo(pluginId: String) = availablePluginServices.flatMap { s -> s.plugins }
+        .firstOrNull { p -> p.pluginId == pluginId }
+
     init {
         availablePluginServices.addAll(model.availablePluginServices)
     }

@@ -2,6 +2,7 @@ package org.androidaudioplugin.ui.compose
 
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
@@ -9,7 +10,7 @@ import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.samples.host.engine.PluginPreview
 import kotlin.system.exitProcess
 
-open class PluginListActivity : AppCompatActivity() {
+open class PluginListActivity : ComponentActivity() {
 
     protected lateinit var model: PluginListModel
     protected lateinit var viewModel : PluginListViewModel

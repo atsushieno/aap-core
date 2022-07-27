@@ -20,13 +20,13 @@ class AudioPluginClient(private var applicationContext: Context) : AudioPluginCl
     var audioBufferSizeInBytes = 4096 * 4
         set(value) {
             field = value
-            resetInputBuffer()
-            resetOutputBuffer()
+            resetInputBuffers()
+            resetOutputBuffers()
         }
     var defaultControlBufferSizeInBytes = 4096 * 4
         set(value) {
             field = value
-            resetControlBuffer()
+            resetControlBuffers()
         }
 
     private fun throwIfRunning() { if (isActive) throw UnsupportedOperationException("AudioPluginHost is already running") }
@@ -35,34 +35,37 @@ class AudioPluginClient(private var applicationContext: Context) : AudioPluginCl
         set(value) {
             throwIfRunning()
             field = value
-            resetInputBuffer()
+            resetInputBuffers()
         }
-    private fun resetInputBuffer() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
+    fun resetInputBuffers() = expandBufferArrays(audioInputs, inputAudioBus.map.size, audioBufferSizeInBytes)
 
     var inputControlBus = AudioBusPresets.mono
         set(value) {
             throwIfRunning()
             field = value
-            resetControlBuffer()
+            resetControlBuffers()
         }
-    private fun resetControlBuffer() = expandBufferArrays(controlInputs, inputControlBus.map.size, defaultControlBufferSizeInBytes)
+    fun resetControlBuffers() = expandBufferArrays(controlInputs, inputControlBus.map.size, defaultControlBufferSizeInBytes)
 
     var outputAudioBus = AudioBusPresets.stereo // it will be initialized at init() too for allocating buffers.
         set(value) {
             throwIfRunning()
             field = value
-            resetOutputBuffer()
+            resetOutputBuffers()
         }
-    private fun resetOutputBuffer() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
+    fun resetOutputBuffers() = expandBufferArrays(audioOutputs, outputAudioBus.map.size, audioBufferSizeInBytes)
 
     private fun expandBufferArrays(list : MutableList<ByteArray>, newSize : Int, bufferSize : Int) {
         if (newSize > list.size)
-            (0 until newSize - list.size).forEach {list.add(ByteArray(bufferSize)) }
+            (0 until newSize - list.size).forEach {
+                list.add(ByteArray(bufferSize))
+            }
         while (newSize < list.size)
             list.remove(list.last())
         for (i in 0 until newSize)
             if (list[i].size < bufferSize)
                 list[i] = ByteArray(bufferSize)
+        list.forEach { it.fill(0) }
     }
 
     init {

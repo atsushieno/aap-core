@@ -24,7 +24,7 @@ class PluginPreview(context: Context) {
 
     private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
     private var instance: AudioPluginInstance? = null
-    private var pluginInfo: PluginInformation? = null
+    var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
 
     val inBuf : ByteArray
@@ -34,22 +34,31 @@ class PluginPreview(context: Context) {
     private val audioProcessingBuffers = mutableListOf<ByteBuffer>()
     private val audioProcessingBufferSizesInBytes = mutableListOf<Int>()
 
+
     fun dispose() {
         track.release()
         host.dispose()
     }
 
     fun loadPlugin(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) ->Unit = {_,_ -> }) {
-        if (instance != null)
-            return
-        this.pluginInfo = pluginInfo
-        host.instantiatePluginAsync(pluginInfo) { instance, error ->
-            if (error != null) {
-                lastError = error
-                callback(null, error)
-            } else
-                this.instance = instance
-            callback(instance, null)
+        if (instance != null) {
+            callback(null, Exception("A plugin ${pluginInfo.pluginId} is already loaded"))
+        } else {
+            this.pluginInfo = pluginInfo
+            host.instantiatePluginAsync(pluginInfo) { instance, error ->
+                if (error != null) {
+                    lastError = error
+                    callback(null, error)
+                } else if (instance != null) { // should be always true
+                    this.instance = instance
+                    instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
+                    if (instance.proxyError != null) {
+                        callback(null, instance.proxyError!!)
+                    } else {
+                        callback(instance, null)
+                    }
+                }
+            }
         }
     }
 
@@ -60,43 +69,37 @@ class PluginPreview(context: Context) {
                 instance.deactivate()
             instance.destroy()
         }
-        pluginInfo = null
-    }
 
-    fun applyPlugin(plugin: PluginInformation, parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {})
-    {
-        host.connectToPluginServiceAsync(plugin.packageName) { _, error ->
-            val instance = host.instantiatePlugin(plugin)
-            this.instance = instance
-            applyPlugin(parametersOnUI, errorCallback)
-        }
+        host.serviceConnector.unbindAudioPluginService(instance!!.pluginInfo.packageName)
+        pluginInfo = null
+        this.instance = null
     }
 
     fun applyPlugin(parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
         val instance = this.instance ?: return
-        val pluginInfo = this.pluginInfo ?: return
 
+        outBuf.fill(0)
+        audioProcessingBuffers.clear()
+        audioProcessingBufferSizesInBytes.clear()
         (0 until instance.getPortCount()).forEach {
-            val size = AUDIO_BUFFER_SIZE.coerceAtLeast(pluginInfo.ports[it].minimumSizeInBytes)
+            val size = AUDIO_BUFFER_SIZE.coerceAtLeast(instance.getPort(it).minimumSizeInBytes)
             // Note that you will have to use allocateDirecT() here, otherwise ART crashes at accessing it on JNI.
             audioProcessingBuffers.add(ByteBuffer.allocateDirect(size))
             audioProcessingBufferSizesInBytes.add(size)
         }
 
-        instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
-        if (instance.proxyError != null) {
+        processPluginOnce(parametersOnUI)
+        if (instance.proxyError != null)
             errorCallback(instance.proxyError!!)
-        } else {
-            processPluginOnce(parametersOnUI)
-            if (instance.proxyError != null)
-                errorCallback(instance.proxyError!!)
-        }
     }
 
     private fun processPluginOnce(parametersOnUI: FloatArray?) {
         val instance = this.instance!!
-        val plugin = instance.pluginInfo
-        val parameters = parametersOnUI ?: (0 until plugin.ports.count()).map { i -> plugin.ports[i].default }.toFloatArray()
+        val parameters = parametersOnUI ?: (0 until instance.getPortCount()).map { instance.getPort(it).default }.toFloatArray()
+
+        host.resetInputBuffers()
+        host.resetOutputBuffers()
+        host.resetControlBuffers()
 
         val midiSequence = MidiHelper.getMidiSequence()
         val midi1Events = MidiHelper.splitMidi1Events(midiSequence.toUByteArray())
@@ -109,7 +112,8 @@ class PluginPreview(context: Context) {
         var audioOutL = -1
         var audioOutR = -1
         var midiIn = -1
-        instance.pluginInfo.ports.forEachIndexed { i, p ->
+        (0 until instance.getPortCount()).forEach { i ->
+            val p = instance.getPort(i)
             if (p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO) {
                 if (p.direction == PortInformation.PORT_DIRECTION_INPUT) {
                     if (audioInL < 0)
@@ -132,14 +136,15 @@ class PluginPreview(context: Context) {
         val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
         val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-        (0 until plugin.ports.count()).map { i ->
-            if (plugin.ports[i].direction == PortInformation.PORT_DIRECTION_OUTPUT)
+        (0 until instance.getPortCount()).map { i ->
+            val port = instance.getPort(i)
+            if (port.direction == PortInformation.PORT_DIRECTION_OUTPUT)
                 return@map
-            if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
+            if (port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
                 return@map
-            if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI)
+            if (port.content == PortInformation.PORT_CONTENT_TYPE_MIDI)
                 return@map
-            if (plugin.ports[i].content == PortInformation.PORT_CONTENT_TYPE_MIDI2)
+            if (port.content == PortInformation.PORT_CONTENT_TYPE_MIDI2)
                 return@map
             else {
                 // FIXME: support non-float data type (but we have to determine data type semantics first)
@@ -168,12 +173,12 @@ class PluginPreview(context: Context) {
 
             if (audioInL >= 0) {
                 val localBufferL = audioProcessingBuffers[audioInL]
-                localBufferL.position(0)
+                localBufferL.clear()
                 localBufferL.put(host.audioInputs[0], 0, audioBufferFrameSize * 4)
                 instance.setPortBuffer(audioInL, localBufferL, audioProcessingBufferSizesInBytes[audioInL])
                 if (audioInR > audioInL) {
                     val localBufferR = audioProcessingBuffers[audioInR]
-                    localBufferR.position(0)
+                    localBufferR.clear()
                     localBufferR.put(host.audioInputs[1], 0, audioBufferFrameSize * 4)
                     instance.setPortBuffer(audioInR, localBufferR, audioProcessingBufferSizesInBytes[audioInR])
                 }
@@ -186,7 +191,7 @@ class PluginPreview(context: Context) {
                 // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
 
                 val midiBuffer = audioProcessingBuffers[midiIn].order(ByteOrder.LITTLE_ENDIAN)
-                midiBuffer.position(0)
+                midiBuffer.clear()
                 midiBuffer.position(resetMidiBuffer(midiBuffer))
                 var midiDataLengthInLoop = 0
 
@@ -224,7 +229,7 @@ class PluginPreview(context: Context) {
                 instance.getPortBuffer(audioOutL, localBufferL, audioProcessingBufferSizesInBytes[audioOutL])
                 localBufferL.position(0)
                 localBufferL.get(host.audioOutputs[0], 0, audioBufferFrameSize * 4)
-                if (audioOutR > audioOutL) {
+                if (audioOutR >= 0) {
                     val localBufferR = audioProcessingBuffers[audioOutR]
                     instance.getPortBuffer(audioOutR, localBufferR, audioProcessingBufferSizesInBytes[audioOutR])
                     localBufferR.position(0)
@@ -243,10 +248,7 @@ class PluginPreview(context: Context) {
 
         instance.deactivate()
 
-
         processAudioCompleted()
-
-        releasePluginInstance(instance)
     }
 
     private fun resetMidiBuffer(mb: ByteBuffer) : Int
@@ -294,8 +296,8 @@ class PluginPreview(context: Context) {
         }
     }
 
-    val track: AudioTrack
-    val audioTrackBufferSizeInBytes: Int
+    private val track: AudioTrack
+    private val audioTrackBufferSizeInBytes: Int
 
     fun playSound(postApplied: Boolean)
     {
@@ -317,13 +319,6 @@ class PluginPreview(context: Context) {
         }
         track.flush()
         track.stop()
-    }
-
-    private fun releasePluginInstance(instance: AudioPluginInstance) {
-        instance.destroy()
-        this.instance = null
-
-        host.serviceConnector.unbindAudioPluginService(instance.pluginInfo.packageName)
     }
 
     init {
