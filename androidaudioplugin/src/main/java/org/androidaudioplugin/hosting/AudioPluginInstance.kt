@@ -101,11 +101,6 @@ class AudioPluginInstance internal constructor(
             } catch (ex: Exception) {
                 // nothing we can do here
             }
-            /*
-            shmList.forEach { shm ->
-                shm.shm.close()
-            }
-            */
 
             state = InstanceState.DESTROYED
         }

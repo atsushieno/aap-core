@@ -241,11 +241,9 @@ namespace aapmidideviceservice {
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
             if (data->midi1_in_port >= 0)
-                memset((void *) data->plugin_buffer->buffers[data->midi1_in_port], 0,
-                       aap_frame_size * sizeof(float));
+                ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi1_in_port])->length = 0;
             if (data->midi2_in_port >= 0)
-                memset((void *) data->plugin_buffer->buffers[data->midi2_in_port], 0,
-                       aap_frame_size * sizeof(float));
+                ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi2_in_port])->length = 0;
         }
     }
 
