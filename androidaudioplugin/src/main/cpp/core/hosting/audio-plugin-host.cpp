@@ -8,7 +8,7 @@
 #include "aap/unstable/logging.h"
 #include "shared-memory-store.h"
 #include "audio-plugin-host-internals.h"
-#include "plugin-client-system.h"
+#include "aap/core/host/plugin-client-system.h"
 #include "../extensions/presets-service.h"
 #include "../extensions/midi2-service.h"
 

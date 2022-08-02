@@ -1,6 +1,6 @@
 
 #include "aap/core/host/plugin-connections.h"
-#include "plugin-client-system.h"
+#include "aap/core/host/plugin-client-system.h"
 
 namespace aap {
 

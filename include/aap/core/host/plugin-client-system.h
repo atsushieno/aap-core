@@ -4,8 +4,8 @@
 #include <sys/stat.h>
 #include <cstdint>
 #include <vector>
-#include "aap/core/plugin-information.h"
-#include "aap/core/host/plugin-connections.h"
+#include "../plugin-information.h"
+#include "plugin-connections.h"
 
 namespace aap {
 
