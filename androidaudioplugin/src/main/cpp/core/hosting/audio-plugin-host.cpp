@@ -11,6 +11,7 @@
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/presets-service.h"
 #include "../extensions/midi2-service.h"
+#include "../extensions/port-config-service.h"
 
 
 namespace aap
@@ -140,6 +141,7 @@ int32_t PluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& cli
 
 std::unique_ptr<StateExtensionFeature> aapxs_state{nullptr};
 std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
+std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
 std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
 
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
@@ -157,6 +159,10 @@ PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	if (aapxs_presets == nullptr)
 		aapxs_presets = std::make_unique<PresetsExtensionFeature>();
 	aapxs_registry->add(aapxs_presets->asPublicApi());
+	// port_config
+	if (aapxs_port_config == nullptr)
+		aapxs_port_config = std::make_unique<PortConfigExtensionFeature>();
+	aapxs_registry->add(aapxs_state->asPublicApi());
 	// midi2
 	if (aapxs_midi2 == nullptr)
 		aapxs_midi2 = std::make_unique<Midi2ExtensionFeature>();
@@ -337,6 +343,17 @@ void PluginInstance::completeInstantiation()
 	assert(plugin);
 
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+}
+
+void PluginInstance::configurePorts()
+{
+	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
+
+    // FIXME: query audio ports extensions and MIDI ports extensions
+
+	configured_ports = std::make_unique<std::vector<PortInformation>>();
+	for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
+		configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
 }
 
 //----

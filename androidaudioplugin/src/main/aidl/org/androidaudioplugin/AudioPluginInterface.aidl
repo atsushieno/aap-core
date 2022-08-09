@@ -15,6 +15,9 @@ interface AudioPluginInterface {
 
     // Instance operations
 	int beginCreate(String pluginId, int sampleRate);
+	// add an AAP extension, with a URI, with an optional shared memory FD and its size dedicated to it.
+	// For consistency in the future, the order of calls to `addExtension()` should be considered as significant
+	// (i.e. the extension list is ordered). Any extension that could affect other extensions should be added earlier.
 	void addExtension(int instanceID, String uri, in ParcelFileDescriptor sharedMemoryFD, int size);
 	void endCreate(int instanceID);
 

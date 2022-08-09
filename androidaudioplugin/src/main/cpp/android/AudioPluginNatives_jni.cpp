@@ -442,6 +442,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
         }
         auto instance = client->getInstance(result.value);
         instance->completeInstantiation();
+		instance->configurePorts();
         return (jlong) result.value;
 	});
 }

@@ -11,6 +11,7 @@ set (androidaudioplugin_SOURCES
 	"core/extensions/extension-service-impl.cpp"
 	"core/extensions/presets-service.cpp"
 	"core/extensions/state-service.cpp"
+	"core/extensions/port-config-service.cpp"
 	)
 
 set (androidaudioplugin_INCLUDES

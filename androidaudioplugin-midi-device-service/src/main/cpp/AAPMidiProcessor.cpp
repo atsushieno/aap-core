@@ -157,10 +157,12 @@ namespace aapmidideviceservice {
 
             instrument_instance_id = instanceId;
 
+            instance->completeInstantiation();
+
+            instance->configurePorts();
+
             int32_t numPorts = instance->getNumPorts();
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
-
-            instance->completeInstantiation();
 
             data->instance_id = instanceId;
             data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);

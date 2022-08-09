@@ -116,6 +116,8 @@ class PluginInstance
 	int sample_rate{44100};
 	int instance_id;
 	const PluginInformation *pluginInfo;
+	std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
+
 	AndroidAudioPluginFactory *plugin_factory;
 	PluginInstantiationState instantiation_state;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
@@ -146,17 +148,20 @@ public:
 		return pluginInfo;
 	}
 
+	void completeInstantiation();
+
+	void configurePorts();
+
 	int32_t getNumPorts() {
-		// FIXME: return dynamic instantiation results. Metadata is incomplete.
-		return pluginInfo->getNumDeclaredPorts();
+		return configured_ports ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();
 	}
 
 	const PortInformation* getPort(int32_t index) {
-		// FIXME: return dynamic instantiation results. Metadata is incomplete.
-		return pluginInfo->getDeclaredPort(index);
+		if (!configured_ports)
+			return pluginInfo->getDeclaredPort(index);
+		assert(configured_ports->size() > index);
+		return &(*configured_ports)[index];
 	}
-
-	void completeInstantiation();
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
 	{
