@@ -156,11 +156,20 @@ public:
 		return configured_ports ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();
 	}
 
-	const PortInformation* getPort(int32_t index) {
+	const PortInformation* getPortByIndex(int32_t index) {
 		if (!configured_ports)
 			return pluginInfo->getDeclaredPort(index);
 		assert(configured_ports->size() > index);
 		return &(*configured_ports)[index];
+	}
+
+	const PortInformation* getPortById(int32_t id) {
+		for (int i = 0, n = getNumPorts(); i < n; i++) {
+			auto port = getPortByIndex(i);
+			if (port->getId() == id)
+				return port;
+		}
+		return nullptr;
 	}
 
 	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)

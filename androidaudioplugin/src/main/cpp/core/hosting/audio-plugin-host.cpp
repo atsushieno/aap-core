@@ -75,8 +75,8 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames, PluginInsta
 		return false;
 
 	for (size_t i = 0; i < numPorts; i++) {
-		size_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
-		int minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
+		size_t defaultMemSize = instance.getPortByIndex(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
+		int minSize = instance.getPortByIndex(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
         int memSize = std::max(minSize, (int) defaultMemSize);
 		buffer->buffers[i] = calloc(1, memSize);
 		if (!buffer->buffers[i])
@@ -349,9 +349,20 @@ void PluginInstance::configurePorts()
 {
 	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 
-    // FIXME: query audio ports extensions and MIDI ports extensions
-
 	configured_ports = std::make_unique<std::vector<PortInformation>>();
+
+    /* FIXME: enable this once we fix configurePorts() for service.
+	// Add mandatory system common ports
+    PortInformation core_midi_in{-1, "System Common Host-To-Plugin", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    PortInformation core_midi_out{-2, "System Common Plugin-To-Host", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+    PortInformation core_midi_rt{-3, "System Realtime (HtP)", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    configured_ports->emplace_back(core_midi_in);
+    configured_ports->emplace_back(core_midi_out);
+    configured_ports->emplace_back(core_midi_rt);
+    */
+
+	// FIXME: query audio ports extensions and MIDI ports extensions
+
 	for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
 		configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
 }

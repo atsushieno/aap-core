@@ -46,9 +46,6 @@ public:
         if (*_aidl_return < 0)
         return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(*_aidl_return));
-        auto shm = instance->getAAPXSSharedMemoryStore();
-        shm->resizePortBufferByCount(instance->getNumPorts());
 
         buffers.resize(*_aidl_return + 1);
         auto &buffer = buffers[*_aidl_return];
@@ -113,6 +110,12 @@ public:
                     AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD,
                     "invalid shared memory fd was passed");
         auto dfd = dup(fdRemote);
+
+        // FIXME: we ensure size every time but it is a bit aggressive.
+        // add a new `beginPrepare()` method in the AIDL (i.e. breaking change)
+        auto shm = instance->getAAPXSSharedMemoryStore();
+        shm->resizePortBufferByCount(instance->getNumPorts());
+
         shmExt->setPortBufferFD(in_shmFDIndex, dfd);
         return ndk::ScopedAStatus::ok();
     }

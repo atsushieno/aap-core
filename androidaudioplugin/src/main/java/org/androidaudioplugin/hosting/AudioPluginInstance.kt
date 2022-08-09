@@ -1,11 +1,9 @@
 package org.androidaudioplugin.hosting
 
-import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import android.os.SharedMemory
 import android.util.Log
 import org.androidaudioplugin.*
-import org.androidaudioplugin.AudioPluginNatives
 import java.nio.ByteBuffer
 
 
@@ -108,7 +106,7 @@ class AudioPluginInstance internal constructor(
 
     // port/buffer manipulation
     fun getPortCount() = proxy.getPortCount()
-    fun getPort(index: Int) = proxy.getPort(index)
+    fun getPort(index: Int) = proxy.getPortByIndex(index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.getPortBuffer(portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.setPortBuffer(portIndex, buffer, size)
 
