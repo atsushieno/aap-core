@@ -1,5 +1,6 @@
 package org.androidaudioplugin.ui.compose
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ fun PluginListApp(viewModel: PluginListViewModel) {
     MaterialTheme { PluginListAppContent(viewModel) }
 }
 
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun PluginListAppContent(viewModel: PluginListViewModel) {
     Surface {
