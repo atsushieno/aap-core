@@ -299,10 +299,10 @@ int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: sample_rate(sampleRate),
 		  instance_id(instanceId),
-		  pluginInfo(pluginInformation),
 		  plugin_factory(loadedPluginFactory),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
-		  plugin(nullptr) {
+		  plugin(nullptr),
+		  pluginInfo(pluginInformation) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
 
@@ -345,28 +345,6 @@ void PluginInstance::completeInstantiation()
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 }
 
-void PluginInstance::configurePorts()
-{
-	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
-
-	configured_ports = std::make_unique<std::vector<PortInformation>>();
-
-    /* FIXME: enable this once we fix configurePorts() for service.
-	// Add mandatory system common ports
-    PortInformation core_midi_in{-1, "System Common Host-To-Plugin", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-    PortInformation core_midi_out{-2, "System Common Plugin-To-Host", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
-    PortInformation core_midi_rt{-3, "System Realtime (HtP)", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-    configured_ports->emplace_back(core_midi_in);
-    configured_ports->emplace_back(core_midi_out);
-    configured_ports->emplace_back(core_midi_rt);
-    */
-
-	// FIXME: query audio ports extensions and MIDI ports extensions
-
-	for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
-		configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
-}
-
 //----
 
 RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
@@ -374,6 +352,17 @@ RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanc
           client(client),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
+}
+
+void RemotePluginInstance::configurePorts()
+{
+    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
+
+	startPortConfiguration();
+
+    // FIXME: query audio ports extensions and MIDI ports extensions
+
+	setupPortsViaMetadata();
 }
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {

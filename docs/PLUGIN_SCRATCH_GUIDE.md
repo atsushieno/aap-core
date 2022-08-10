@@ -48,10 +48,10 @@ A service needs to be described there:
             android:label="AAPBareBoneSamplePlugin">
             <intent-filter>
                 <action
-                    android:name="org.androidaudioplugin.AudioPluginService.V1" />
+                    android:name="org.androidaudioplugin.AudioPluginService.V2" />
             </intent-filter>
             <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService.V1#Plugins"
+                android:name="org.androidaudioplugin.AudioPluginService.V2#Plugins"
                 android:resource="@xml/aap_metadata"
                 />
         </service>
@@ -73,10 +73,10 @@ This is the entire content for bare bone project:
 <plugins>
   <plugin name="Flat Filter" category="Effect" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbareboneplugin.so">
     <ports>
-      <port index="0" direction="input" content="audio" name="Left In" />
-      <port index="1" direction="input" content="audio" name="Right In" />
-      <port index="2" direction="output" content="audio" name="Left Out" />
-      <port index="3" direction="output" content="audio" name="Right Out" />
+      <port id="0" direction="input" content="audio" name="Left In" />
+      <port id="1" direction="input" content="audio" name="Right In" />
+      <port id="2" direction="output" content="audio" name="Left Out" />
+      <port id="3" direction="output" content="audio" name="Right Out" />
     </ports>
   </plugin>
 </plugins>

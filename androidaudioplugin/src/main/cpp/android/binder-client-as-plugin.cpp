@@ -92,6 +92,16 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
 		return;
 	}
 
+	if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+		auto status = ctx->proxy->beginPrepare(ctx->instance_id);
+		if (!status.isOk()) {
+			aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy",
+						 "beginPrepare() failed: %s", /*status.getDescription().c_str()*/
+						 "(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+			ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+		}
+	}
+
     // allocate shm FDs, first locally, then send it to the target AAP.
     for (int i = 0; i < n; i++) {
 		auto fd = ctx->shm_store->getPortBufferFD(i);
@@ -105,9 +115,9 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
     }
 
     if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        auto status = ctx->proxy->prepare(ctx->instance_id, buffer->num_frames, n);
+        auto status = ctx->proxy->endPrepare(ctx->instance_id, buffer->num_frames);
         if (!status.isOk()) {
-            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "prepare() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "endPrepare() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
         }
 

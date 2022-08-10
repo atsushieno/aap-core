@@ -434,13 +434,14 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
 		JNIEnv *env, jclass clazz, jstring plugin_id, jint sampleRate, jlong clientPointer) {
 	assert(clientPointer != 0);
 	auto client = (aap::PluginClient*) (void*) clientPointer;
-	return usingJString<jlong>(plugin_id, [&](const char* pluginId) {
+	return usingJString<jint>(plugin_id, [&](const char* pluginId) {
 		auto result = client->createInstance(pluginId, sampleRate, true);
 		if (!result.error.empty()) {
             aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
             return (jlong) -1;
         }
-        auto instance = client->getInstance(result.value);
+        auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(result.value));
+		assert(instance);
         instance->completeInstantiation();
 		instance->configurePorts();
         return (jlong) result.value;

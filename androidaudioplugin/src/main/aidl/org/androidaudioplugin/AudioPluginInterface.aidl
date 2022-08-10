@@ -25,8 +25,12 @@ interface AudioPluginInterface {
 
 	void extension(int instanceID, String uri, int size);
 
-	void prepare(int instanceID, int frameCount, int portCount);
+	// Indicates thaat it begins "prepare" step, to plugin.
+	// When received, plugin finishes port configuration.
+	// Port configuration by extensions should be done before this call.
+	void beginPrepare(int instanceID);
 	void prepareMemory(int instanceID, int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
+	void endPrepare(int instanceID, int frameCount);
 	void activate(int instanceID);
 	void process(int instanceID, int timeoutInNanoseconds);
 	void deactivate(int instanceID);

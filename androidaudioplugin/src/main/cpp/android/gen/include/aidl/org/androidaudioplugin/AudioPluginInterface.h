@@ -34,12 +34,13 @@ public:
   static constexpr uint32_t TRANSACTION_endCreate = FIRST_CALL_TRANSACTION + 3;
   static constexpr uint32_t TRANSACTION_isPluginAlive = FIRST_CALL_TRANSACTION + 4;
   static constexpr uint32_t TRANSACTION_extension = FIRST_CALL_TRANSACTION + 5;
-  static constexpr uint32_t TRANSACTION_prepare = FIRST_CALL_TRANSACTION + 6;
+  static constexpr uint32_t TRANSACTION_beginPrepare = FIRST_CALL_TRANSACTION + 6;
   static constexpr uint32_t TRANSACTION_prepareMemory = FIRST_CALL_TRANSACTION + 7;
-  static constexpr uint32_t TRANSACTION_activate = FIRST_CALL_TRANSACTION + 8;
-  static constexpr uint32_t TRANSACTION_process = FIRST_CALL_TRANSACTION + 9;
-  static constexpr uint32_t TRANSACTION_deactivate = FIRST_CALL_TRANSACTION + 10;
-  static constexpr uint32_t TRANSACTION_destroy = FIRST_CALL_TRANSACTION + 11;
+  static constexpr uint32_t TRANSACTION_endPrepare = FIRST_CALL_TRANSACTION + 8;
+  static constexpr uint32_t TRANSACTION_activate = FIRST_CALL_TRANSACTION + 9;
+  static constexpr uint32_t TRANSACTION_process = FIRST_CALL_TRANSACTION + 10;
+  static constexpr uint32_t TRANSACTION_deactivate = FIRST_CALL_TRANSACTION + 11;
+  static constexpr uint32_t TRANSACTION_destroy = FIRST_CALL_TRANSACTION + 12;
 
   static std::shared_ptr<IAudioPluginInterface> fromBinder(const ::ndk::SpAIBinder& binder);
   static binder_status_t writeToParcel(AParcel* parcel, const std::shared_ptr<IAudioPluginInterface>& instance);
@@ -52,8 +53,9 @@ public:
   virtual ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) = 0;
   virtual ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) = 0;
-  virtual ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) = 0;
+  virtual ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) = 0;
+  virtual ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) = 0;
   virtual ::ndk::ScopedAStatus activate(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) = 0;
   virtual ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) = 0;
@@ -69,8 +71,9 @@ public:
   ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override;
   ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override;
-  ::ndk::ScopedAStatus prepare(int32_t in_instanceID, int32_t in_frameCount, int32_t in_portCount) override;
+  ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override;
+  ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) override;
   ::ndk::ScopedAStatus activate(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override;
   ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override;

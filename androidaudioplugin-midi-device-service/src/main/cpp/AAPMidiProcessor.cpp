@@ -153,7 +153,8 @@ namespace aapmidideviceservice {
                 state = AAP_MIDI_PROCESSOR_STATE_ERROR;
                 return;
             }
-            auto instance = client->getInstance(instanceId);
+            auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(instanceId));
+            assert(instance);
 
             instrument_instance_id = instanceId;
 

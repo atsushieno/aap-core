@@ -115,18 +115,19 @@ class PluginInstance
 
 	int sample_rate{44100};
 	int instance_id;
-	const PluginInformation *pluginInfo;
-	std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 
 	AndroidAudioPluginFactory *plugin_factory;
-	PluginInstantiationState instantiation_state;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
 	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock);
 
 protected:
+    PluginInstantiationState instantiation_state;
+	bool are_ports_configured{false};
 	AndroidAudioPlugin *plugin;
 	PluginSharedMemoryStore *aapxs_shared_memory_store;
+    const PluginInformation *pluginInfo;
+    std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 
 	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
@@ -150,7 +151,28 @@ public:
 
 	void completeInstantiation();
 
-	void configurePorts();
+	// common to both service and client.
+	void startPortConfiguration() {
+		configured_ports = std::make_unique<std::vector<PortInformation>>();
+
+		/* FIXME: enable this once we fix configurePorts() for service.
+        // Add mandatory system common ports
+        PortInformation core_midi_in{-1, "System Common Host-To-Plugin", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+        PortInformation core_midi_out{-2, "System Common Plugin-To-Host", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+        PortInformation core_midi_rt{-3, "System Realtime (HtP)", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+        configured_ports->emplace_back(core_midi_in);
+        configured_ports->emplace_back(core_midi_out);
+        configured_ports->emplace_back(core_midi_rt);
+        */
+	}
+
+	// This means that there was no configured ports by extensions.
+	void setupPortsViaMetadata() {
+		if (are_ports_configured)
+			return;
+		for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
+			configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
+	}
 
 	int32_t getNumPorts() {
 		return configured_ports ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();
@@ -179,7 +201,7 @@ public:
 		plugin->prepare(plugin, preparedBuffer);
 		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
-	
+
 	void activate()
 	{
 		if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
@@ -246,6 +268,10 @@ protected:
 public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
+    void confirmPorts() {
+		setupPortsViaMetadata();
+    }
+
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
 
 	// It often moved between LocalPluginInstance and PluginInstance - currently client does not need it.
@@ -305,6 +331,9 @@ public:
 	// The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
 	// (binder-client-as-plugin does so, and desktop implementation should do so too.)
     RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+    // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
+    void configurePorts();
 
     /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
     std::function<void(const char*, int32_t, int32_t)> send_extension_message_impl;

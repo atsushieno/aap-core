@@ -15,7 +15,7 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService.V1` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
+Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService.V2` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -28,14 +28,14 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
              android:label="AAPBareBoneSamplePlugin">
       <intent-filter>
         <action 
-	      android:name="org.androidaudioplugin.AudioPluginService.V1" />
+	      android:name="org.androidaudioplugin.AudioPluginService.V2" />
       </intent-filter>
       <meta-data 
-	    android:name="org.androidaudioplugin.AudioPluginService.V1#Plugins"
+	    android:name="org.androidaudioplugin.AudioPluginService.V2#Plugins"
 	    android:resource="@xml/aap_metadata"
         />
       <meta-data
-        android:name="org.androidaudioplugin.AudioPluginService.V1#Extensions"
+        android:name="org.androidaudioplugin.AudioPluginService.V2#Extensions"
         android:value="org.androidaudioplugin.lv2.AudioPluginLV2LocalHost"
         />
     </service>
@@ -45,7 +45,7 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
 
 The `<service>` element comes up with two `<meta-data>` elements.
 
-The simpler one with `org.androidaudioplugin.AudioPluginService.V1#Extensions` is a ',' (comma)-separated list, to specify service-specific "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument. Any AAP service that contains LV2-based plugins has to specify `org.androidaudioplugin.lv2.AudioPluginLV2LocalHost` as the extension. For reference, its `initialize` method looks like:
+The simpler one with `org.androidaudioplugin.AudioPluginService.V2#Extensions` is a ',' (comma)-separated list, to specify service-specific "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument. Any AAP service that contains LV2-based plugins has to specify `org.androidaudioplugin.lv2.AudioPluginLV2LocalHost` as the extension. For reference, its `initialize` method looks like:
 
 ```
 @JvmStatic
@@ -61,7 +61,7 @@ fun initialize(context: Context)
 external fun initialize(lv2Path: String, assets: AssetManager)
 ```
 
-The other one with `org.androidaudioplugin.AudioPluginService.V1#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
+The other one with `org.androidaudioplugin.AudioPluginService.V2#Plugins` is to specify an additional XML resource for the service. The `android:resource` attribute indicates that there is `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
 <plugins xmlns="urn:org.androidaudioplugin.core"
@@ -107,7 +107,7 @@ AAP hosts can query AAP metadata resources from all the installed app packages, 
 - `<ports>` element - defines port group (can be nested)
   - `name`: attribute: port group name. An `xs:NMTOKEN` in XML Schema datatypes is expected.
   - `<port>` element
-    - `index` attribute: the port index integer that is supposed to not change as long as parameter compatibility is kept. Indices don't have to be in order.
+    - `id` attribute: the port id integer that is supposed to not change as long as parameter compatibility is kept. Indices don't have to be in order.
     - `name` attribute: a name string. An `xs:NMTOKEN` in XML Schema datatypes is expected.
     - `direction` attribute: either `input` or `output`.
     - `content` attribute: Can be anything, but `audio` and `midi` are recognized by standard AAP hosts.
@@ -235,7 +235,7 @@ Android 11 brought in a new restriction on querying information on other applica
 ```
     <queries>
         <intent>
-            <action android:name="org.androidaudioplugin.AudioPluginService.V1" />
+            <action android:name="org.androidaudioplugin.AudioPluginService.V2" />
         </intent>
     </queries>
 ```
@@ -259,7 +259,7 @@ At the same time, even with the native API, we still have to resort to Kotlin (J
 
 ### AAP native hosting API
 
-It is similar to LV2. Ports are connected only by index and no port instance structure for runtime buffers.
+It is similar to LV2. Ports are connected only by id (an index-like integer) and no port instance structure for runtime buffers.
 
 Unlike LV2, hosting API is actually used by plugins too, because it has to serve requests from remote host, process audio stream locally, and return the results to the remote host. But plugin developers shouldn't have to worry about it. It should be as easy as implementing plugin API and package in AAP format.
 

@@ -73,4 +73,4 @@ Introducing breaking changes at the core API, unlike changes on the extension AP
 
 (Incompatible extensions would just mean that the host will be unable to retrieve such an extension from the plugin, or the plugin will be unable to retrieve such an extension from the host. They might result in lack of mandatory extension or  some features disabled.)
 
-When introducing breaking changes in the core API, we should alter the Android Intent action name. In the current API, it is `org.androidaudioplugin.AudioPluginService.V1`. Before April 2022, it was `org.androidaudioplugin.AudioPluginService`.
+When introducing breaking changes in the core API, we should alter the Android Intent action name. In the current API, it is `org.androidaudioplugin.AudioPluginService.V2`. Before August 2022, it was `org.androidaudioplugin.AudioPluginService.V1` and before April 2022, it was `org.androidaudioplugin.AudioPluginService`.
