@@ -75,6 +75,9 @@ class PluginPreview(context: Context) {
         this.instance = null
     }
 
+    val instancePorts : List<PortInformation>
+        get() = if (instance == null) listOf() else (0 until instance!!.getPortCount()).map { instance!!.getPort(it) }
+
     fun applyPlugin(parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
         val instance = this.instance ?: return
 

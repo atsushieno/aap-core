@@ -57,7 +57,7 @@ private fun ColumnHeader(text: String) {
 fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     val scrollState = rememberScrollState(0)
 
-    val parameters by remember { mutableStateOf(plugin.ports.map { p -> p.default }.toFloatArray()) }
+    val parameters by remember { mutableStateOf(viewModel.preview.value.instancePorts.map { p -> p.default }.toFloatArray()) }
     var pluginAppliedState by remember { mutableStateOf(false) }
     val previewState by remember { viewModel.preview }
     val waveViewSource = previewState.inBuf
@@ -162,9 +162,17 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
-            for (port in plugin.ports) {
+            for (port in viewModel.preview.value.instancePorts) {
                 Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
                     Column {
+                        Text(
+                            fontSize = 14.sp,
+                            text = "[${port.id}] " + when (port.direction) {
+                                PortInformation.PORT_DIRECTION_INPUT -> "In"
+                                else -> "Out"
+                            },
+                            modifier = Modifier.width(60.dp)
+                        )
                         Text(
                             fontSize = 14.sp,
                             text = when (port.content) {
@@ -173,15 +181,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                                 PortInformation.PORT_CONTENT_TYPE_MIDI2 -> "MIDI2"
                                 else -> "-"
                             },
-                            modifier = Modifier.width(50.dp)
-                        )
-                        Text(
-                            fontSize = 14.sp,
-                            text = when (port.direction) {
-                                PortInformation.PORT_DIRECTION_INPUT -> "In"
-                                else -> "Out"
-                            },
-                            modifier = Modifier.width(30.dp)
+                            modifier = Modifier.width(60.dp)
                         )
                     }
                     ColumnHeader(port.name)
