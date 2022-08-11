@@ -75,8 +75,8 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames, PluginInsta
 		return false;
 
 	for (size_t i = 0; i < numPorts; i++) {
-		size_t defaultMemSize = instance.getPortByIndex(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
-		int minSize = instance.getPortByIndex(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
+		size_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
+		int minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
         int memSize = std::max(minSize, (int) defaultMemSize);
 		buffer->buffers[i] = calloc(1, memSize);
 		if (!buffer->buffers[i])

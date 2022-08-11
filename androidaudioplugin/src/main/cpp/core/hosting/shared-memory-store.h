@@ -30,7 +30,6 @@ class PluginSharedMemoryStore {
 
     // ex-PluginSharedMemoryBuffer members
     std::unique_ptr<std::vector<int32_t>> port_buffer_fds{nullptr};
-    std::unique_ptr<std::vector<int32_t>> port_ids{nullptr};
 
     // When shms are locally allocated (PLUGIN_BUFFER_ORIGIN_LOCAL), then those buffers are locally calloc()-ed.
     // Otherwise they are just mmap()-ed and should not be freed by own.
@@ -59,8 +58,6 @@ public:
         port_buffer->num_frames = 0;
         port_buffer_fds = std::make_unique<std::vector<int32_t>>();
         assert(port_buffer_fds);
-        port_ids = std::make_unique<std::vector<int32_t>>();
-        assert(port_ids);
     }
 
     ~PluginSharedMemoryStore() {
@@ -91,24 +88,17 @@ public:
                 free(port_buffer->buffers);
         }
         // close the fd. AudioPluginService also dup()-s it, so it has to be closed too.
-        for (auto p : *port_buffer_fds) {
-            if (p >= 0)
-                close(p);
+        for (size_t i = 0; i < port_buffer_fds->size(); i++) {
+            auto fd = port_buffer_fds->at(i);
+            if (fd >= 0)
+                close(fd);
         }
         port_buffer_fds->clear();
-        port_ids->clear();
     }
 
     // Stores clone of port buffer FDs passed from client via Binder.
     inline void resizePortBufferByCount(size_t newSize) {
         cached_shm_fds_for_prepare->resize(newSize);
-    }
-
-    int32_t indexForId(int32_t id) {
-        for (int i = 0; i < port_ids->size(); i++)
-            if (port_ids->at(i) == id)
-                return i;
-        return -1;
     }
 
     // used by AudioPluginInterfaceImpl.

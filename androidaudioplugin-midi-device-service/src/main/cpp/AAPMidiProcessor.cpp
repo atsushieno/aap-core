@@ -169,7 +169,7 @@ namespace aapmidideviceservice {
             data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
 
             for (int i = 0; i < numPorts; i++) {
-                auto port = instance->getPortByIndex(i);
+                auto port = instance->getPort(i);
                 if (port->getContentType() == aap::AAP_CONTENT_TYPE_AUDIO &&
                     port->getPortDirection() == aap::AAP_PORT_DIRECTION_OUTPUT)
                     data->getAudioOutPorts()->emplace_back(i);

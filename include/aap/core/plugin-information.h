@@ -34,25 +34,19 @@ enum PluginInstantiationState {
 
 class PortInformation
 {
-    // It *might* become a stable ID in an integer, for stable use across plugin versions.
-    // (We are not sure yet; it should be "parameter" who should have stable ID.)
-    // Some parameters may be deprecated and disappear as the plugin evolves.
-    // In such cases, there could be skipped IDs.
-    // Also, some system-provided ports are assigned negative numbers that are reserved within AAP.
-    int32_t id{0};
-    // human readable name.
+    uint32_t index{0};
     std::string name{};
     ContentType content_type;
     PortDirection direction;
     std::map<std::string, std::string> properties{};
 
 public:
-    PortInformation(int32_t portId, std::string portName, ContentType content, PortDirection portDirection)
-            : id(portId), name(portName), content_type(content), direction(portDirection)
+    PortInformation(uint32_t portIndex, std::string portName, ContentType content, PortDirection portDirection)
+            : index(portIndex), name(portName), content_type(content), direction(portDirection)
     {
     }
 
-    int32_t getId() const { return id; }
+    uint32_t getIndex() const { return index; }
     const char* getName() const { return name.c_str(); }
     ContentType getContentType() const { return content_type; }
     PortDirection getPortDirection() const { return direction; }
@@ -60,8 +54,8 @@ public:
     // deprecated
     bool hasValueRange() const { return hasProperty(AAP_PORT_DEFAULT); }
 
-    void setPropertyValueString(std::string propertyId, std::string value) {
-        properties[propertyId] = value;
+    void setPropertyValueString(std::string id, std::string value) {
+        properties[id] = value;
     }
 
     // deprecated
@@ -71,23 +65,23 @@ public:
     // deprecated
     float getMaximumValue() const { return hasProperty(AAP_PORT_MAXIMUM) ? getPropertyAsFloat(AAP_PORT_MAXIMUM) : 0.0f; }
 
-    bool getPropertyAsBoolean(std::string propertyId) const {
-        return getPropertyAsDouble(propertyId) > 0;
+    bool getPropertyAsBoolean(std::string id) const {
+        return getPropertyAsDouble(id) > 0;
     }
-    int getPropertyAsInteger(std::string propertyId) const {
-        return hasProperty(propertyId) ? atoi(getPropertyAsString(propertyId).c_str()) : 0;
+    int getPropertyAsInteger(std::string id) const {
+        return atoi(getPropertyAsString(id).c_str());
     }
-    float getPropertyAsFloat(std::string propertyId) const {
-        return hasProperty(propertyId) ? (float) atof(getPropertyAsString(propertyId).c_str()) : 0.0f;
+    float getPropertyAsFloat(std::string id) const {
+        return (float) atof(getPropertyAsString(id).c_str());
     }
-    double getPropertyAsDouble(std::string propertyId) const {
-        return hasProperty(propertyId) ? atof(getPropertyAsString(propertyId).c_str()) : 0.0;
+    double getPropertyAsDouble(std::string id) const {
+        return atof(getPropertyAsString(id).c_str());
     }
-    bool hasProperty(std::string propertyId) const {
-        return properties.find(propertyId) != properties.end();
+    bool hasProperty(std::string id) const {
+        return properties.find(id) != properties.end();
     }
-    std::string getPropertyAsString(std::string propertyId) const {
-        return properties.find(propertyId)->second;
+    std::string getPropertyAsString(std::string id) const {
+        return properties.find(id)->second;
     }
 };
 
@@ -189,14 +183,14 @@ public:
     }
 
     [[deprecated("It will vanish in any later versions. Use getDeclaredPort(), or PluginInstance::getPort().")]]
-    const PortInformation* getPort(int id) const
+    const PortInformation* getPort(int index) const
     {
-        return ports[(size_t) id];
+        return ports[(size_t) index];
     }
 
-    const PortInformation* getDeclaredPort(int id) const
+    const PortInformation* getDeclaredPort(int index) const
     {
-        return ports[(size_t) id];
+        return ports[(size_t) index];
     }
 
     [[deprecated("It will vanish in any later versions. Use addDeclaredPort(), or PluginInstance::addPort().")]]

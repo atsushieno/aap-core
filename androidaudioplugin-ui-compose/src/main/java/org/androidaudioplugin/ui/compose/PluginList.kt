@@ -167,7 +167,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                     Column {
                         Text(
                             fontSize = 14.sp,
-                            text = "[${port.id}] " + when (port.direction) {
+                            text = "[${port.index}] " + when (port.direction) {
                                 PortInformation.PORT_DIRECTION_INPUT -> "In"
                                 else -> "Out"
                             },

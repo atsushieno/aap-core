@@ -105,7 +105,7 @@ webaudio-knob { padding: 5px; }
                 html += """
     <th>${port.name}</th>
     <td>
-      <webaudio-knob min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' index_='${port.id}' src='bright_life.png' />
+      <webaudio-knob min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' index_='${port.index}' src='bright_life.png' />
     </td>
   """
                 if (i % nCols == nCols - 1)

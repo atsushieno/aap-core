@@ -20,7 +20,6 @@
 class AAPClientContext {
 
 public:
-	aap::PluginClient* client;
 	AIBinder* binder{nullptr};
 	const char *unique_id{nullptr};
 	int32_t instance_id{0};
@@ -204,7 +203,6 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();
-	ctx->client = client;
     ctx->binder = (AIBinder*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
 
 	if(ctx->initialize(aapSampleRate, pluginUniqueId))

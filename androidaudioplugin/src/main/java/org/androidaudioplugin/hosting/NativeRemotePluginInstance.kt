@@ -1,7 +1,9 @@
 package org.androidaudioplugin.hosting
 
+import android.os.ParcelFileDescriptor
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
+import kotlin.properties.Delegates
 
 
 /* maps to aap::RemotePluginInstance */
@@ -29,7 +31,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     private val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
 
     fun getPortCount() = getPortCount(client.native, instanceId)
-    fun getPortByIndex(index: Int) = getPortByIndex(client.native, instanceId, index)
+    fun getPort(index: Int) = getPort(client.native, instanceId, index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client.native, instanceId, portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client.native, instanceId, portIndex, buffer, size)
 
@@ -53,7 +55,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         external fun getPortCount(nativeClient: Long, instanceId: Int) : Int
 
         @JvmStatic
-        external fun getPortByIndex(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
+        external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
 
         @JvmStatic
         external fun getPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
