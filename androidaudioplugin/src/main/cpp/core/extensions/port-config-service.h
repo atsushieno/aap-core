@@ -29,8 +29,8 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
             ((Instance *) target.aapxs_context)->getOptions(destination);
         }
 
-        static void internalSelect(AndroidAudioPluginExtensionTarget target, int32_t configIndex) {
-            ((Instance *) target.aapxs_context)->select(configIndex);
+        static void internalSelect(AndroidAudioPluginExtensionTarget target, const char* configuration) {
+            ((Instance *) target.aapxs_context)->select(configuration);
         }
 
         PortConfigPluginClientExtension *owner;
@@ -49,12 +49,14 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
 
         void getOptions(aap_port_config_t* destination) {
             clientInvokePluginExtension(OPCODE_PORT_CONFIG_GET_OPTIONS);
-            destination->data_size = (size_t) *((int32_t *) aapxsInstance->data);
-            memcpy(destination->data, (int32_t*) aapxsInstance->data + 1, destination->data_size);
+            destination->extra_data_size = *((int32_t *) aapxsInstance->data);
+            memcpy(destination->extra_data, (int32_t*) aapxsInstance->data + 1, destination->extra_data_size);
         }
 
-        void select(int32_t configIndex) {
-            *((int32_t *) aapxsInstance->data) = configIndex;
+        void select(const char* configuration) {
+            size_t size = strlen(configuration);
+            *((int32_t *) aapxsInstance->data) = size;
+            strncpy((char*) aapxsInstance->data + sizeof(int32_t), configuration, size);
             clientInvokePluginExtension(OPCODE_PORT_CONFIG_SELECT);
         }
 

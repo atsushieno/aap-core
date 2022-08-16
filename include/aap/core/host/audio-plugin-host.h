@@ -19,6 +19,7 @@
 #include "aap/unstable/logging.h"
 #include "aap/ext/presets.h"
 #include "aap/ext/state.h"
+#include "aap/ext/port-config.h"
 #include "plugin-connections.h"
 #include "../aapxs/extension-service.h"
 #include "../aapxs/standard-extensions.h"
@@ -166,10 +167,14 @@ public:
         */
 	}
 
+	void setupPortConfigDefaults();
+
 	// This means that there was no configured ports by extensions.
 	void setupPortsViaMetadata() {
 		if (are_ports_configured)
 			return;
+		are_ports_configured = true;
+
 		for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
 			configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
 	}
@@ -260,7 +265,17 @@ public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
     void confirmPorts() {
-		setupPortsViaMetadata();
+		// FIXME: implementation is feature parity with client side so far, but it should be based on port config negotiation.
+		auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
+		if (ext != nullptr) {
+			// configure ports using port-config extension.
+
+			// FIXME: implement
+
+		} else if (pluginInfo->getNumDeclaredPorts() == 0)
+			setupPortConfigDefaults();
+		else
+			setupPortsViaMetadata();
     }
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }

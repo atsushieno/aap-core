@@ -46,9 +46,6 @@ public:
         if (*_aidl_return < 0)
         return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(*_aidl_return));
-        auto shm = instance->getAAPXSSharedMemoryStore();
-        shm->resizePortBufferByCount(instance->getNumPorts());
 
         buffers.resize(*_aidl_return + 1);
         auto &buffer = buffers[*_aidl_return];

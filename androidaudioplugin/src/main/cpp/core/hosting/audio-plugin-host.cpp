@@ -354,15 +354,42 @@ RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanc
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
 }
 
-void RemotePluginInstance::configurePorts()
-{
+void RemotePluginInstance::configurePorts() {
     assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
 
 	startPortConfiguration();
 
-    // FIXME: query audio ports extensions and MIDI ports extensions
+	auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
+	if (ext != nullptr) {
+			// configure ports using port-config extension.
 
-	setupPortsViaMetadata();
+			// FIXME: implement
+
+	} else if (pluginInfo->getNumDeclaredPorts() == 0)
+		setupPortConfigDefaults();
+	else
+		setupPortsViaMetadata();
+}
+
+void PluginInstance::setupPortConfigDefaults() {
+	// If there is no declared ports, apply default ports configuration.
+	uint32_t nPort = 0;
+
+	if (pluginInfo->isInstrument()) {
+		PortInformation midi_in{nPort++, "MIDI In", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+		PortInformation midi_out{nPort++, "MIDI Out", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+		configured_ports->emplace_back(midi_in);
+		configured_ports->emplace_back(midi_out);
+	} else {
+		PortInformation audio_in_l{nPort++, "Audio In L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
+		configured_ports->emplace_back(audio_in_l);
+		PortInformation audio_in_r{nPort++, "Audio In R", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
+		configured_ports->emplace_back(audio_in_r);
+	}
+	PortInformation audio_out_l{nPort++, "Audio Out L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_OUTPUT};
+	configured_ports->emplace_back(audio_out_l);
+	PortInformation audio_out_r{nPort++, "Audio Out R", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_OUTPUT};
+	configured_ports->emplace_back(audio_out_r);
 }
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {

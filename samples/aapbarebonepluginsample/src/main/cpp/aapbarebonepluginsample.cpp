@@ -76,7 +76,7 @@ aap_state_extension_t state_extension{sample_plugin_get_state_size,
                                       sample_plugin_set_state};
 
 void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
-    if (strcmp(uri, AAP_STATE_EXTENSION_URI))
+    if (!strcmp(uri, AAP_STATE_EXTENSION_URI))
         return &state_extension;
     return nullptr;
 }

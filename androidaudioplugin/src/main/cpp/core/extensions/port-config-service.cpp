@@ -27,8 +27,10 @@ void aap::PortConfigPluginServiceExtension::onInvoked(AndroidAudioPlugin *plugin
         case OPCODE_PORT_CONFIG_SELECT:
             withPortConfigExtension<int32_t>(plugin, 0, [=](aap_port_config_extension_t *ext,
                                                             AndroidAudioPluginExtensionTarget target) {
-                int32_t index = *((int32_t *) extensionInstance->data);
-                ext->select(target, index);
+                int32_t size = *((int32_t *) extensionInstance->data);
+                char config[size];
+                strncpy(config, (char*) extensionInstance->data + sizeof(int32_t), size);
+                ext->select(target, config);
                 return 0;
             });
             break;

@@ -3,12 +3,7 @@
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
     </extensions>
-    <ports>
-      <port direction="input" content="midi" name="MIDI In" />
-      <port direction="output" content="midi" name="MIDI Out" />
-      <port direction="output" content="audio" name="Left Out" />
-      <port direction="output" content="audio" name="Right Out" />
-    </ports>
   </plugin>
 </plugins>

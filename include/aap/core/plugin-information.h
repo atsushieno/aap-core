@@ -69,19 +69,19 @@ public:
         return getPropertyAsDouble(id) > 0;
     }
     int getPropertyAsInteger(std::string id) const {
-        return atoi(getPropertyAsString(id).c_str());
+        return hasProperty(id) ? atoi(getPropertyAsString(id).c_str()) : 0;
     }
     float getPropertyAsFloat(std::string id) const {
-        return (float) atof(getPropertyAsString(id).c_str());
+        return hasProperty(id) ? (float) atof(getPropertyAsString(id).c_str()) : 0.0f;
     }
     double getPropertyAsDouble(std::string id) const {
-        return atof(getPropertyAsString(id).c_str());
+        return hasProperty(id) ? atof(getPropertyAsString(id).c_str()) : 0.0;
     }
     bool hasProperty(std::string id) const {
         return properties.find(id) != properties.end();
     }
     std::string getPropertyAsString(std::string id) const {
-        return properties.find(id)->second;
+        return hasProperty(id) ? properties.find(id)->second : "";
     }
 };
 
