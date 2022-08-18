@@ -30,7 +30,8 @@ extern "C" {
   - for Effect plugins, AUDIO IN
   - AUDIO OUT
 
-  The layout result is sent as
+  The layout result is sent at confirm request.
+  FIXME: change the API structure for that.
 
  */
 

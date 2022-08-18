@@ -75,6 +75,9 @@ class PluginPreview(context: Context) {
         this.instance = null
     }
 
+    val instanceParameters : List<ParameterInformation>
+        get() = if (instance == null) listOf() else (0 until instance!!.getParameterCount()).map { instance!!.getParameter(it) }
+
     val instancePorts : List<PortInformation>
         get() = if (instance == null) listOf() else (0 until instance!!.getPortCount()).map { instance!!.getPort(it) }
 
@@ -98,7 +101,7 @@ class PluginPreview(context: Context) {
 
     private fun processPluginOnce(parametersOnUI: FloatArray?) {
         val instance = this.instance!!
-        val parameters = parametersOnUI ?: (0 until instance.getPortCount()).map { instance.getPort(it).default }.toFloatArray()
+        val parameters = parametersOnUI ?: (0 until instance.getParameterCount()).map { instance.getParameter(it).defaultValue .toFloat() }.toFloatArray()
 
         host.resetInputBuffers()
         host.resetOutputBuffers()
@@ -139,23 +142,24 @@ class PluginPreview(context: Context) {
         val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
         val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-        (0 until instance.getPortCount()).map { i ->
-            val port = instance.getPort(i)
-            if (port.direction == PortInformation.PORT_DIRECTION_OUTPUT)
-                return@map
-            if (port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO)
-                return@map
-            if (port.content == PortInformation.PORT_CONTENT_TYPE_MIDI)
-                return@map
-            if (port.content == PortInformation.PORT_CONTENT_TYPE_MIDI2)
-                return@map
-            else {
-                // FIXME: support non-float data type (but we have to determine data type semantics first)
-                val c = audioProcessingBuffers[i].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-                c.position(0)
-                // just put one float value
-                c.put(parameters[i])
-                instance.setPortBuffer(i, audioProcessingBuffers[i], audioProcessingBufferSizesInBytes[i])
+        (0 until instance.getParameterCount()).map { i ->
+            val para = instance.getParameter(i)
+            // FIXME: implement parameter updates via MIDI port (parameter changes) instead of per-parameter port.
+
+            for (p in 0 until instance.getPortCount()) {
+                val port = instance.getPort(p)
+                if (para.name == port.name) {
+                    val c = audioProcessingBuffers[i].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                    c.position(0)
+                    // just put one float value
+                    c.put(parameters[i])
+                    instance.setPortBuffer(
+                        i,
+                        audioProcessingBuffers[i],
+                        audioProcessingBufferSizesInBytes[i]
+                    )
+                    break
+                }
             }
         }
 

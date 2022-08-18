@@ -32,13 +32,39 @@ enum PluginInstantiationState {
     PLUGIN_INSTANTIATION_STATE_ERROR
 };
 
-class PortInformation
-{
+class PropertyContainer {
+    std::map<std::string, std::string> properties{};
+
+public:
+    void setPropertyValueString(std::string propertyId, std::string value) {
+        properties[propertyId] = value;
+    }
+
+    bool getPropertyAsBoolean(std::string propertyId) const {
+        return getPropertyAsDouble(propertyId) > 0;
+    }
+    int getPropertyAsInteger(std::string propertyId) const {
+        return hasProperty(propertyId) ? atoi(getPropertyAsString(propertyId).c_str()) : 0;
+    }
+    float getPropertyAsFloat(std::string propertyId) const {
+        return hasProperty(propertyId) ? (float) atof(getPropertyAsString(propertyId).c_str()) : 0.0f;
+    }
+    double getPropertyAsDouble(std::string propertyId) const {
+        return hasProperty(propertyId) ? atof(getPropertyAsString(propertyId).c_str()) : 0.0;
+    }
+    bool hasProperty(std::string propertyId) const {
+        return properties.find(propertyId) != properties.end();
+    }
+    std::string getPropertyAsString(std::string propertyId) const {
+        return hasProperty(propertyId) ? properties.find(propertyId)->second : "";
+    }
+};
+
+class PortInformation : public PropertyContainer {
     uint32_t index{0};
     std::string name{};
     ContentType content_type;
     PortDirection direction;
-    std::map<std::string, std::string> properties{};
 
 public:
     PortInformation(uint32_t portIndex, std::string portName, ContentType content, PortDirection portDirection)
@@ -46,43 +72,30 @@ public:
     {
     }
 
-    uint32_t getIndex() const { return index; }
+    int32_t getIndex() const { return index; }
     const char* getName() const { return name.c_str(); }
     ContentType getContentType() const { return content_type; }
     PortDirection getPortDirection() const { return direction; }
+};
 
-    // deprecated
-    bool hasValueRange() const { return hasProperty(AAP_PORT_DEFAULT); }
+class ParameterInformation : public PropertyContainer {
+    int32_t id{0};
+    std::string name{};
+    double min_value;
+    double max_value;
+    double default_value;
 
-    void setPropertyValueString(std::string id, std::string value) {
-        properties[id] = value;
+public:
+    ParameterInformation(int32_t id, std::string name, double minValue, double maxValue, double defaultValue)
+            : id(id), name(name), min_value(minValue), max_value(maxValue), default_value(defaultValue)
+    {
     }
 
-    // deprecated
-    float getDefaultValue() const { return hasProperty(AAP_PORT_DEFAULT) ? getPropertyAsFloat(AAP_PORT_DEFAULT) : 0.0f; }
-    // deprecated
-    float getMinimumValue() const { return hasProperty(AAP_PORT_MINIMUM) ? getPropertyAsFloat(AAP_PORT_MINIMUM) : 0.0f; }
-    // deprecated
-    float getMaximumValue() const { return hasProperty(AAP_PORT_MAXIMUM) ? getPropertyAsFloat(AAP_PORT_MAXIMUM) : 0.0f; }
-
-    bool getPropertyAsBoolean(std::string id) const {
-        return getPropertyAsDouble(id) > 0;
-    }
-    int getPropertyAsInteger(std::string id) const {
-        return hasProperty(id) ? atoi(getPropertyAsString(id).c_str()) : 0;
-    }
-    float getPropertyAsFloat(std::string id) const {
-        return hasProperty(id) ? (float) atof(getPropertyAsString(id).c_str()) : 0.0f;
-    }
-    double getPropertyAsDouble(std::string id) const {
-        return hasProperty(id) ? atof(getPropertyAsString(id).c_str()) : 0.0;
-    }
-    bool hasProperty(std::string id) const {
-        return properties.find(id) != properties.end();
-    }
-    std::string getPropertyAsString(std::string id) const {
-        return hasProperty(id) ? properties.find(id)->second : "";
-    }
+    int32_t getId() const { return id; }
+    const char* getName() const { return name.c_str(); }
+    double getMinimumValue() const { return min_value; }
+    double getMaximumValue() const { return max_value; }
+    double getDefaultValue() const { return default_value; }
 };
 
 class PluginExtensionInformation
@@ -114,6 +127,8 @@ class PluginInformation
     std::string primary_category{};
     /** list of ports */
     std::vector<const PortInformation*> ports;
+    /** list of parameters */
+    std::vector<const ParameterInformation*> parameters;
     /** list of extensions. They may be either required or optional */
     std::vector<PluginExtensionInformation> extensions;
 
@@ -171,21 +186,9 @@ public:
         return primary_category;
     }
 
-    [[deprecated("It will vanish in any later versions. Use getNumDeclaredPorts(), or PluginInstance::getNumPorts().")]]
-    int getNumPorts() const
-    {
-        return (int) ports.size();
-    }
-
     int getNumDeclaredPorts() const
     {
         return (int) ports.size();
-    }
-
-    [[deprecated("It will vanish in any later versions. Use getDeclaredPort(), or PluginInstance::getPort().")]]
-    const PortInformation* getPort(int index) const
-    {
-        return ports[(size_t) index];
     }
 
     const PortInformation* getDeclaredPort(int index) const
@@ -193,15 +196,24 @@ public:
         return ports[(size_t) index];
     }
 
-    [[deprecated("It will vanish in any later versions. Use addDeclaredPort(), or PluginInstance::addPort().")]]
-    void addPort(PortInformation* port)
+    void addDeclaredPort(PortInformation* port)
     {
         ports.emplace_back(port);
     }
 
-    void addDeclaredPort(PortInformation* port)
+    int getNumDeclaredParameters() const
     {
-        ports.emplace_back(port);
+        return (int) parameters.size();
+    }
+
+    const ParameterInformation* getDeclaredParameter(int index) const
+    {
+        return parameters[(size_t) index];
+    }
+
+    void addDeclaredParameter(ParameterInformation* parameter)
+    {
+        parameters.emplace_back(parameter);
     }
 
     int getNumExtensions() const

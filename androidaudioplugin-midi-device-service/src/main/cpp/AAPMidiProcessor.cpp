@@ -179,9 +179,9 @@ namespace aapmidideviceservice {
                 else if (port->getContentType() == aap::AAP_CONTENT_TYPE_MIDI &&
                          port->getPortDirection() == aap::AAP_PORT_DIRECTION_INPUT)
                     data->midi1_in_port = i;
-                else if (port->hasProperty(AAP_PORT_DEFAULT))
-                    *((float *) data->plugin_buffer->buffers[i]) = port->getDefaultValue();
             }
+
+            // FIXME: fill default parameter values (now that we don't have them in ports).
 
             instance->prepare(aap_frame_size, data->plugin_buffer);
 

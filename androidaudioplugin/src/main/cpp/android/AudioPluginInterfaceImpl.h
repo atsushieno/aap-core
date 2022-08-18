@@ -124,6 +124,7 @@ public:
         auto instance = static_cast<LocalPluginInstance *>(svc->getInstance(in_instanceID));
 
         instance->confirmPorts();
+        instance->scanParametersAndBuildList();
 
         auto shm = instance->getAAPXSSharedMemoryStore();
         shm->resizePortBufferByCount(instance->getNumPorts());

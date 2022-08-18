@@ -16,6 +16,8 @@ class PluginInformation(var packageName: String, var localName: String, var disp
 
     var extensions = mutableListOf<ExtensionInformation>()
 
+    var parameters = mutableListOf<ParameterInformation>()
+
     var ports = mutableListOf<PortInformation>()
 
     // These obvious members are for use in C interop and not expected to be consumed by user developers.
@@ -27,19 +29,16 @@ class PluginInformation(var packageName: String, var localName: String, var disp
     {
         return extensions[index]
     }
-    @Deprecated("Use getDeclaredPortCount()", replaceWith = ReplaceWith("getDeclaredPortCount"))
-    fun getPortCount() : Int
+    fun getDeclaredParameterCount() : Int
     {
-        return ports.size
+        return parameters.size
+    }
+    fun getDeclaredParameter(index : Int) : ParameterInformation {
+        return parameters[index]
     }
     fun getDeclaredPortCount() : Int
     {
         return ports.size
-    }
-    @Deprecated("Use getDeclaredPort()", replaceWith = ReplaceWith("getDeclaredPort(index)"))
-    fun getPort(index : Int) : PortInformation
-    {
-        return ports[index]
     }
     fun getDeclaredPort(index : Int) : PortInformation {
         return ports[index]

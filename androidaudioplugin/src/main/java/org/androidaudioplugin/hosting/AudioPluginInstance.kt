@@ -107,6 +107,8 @@ class AudioPluginInstance internal constructor(
     }
 
     // port/buffer manipulation
+    fun getParameterCount() = proxy.getParameterCount()
+    fun getParameter(index: Int) = proxy.getParameter(index)
     fun getPortCount() = proxy.getPortCount()
     fun getPort(index: Int) = proxy.getPort(index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.getPortBuffer(portIndex, buffer, size)

@@ -17,6 +17,7 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/port-properties.h"
 #include "aap/unstable/logging.h"
+#include "aap/ext/parameters.h"
 #include "aap/ext/presets.h"
 #include "aap/ext/state.h"
 #include "aap/ext/port-config.h"
@@ -129,6 +130,7 @@ protected:
 	PluginSharedMemoryStore *aapxs_shared_memory_store;
     const PluginInformation *pluginInfo;
     std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
+	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
 
 	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
@@ -178,6 +180,19 @@ public:
 		for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
 			configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
 	}
+
+	void scanParametersAndBuildList();
+
+    int32_t getNumParameters() {
+		return cached_parameters ? cached_parameters->size() : pluginInfo->getNumDeclaredParameters();
+    }
+
+    const ParameterInformation* getParameter(int32_t index) {
+		if (!cached_parameters)
+			return pluginInfo->getDeclaredParameter(index);
+		assert(cached_parameters->size() > index);
+		return &(*cached_parameters)[index];
+    }
 
 	int32_t getNumPorts() {
 		return configured_ports ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();

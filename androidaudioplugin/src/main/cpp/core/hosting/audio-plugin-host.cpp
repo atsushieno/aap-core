@@ -392,6 +392,29 @@ void PluginInstance::setupPortConfigDefaults() {
 	configured_ports->emplace_back(audio_out_r);
 }
 
+void PluginInstance::scanParametersAndBuildList() {
+	assert(!cached_parameters);
+
+	// FIXME: it's better to populate ParameterInformation from PortInformation for softer migration.
+
+	auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
+	if (!ext)
+		return;
+
+	// if parameters extension does not exist, do not populate cached parameters list.
+	// (The empty list means no parameters in metadata either.)
+	cached_parameters = std::make_unique<std::vector<ParameterInformation>>();
+
+	// FIXME: pass appropriate context
+	auto target = AndroidAudioPluginExtensionTarget{plugin, nullptr};
+
+	for (auto i = 0, n = ext->get_parameter_count(target); i < n; i++) {
+		auto para = ext->get_parameter(target, i);
+		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};
+		cached_parameters->emplace_back(p);
+	}
+}
+
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
     plugin_host_facade.get_extension_data = nullptr; // we shouldn't need it.

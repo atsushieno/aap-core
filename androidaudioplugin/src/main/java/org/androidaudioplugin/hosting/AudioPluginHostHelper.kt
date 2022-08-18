@@ -16,6 +16,7 @@ class AudioPluginHostHelper {
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService.V2#Plugins"
         const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService.V2#Extensions"
         const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
+        const val AAP_METADATA_EXT_PARAMETERS_NS = "urn://androidaudioplugin.org/extensions/parameters"
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
 
         private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : PluginServiceInformation {
@@ -69,30 +70,43 @@ class AudioPluginHostHelper {
                             val extension = ExtensionInformation(required.toBoolean(), name)
                             currentPlugin.extensions.add(extension)
                         }
+                    } else if (xp.name == "parameter" && (xp.namespace == "" || xp.namespace == AAP_METADATA_EXT_PARAMETERS_NS)) {
+                        if (currentPlugin != null) {
+                            val index = xp.getAttributeValue(null, "id")
+                            val name = xp.getAttributeValue(null, "name")
+                            val default = xp.getAttributeValue(null, "default")
+                            val minimum = xp.getAttributeValue(null, "minimum")
+                            val maximum = xp.getAttributeValue(null, "maximum")
+                            // FIXME: handle parse errors gracefully
+                            val para = ParameterInformation(index.toInt(), name,
+                                default?.toDouble() ?: 0.0,
+                                minimum?.toDouble() ?: 0.0,
+                                maximum?.toDouble() ?: 1.0
+                            )
+                            currentPlugin.parameters.add(para)
+                        }
                     } else if (xp.name == "port" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                         if (currentPlugin != null) {
                             val index = xp.getAttributeValue(null, "index")
                             val name = xp.getAttributeValue(null, "name")
                             val direction = xp.getAttributeValue(null, "direction")
                             val content = xp.getAttributeValue(null, "content")
-                            val default = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "default")
-                            val minimum = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "minimum")
-                            val maximum = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "maximum")
-                            val minimumSize = xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "minimumSize")
-                            val directionInt = if (direction == "input") PortInformation.PORT_DIRECTION_INPUT else PortInformation.PORT_DIRECTION_OUTPUT
+                            val minimumSize =
+                                xp.getAttributeValue(AAP_METADATA_PORT_PROPERTIES_NS, "minimumSize")
+                            val directionInt =
+                                if (direction == "input") PortInformation.PORT_DIRECTION_INPUT else PortInformation.PORT_DIRECTION_OUTPUT
                             val contentInt = when (content) {
                                 "midi" -> PortInformation.PORT_CONTENT_TYPE_MIDI
                                 "midi2" -> PortInformation.PORT_CONTENT_TYPE_MIDI2
                                 "audio" -> PortInformation.PORT_CONTENT_TYPE_AUDIO
                                 else -> PortInformation.PORT_CONTENT_TYPE_GENERAL
                             }
-                            val port = PortInformation(index?.toInt() ?: currentPlugin.ports.size, name, directionInt, contentInt)
-                            if (default != null)
-                                port.default = default.toFloat()
-                            if (minimum != null)
-                                port.minimum = minimum.toFloat()
-                            if (maximum != null)
-                                port.maximum = maximum.toFloat()
+                            val port = PortInformation(
+                                index?.toInt() ?: currentPlugin.ports.size,
+                                name,
+                                directionInt,
+                                contentInt
+                            )
                             if (minimumSize != null)
                                 port.minimumSizeInBytes = minimumSize.toInt()
                             currentPlugin.ports.add(port)

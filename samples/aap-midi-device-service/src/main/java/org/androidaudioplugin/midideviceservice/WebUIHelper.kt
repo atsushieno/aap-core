@@ -55,7 +55,7 @@ webaudio-knob { padding: 5px; }
   function initialize() {
     for (el of document.getElementsByTagName('webaudio-knob')) {
       el.addEventListener('input', function(e) {
-        sendInput(e.target.getAttribute('index_'), e.target.value);
+        sendInput(e.target.getAttribute('id_'), e.target.value);
       });
     }
     for (el of document.getElementsByTagName('webaudio-keyboard')) {
@@ -89,23 +89,15 @@ webaudio-knob { padding: 5px; }
   <table>
 """
             val nCols = 2
-            val ports = plugin.ports.filter { p ->
-                when (p.content) {
-                    PortInformation.PORT_CONTENT_TYPE_AUDIO,
-                    PortInformation.PORT_CONTENT_TYPE_MIDI,
-                    PortInformation.PORT_CONTENT_TYPE_MIDI2 -> false
-                    else -> true
-                }
-            }
-            for (i in ports.indices) {
-                val port = ports[i]
+            for (i in plugin.parameters.indices) {
+                val port = plugin.parameters[i]
                 if (i % nCols == 0)
                     html += "<tr>"
                 else println("SAME COLUMN")
                 html += """
     <th>${port.name}</th>
     <td>
-      <webaudio-knob min='${port.minimum}' max='${port.maximum}' value='${port.default}' step='${(port.maximum - port.minimum) / 20.0}' index_='${port.index}' src='bright_life.png' />
+      <webaudio-knob min='${port.minimumValue}' max='${port.maximumValue}' value='${port.defaultValue}' step='${(port.maximumValue - port.minimumValue) / 20.0}' id_='${port.id}' src='bright_life.png' />
     </td>
   """
                 if (i % nCols == nCols - 1)

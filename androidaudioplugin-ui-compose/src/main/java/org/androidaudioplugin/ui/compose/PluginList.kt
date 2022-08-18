@@ -57,7 +57,7 @@ private fun ColumnHeader(text: String) {
 fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     val scrollState = rememberScrollState(0)
 
-    val parameters by remember { mutableStateOf(viewModel.preview.value.instancePorts.map { p -> p.default }.toFloatArray()) }
+    val parameters by remember { mutableStateOf(viewModel.preview.value.instanceParameters.map { p -> p.defaultValue.toFloat() }.toFloatArray()) }
     var pluginAppliedState by remember { mutableStateOf(false) }
     val previewState by remember { viewModel.preview }
     val waveViewSource = previewState.inBuf
@@ -160,6 +160,37 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
             }
         }
+        Text(text = "Parameters", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
+        Column {
+            for (para in viewModel.preview.value.instanceParameters) {
+                Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                    Column {
+                        Text(
+                            fontSize = 14.sp,
+                            text = "${para.id}",
+                            modifier = Modifier.width(60.dp)
+                        )
+                    }
+                    ColumnHeader(para.name)
+                    var sliderPosition by remember { mutableStateOf(para.defaultValue) }
+                    Text(
+                        fontSize = 10.sp,
+                        text = sliderPosition.toString(),
+                        modifier = Modifier
+                            .width(40.dp)
+                            .align(Alignment.CenterVertically)
+                    )
+                    Slider(
+                        value = sliderPosition.toFloat(),
+                        valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
+                        steps = 10,
+                        onValueChange = {
+                            parameters[plugin.parameters.indexOf(para)] = it
+                            sliderPosition = it.toDouble()
+                        })
+                }
+            }
+        }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
         Column {
             for (port in viewModel.preview.value.instancePorts) {
@@ -185,27 +216,6 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                         )
                     }
                     ColumnHeader(port.name)
-                    var sliderPosition by remember { mutableStateOf(port.default) }
-                    Text(
-                        fontSize = 10.sp,
-                        text = sliderPosition.toString(),
-                        modifier = Modifier
-                            .width(40.dp)
-                            .align(Alignment.CenterVertically)
-                    )
-                    when (port.content) {
-                        PortInformation.PORT_CONTENT_TYPE_AUDIO, PortInformation.PORT_CONTENT_TYPE_MIDI, PortInformation.PORT_CONTENT_TYPE_MIDI2 -> {}
-                        else -> {
-                            Slider(
-                                value = sliderPosition,
-                                valueRange = if (port.minimum < port.maximum) port.minimum..port.maximum else Float.MIN_VALUE..Float.MAX_VALUE,
-                                steps = 10,
-                                onValueChange = {
-                                    parameters[plugin.ports.indexOf(port)] = it
-                                    sliderPosition = it
-                                })
-                        }
-                    }
                 }
             }
         }

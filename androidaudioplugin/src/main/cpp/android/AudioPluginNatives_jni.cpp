@@ -65,6 +65,7 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
 
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
 		*java_extension_information_class_name = "org/androidaudioplugin/ExtensionInformation",
+		*java_parameter_information_class_name = "org/androidaudioplugin/ParameterInformation",
 		*java_port_information_class_name = "org/androidaudioplugin/PortInformation";
 
 static jmethodID
@@ -82,17 +83,21 @@ static jmethodID
 		j_method_get_extension,
 		j_method_extension_get_required,
 		j_method_extension_get_uri,
+        j_method_get_declared_parameter_count,
+        j_method_get_declared_parameter,
 		j_method_get_declared_port_count,
 		j_method_get_declared_port,
+		j_method_parameter_ctor,
+        j_method_parameter_get_id,
+        j_method_parameter_get_name,
+        j_method_parameter_get_default_value,
+        j_method_parameter_get_minimum_value,
+        j_method_parameter_get_maximum_value,
 		j_method_port_ctor,
 		j_method_port_get_index,
 		j_method_port_get_name,
 		j_method_port_get_direction,
 		j_method_port_get_content,
-		j_method_port_has_value_range,
-		j_method_port_get_default,
-		j_method_port_get_minimum,
-		j_method_port_get_maximum,
 		j_method_port_get_minimum_size_in_bytes;
 
 void initializeJNIMetadata()
@@ -105,6 +110,7 @@ void initializeJNIMetadata()
 
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
 			java_extension_information_class = env->FindClass(java_extension_information_class_name),
+			java_parameter_information_class = env->FindClass(java_parameter_information_class_name),
 			java_port_information_class = env->FindClass(java_port_information_class_name);
 
 	j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
@@ -138,12 +144,28 @@ void initializeJNIMetadata()
 											   "()Z");
 	j_method_extension_get_uri = env->GetMethodID(java_extension_information_class, "getUri",
 											  "()Ljava/lang/String;");
+    j_method_get_declared_parameter_count = env->GetMethodID(java_plugin_information_class,
+                                                        "getDeclaredParameterCount", "()I");
+    j_method_get_declared_parameter = env->GetMethodID(java_plugin_information_class, "getDeclaredParameter",
+                                                  "(I)Lorg/androidaudioplugin/ParameterInformation;");
 	j_method_get_declared_port_count = env->GetMethodID(java_plugin_information_class,
 														"getDeclaredPortCount", "()I");
 	j_method_get_declared_port = env->GetMethodID(java_plugin_information_class, "getDeclaredPort",
 										 "(I)Lorg/androidaudioplugin/PortInformation;");
+	j_method_parameter_ctor = env->GetMethodID(java_parameter_information_class, "<init>",
+										  "(ILjava/lang/String;DDD)V");
+    j_method_parameter_get_id = env->GetMethodID(java_parameter_information_class, "getId",
+                                                 "()I");
+    j_method_parameter_get_name = env->GetMethodID(java_parameter_information_class, "getName",
+                                                   "()Ljava/lang/String;");
+    j_method_parameter_get_default_value = env->GetMethodID(java_parameter_information_class, "getDefaultValue",
+                                                            "()D");
+    j_method_parameter_get_minimum_value = env->GetMethodID(java_parameter_information_class, "getMinimumValue",
+                                                            "()D");
+    j_method_parameter_get_maximum_value = env->GetMethodID(java_parameter_information_class, "getMaximumValue",
+                                                            "()D");
 	j_method_port_ctor = env->GetMethodID(java_port_information_class, "<init>",
-                                          "(ILjava/lang/String;IIFFF)V");
+                                          "(ILjava/lang/String;II)V");
 	j_method_port_get_index = env->GetMethodID(java_port_information_class, "getIndex",
 											  "()I");
 	j_method_port_get_name = env->GetMethodID(java_port_information_class, "getName",
@@ -152,14 +174,6 @@ void initializeJNIMetadata()
 												   "getDirection", "()I");
 	j_method_port_get_content = env->GetMethodID(java_port_information_class, "getContent",
 												 "()I");
-	j_method_port_has_value_range = env->GetMethodID(java_port_information_class, "getHasValueRange",
-												 "()Z");
-	j_method_port_get_default = env->GetMethodID(java_port_information_class, "getDefault",
-													 "()F");
-	j_method_port_get_minimum = env->GetMethodID(java_port_information_class, "getMinimum",
-												 "()F");
-	j_method_port_get_maximum = env->GetMethodID(java_port_information_class, "getMaximum",
-												 "()F");
 	j_method_port_get_minimum_size_in_bytes = env->GetMethodID(java_port_information_class, "getMinimumSizeInBytes",
 												 "()I");
 }
@@ -207,6 +221,19 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 		free((void*) name);
 	}
 
+    int nParameters = env->CallIntMethod(pluginInformation, j_method_get_declared_parameter_count);
+    for (int i = 0; i < nParameters; i++) {
+        jobject para = env->CallObjectMethod(pluginInformation, j_method_get_declared_parameter, i);
+        auto id = (uint32_t) env->CallIntMethod(para, j_method_parameter_get_id);
+        auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(para, j_method_parameter_get_name));
+        auto def = env->CallDoubleMethod(para, j_method_parameter_get_default_value);
+        auto min = env->CallDoubleMethod(para, j_method_parameter_get_minimum_value);
+        auto max = env->CallDoubleMethod(para, j_method_parameter_get_maximum_value);
+        auto nativePara = new aap::ParameterInformation(id, name, def, min, max);
+        aapPI->addDeclaredParameter(nativePara);
+        free((void*) name);
+    }
+
 	int nPorts = env->CallIntMethod(pluginInformation, j_method_get_declared_port_count);
 	for (int i = 0; i < nPorts; i++) {
 		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_declared_port, i);
@@ -215,11 +242,6 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
 		auto direction = (aap::PortDirection) (int) env->CallIntMethod(port, j_method_port_get_direction);
 		auto nativePort = new aap::PortInformation(index, name, content, direction);
-		if (env->CallBooleanMethod(port, j_method_port_has_value_range)) {
-			nativePort->setPropertyValueString(AAP_PORT_DEFAULT, std::to_string(env->CallFloatMethod(port, j_method_port_get_default)));
-			nativePort->setPropertyValueString(AAP_PORT_MINIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_minimum)));
-			nativePort->setPropertyValueString(AAP_PORT_MAXIMUM, std::to_string(env->CallFloatMethod(port, j_method_port_get_maximum)));
-		}
 		nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes)));
 		aapPI->addDeclaredPort(nativePort);
 		free((void*) name);
@@ -443,6 +465,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
         auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(result.value));
 		assert(instance);
         instance->completeInstantiation();
+		instance->scanParametersAndBuildList();
 		instance->configurePorts();
         return (jlong) result.value;
 	});
@@ -595,6 +618,31 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getCurrentPresetN
 
 extern "C"
 JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterCount(JNIEnv *env,
+																			jclass clazz,
+																			jlong nativeClient,
+																			jint instanceId) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	return instance->getNumParameters();
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameter(JNIEnv *env, jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId,
+																	   jint index) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstance(instanceId);
+	auto para = instance->getParameter(index);
+	auto klass = env->FindClass(java_parameter_information_class_name);
+	assert(klass);
+	return env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(), env->NewStringUTF(para->getName()), para->getMinimumValue(), para->getMaximumValue(), para->getDefaultValue());
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortCount(JNIEnv *env,
                                                                             jclass clazz,
                                                                             jlong nativeClient,
@@ -615,8 +663,9 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *e
 	auto port = instance->getPort(index);
 	auto klass = env->FindClass(java_port_information_class_name);
 	assert(klass);
-	return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(), env->NewStringUTF(port->getName()), (jint) port->getPortDirection(), (jint) port->getContentType(), port->getDefaultValue(), port->getMinimumValue(), port->getMaximumValue());
+	return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(), env->NewStringUTF(port->getName()), (jint) port->getPortDirection(), (jint) port->getContentType());
 }
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortBuffer(JNIEnv *env,
