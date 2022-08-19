@@ -408,6 +408,8 @@ void PluginInstance::scanParametersAndBuildList() {
 	// FIXME: pass appropriate context
 	auto target = AndroidAudioPluginExtensionTarget{plugin, nullptr};
 
+	parameter_mapping_policy = ext->get_mapping_policy(target);
+
 	for (auto i = 0, n = ext->get_parameter_count(target); i < n; i++) {
 		auto para = ext->get_parameter(target, i);
 		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};

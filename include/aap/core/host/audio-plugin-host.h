@@ -131,6 +131,7 @@ protected:
     const PluginInformation *pluginInfo;
     std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
+	aap_parameters_mapping_policy parameter_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
 
 	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
