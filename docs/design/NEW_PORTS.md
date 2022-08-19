@@ -63,12 +63,13 @@ We'd call them **AAP-Next functions** in this document.
 
 ### AAP system messaging ports
 
-To implement new features, we would first introduce the new communication protocol. We need two unidirectional port connections as a pair of MIDI in/out channels. **They will be established for *any* plugin**, regardless of whether the plugin is old or new. AAP will reuse `prepareMemory()` binder message to establish those MIDI-CI connection ports, with *negative* integer port number (`-1` for host-to-plugin, and `-2` for plugin-to-host). **These ports are defined to be NON-realtime safe** and **always available without active state**.
+To implement new features, we would first introduce the new communication protocol. We need two unidirectional port connections as a pair of MIDI in/out channels. **They will be established for *any* plugin**, regardless of whether the plugin is old or new. AAP will reuse `prepareMemory()` binder message to establish those MIDI-CI connection ports, with *reserved* integer port number (`0` for host-to-plugin, and `1` for plugin-to-host). **These ports are defined to be NON-realtime safe** and **always available without active state**.
 
 These ports are used for the following purposes:
 
 - Active sensing (system common messages)
 - Profile Configuration and Property Exchange (system exclusives)
+- Any extension features that can be non-realtime and does not require direct shared memory pointers.
 
 Neither of host and plugin has direct access to those ports. Active sensing can be achieved by a host API `isPluginAlive()`. Profile Configuration and Property Exchange would need some dedicated AAP extension API (**TODO**: we will have to ensure extension APIs work, currently it has certain premise that pointers are shared among two sides and function pointers would not work).
 
@@ -121,7 +122,7 @@ There are couple of key components that makes "parameter changes" possible:
 
 - In the next AAP, there will be two ways to set parameters: via parameter control ports and call to `set_parameter(index, value)` AAP-Next plugin function.
 - There will be **realtime event ports** that are used to send a sequence of queued events such as "set parameter" (similar to LV2 Atom Sequence of lv2:patch).
-  - They do not have to be declared in `aap_metadata.xml` ; they are automatically instantiated with a fixed **negative port index** for each (`-3` and `-4`), and not directly accessible by neither of plugin nor host.
+  - They do not have to be declared in `aap_metadata.xml` ; they are automatically instantiated with a **reserved port index** for each (`2` and `3`), and not directly accessible by neither of plugin nor host.
   - On every Binder `process()` invocation, AudioPluginService is supposed to parse the event inputs and call the plugin's `set_parameter()`  AAP-Next plugin function, then call the actual plugin's `process()`.
 - There will be an additional host API function `setParameter(index, value)` that enqueues the message to the port.
   - It will be called by UI event receiver in AAP hosting API.
@@ -140,18 +141,22 @@ For host implementation, it will have to first iterate over `<parameter>`s along
 
 There will be `ParameterInfo` in C++ hosting API and Kotlin hosting API.
 
+One thing that existed as a port property but not as a parameter property is `pp:minimumSize`, which is to indicate the minimum buffer size of the port. It was introduced to support LV2 minimum port buffer size that was actually used by sfizz. It should really be a port property, not of a parameter.
+
 ### Dynamic ports
 
 At this state it is still not clearly supported. We might still introduce support for dynamic ports in the future. To make it happen, the usage scenario should be still limited like (1) plugin configuration and state restoration is done before port configuration, and/or (2) there should be port configuration "reset" when plugin configuration change happens, meaning that dynamic port connections are all killed off by host. This is still doable within the new design ideas above.
 
 ### Appendix: List of implicit ports
 
-Those negative port indices (mentioned through the document) are reserved:
+Those ports may be automatically added:
 
-- `-1`: host-to-plugin system common message port
-- `-2`: plugin-to-host system common message port
-- `-3`: host-to-plugin realtime event port
-- `-4`: plugin-to-host realtime event port (currently no plan to use though)
+- host-to-plugin system MIDI port
+- plugin-to-host system MIDI port
+- host-to-plugin realtime MIDI port
+- plugin-to-host realtime MDI port (currently no plan to use though)
+
+They will be added after all defined ports. Indexes are passed as part of port-config setup confirmation request.
 
 ## Implementation steps
 

@@ -132,8 +132,7 @@ class PluginPreview(context: Context) {
                     else
                         audioOutR = i
                 }
-            } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI ||
-                       p.content == PortInformation.PORT_CONTENT_TYPE_MIDI2) {
+            } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
                 if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
                     midiIn = i
             }
@@ -142,21 +141,21 @@ class PluginPreview(context: Context) {
         val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
         val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-        (0 until instance.getParameterCount()).map { i ->
-            val para = instance.getParameter(i)
+        (0 until instance.getParameterCount()).map { paraI ->
+            val para = instance.getParameter(paraI)
             // FIXME: implement parameter updates via MIDI port (parameter changes) instead of per-parameter port.
 
-            for (p in 0 until instance.getPortCount()) {
-                val port = instance.getPort(p)
+            for (portI in 0 until instance.getPortCount()) {
+                val port = instance.getPort(portI)
                 if (para.name == port.name) {
-                    val c = audioProcessingBuffers[i].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                    val c = audioProcessingBuffers[portI].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                     c.position(0)
                     // just put one float value
-                    c.put(parameters[i])
+                    c.put(parameters[paraI])
                     instance.setPortBuffer(
-                        i,
-                        audioProcessingBuffers[i],
-                        audioProcessingBufferSizesInBytes[i]
+                        portI,
+                        audioProcessingBuffers[portI],
+                        audioProcessingBufferSizesInBytes[portI]
                     )
                     break
                 }
