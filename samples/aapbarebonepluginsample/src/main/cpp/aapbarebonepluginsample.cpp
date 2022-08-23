@@ -24,8 +24,19 @@ extern "C" {
 #define PARAM_ID_DELAY_L 2
 #define PARAM_ID_DELAY_R 3
 
-typedef struct {
+typedef struct SamplePluginSpecific {
     /* any kind of extension information, which will be passed as void* */
+    float modL{0.5f};
+    float modR{0.5f};
+    float modL_pn[128];
+    float modR_pn[128];
+    uint32_t delayL{0};
+    uint32_t delayR{0};
+
+    SamplePluginSpecific() {
+        for (size_t i = 0; i < 128; i++)
+            modL_pn[i] = modR_pn[i] = 0.5f;
+    }
 } SamplePluginSpecific;
 
 void sample_plugin_delete(
@@ -44,14 +55,19 @@ void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
+    // apply super-simple delay processing with super-simple volume adjustment per channel.
 
-    // apply super-simple delay processing
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
+
     int size = buffer->num_frames * sizeof(float);
 
-    auto modL = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_L])[0];
-    auto modR = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_R])[0];
-    auto delayL = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_L])[0];
-    auto delayR = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_R])[0];
+    /* This is the old way to support "parameters" via ports.
+    ctx->modL = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_L])[0];
+    ctx->modR = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_R])[0];
+    ctx->delayL = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_L])[0];
+    ctx->delayR = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_R])[0];
+     */
+
     auto fIL = (float *) buffer->buffers[AUDIO_PORT_IN_L];
     auto fIR = (float *) buffer->buffers[AUDIO_PORT_IN_R];
     auto fOL = (float *) buffer->buffers[AUDIO_PORT_OUT_L];
@@ -59,8 +75,9 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     // update parameters via MIDI2 messages
     auto midiSeq = (AAPMidiBufferHeader*) buffer->buffers[MIDI_PORT_IN];
+    auto midiSeqData = midiSeq + 1;
     if (midiSeq->length > 0) {
-        CMIDI2_UMP_SEQUENCE_FOREACH(midiSeq + 1, midiSeq->length, iter) {
+        CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {
             auto ump = (cmidi2_ump*) iter;
             switch (cmidi2_ump_get_message_type(ump)) {
                 case CMIDI2_MESSAGE_TYPE_UTILITY:
@@ -71,7 +88,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     break;
                 case CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL: {
                     bool relative = false;
+                    bool perNote = false;
                     switch (cmidi2_ump_get_status_code(ump)) {
+                        case CMIDI2_STATUS_PER_NOTE_ACC:
+                            perNote = true;
+                            break;
                         case CMIDI2_STATUS_RELATIVE_NRPN:
                             relative = true;
                             break;
@@ -82,25 +103,41 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     }
                     auto target = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x100 +
                                   cmidi2_ump_get_midi2_nrpn_lsb(ump);
-                    uint32_t valueIn0To2048;
+                    uint32_t rawIntValue;
+                    float valueIn0To2048;
+                    float mod;
                     switch (target) {
                         case PARAM_ID_VOLUME_L:
-                            modL = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
-                                             (relative ? (uint32_t) (modL * UINT32_MAX) : 0)) /
+                            mod = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
+                                             (relative ? (uint32_t) (ctx->modL * UINT32_MAX) : 0)) /
                                             (double) UINT32_MAX);
+                            if (perNote)
+                                ctx->modL_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
+                            else
+                                ctx->modL = mod;
                             break;
                         case PARAM_ID_VOLUME_R:
-                            modR = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
-                                             (relative ? (uint32_t) (modR * UINT32_MAX) : 0)) /
+                            mod = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
+                                             (relative ? (uint32_t) (ctx->modR * UINT32_MAX) : 0)) /
                                             (double) UINT32_MAX);
+                            if (perNote)
+                                ctx->modR_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
+                            else
+                                ctx->modR = mod;
                             break;
                         case PARAM_ID_DELAY_L:
-                            valueIn0To2048 = (uint32_t) (2048 * cmidi2_ump_get_midi2_nrpn_data(ump) / (double) UINT32_MAX);
-                            delayL = relative ? delayL + valueIn0To2048 : valueIn0To2048;
+                            if (perNote)
+                                break; // FIXME: implement or log it?
+                            rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
+                            valueIn0To2048 = *((float*) (void*) &rawIntValue);
+                            ctx->delayL = relative ? ctx->delayL + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
                             break;
                         case PARAM_ID_DELAY_R:
-                            valueIn0To2048 = (uint32_t) (2048 * cmidi2_ump_get_midi2_nrpn_data(ump) / (double) UINT32_MAX);
-                            delayR = relative ? delayR + valueIn0To2048 : valueIn0To2048;
+                            if (perNote)
+                                break; // FIXME: implement or log it?
+                            rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
+                            valueIn0To2048 = *((float*) (void*) &rawIntValue);
+                            ctx->delayR = relative ? ctx->delayR + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
                             break;
                         default:
                             continue; // invalid parameter index FIXME: log it
@@ -112,17 +149,20 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     }
 
     for (int i = 0; i < size / sizeof(float); i++) {
-        if (i >= delayL)
-            fOL[i] = (float) (fIL[i - delayL] * modL);
-        if (i >= delayR)
-            fOR[i] = (float) (fIR[i - delayR] * modR);
+        if (i >= ctx->delayL)
+            fOL[i] = (float) (fIL[i - ctx->delayL] * ctx->modL);
+        if (i >= ctx->delayR)
+            fOR[i] = (float) (fIR[i - ctx->delayR] * ctx->modR);
     }
 
+    /* FIXME: This is for testing minBufferSize, but now it's gone because we don't use port for it.
+     *  Maybe we need some other way to test it...
     // buffers[10]-buffers[13] are dummy parameters, but try accessing buffers[10], which has
     // pp:minimumSize = 8192, to verify that buffers[8][8191] is touchable!
     int x = ((uint8_t*) buffer->buffers[10])[8191];
     if (x > 256)
         return; // NOOP
+    */
 }
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
@@ -155,7 +195,7 @@ AndroidAudioPlugin *sample_plugin_new(
         int sampleRate,
         AndroidAudioPluginHost *host) {
     return new AndroidAudioPlugin{
-            new SamplePluginSpecific{},
+            new SamplePluginSpecific(),
             sample_plugin_prepare,
             sample_plugin_activate,
             sample_plugin_process,

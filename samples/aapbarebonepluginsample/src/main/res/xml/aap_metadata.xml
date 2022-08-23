@@ -1,12 +1,15 @@
 <plugins xmlns="urn:org.androidaudioplugin.core" xmlns:pp="urn:org.androidaudioplugin.port">
   <plugin name="Flat Filter" category="Effect" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbarebonepluginsample.so">
     <ports>
+      <!-- dummy: replace control with midi2 -->
       <port direction="input" content="midi2" name="MIDI In" />
       <port direction="output" content="midi2" name="MIDI Out" />
       <port direction="input" content="audio" name="Left In" />
       <port direction="input" content="audio" name="Right In" />
       <port direction="output" content="audio" name="Left Out" />
       <port direction="output" content="audio" name="Right Out" />
+      <!-- This was the old way to support "parameters"-->
+      <!--
       <port direction="input" content="control" name="Output Volume L" pp:default="0.5" pp:minimum="0" pp:maximum="1" />
       <port direction="input" content="control" name="Output Volume R" pp:default="0.5" pp:minimum="0" pp:maximum="1" />
       <port direction="input" content="control" name="Delay L" pp:default="0" pp:minimum="0" pp:maximum="2048" pp:type="integer" />
@@ -15,6 +18,7 @@
       <port direction="input" content="control" name="Dummy Parameter 5" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
       <port direction="input" content="control" name="Dummy Parameter 6" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
       <port direction="input" content="control" name="Dummy Parameter 7" pp:default="50" pp:minimum="0" pp:maximum="100" pp:type="integer" />
+      -->
     </ports>
     <!-- parameters extension -->
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">

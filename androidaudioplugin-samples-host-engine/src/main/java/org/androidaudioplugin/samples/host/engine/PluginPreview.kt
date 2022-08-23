@@ -4,6 +4,9 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import dev.atsushieno.ktmidi.Ump
+import dev.atsushieno.ktmidi.UmpFactory
+import dev.atsushieno.ktmidi.toPlatformNativeBytes
 import org.androidaudioplugin.*
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
@@ -99,6 +102,20 @@ class PluginPreview(context: Context) {
             errorCallback(instance.proxyError!!)
     }
 
+    private fun parameterChangesToUMP(parametersFrom0To1: FloatArray) =
+        (0 until instance!!.getParameterCount()).map { paraI ->
+            val para = instance!!.getParameter(paraI)
+            Ump(
+                UmpFactory.midi2NRPN(
+                    0,
+                    0,
+                    para.id / 0x100,
+                    para.id % 0x100,
+                    parametersFrom0To1[paraI].toBits().toLong()
+                )
+            ).toPlatformNativeBytes()
+        }
+
     private fun processPluginOnce(parametersOnUI: FloatArray?) {
         val instance = this.instance!!
         val parameters = parametersOnUI ?: (0 until instance.getParameterCount()).map { instance.getParameter(it).defaultValue .toFloat() }.toFloatArray()
@@ -107,10 +124,6 @@ class PluginPreview(context: Context) {
         host.resetOutputBuffers()
         host.resetControlBuffers()
 
-        val midiSequence = MidiHelper.getMidiSequence()
-        val midi1Events = MidiHelper.splitMidi1Events(midiSequence.toUByteArray())
-        val midi1EventsGroups = MidiHelper.groupMidi1EventsByTiming(midi1Events).toList()
-
         // Kotlin version of audio/MIDI processing.
 
         var audioInL = -1
@@ -118,6 +131,7 @@ class PluginPreview(context: Context) {
         var audioOutL = -1
         var audioOutR = -1
         var midiIn = -1
+        var midi2In = -1
         (0 until instance.getPortCount()).forEach { i ->
             val p = instance.getPort(i)
             if (p.content == PortInformation.PORT_CONTENT_TYPE_AUDIO) {
@@ -135,23 +149,69 @@ class PluginPreview(context: Context) {
             } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
                 if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
                     midiIn = i
+            } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI2) {
+                if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
+                    midi2In = i
             }
         }
 
         val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
         val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-        (0 until instance.getParameterCount()).map { paraI ->
-            val para = instance.getParameter(paraI)
-            // FIXME: implement parameter updates via MIDI port (parameter changes) instead of per-parameter port.
+        if (midi2In >= 0) {
+            val midi2Bytes = mutableListOf<Byte>()
 
-            for (portI in 0 until instance.getPortCount()) {
-                val port = instance.getPort(portI)
-                if (para.name == port.name) {
-                    val c = audioProcessingBuffers[portI].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+            (0 until instance.getParameterCount()).map { paraI ->
+                val para = instance.getParameter(paraI)
+
+                val ump = Ump(
+                    UmpFactory.midi2NRPN(
+                        0,
+                        0,
+                        para.id / 0x100,
+                        para.id % 0x100,
+                        parameters[paraI].toRawBits().toLong()
+                    )
+                )
+                // generate Assignable Controllers into midi2Bytes.
+                midi2Bytes.addAll(ump.toPlatformNativeBytes().toTypedArray())
+            }
+
+            val header = MidiHelper.toMidiBufferHeader(0, (parameters.size * 4).toUInt())
+            midi2Bytes.addAll(0, header)
+
+            val localBufferL = audioProcessingBuffers[midi2In]
+            localBufferL.clear()
+            localBufferL.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size)
+            instance.setPortBuffer(midi2In, localBufferL, midi2Bytes.size)
+        } else {
+            // If there are parameter elements, look for ports based on each parameter's name.
+            // If there isn't, just assume parameter index == port index.
+            if (instance.getParameterCount() > 0) {
+                (0 until instance.getParameterCount()).map { paraI ->
+                    val para = instance.getParameter(paraI)
+                    for (portI in 0 until instance.getPortCount()) {
+                        if (para.name != instance.getPort(portI).name)
+                            continue
+                        val c = audioProcessingBuffers[portI].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+                        c.position(0)
+                        // just put one float value
+                        c.put(parameters[paraI])
+                        instance.setPortBuffer(
+                            portI,
+                            audioProcessingBuffers[portI],
+                            audioProcessingBufferSizesInBytes[portI]
+                        )
+                        break
+                    }
+                }
+            } else {
+                for (portI in 0 until instance.getPortCount()) {
+                    val c =
+                        audioProcessingBuffers[portI].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                     c.position(0)
                     // just put one float value
-                    c.put(parameters[paraI])
+                    c.put(parameters[portI])
                     instance.setPortBuffer(
                         portI,
                         audioProcessingBuffers[portI],
@@ -161,6 +221,10 @@ class PluginPreview(context: Context) {
                 }
             }
         }
+
+        val midiSequence = MidiHelper.getMidiSequence()
+        val midi1Events = MidiHelper.splitMidi1Events(midiSequence.toUByteArray())
+        val midi1EventsGroups = MidiHelper.groupMidi1EventsByTiming(midi1Events).toList()
 
         instance.activate()
 
