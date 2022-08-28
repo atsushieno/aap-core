@@ -126,7 +126,7 @@ class PluginInformation
     /** NULL-terminated list of categories, separate by | */
     std::string primary_category{};
     /** list of ports */
-    std::vector<const PortInformation*> ports;
+    std::vector<const PortInformation*> declared_ports;
     /** list of parameters */
     std::vector<const ParameterInformation*> parameters;
     /** list of extensions. They may be either required or optional */
@@ -188,17 +188,17 @@ public:
 
     int getNumDeclaredPorts() const
     {
-        return (int) ports.size();
+        return (int) declared_ports.size();
     }
 
     const PortInformation* getDeclaredPort(int index) const
     {
-        return ports[(size_t) index];
+        return declared_ports[(size_t) index];
     }
 
     void addDeclaredPort(PortInformation* port)
     {
-        ports.emplace_back(port);
+        declared_ports.emplace_back(port);
     }
 
     int getNumDeclaredParameters() const

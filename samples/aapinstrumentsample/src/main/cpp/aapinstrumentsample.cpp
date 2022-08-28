@@ -179,11 +179,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
             // FIXME: fully downconvert to MIDI1 and process it (sysex can be lengthier)
             uint8_t midi1Bytes[16];
-            cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump);
-            ayumi_aap_process_midi_event(context, midi1Bytes);
+            if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
+                ayumi_aap_process_midi_event(context, midi1Bytes);
         }
     } else {
-        auto midi1ptr = ((uint8_t*) (void*) aapmb) + 8;
+        auto midi1ptr = ((uint8_t*) (void*) aapmb) + 32;
         auto midi1end = midi1ptr + aapmb->length;
         while (midi1ptr < midi1end) {
             // get delta time

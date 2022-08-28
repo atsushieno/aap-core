@@ -5,5 +5,13 @@
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
     </extensions>
+    <!-- FIXME: remove those declared ports and get default configuration working with PluginPreview
+         (which does not support midi2 in port right now -->
+    <ports>
+      <port direction="input" content="midi" name="MIDI In" />
+      <port direction="output" content="midi" name="MIDI Out" />
+      <port direction="output" content="audio" name="Left Out" />
+      <port direction="output" content="audio" name="Right Out" />
+    </ports>
   </plugin>
 </plugins>

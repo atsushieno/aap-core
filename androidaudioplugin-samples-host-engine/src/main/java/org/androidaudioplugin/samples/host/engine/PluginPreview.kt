@@ -102,20 +102,6 @@ class PluginPreview(context: Context) {
             errorCallback(instance.proxyError!!)
     }
 
-    private fun parameterChangesToUMP(parametersFrom0To1: FloatArray) =
-        (0 until instance!!.getParameterCount()).map { paraI ->
-            val para = instance!!.getParameter(paraI)
-            Ump(
-                UmpFactory.midi2NRPN(
-                    0,
-                    0,
-                    para.id / 0x100,
-                    para.id % 0x100,
-                    parametersFrom0To1[paraI].toBits().toLong()
-                )
-            ).toPlatformNativeBytes()
-        }
-
     private fun processPluginOnce(parametersOnUI: FloatArray?) {
         val instance = this.instance!!
         val parameters = parametersOnUI ?: (0 until instance.getParameterCount()).map { instance.getParameter(it).defaultValue .toFloat() }.toFloatArray()
@@ -206,7 +192,7 @@ class PluginPreview(context: Context) {
                     }
                 }
             } else {
-                for (portI in 0 until instance.getPortCount()) {
+                for (portI in parameters.indices) {
                     val c =
                         audioProcessingBuffers[portI].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
                     c.position(0)
@@ -254,10 +240,12 @@ class PluginPreview(context: Context) {
                 }
             }
             if (midiIn >= 0) {
+                // see aap-midi2.h for the header format (which should cover MIDI1 too).
                 // MIDI buffer is complicated. The AAP input MIDI buffer is formed as follows:
                 // - i32 length unit specifier: positive frames, or negative frames per beat in the
                 //   context tempo.
                 // - i32 MIDI buffer size
+                // - 6 reserved i32 values
                 // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
 
                 val midiBuffer = audioProcessingBuffers[midiIn].order(ByteOrder.LITTLE_ENDIAN)
@@ -328,7 +316,7 @@ class PluginPreview(context: Context) {
         mbi.put(ticksPerFrame.toInt()) // 1 frame = 10 milliseconds
         mbi.put(0)
 
-        return 8
+        return 32
     }
 
     var processAudioCompleted : () -> Unit = {}
