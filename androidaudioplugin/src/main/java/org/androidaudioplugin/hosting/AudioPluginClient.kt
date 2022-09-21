@@ -7,7 +7,7 @@ import java.lang.UnsupportedOperationException
  * Its implementation is hacky and not really with decent API design.
  * It is to provide usable utilities for plugin developers as a proof of concept.
  */
-class AudioPluginClient(private var applicationContext: Context) : AudioPluginClientBase(applicationContext) {
+class AudioPluginClient(applicationContext: Context) : AudioPluginClientBase(applicationContext) {
 
     // Audio buses and buffers management
     // FIXME: maybe we should reconsider the API.

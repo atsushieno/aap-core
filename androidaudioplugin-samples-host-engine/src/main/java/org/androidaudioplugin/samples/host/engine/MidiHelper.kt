@@ -1,5 +1,7 @@
 package org.androidaudioplugin.samples.host.engine
 
+import dev.atsushieno.ktmidi.Midi2Music
+import dev.atsushieno.ktmidi.MidiMusic
 import dev.atsushieno.ktmidi.SmfWriter
 import dev.atsushieno.mugene.MmlCompiler
 
@@ -63,14 +65,26 @@ class MidiHelper {
             return noteOnSeq.plus(noteOffSeq).toMutableList()
         }
 
-        internal fun getMidiSequence_next() : List<UByte> {
+        internal fun getMidi2Music() : Midi2Music {
             val compiler = MmlCompiler.create()
             // CC120 = All Sound Off, CC123 = All Notes Off
-            val result = compiler.compile(false, "0  V100 t120 CC120,0 CC123,0 o5 c0e0g4 r4  d0f0a4 r4  e0g0b4 r4  f0a0>c4< r4  [g0b0>d4< r4]3 a0>c0e4< r4  b0>d0f4 r4  c0e0g4 r4")
+            return compiler.compile2(false,  false,"0  V100 t120 CC120,0 CC123,0 o5 c0e0g4 r4  d0f0a4 r4  e0g0b4 r4  f0a0>c4< r4  [g0b0>d4< r4]3 a0>c0e4< r4  b0>d0f4 r4  c0e0g4 r4")
+        }
+
+        internal fun getMidiMusic() : MidiMusic {
+            val compiler = MmlCompiler.create()
+            // CC120 = All Sound Off, CC123 = All Notes Off
+            return compiler.compile(false, "0  V100 t120 CC120,0 CC123,0 o5 c0e0g4 r4  d0f0a4 r4  e0g0b4 r4  f0a0>c4< r4  [g0b0>d4< r4]3 a0>c0e4< r4  b0>d0f4 r4  c0e0g4 r4")
+        }
+
+        internal fun getMidiSequence_next() : List<UByte> {
             val bytes = mutableListOf<Byte>()
             val writer = SmfWriter(bytes)
             writer.disableRunningStatus = true
-            writer.writeMusic(result)
+
+            val music = getMidiMusic()
+
+            writer.writeMusic(music)
             return bytes.drop(22) // header 14 bytes + MTrk_4bytes + length_4bytes
                 .dropLast(4) // end of song metadata
                 .map { it.toUByte() }
