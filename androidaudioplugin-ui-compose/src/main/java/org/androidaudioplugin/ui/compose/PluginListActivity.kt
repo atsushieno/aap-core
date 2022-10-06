@@ -3,6 +3,7 @@ package org.androidaudioplugin.ui.compose
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
@@ -29,20 +30,22 @@ open class PluginListActivity : ComponentActivity() {
         }
     }
 
-    private var lastBackPressed = System.currentTimeMillis()
+    init {
+        onBackPressedDispatcher.addCallback(object: OnBackPressedCallback(true) {
+            private var lastBackPressed = System.currentTimeMillis()
 
-    override fun onBackPressed() {
-        if (!viewModel.atTopLevel.value) {
-            super.onBackPressed()
-            return
-        }
+            override fun handleOnBackPressed() {
+                if (!viewModel.atTopLevel.value)
+                    return
 
-        if (System.currentTimeMillis() - lastBackPressed < 2000) {
-            finish()
-            exitProcess(0)
-        }
-        else
-            Toast.makeText(this, "Tap once more to quit", Toast.LENGTH_SHORT).show()
-        lastBackPressed = System.currentTimeMillis()
+                if (System.currentTimeMillis() - lastBackPressed < 2000) {
+                    finish()
+                    exitProcess(0)
+                }
+                else
+                    Toast.makeText(this@PluginListActivity, "Tap once more to quit", Toast.LENGTH_SHORT).show()
+                lastBackPressed = System.currentTimeMillis()
+            }
+        })
     }
 }
