@@ -11,6 +11,13 @@ import org.androidaudioplugin.*
 import org.xmlpull.v1.XmlPullParser
 
 class AudioPluginHostHelper {
+
+    class AAPMetadataException : Exception {
+        constructor() : super("Error in AAP metadata")
+        constructor(message: String) : super(message)
+        constructor(message: String, innerException: Exception) : super(message, innerException)
+    }
+
     companion object {
         const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V2"
         const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService.V2#Plugins"
@@ -72,13 +79,21 @@ class AudioPluginHostHelper {
                         }
                     } else if (xp.name == "parameter" && (xp.namespace == "" || xp.namespace == AAP_METADATA_EXT_PARAMETERS_NS)) {
                         if (currentPlugin != null) {
-                            val index = xp.getAttributeValue(null, "id")
-                            val name = xp.getAttributeValue(null, "name")
+                            // Android Bug: XmlPullParser.getAttributeValue() returns null, whereas Kotlinized API claims that it returns non-null!
+                            val id: String? = xp.getAttributeValue(null, "id")
+                            if (id == null)
+                                throw AAPMetadataException("Mandatory attribute \"id\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
+                            if (id.toIntOrNull() == null)
+                                throw AAPMetadataException("The \"id\" attribute on a <port> element must be a valid integer. (line ${xp.lineNumber}, column ${xp.columnNumber})")
+                            // Android Bug: XmlPullParser.getAttributeValue() returns null, whereas Kotlinized API claims that it returns non-null!
+                            val name: String? = xp.getAttributeValue(null, "name")
+                            if (name == null)
+                                throw AAPMetadataException("Mandatory attribute \"name\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                             val default = xp.getAttributeValue(null, "default")
                             val minimum = xp.getAttributeValue(null, "minimum")
                             val maximum = xp.getAttributeValue(null, "maximum")
                             // FIXME: handle parse errors gracefully
-                            val para = ParameterInformation(index.toInt(), name,
+                            val para = ParameterInformation(id.toInt(), name,
                                 default?.toDouble() ?: 0.0,
                                 minimum?.toDouble() ?: 0.0,
                                 maximum?.toDouble() ?: 1.0
@@ -131,21 +146,27 @@ class AudioPluginHostHelper {
 
         @JvmStatic
         fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : PluginServiceInformation? {
-            val xp = serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
-                ?: return null
-            val isOutProcess = serviceInfo.packageName != context.packageName
-            val label = serviceInfo.loadLabel(context.packageManager).toString()
-            val packageName = serviceInfo.packageName
-            val className = serviceInfo.name
-            val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
-            if (serviceInfo.icon != 0)
-                plugin.icon = serviceInfo.loadIcon(context.packageManager)
-            if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
-                plugin.icon = serviceInfo.applicationInfo.loadIcon(context.packageManager)
-            val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
-            if (extensions != null)
-                plugin.extensions = extensions.toString().split(',').toMutableList()
-            return plugin
+            try {
+                val xp =
+                    serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
+                        ?: return null
+                val isOutProcess = serviceInfo.packageName != context.packageName
+                val label = serviceInfo.loadLabel(context.packageManager).toString()
+                val packageName = serviceInfo.packageName
+                val className = serviceInfo.name
+                val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
+                if (serviceInfo.icon != 0)
+                    plugin.icon = serviceInfo.loadIcon(context.packageManager)
+                if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
+                    plugin.icon = serviceInfo.applicationInfo.loadIcon(context.packageManager)
+                val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
+                if (extensions != null)
+                    plugin.extensions = extensions.toString().split(',').toMutableList()
+                return plugin
+            } catch (ex: AAPMetadataException) {
+                Log.e("AAP", "Failed to load AAP metadata for ${serviceInfo.packageName}/${serviceInfo.name}: ${ex.message}")
+                return null
+            }
         }
 
         @JvmStatic
