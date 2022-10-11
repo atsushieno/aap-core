@@ -1,12 +1,12 @@
 
 android {
-    compileSdk = 32
-    buildToolsVersion = "32.0.0"
+    compileSdk = 33
+    buildToolsVersion = "33.0.0"
 
     defaultConfig {
         // FIXME: this should be 29, but it is TEMPORARILY disabled until this Android SDK/NDK issue https://issuetracker.google.com/issues/219987524 gets resolved.
         minSdk = 30
-        targetSdk = 32
+        targetSdk = 33
         versionCode = 1
         versionName = "$aap_version"
     }

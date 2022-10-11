@@ -71,7 +71,7 @@ android {
 apply { from ("../publish-pom.gradle") }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.7.0")
+    implementation ("androidx.core:core-ktx:1.9.0")
     implementation ("androidx.startup:startup-runtime:1.1.1")
     implementation (project(":androidaudioplugin"))
     testImplementation ("junit:junit:4.13.2")

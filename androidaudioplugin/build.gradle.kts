@@ -95,8 +95,8 @@ android {
 apply { from ("../publish-pom.gradle") }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.7.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
+    implementation ("androidx.core:core-ktx:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation ("androidx.startup:startup-runtime:1.1.1")
     implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
     testImplementation ("junit:junit:4.13.2")

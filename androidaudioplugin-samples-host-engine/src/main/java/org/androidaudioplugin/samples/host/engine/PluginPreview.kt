@@ -215,7 +215,7 @@ class PluginPreview(context: Context) {
         lateinit var umpBuffer: IntBuffer
 
         runBlocking {
-            midiAccessOutput = empty.openOutputAsync(empty.outputs.first().id)
+            midiAccessOutput = empty.openOutput(empty.outputs.first().id)
         }
         var timePositionOfCurrentLoop = 0
         var timePosition = 0
