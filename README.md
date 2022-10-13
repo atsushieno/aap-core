@@ -56,9 +56,9 @@ TODO: The plugins and their ports can NOT be dynamically changed, at least as of
 
 ## How to create AAP plugins
 
-[Developers Guide](DEVELOPERS.md) contains some essential guide and some details on various topics.
+[Developers Guide](./docs/DEVELOPERS.md) contains some essential guide and some details on various topics.
 
-We have a dedicated plugin development guide for (1) [building from scratch](PLUGIN_SCRATCH_GUIDE.md), (2) [importing from LV2 plugins](https://github.com/atsushieno/aap-lv2), and (3) [importing from JUCE plugins](https://github.com/atsushieno/aap-juce). We basically recommend (2) or (3) as our API is not quite stabilized yet. So if you take the (1) approach, then you are supposed to update source code whenever necessaey.
+We have a dedicated plugin development guide for (1) [building from scratch](./docs/PLUGIN_SCRATCH_GUIDE.md), (2) [importing from LV2 plugins](https://github.com/atsushieno/aap-lv2), and (3) [importing from JUCE plugins](https://github.com/atsushieno/aap-juce). We basically recommend (2) or (3) as our API is not quite stabilized yet. So if you take the (1) approach, then you are supposed to update source code whenever necessaey.
 
 (We don't really assure the consistency on how we import LV2 and JUCE bits either, but their API would be mostly stable.)
 
@@ -110,7 +110,7 @@ At this state the audio generation feature not in usable quality at all.
 
 [HACKING.md](docs/HACKING.md) contains how to build and hack this framework itself.
 
-[DESIGN_NOTES.md](docs/DESIGN_NOTES.md) contains some technical background and design decisions that we have made in this framework.
+[design/OVERVIEW.md](docs/design/OVERVIEW.md) contains some technical background and design decisions that we have made in this framework.
 
 
 ## Licenses
