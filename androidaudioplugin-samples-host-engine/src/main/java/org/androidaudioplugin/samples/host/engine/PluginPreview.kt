@@ -218,7 +218,7 @@ class PluginPreview(context: Context) {
             midiAccessOutput = empty.openOutput(empty.outputs.first().id)
         }
         var timePositionOfCurrentLoop = 0
-        var timePosition = 0
+        var timePosition = 0L
         val midi1Player = if (midiIn < 0) null else Midi1Player(
             MidiHelper.getMidiMusic(),
             midiAccessOutput,
@@ -227,7 +227,8 @@ class PluginPreview(context: Context) {
             val player = this
             this.addOnMessageListener(object : OnMidiMessageListener {
                 override fun onMessage(m: MidiMessage) {
-                    val deltaTimeMilliseconds = player.positionInMilliseconds - timePosition;
+                    val deltaTimeMilliseconds = player.positionInMilliseconds - timePosition - timePositionOfCurrentLoop
+                    timePosition = player.positionInMilliseconds
 
                 }
             })
@@ -257,8 +258,9 @@ class PluginPreview(context: Context) {
             this.addOnMessageListener(object : OnMidi2EventListener {
                 override fun onEvent(e: Ump) {
                     if (e.isJRTimestamp) {
-                        val deltaTimeMilliseconds = player.totalPlayTimeMilliseconds - timePosition - timePositionOfCurrentLoop
-                        timePosition = player.totalPlayTimeMilliseconds
+                        val timePositionOfCurrentLoopInMS = 1.0 * timePositionOfCurrentLoop / host.sampleRate
+                        val eventTimeOffsetInMS = e.jrTimestamp * 1 / 31250.0
+                        val deltaTimeMilliseconds = eventTimeOffsetInMS - player.positionInMilliseconds - timePositionOfCurrentLoopInMS
                         UmpFactory.jrTimestamps(0, deltaTimeMilliseconds / 1000.0).forEach {
                             addUmp(Ump(it))
                         }
