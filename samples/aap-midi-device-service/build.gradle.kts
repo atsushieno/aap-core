@@ -35,11 +35,13 @@ android {
         kotlinCompilerExtensionVersion = "1.2.0"
     }
     packagingOptions {
-        exclude ("META-INF/AL2.0")
-        exclude ("META-INF/LGPL2.1")
+        resources {
+            excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
+        }
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
+    namespace = "org.androidaudioplugin.midideviceservice.app"
 }
 
 dependencies {

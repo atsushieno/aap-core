@@ -46,6 +46,7 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
+    namespace = "org.androidaudioplugin.aapxssample"
 }
 
 dependencies {

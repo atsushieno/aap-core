@@ -33,6 +33,7 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.2.0"
     }
+    namespace = "org.androidaudioplugin.ui.compose"
 }
 
 apply { from ("../publish-pom.gradle") }

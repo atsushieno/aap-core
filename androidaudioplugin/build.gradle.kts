@@ -90,6 +90,7 @@ android {
             }
         }
     }
+    namespace = "org.androidaudioplugin"
 }
 
 apply { from ("../publish-pom.gradle") }

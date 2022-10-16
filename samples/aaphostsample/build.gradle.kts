@@ -34,9 +34,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    aaptOptions {
-        noCompress ("sample.wav")
-    }
     packagingOptions {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
@@ -56,6 +53,10 @@ android {
             }
         }
     }
+    androidResources {
+        noCompress += listOf("sample.wav")
+    }
+    namespace = "org.androidaudioplugin.aaphostsample"
 }
 
 dependencies {

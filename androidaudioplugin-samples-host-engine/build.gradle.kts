@@ -26,6 +26,7 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    namespace = "org.androidaudioplugin.samples.host.engine"
 }
 
 apply { from ("../publish-pom.gradle") }

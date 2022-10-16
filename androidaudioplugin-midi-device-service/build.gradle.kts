@@ -66,6 +66,7 @@ android {
         jniLibs.excludes.add("**/libc++_shared.so")
         jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }
+    namespace = "org.androidaudioplugin.midideviceservice"
 }
 
 apply { from ("../publish-pom.gradle") }
