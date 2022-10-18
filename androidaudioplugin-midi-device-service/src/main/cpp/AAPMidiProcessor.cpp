@@ -361,7 +361,7 @@ namespace aapmidideviceservice {
                 dstMBH->time_options = -100;
                 uint32_t ticks = timestampInNanoseconds / (44100 / -dstMBH->time_options);
                 size_t lengthSize = cmidi2_midi1_write_7bit_encoded_int(dst8 + 8 + currentOffset, ticks);
-                memcpy(dst8 + 8 + currentOffset + lengthSize, bytes + offset, length);
+                memcpy(dst8 + 32 + currentOffset + lengthSize, bytes + offset, length);
                 dstMBH->length += length + lengthSize;
             }
         }
