@@ -245,7 +245,10 @@ void AAPHostEngineBase::callPluginProcess() {
     client->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
     // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
     if (data->instance_id == instrument_instance_id) {
-        throw std::runtime_error("TODO"); // FIXME: implement
+        if (data->midi1_in_port >= 0)
+            ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi1_in_port])->length = 0;
+        if (data->midi2_in_port >= 0)
+            ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi2_in_port])->length = 0;
     }
 }
 
@@ -337,7 +340,7 @@ void AAPHostEngineBase::processMidiInput(uint8_t* bytes, size_t offset, size_t l
             dstMBH->time_options = -100;
             uint32_t ticks = timestampInNanoseconds / (44100 / -dstMBH->time_options);
             size_t lengthSize = cmidi2_midi1_write_7bit_encoded_int(dst8 + 8 + currentOffset, ticks);
-            memcpy(dst8 + 8 + currentOffset + lengthSize, bytes + offset, length);
+            memcpy(dst8 + 32 + currentOffset + lengthSize, bytes + offset, length);
             dstMBH->length += length + lengthSize;
         }
     }

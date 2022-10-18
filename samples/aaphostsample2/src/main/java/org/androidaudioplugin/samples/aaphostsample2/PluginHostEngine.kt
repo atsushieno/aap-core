@@ -2,6 +2,8 @@ package org.androidaudioplugin.samples.aaphostsample2
 
 import android.content.Context
 import android.media.AudioManager
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.hosting.AudioPluginClientBase
@@ -13,6 +15,7 @@ import org.androidaudioplugin.hosting.AudioPluginInstance
 class PluginHostEngine private constructor(
     // It is used to manage Service connections, not instancing (which is managed by native code).
                        private val client: AudioPluginClientBase,
+                       private val aapFrameSize: Int,
                        val availablePluginServices: List<PluginServiceInformation>
 ) {
 
@@ -24,17 +27,11 @@ class PluginHostEngine private constructor(
 
             val client = AudioPluginClientBase(applicationContext)
 
-            val ret = PluginHostEngine(client, availablePluginServices)
+            val ret = PluginHostEngine(client, oboeFrameSize * 1, availablePluginServices)
 
             // FIXME: adjust audioOutChannelCount and appFrameSize somewhere?
-
             ret.initializeEngine(client.serviceConnector.instanceId,
                 sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize)
-
-            client.pluginInstantiatedListeners.add { instance ->
-                ret.instantiatePlugin(instance.pluginInfo.pluginId!!)
-                ret.activatePlugin()
-            }
             return ret
         }
 
@@ -44,7 +41,6 @@ class PluginHostEngine private constructor(
     }
 
     private val audioOutChannelCount: Int = 2
-    private val aapFrameSize = 512
 
     var instance: AudioPluginInstance? = null
 
@@ -56,32 +52,14 @@ class PluginHostEngine private constructor(
             callback(instance, error)
         }
     }
-    /*
-    fun loadPlugin(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) ->Unit = { _, _ -> }) {
-        if (instance != null) {
-            callback(null, Exception("A plugin ${pluginInfo.pluginId} is already loaded"))
-        } else {
-            this.pluginInfo = pluginInfo
-            host.instantiatePluginAsync(pluginInfo) { instance, error ->
-                if (error != null) {
-                    lastError = error
-                    callback(null, error)
-                } else if (instance != null) { // should be always true
-                    this.instance = instance
-                    instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
-                    if (instance.proxyError != null) {
-                        callback(null, instance.proxyError!!)
-                    } else {
-                        callback(instance, null)
-                    }
-                }
-            }
-        }
+
+    fun unloadPlugin() {
+        instance?.destroy()
+        instance = null
     }
 
     fun getPluginInfo(pluginId: String) = availablePluginServices.flatMap { s -> s.plugins }
         .firstOrNull { p -> p.pluginId == pluginId }
-    */
 
     // JNI
 
@@ -95,7 +73,13 @@ class PluginHostEngine private constructor(
 
     external fun terminateEngine()
 
-    fun play() {
-        // FIXME: implement
+    private external fun processMessage(msg: ByteArray?, offset: Int, count: Int, timestampInNanoseconds: Long)
+
+    suspend fun play() {
+        coroutineScope {
+            processMessage(byteArrayOf(0x90.toByte(), 0x40, 0x78), 0, 3, 0)
+            Thread.sleep(1000)
+            processMessage(byteArrayOf(0x80.toByte(), 0x40, 0), 0, 3, 0)
+        }
     }
 }

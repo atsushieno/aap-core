@@ -33,18 +33,24 @@ fun PluginListAppContent(state: PluginListAppState) {
                         PluginList(state, onItemClick = { p ->
                             if (state.engine.instance != null) {
                                 loadingStateMessage = "Unloading plugin ${state.engine.instance!!.pluginInfo.displayName} before reloading..."
-                                state.engine.terminateEngine()
+                                state.engine.unloadPlugin()
                                 loadingStateMessage = ""
                             }
-                            val pluginId = p.pluginId
-                            if (pluginId == null) {
+                            if (p.pluginId == null) {
                                 errorMessage = "pluginId is missing"
                                 return@PluginList
                             }
-                            loadingStateMessage = "Loading plugin of Id ${pluginId}..."
                             loadingStateMessage = "Loading plugin ${p.displayName}..."
-                            state.engine.instantiatePlugin(pluginId)
-                            state.navController.navigate(PluginListAppState.Navigation.PluginDetailsRoute + "/" + Uri.encode(p.pluginId))
+                            state.engine.loadPlugin(p) { instance, error ->
+                                if (error != null) {
+                                    errorMessage = "Failed to load plugin: ${error.message}"
+                                    return@loadPlugin
+                                }
+                                state.engine.instance = instance
+                                loadingStateMessage = ""
+                                state.engine.instantiatePlugin(p.pluginId!!)
+                                state.navController.navigate(PluginListAppState.Navigation.PluginDetailsRoute + "/" + Uri.encode(p.pluginId))
+                            }
                         })
                     }
                 }

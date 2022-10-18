@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
 
@@ -105,7 +106,7 @@ fun PluginDetails(state: PluginListAppState) {
                 Text(if (activeState.value) "Deactivate" else "Activate")
             }
             Button(onClick = {
-                state.engine.play()
+                runBlocking { state.engine.play() }
             }) {
                 Text("Play")
             }

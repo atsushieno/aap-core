@@ -15,12 +15,12 @@ using namespace aap::host_engine;
 // JNI entrypoints
 
 // This returns std::string by value. Do not use for large chunk of strings.
-const char* dupFromJava(JNIEnv *env, jstring s) {
+std::string fromJavaString(JNIEnv *env, jstring s) {
     jboolean isCopy;
     if (!s)
         return "";
     const char *u8 = env->GetStringUTFChars(s, &isCopy);
-    auto ret = strdup(u8);
+    std::string ret{u8};
     if (isCopy)
         env->ReleaseStringUTFChars(s, u8);
     return ret;
@@ -41,7 +41,7 @@ AAPHostEngineBase* getHostEngine() {
 }
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_samples_aaphostsample2_PluginHostEngine_initializeEngine(
-        JNIEnv *env, jobject kotlinEngineObj, jint connectorInstanceId, jint sampleRate, jint audioOutChannelCount, jint aapFrameSize) {
+        JNIEnv *env, jobject kotlinEngineObj, jint connectorInstanceId, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
     startNewHostEngine();
 
     auto connections = getPluginConnectionListFromJni(connectorInstanceId, true);
@@ -69,12 +69,19 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_samples_aaphostsample2_Plugin
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_samples_aaphostsample2_PluginHostEngine_instantiatePlugin(
         JNIEnv *env, jobject kotlinEngineObj, jstring pluginId) {
-    auto pluginIdPtr = dupFromJava(env, pluginId);
-    std::string pluginIdString = pluginIdPtr;
+    auto pluginIdSStr = fromJavaString(env, pluginId);
 
-    engine->instantiatePlugin(pluginIdString);
+    engine->instantiatePlugin(pluginIdSStr);
+}
 
-    free((void *) pluginIdPtr);
+jbyte jni_midi_buffer[1024]{};
+
+JNIEXPORT void JNICALL Java_org_androidaudioplugin_samples_aaphostsample2_PluginHostEngine_processMessage(
+        JNIEnv *env, jobject midiReceiver, jbyteArray bytes, jint offset, jint length,
+        jlong timestampInNanoseconds) {
+    env->GetByteArrayRegion(bytes, offset, length, jni_midi_buffer);
+    engine->processMidiInput(
+            reinterpret_cast<uint8_t *>(jni_midi_buffer), 0, length, timestampInNanoseconds);
 }
 
 } // extern "C"
