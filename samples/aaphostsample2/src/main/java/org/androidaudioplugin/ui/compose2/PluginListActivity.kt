@@ -6,15 +6,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.navigation.compose.rememberNavController
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.samples.aaphostsample2.PluginHostEngine
 import kotlin.system.exitProcess
 
 open class PluginListActivity : ComponentActivity() {
 
-    private lateinit var model: PluginHostEngine
     protected lateinit var state : PluginListAppState
 
     open val topAppBarText: String
@@ -25,15 +26,14 @@ open class PluginListActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
-            .filter { s -> shouldListPlugin(s) }
-        model = PluginHostEngine(this, services.toMutableList())
+        val services = AudioPluginHostHelper.queryAudioPluginServices(applicationContext).filter { s -> shouldListPlugin(s) }
+        val engine = PluginHostEngine.create(applicationContext, services)
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                state = PluginListAppState(model, navController, topAppBarText)
-                PluginListAppContent(state)
+                state = PluginListAppState(engine, navController, topAppBarText)
 
+                // "tap twice to quit" implementation
                 onBackPressedDispatcher.addCallback(object: OnBackPressedCallback(true) {
                     private var lastBackPressed = System.currentTimeMillis()
 
@@ -50,6 +50,10 @@ open class PluginListActivity : ComponentActivity() {
                         lastBackPressed = System.currentTimeMillis()
                     }
                 })
+
+                Surface {
+                    PluginListAppContent(state)
+                }
             }
         }
     }

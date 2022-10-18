@@ -12,10 +12,11 @@ set (OBOE_DIR "${TOPDIR}/external/oboe")
 
 add_subdirectory(${OBOE_DIR} ./oboe)
 
-include_directories (${OBOE_DIR}/include)
-
 set (aapsamplehostengine2_SOURCES
+        AAPSampleHostEngine-jni.cpp
         AAPSampleHostEngine.cpp
+        AAPSampleHostEngine_android.cpp
+        zix/ring.cpp
         )
 
 add_library( # Specifies the name of the library.
@@ -36,7 +37,10 @@ find_package(androidaudioplugin REQUIRED CONFIG)
 
 target_include_directories(aapsamplehostengine2
         PRIVATE
+        .
         "${TOPDIR}/include"
+        ${TOPDIR}/external/cmidi2
+        ${OBOE_DIR}/include
         )
 
 target_compile_options(aapsamplehostengine2

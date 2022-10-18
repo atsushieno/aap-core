@@ -83,6 +83,8 @@ dependencies {
     implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
     implementation ("androidx.appcompat:appcompat:1.5.1")
 
+    implementation ("androidx.startup:startup-runtime:1.1.1")
+
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
 

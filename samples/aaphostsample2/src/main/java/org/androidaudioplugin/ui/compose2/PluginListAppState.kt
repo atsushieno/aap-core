@@ -5,7 +5,7 @@ import androidx.navigation.NavHostController
 import org.androidaudioplugin.samples.aaphostsample2.PluginHostEngine
 
 class PluginListAppState constructor(
-    val engine: PluginHostEngine,
+    var engine: PluginHostEngine,
     val navController: NavHostController,
     topAppBarText: String = "Plugins on this device"
 ) {
@@ -20,11 +20,13 @@ class PluginListAppState constructor(
     var errorMessage = mutableStateOf("")
 
     fun activatePlugin() {
+        val engine = this.engine ?: return
         engine.activatePlugin()
         activeState.value = true
     }
 
     fun deactivatePlugin() {
+        val engine = this.engine ?: return
         engine.deactivatePlugin()
         activeState.value = false
     }
