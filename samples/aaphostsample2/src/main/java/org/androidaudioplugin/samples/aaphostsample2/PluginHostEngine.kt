@@ -27,7 +27,8 @@ class PluginHostEngine private constructor(
 
             val client = AudioPluginClientBase(applicationContext)
 
-            val ret = PluginHostEngine(client, oboeFrameSize * 1, availablePluginServices)
+            val aapFrameSize = oboeFrameSize // can be same as oboe frame size
+            val ret = PluginHostEngine(client, aapFrameSize, availablePluginServices)
 
             // FIXME: adjust audioOutChannelCount and appFrameSize somewhere?
             ret.initializeEngine(client.serviceConnector.instanceId,

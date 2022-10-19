@@ -32,8 +32,9 @@ extern "C" {
 
 aap::host_engine::AudioDriverType driver_type{ AAP_HOST_ENGINE_AUDIO_DRIVER_TYPE_OBOE };
 
-void startNewHostEngine() {
+void startNewHostEngine(int32_t oboeBurstFrameSize, int32_t numFramesPerDataCallback) {
     engine = std::make_unique<AAPHostEngineAndroid>(driver_type);
+    reinterpret_cast<AAPHostEngineAndroid*>(engine.get())->setBufferCapacityInFrames(oboeBurstFrameSize, numFramesPerDataCallback);
 }
 
 AAPHostEngineBase* getHostEngine() {
@@ -42,7 +43,7 @@ AAPHostEngineBase* getHostEngine() {
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_samples_aaphostsample2_PluginHostEngine_initializeEngine(
         JNIEnv *env, jobject kotlinEngineObj, jint connectorInstanceId, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize) {
-    startNewHostEngine();
+    startNewHostEngine(oboeFrameSize, 0); // 0 means unspecified in AAPHostEngineAndroidOboePAL::setFramesPerDataCallback().
 
     auto connections = getPluginConnectionListFromJni(connectorInstanceId, true);
     assert(connections);

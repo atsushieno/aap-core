@@ -81,7 +81,11 @@ public:
     int32_t stopStreaming() override;
 
     inline void setBufferCapacityInFrames(int32_t size) override { builder.setBufferCapacityInFrames(size); }
-    inline void setFramesPerDataCallback(int32_t size) override { builder.setFramesPerDataCallback(size); }
+    inline void setFramesPerDataCallback(int32_t size) override {
+        // Oboe: "We encourage leaving this unspecified in most cases."
+        if (size > 0)
+            builder.setFramesPerDataCallback(size);
+    }
 };
 
 class AAPHostEngineAndroid : public AAPHostEngineBase {
@@ -94,11 +98,9 @@ public:
             std::make_unique<AAPHostEngineAndroidStubPAL>(this) :
             std::make_unique<AAPHostEngineAndroidOboePAL>(this)) {}
 
-    inline void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize) {
-        assert(connections);
+    inline void setBufferCapacityInFrames(int32_t oboeBurstFrameSize, int32_t numFramesPerDataCallback) {
         androidPAL->setBufferCapacityInFrames(oboeBurstFrameSize);
-        androidPAL->setFramesPerDataCallback(aapFrameSize);
-        AAPHostEngineBase::initialize(connections, sampleRate, channelCount, aapFrameSize);
+        androidPAL->setFramesPerDataCallback(numFramesPerDataCallback);
     }
 };
 

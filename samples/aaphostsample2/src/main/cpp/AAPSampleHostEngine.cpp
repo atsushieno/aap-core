@@ -62,7 +62,7 @@ void AAPHostEngineBase::initialize(aap::PluginClientConnectionList* connections,
     aap_frame_size = aapFrameSize;
     channel_count = audioOutChannelCount;
 
-    aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
+    aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // x2 for ring buffering
     zix_ring_mlock(aap_input_ring_buffer);
     interleave_buffer = (float*) calloc(sizeof(float), aapFrameSize * audioOutChannelCount);
 
@@ -168,7 +168,9 @@ void AAPHostEngineBase::instantiatePlugin(std::string pluginId) {
         auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
         data->instance_id = instanceId;
-        data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
+
+        // default control size (in bytes) can be anything (than 4096), but not definitely 0 here.
+        data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size, 4096);
 
         for (int i = 0; i < numPorts; i++) {
             auto port = instance->getPort(i);
