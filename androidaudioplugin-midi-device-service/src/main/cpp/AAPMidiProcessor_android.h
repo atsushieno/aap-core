@@ -97,7 +97,6 @@ public:
     inline void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize) {
         assert(connections);
         androidPAL->setBufferCapacityInFrames(oboeBurstFrameSize);
-        androidPAL->setFramesPerDataCallback(aapFrameSize);
         AAPMidiProcessor::initialize(connections, sampleRate, channelCount, aapFrameSize);
     }
 };
