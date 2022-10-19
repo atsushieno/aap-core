@@ -22,27 +22,19 @@ ALL_ABIS=("x86" "x86_64" "armeabi-v7a" "arm64-v8a")
 ALL_APPS=("samples/aaphostsample2" "samples/aaphostsample" "samples/aapbarebonepluginsample" "samples/aapinstrumentsample")
 
 for sample in "${ALL_APPS[@]}"; do
-  echo "APP: $sample"
 
+  echo "APP: $sample"
   SAMPLE=$sample/src/main
   SAMPLE_RES=$SAMPLE/resources/lib
 
   for a in "${ALL_ABIS[@]}"; do
     echo "  ABI: $a"
-    mkdir -p $SAMPLE/jniLibs/$a ;
-    # This is causing unresponsive debugger. Do not use it. Load asan so at using System.loadLibrary() instead.
-    mkdir -p $SAMPLE_RES/$a
-    cp -R asan-wrap-bugfixed.sh $SAMPLE_RES/$a/wrap.sh
-    dos2unix $SAMPLE_RES/$a/wrap.sh
+    rm $SAMPLE_RES/$a/wrap.sh
   done
 
-  cp $CLANG_LIB/linux/libclang_rt.asan-i686*.so $SAMPLE/jniLibs/x86
-  cp $CLANG_LIB/linux/libclang_rt.asan-x86_64*.so $SAMPLE/jniLibs/x86_64
-  cp $CLANG_LIB/linux/libclang_rt.asan-arm*.so $SAMPLE/jniLibs/armeabi-v7a
-  cp $CLANG_LIB/linux/libclang_rt.asan-aarch64*.so $SAMPLE/jniLibs/arm64-v8a
+  rm $SAMPLE/jniLibs/*/libclang_rt.asan-*.so
 
 done
 
 echo "done."
-echo "NOTE: do not forget to set "enable_asan" in the root build.gradle.kts."
-
+echo "NOTE: do not forget to reset "enable_asan" in the root build.gradle.kts."
