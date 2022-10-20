@@ -362,14 +362,15 @@ class PluginPreview(context: Context) {
         val w = if(postApplied) outBuf else inBuf
 
         track.play()
-        /* It is super annoying... there is no way to convert ByteBuffer to little-endian float array. I ended up to convert it manually here */
+
+        // It is somewhat annoying...
+        val fb = ByteBuffer.wrap(w).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
         val fa = FloatArray(w.size / 4)
-        for (i in fa.indices) {
-            val bits = (w[i * 4 + 3].toUByte().toInt() shl 24) + (w[i * 4 + 2].toUByte().toInt() shl 16) + (w[i * 4 + 1].toUByte().toInt() shl 8) + w[i * 4].toUByte().toInt()
-            fa[i] = Float.fromBits(bits)
-        }
+        for (i in fa.indices)
+            fa[i] = fb[i]
+
         var i = 0
-        while (i < w.size) {
+        while (i < fa.size) {
             val ret = track.write(fa, i, audioTrackBufferSizeInBytes / 4, AudioTrack.WRITE_BLOCKING)
             if (ret <= 0)
                 break
