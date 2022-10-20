@@ -163,12 +163,12 @@ class PluginPreview(context: Context) {
                 midi2Bytes.addAll(ump.toPlatformNativeBytes().toTypedArray())
             }
 
-            val header = MidiHelper.toMidiBufferHeader(0, (parameters.size * 4).toUInt())
+            val header = MidiHelper.toMidiBufferHeader(0, (midi2Bytes.size).toUInt())
             midi2Bytes.addAll(0, header)
 
             val localBuffer = audioProcessingBuffers[midi2In]
             localBuffer.clear()
-            localBuffer.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size - 32)
+            localBuffer.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size)
             instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
         } else {
             // If there are parameter elements, look for ports based on each parameter's name.
