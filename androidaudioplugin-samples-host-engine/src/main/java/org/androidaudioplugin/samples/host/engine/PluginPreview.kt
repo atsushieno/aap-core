@@ -154,8 +154,8 @@ class PluginPreview(context: Context) {
                     UmpFactory.midi2NRPN(
                         0,
                         0,
-                        para.id / 0x100,
-                        para.id % 0x100,
+                        para.id / 0x80,
+                        para.id % 0x80,
                         parameters[paraI].toRawBits().toLong()
                     )
                 )
@@ -166,10 +166,10 @@ class PluginPreview(context: Context) {
             val header = MidiHelper.toMidiBufferHeader(0, (parameters.size * 4).toUInt())
             midi2Bytes.addAll(0, header)
 
-            val localBufferL = audioProcessingBuffers[midi2In]
-            localBufferL.clear()
-            localBufferL.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size)
-            instance.setPortBuffer(midi2In, localBufferL, midi2Bytes.size)
+            val localBuffer = audioProcessingBuffers[midi2In]
+            localBuffer.clear()
+            localBuffer.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size - 32)
+            instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
         } else {
             // If there are parameter elements, look for ports based on each parameter's name.
             // If there isn't, just assume parameter index == port index.

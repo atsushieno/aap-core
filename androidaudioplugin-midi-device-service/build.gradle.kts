@@ -35,7 +35,8 @@ android {
             }
             externalNativeBuild {
                 cmake {
-                    cppFlags ("-Werror")
+                    // we cannot error out cmidi2.h as we don't compile cmidi2_test.h
+                    //cppFlags ("-Werror")
                 }
             }
         }
@@ -83,6 +84,6 @@ dependencies {
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
 // This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
 gradle.projectsEvaluated {
-    tasks["buildCMakeDebug"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeDebugNativeLibs"])
-    tasks["buildCMakeRelWithDebInfo"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeReleaseNativeLibs"])
+    tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabDebugPackage"])
+    tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
 }

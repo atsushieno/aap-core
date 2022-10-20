@@ -101,25 +101,23 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                         default:
                             continue;
                     }
-                    auto target = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x100 +
+                    auto target = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 +
                                   cmidi2_ump_get_midi2_nrpn_lsb(ump);
                     uint32_t rawIntValue;
                     float valueIn0To2048;
                     float mod;
                     switch (target) {
                         case PARAM_ID_VOLUME_L:
-                            mod = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
-                                             (relative ? (uint32_t) (ctx->modL * UINT32_MAX) : 0)) /
-                                            (double) UINT32_MAX);
+                            rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump) + (relative ? *(uint32_t*) (&ctx->modL) : 0);
+                            mod = *(float*) (&rawIntValue);
                             if (perNote)
                                 ctx->modL_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
                             else
                                 ctx->modL = mod;
                             break;
                         case PARAM_ID_VOLUME_R:
-                            mod = (float) ((cmidi2_ump_get_midi2_nrpn_data(ump) +
-                                             (relative ? (uint32_t) (ctx->modR * UINT32_MAX) : 0)) /
-                                            (double) UINT32_MAX);
+                            rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump) + (relative ? *(uint32_t*) (&ctx->modR) : 0);
+                            mod = *(float*) (&rawIntValue);
                             if (perNote)
                                 ctx->modR_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
                             else
@@ -129,14 +127,14 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                             if (perNote)
                                 break; // FIXME: implement or log it?
                             rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
-                            valueIn0To2048 = *((float*) (void*) &rawIntValue);
+                            valueIn0To2048 = *((float*) &rawIntValue);
                             ctx->delayL = relative ? ctx->delayL + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
                             break;
                         case PARAM_ID_DELAY_R:
                             if (perNote)
                                 break; // FIXME: implement or log it?
                             rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
-                            valueIn0To2048 = *((float*) (void*) &rawIntValue);
+                            valueIn0To2048 = *((float*) &rawIntValue);
                             ctx->delayR = relative ? ctx->delayR + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
                             break;
                         default:
