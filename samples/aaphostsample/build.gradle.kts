@@ -86,9 +86,7 @@ dependencies {
 
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
 // This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
-/*
 gradle.projectsEvaluated {
-    mergeDebugNativeLibs.dependsOn(rootProject.project("androidaudioplugin").mergeDebugNativeLibs)
-    mergeReleaseNativeLibs.dependsOn(rootProject.project("androidaudioplugin").mergeReleaseNativeLibs)
+    tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeDebugNativeLibs"])
+    tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeReleaseNativeLibs"])
 }
-*/
