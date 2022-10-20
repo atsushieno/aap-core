@@ -185,7 +185,10 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                         valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
                         steps = 10,
                         onValueChange = {
-                            parameters[plugin.parameters.indexOf(para)] = it
+                            val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
+                            if (pi < 0)
+                                return@Slider
+                            parameters[pi] = it
                             sliderPosition = it.toDouble()
                         })
                 }
