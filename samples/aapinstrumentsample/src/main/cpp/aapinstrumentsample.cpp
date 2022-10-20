@@ -16,11 +16,11 @@ extern "C" {
 #define AYUMI_AAP_MIDI2_OUT_PORT 1
 #define AYUMI_AAP_AUDIO_OUT_LEFT 2
 #define AYUMI_AAP_AUDIO_OUT_RIGHT 3
+#define AYUMI_AAP_PARAM_ENVELOPE 0x0F
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_H 0x10
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_M 0x11
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_L 0x12
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE 0x13
-#define AYUMI_AAP_MIDI_CC_DC 0x50
 
 typedef struct {
     struct ayumi* impl;
@@ -130,9 +130,6 @@ void ayumi_aap_process_midi_event(AyumiHandle *a, uint8_t *midi1Event) {
                 case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
                     ayumi_set_envelope_shape(a->impl, msg[2] & 0xF);
                     break;
-                case AYUMI_AAP_MIDI_CC_DC:
-                    ayumi_remove_dc(a->impl);
-                    break;
             }
             break;
         case CMIDI2_STATUS_PITCH_BEND:
@@ -175,12 +172,53 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                 }
                 currentTicks = max;
                 continue;
+            } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL &&
+                       cmidi2_ump_get_status_code(ump) == CMIDI2_STATUS_NRPN) {
+                auto channel = cmidi2_ump_get_channel(ump);
+                auto data7bit = (int32_t) (cmidi2_ump_get_midi2_nrpn_data(ump) >> 25) & 0x7F; // get 7-bit data
+                switch ((cmidi2_ump_get_midi2_nrpn_msb(ump) << 7) + cmidi2_ump_get_midi2_nrpn_lsb(ump)) {
+                    case CMIDI2_CC_BANK_SELECT: {
+                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
+                        auto mixer = (int32_t) *(float*) &value;
+                        auto tone_switch = mixer & 1;
+                        auto noise_switch = (mixer >> 1) & 1;
+                        auto env_switch = (mixer >> 2) & 1;
+                        context->mixer[channel] = (int32_t) mixer;
+                        ayumi_set_mixer(context->impl, channel, tone_switch, noise_switch,
+                                        env_switch);
+                        break;
+                    }
+                    case CMIDI2_CC_PAN: {
+                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
+                        float pan = *(float*) &value;
+                        ayumi_set_pan(context->impl, channel, pan, 0);
+                        break;
+                    }
+                    case CMIDI2_CC_VOLUME: {
+                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
+                        auto volume = (int32_t) *(float*) &value;
+                        ayumi_set_volume(context->impl, channel, volume);
+                        break;
+                    }
+                    case AYUMI_AAP_PARAM_ENVELOPE: {
+                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
+                        auto env = ((int32_t) *(float *) &value) & 0xFFFF;
+                        context->envelope = env;
+                        ayumi_set_envelope(context->impl, context->envelope);
+                        break;
+                    }
+                    case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
+                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
+                        auto shape = (int32_t) *(float*) &value;
+                        ayumi_set_envelope_shape(context->impl, shape);
+                        break;
+                }
+            } else {
+                // FIXME: fully downconvert to MIDI1 and process it (sysex can be lengthier)
+                uint8_t midi1Bytes[16];
+                if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
+                    ayumi_aap_process_midi_event(context, midi1Bytes);
             }
-
-            // FIXME: fully downconvert to MIDI1 and process it (sysex can be lengthier)
-            uint8_t midi1Bytes[16];
-            if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
-                ayumi_aap_process_midi_event(context, midi1Bytes);
         }
     } else {
         auto midi1ptr = ((uint8_t*) (void*) aapmb) + 32;
