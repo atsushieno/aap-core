@@ -414,6 +414,7 @@ class PluginPreview(context: Context) {
             )
             .setBufferSizeInBytes(audioTrackBufferSizeInBytes)
             .setTransferMode(AudioTrack.MODE_STREAM)
+            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
         track.setVolume(2.0f)
 
