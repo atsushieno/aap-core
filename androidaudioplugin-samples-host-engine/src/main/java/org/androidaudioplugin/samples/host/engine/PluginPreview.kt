@@ -144,9 +144,9 @@ class PluginPreview(context: Context) {
         val audioBufferFrameSize = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
         val controlBufferFrameSize = host.defaultControlBufferSizeInBytes / 4 // 4 is sizeof(float)
 
-        if (midi2In >= 0) {
-            val midi2Bytes = mutableListOf<Byte>()
+        val midi2Bytes = mutableListOf<Byte>()
 
+        if (midi2In >= 0) {
             (0 until instance.getParameterCount()).map { paraI ->
                 val para = instance.getParameter(paraI)
 
@@ -162,14 +162,6 @@ class PluginPreview(context: Context) {
                 // generate Assignable Controllers into midi2Bytes.
                 midi2Bytes.addAll(ump.toPlatformNativeBytes().toTypedArray())
             }
-
-            val header = MidiHelper.toMidiBufferHeader(0, (midi2Bytes.size).toUInt())
-            midi2Bytes.addAll(0, header)
-
-            val localBuffer = audioProcessingBuffers[midi2In]
-            localBuffer.clear()
-            localBuffer.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size)
-            instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
         } else {
             // If there are parameter elements, look for ports based on each parameter's name.
             // If there isn't, just assume parameter index == port index.
@@ -219,6 +211,8 @@ class PluginPreview(context: Context) {
         var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf()
         val nextMidi1EventDeltaTime = if (nextMidi1Group.isNotEmpty()) MidiHelper.getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
         var nextMidi1EventFrame = MidiHelper.expandSMPTE(FRAMES_PER_TICK, host.sampleRate, nextMidi1EventDeltaTime)
+
+        var cycle = 0
 
         // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
         // the input sample data. Note that it does not involve any real tiem processing.
@@ -279,8 +273,47 @@ class PluginPreview(context: Context) {
                 midiBuffer.position(0) // do we need this??
                 instance.setPortBuffer(midiIn, midiBuffer, audioProcessingBufferSizesInBytes[midiIn])
             }
+            if (midi2In >= 0) {
+                // Insert note events to the MIDI2 buffer (which may or may not contain parameter NRPNs)
+                //
+                // On MIDI2 channel, it plays n64 notes on channel #0, for 24 cycles long, per 32 cycles,
+                // and after 4 of them it also plays n70, on channel #1, for 40 cycles long, per 48 cycles.
+                if (cycle % 32 == 4) {
+                    val noteOn = Ump(UmpFactory.midi2NoteOn(
+                        0, 0, 64, 0, 0xF800, 0))
+                    midi2Bytes.addAll(noteOn.toPlatformNativeBytes().toTypedArray())
+                }
+                if (cycle % 32 == 28) {
+                    val noteOff = Ump(UmpFactory.midi2NoteOff(
+                        0, 0, 64, 0, 0, 0))
+                    midi2Bytes.addAll(noteOff.toPlatformNativeBytes().toTypedArray())
+                }
+                if (cycle > 32 * 4 && cycle % 48 == 4) {
+                    val noteOn = Ump(UmpFactory.midi2NoteOn(
+                        0, 1, 70, 0, 0xF800, 0))
+                    midi2Bytes.addAll(noteOn.toPlatformNativeBytes().toTypedArray())
+                }
+                if (cycle > 32 * 4 && cycle % 48 == 44) {
+                    val noteOff = Ump(UmpFactory.midi2NoteOff(
+                        0, 1, 70, 0, 0, 0))
+                    midi2Bytes.addAll(noteOff.toPlatformNativeBytes().toTypedArray())
+                }
+                cycle++
+
+                // setup AAP buffer for this cycle
+                val header = MidiHelper.toMidiBufferHeader(0, (midi2Bytes.size).toUInt())
+                midi2Bytes.addAll(0, header)
+
+                val localBuffer = audioProcessingBuffers[midi2In]
+                localBuffer.clear()
+                localBuffer.put(midi2Bytes.toByteArray(), 0, midi2Bytes.size)
+                instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
+            }
 
             instance.process()
+
+            if (midi2In >= 0)
+                midi2Bytes.clear()
 
             if (audioOutL >= 0) {
                 val localBufferL = audioProcessingBuffers[audioOutL]
