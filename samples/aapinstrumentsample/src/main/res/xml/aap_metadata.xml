@@ -15,7 +15,7 @@
     </ports>
     <!-- parameters extension. Note that they work only with MIDI2 port. -->
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
-      <parameter id="0" name="Mixer" default="3" minimum="0" maximum="4" />
+      <parameter id="0" name="Mixer" default="2" minimum="0" maximum="4" />
       <parameter id="7" name="Volume" default="14" minimum="0" maximum="14" />
       <parameter id="10" name="Pan" default="0.5" minimum="0" maximum="1.0" />
       <parameter id="15" name="Envelope" default="64" minimum="0" maximum="65535" />

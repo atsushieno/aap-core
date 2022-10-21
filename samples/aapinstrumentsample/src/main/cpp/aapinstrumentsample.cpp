@@ -106,7 +106,7 @@ void ayumi_aap_process_midi_event(AyumiHandle *a, uint8_t *midi1Event) {
                     tone_switch = mixer & 1;
                     noise_switch = (mixer >> 1) & 1;
                     env_switch = (mixer >> 2) & 1;
-                    a->mixer[channel] = msg[1];
+                    a->mixer[channel] = msg[1] << 5;
                     ayumi_set_mixer(a->impl, channel, tone_switch, noise_switch, env_switch);
                     break;
                 case CMIDI2_CC_PAN:
@@ -162,7 +162,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             auto ump = (cmidi2_ump *) ev;
             if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
                 cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
-                uint32_t max = currentTicks + cmidi2_ump_get_jr_timestamp_timestamp(ump);
+                uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
                 max = max < buffer->num_frames ? max : buffer->num_frames;
                 for (uint32_t i = currentTicks; i < max; i++) {
                     ayumi_process(context->impl);
@@ -183,7 +183,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                         auto tone_switch = mixer & 1;
                         auto noise_switch = (mixer >> 1) & 1;
                         auto env_switch = (mixer >> 2) & 1;
-                        context->mixer[channel] = (int32_t) mixer;
+                        context->mixer[channel] = mixer << 5;
                         ayumi_set_mixer(context->impl, channel, tone_switch, noise_switch,
                                         env_switch);
                         break;
@@ -370,6 +370,7 @@ AndroidAudioPlugin *sample_plugin_new(
     auto data = (aap_midi2_extension_t*) host->get_extension_data(host, AAP_MIDI2_EXTENSION_URI);
     if (data)
         handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
+    //handle->midi_protocol = 2; // this is for testing MIDI2 in port.
 
     return new AndroidAudioPlugin{
             handle,
