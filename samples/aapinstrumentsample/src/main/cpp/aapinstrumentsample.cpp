@@ -221,7 +221,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             }
         }
     } else {
-        auto midi1ptr = ((uint8_t*) (void*) aapmb) + 32;
+        auto midi1ptr = ((uint8_t*) (void*) aapmb) + sizeof(AAPMidiBufferHeader);
         auto midi1end = midi1ptr + aapmb->length;
         while (midi1ptr < midi1end) {
             // get delta time
