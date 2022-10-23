@@ -4,9 +4,9 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import dev.atsushieno.ktmidi.Ump
-import dev.atsushieno.ktmidi.UmpFactory
-import dev.atsushieno.ktmidi.toPlatformNativeBytes
+import dev.atsushieno.ktmidi.*
+import dev.atsushieno.ktmidi.ci.CIFactory
+import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
 import org.androidaudioplugin.*
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
@@ -205,6 +205,32 @@ class PluginPreview(context: Context) {
         val midi1EventsGroups = MidiHelper.groupMidi1EventsByTiming(midi1Events).toList()
 
         instance.activate()
+
+        // Initial process.
+        if (midi2In >= 0) {
+            val ciBuffer = MutableList<Byte>(19) { 0 }
+            CIFactory.midiCIProtocolSet(ciBuffer, 0, 0, 0,
+                MidiCIProtocolTypeInfo(MidiCIProtocolType.MIDI2.toByte(), MidiCIProtocolValue.MIDI2_V1.toByte(), 0, 0, 0))
+            val midiBuffer = audioProcessingBuffers[midi2In].order(ByteOrder.LITTLE_ENDIAN)
+            midiBuffer.position(0)
+            val intBuffer = midiBuffer.asIntBuffer()
+            intBuffer.position(0)
+            intBuffer.put(0)
+            intBuffer.put(ciBuffer.size + 2)
+            intBuffer.put(0)
+            intBuffer.put(0)
+            intBuffer.put(0)
+            intBuffer.put(0)
+            intBuffer.put(0)
+            intBuffer.put(0)
+            midiBuffer.position(32)
+            midiBuffer.put(0.toByte()) // deltaTime
+            midiBuffer.put(0xF0.toByte()) // sysex
+            midiBuffer.put(ciBuffer.toByteArray()) // sysex content
+            midiBuffer.put(0xF7.toByte()) // sysex terminator
+            instance.setPortBuffer(midi2In, midiBuffer, midiBuffer.position())
+        }
+        instance.process()
 
         var currentFrame = 0
         val midi1EventsGroupsIterator = midi1EventsGroups.iterator()
