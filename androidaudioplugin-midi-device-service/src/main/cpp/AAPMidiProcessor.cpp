@@ -50,7 +50,7 @@ namespace aapmidideviceservice {
         return AudioCallbackResult::Continue;
     }
 
-    void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize) {
+    void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize, int32_t midiBufferSize) {
         assert(connections);
         plugin_list = aap::PluginListSnapshot::queryServices();
 
@@ -63,6 +63,8 @@ namespace aapmidideviceservice {
         aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
         zix_ring_mlock(aap_input_ring_buffer);
         interleave_buffer = (float*) calloc(sizeof(float), aapFrameSize * audioOutChannelCount);
+
+        translation_buffer = (uint8_t*) calloc(1, midiBufferSize);
 
         // Oboe configuration
         pal()->setupStream();
@@ -86,6 +88,8 @@ namespace aapmidideviceservice {
             zix_ring_free(aap_input_ring_buffer);
         if (interleave_buffer)
             free(interleave_buffer);
+        if (translation_buffer)
+            free(translation_buffer);
 
         client.reset();
 
@@ -298,14 +302,52 @@ namespace aapmidideviceservice {
         return instance_data ? instance_data.get() : nullptr;
     }
 
+    int32_t AAPMidiProcessor::getAAPMidiInputPortType() {
+        auto data = instance_data.get();
+        assert(data);
+        // Returns
+        // - MIDI2 port if MIDI2 port exists and MIDI2 protocol is specified.
+        // - MIDI1 port unless MIDI1 port does not exist.
+        // - MIDI2 port (or -1 if none exists).
+        return (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ?
+            CMIDI2_PROTOCOL_TYPE_MIDI2 :
+            data->midi1_in_port >= 0 ? CMIDI2_PROTOCOL_TYPE_MIDI1 :
+            CMIDI2_PROTOCOL_TYPE_MIDI2;
+    }
+
     void* AAPMidiProcessor::getAAPMidiInputBuffer() {
         auto data = instance_data.get();
         assert(data);
-        // MIDI2 port if If MIDI2 port exists and MIDI2 protocol is specified.
-        // MIDI1 port unless MIDI1 port does not exist.
-        // MIDI2 port (or -1 if none exists).
-        int portIndex = (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ? data->midi2_in_port : data->midi1_in_port >= 0 ? data->midi1_in_port : data->midi2_in_port;
+        int portIndex = getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2 ? data->midi2_in_port : data->midi1_in_port;
         return data->plugin_buffer->buffers[portIndex];
+    }
+
+    size_t AAPMidiProcessor::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
+        if (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+            // It receives UMPs. If port is MIDI1, we translate to MIDI1 bytestream.
+            if (getAAPMidiInputPortType() != CMIDI2_PROTOCOL_TYPE_MIDI2) {
+                std::runtime_error("TODO");
+            }
+        } else {
+            // It receives MIDI1 bytestream. If port is MIDI2, we translate to UMPs.
+            if (getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+                cmidi2_midi_conversion_context context;
+                cmidi2_midi_conversion_context_initialize(&context);
+                context.midi1 = bytes + offset;
+                context.midi1_num_bytes = length;
+                context.ump = (cmidi2_ump*) translation_buffer;
+                context.ump_num_bytes = sizeof(translation_buffer);
+                context.group = 0;
+
+                if (cmidi2_convert_midi1_to_ump(&context) != CMIDI2_CONVERSION_RESULT_OK) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Failed to translate MIDI 1.0 inputs to MIDI 2.0 UMPs");
+                    return 0;
+                }
+                memcpy(bytes + offset, translation_buffer, context.ump_proceeded_bytes);
+                return context.ump_proceeded_bytes;
+            }
+        }
+        return 0;
     }
 
     void AAPMidiProcessor::processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {
@@ -321,6 +363,11 @@ namespace aapmidideviceservice {
         struct timespec curtime{};
         clock_gettime(CLOCK_REALTIME, &curtime);
         pal()->midiInputReceived(bytes, offset, length, timestampInNanoseconds);
+
+        size_t translated = translateMidiBufferIfNeeded(bytes, offset, length);
+        if (translated > 0)
+            length = translated;
+
         // it is 99.999... percent true since audio loop must have started before any MIDI events...
         if (last_aap_process_time.tv_sec > 0) {
             int64_t diff = (curtime.tv_sec - last_aap_process_time.tv_sec) * 1000000000 +
@@ -333,7 +380,7 @@ namespace aapmidideviceservice {
         auto dstMBH = (AAPMidiBufferHeader*) dst8;
         if (dst8 != nullptr) {
             uint32_t currentOffset = dstMBH->length;
-            if (midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+            if (getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 int32_t tIter = 0;
                 for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
                      ticks > 0; ticks -= 31250, tIter++) {
@@ -355,7 +402,7 @@ namespace aapmidideviceservice {
                 int32_t maybeNewProtocol;
                 if (bytes[offset] == 0xF0 && bytes[length - 1] == 0xF7 &&
                         (maybeNewProtocol = cmidi2_ci_try_parse_new_protocol(bytes + offset + 1, length - 2)) > 0)
-                    midi_protocol = maybeNewProtocol;
+                    receiver_midi_protocol = maybeNewProtocol;
                 // Note that Set New Protocol has to be also sent to the recipient too.
 
                 dstMBH->time_options = -100;

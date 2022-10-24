@@ -23,7 +23,7 @@ class AudioPluginMidiDeviceInstance private constructor(
             // FIXME: adjust audioOutChannelCount and appFrameSize somewhere?
 
             ret.initializeMidiProcessor(client.serviceConnector.instanceId,
-                sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize)
+                sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize, ret.midiBufferSize)
 
             client.pluginInstantiatedListeners.add { instance ->
                 ret.instantiatePlugin(instance.pluginInfo.pluginId!!)
@@ -39,6 +39,7 @@ class AudioPluginMidiDeviceInstance private constructor(
 
     private val audioOutChannelCount: Int = 2
     private val aapFrameSize = 512
+    private val midiBufferSize = 4096
 
     fun onDeviceClosed() {
         deactivate()
@@ -47,14 +48,14 @@ class AudioPluginMidiDeviceInstance private constructor(
     }
 
     fun onSend(msg: ByteArray?, offset: Int, count: Int, timestamp: Long) {
-        // We skip too lengthy MIDI buffer, dropped at frame size.
-        val actualSize = if (count > aapFrameSize) aapFrameSize else count
+        // We skip too lengthy MIDI buffer.
+        val actualSize = if (count > midiBufferSize) midiBufferSize else count
 
         processMessage(msg, offset, actualSize, timestamp)
     }
 
     // Initialize basic native parts, without any plugin information.
-    private external fun initializeMidiProcessor(connectorInstanceId: Int, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int)
+    private external fun initializeMidiProcessor(connectorInstanceId: Int, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int, midiBufferSize: Int)
     private external fun terminateMidiProcessor()
     private external fun instantiatePlugin(pluginId: String)
     private external fun processMessage(msg: ByteArray?, offset: Int, count: Int, timestampInNanoseconds: Long)

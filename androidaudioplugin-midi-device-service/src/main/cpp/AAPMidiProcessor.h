@@ -17,9 +17,12 @@ namespace aapmidideviceservice {
 
     class AAPMidiProcessorPAL {
     public:
+        // They are used to control callback-based audio output streaming.
         virtual int32_t setupStream() = 0;
         virtual int32_t startStreaming() = 0;
         virtual int32_t stopStreaming() = 0;
+        // It is kind of raw MIDI input event listener (not a "handler" that overrides processing).
+        // The Android Stub implementation would override this to dump the messages to Android log.
         virtual void midiInputReceived(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds) {}
     };
 
@@ -34,6 +37,12 @@ namespace aapmidideviceservice {
         AAP_MIDI_PROCESSOR_STATE_INACTIVE,
         AAP_MIDI_PROCESSOR_STATE_STOPPED,
         AAP_MIDI_PROCESSOR_STATE_ERROR
+    };
+
+    enum AAPMidiTranslationType {
+        AAP_MIDI_TRANSLATION_TYPE_NONE,
+        AAP_MIDI_TRANSLATION_TYPE_1To2,
+        AAP_MIDI_TRANSLATION_TYPE_2To1
     };
 
     class PluginInstanceData {
@@ -65,10 +74,17 @@ namespace aapmidideviceservice {
         int channel_count{2};
         std::unique_ptr<PluginInstanceData> instance_data;
         int instrument_instance_id{0};
-        int32_t midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
+        // MIDI protocol type of the messages it receives via JNI
+        int32_t receiver_midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
 
+        int32_t getAAPMidiInputPortType();
         PluginInstanceData* getAAPMidiInputData();
         void* getAAPMidiInputBuffer();
+        // used when we need MIDI1<->UMP translation.
+        uint8_t* translation_buffer{nullptr};
+
+        // returns 0 if translation did not happen. Otherwise return the size of translated buffer in translation_buffer.
+        size_t translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length);
 
         // Outputs
         ZixRing *aap_input_ring_buffer{nullptr};
@@ -80,7 +96,7 @@ namespace aapmidideviceservice {
         virtual AAPMidiProcessorPAL* pal() = 0;
 
     public:
-        void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize);
+        void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize, int32_t maxMidiBufferSize);
 
         void instantiatePlugin(std::string pluginId);
 
