@@ -1,12 +1,13 @@
+#include "aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h"
+
 #include <android/binder_parcel_utils.h>
-#include <aidl/org/androidaudioplugin/BpAudioPluginInterfaceCallback.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterfaceCallback.h>
-#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
+#include <aidl/org/androidaudioplugin/BpAudioPluginInterfaceCallback.h>
 
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
-static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code_t _aidl_code, const AParcel* _aidl_in, AParcel* _aidl_out) {
+static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_onTransact(AIBinder* _aidl_binder, transaction_code_t _aidl_code, const AParcel* _aidl_in, AParcel* _aidl_out) {
   (void)_aidl_in;
   (void)_aidl_out;
   binder_status_t _aidl_ret_status = STATUS_UNKNOWN_TRANSACTION;
@@ -17,13 +18,13 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
       int32_t in_portId;
       int32_t in_size;
 
-      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_instanceId);
+      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_instanceId);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_portId);
+      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_portId);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = AParcel_readInt32(_aidl_in, &in_size);
+      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_size);
       if (_aidl_ret_status != STATUS_OK) break;
 
       ::ndk::ScopedAStatus _aidl_status = _aidl_impl->notify(in_instanceId, in_portId, in_size);
@@ -34,7 +35,7 @@ static binder_status_t _aidl_onTransact(AIBinder* _aidl_binder, transaction_code
   return _aidl_ret_status;
 }
 
-static AIBinder_Class* _g_aidl_clazz = ::ndk::ICInterface::defineClass(IAudioPluginInterfaceCallback::descriptor, _aidl_onTransact);
+static AIBinder_Class* _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_clazz = ::ndk::ICInterface::defineClass(IAudioPluginInterfaceCallback::descriptor, _aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_onTransact);
 
 BpAudioPluginInterfaceCallback::BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder) : BpCInterface(binder) {}
 BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
@@ -48,13 +49,13 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
   _aidl_ret_status = AIBinder_prepareTransaction(asBinder().get(), _aidl_in.getR());
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_instanceId);
+  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_instanceId);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_portId);
+  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_portId);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = AParcel_writeInt32(_aidl_in.get(), in_size);
+  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_size);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AIBinder_transact(
@@ -82,7 +83,7 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
 BnAudioPluginInterfaceCallback::BnAudioPluginInterfaceCallback() {}
 BnAudioPluginInterfaceCallback::~BnAudioPluginInterfaceCallback() {}
 ::ndk::SpAIBinder BnAudioPluginInterfaceCallback::createBinder() {
-  AIBinder* binder = AIBinder_new(_g_aidl_clazz, static_cast<void*>(this));
+  AIBinder* binder = AIBinder_new(_g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_clazz, static_cast<void*>(this));
   #ifdef BINDER_STABILITY_SUPPORT
   AIBinder_markCompilationUnitStability(binder);
   #endif  // BINDER_STABILITY_SUPPORT
@@ -95,7 +96,7 @@ IAudioPluginInterfaceCallback::~IAudioPluginInterfaceCallback() {}
 
 
 std::shared_ptr<IAudioPluginInterfaceCallback> IAudioPluginInterfaceCallback::fromBinder(const ::ndk::SpAIBinder& binder) {
-  if (!AIBinder_associateClass(binder.get(), _g_aidl_clazz)) { return nullptr; }
+  if (!AIBinder_associateClass(binder.get(), _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_clazz)) { return nullptr; }
   std::shared_ptr<::ndk::ICInterface> interface = ::ndk::ICInterface::asInterface(binder.get());
   if (interface) {
     return std::static_pointer_cast<IAudioPluginInterfaceCallback>(interface);
