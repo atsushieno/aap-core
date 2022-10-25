@@ -8,8 +8,8 @@
     <!-- FIXME: remove those declared ports and get default configuration working with PluginPreview
          (which does not support midi2 in port right now -->
     <ports>
-      <port direction="input" content="midi" name="MIDI In" />
-      <port direction="output" content="midi" name="MIDI Out" />
+      <port direction="input" content="midi2" name="MIDI In" />
+      <port direction="output" content="midi2" name="MIDI Out" />
       <port direction="output" content="audio" name="Left Out" />
       <port direction="output" content="audio" name="Right Out" />
     </ports>

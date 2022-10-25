@@ -365,12 +365,15 @@ AndroidAudioPlugin *sample_plugin_new(
         ayumi_set_volume(handle->impl, i, 14); // FIXME: max = 14?? 15 doesn't work
     }
 
+#if false // FIXME: remove this. It will become useless
     // see if the host supports MIDI CI extension data.
     // Note that it is querying host capability, not the plugin extension.
     auto data = (aap_midi2_extension_t*) host->get_extension_data(host, AAP_MIDI2_EXTENSION_URI);
     if (data)
         handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
-    //handle->midi_protocol = 2; // this is for testing MIDI2 in port.
+#else
+    handle->midi_protocol = 2; // this is for testing MIDI2 in port.
+#endif
 
     return new AndroidAudioPlugin{
             handle,
