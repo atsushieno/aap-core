@@ -326,7 +326,20 @@ namespace aapmidideviceservice {
         if (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
             // It receives UMPs. If port is MIDI1, we translate to MIDI1 bytestream.
             if (getAAPMidiInputPortType() != CMIDI2_PROTOCOL_TYPE_MIDI2) {
-                std::runtime_error("TODO");
+                cmidi2_midi_conversion_context context;
+                cmidi2_midi_conversion_context_initialize(&context);
+                context.ump = (cmidi2_ump*) bytes + offset;
+                context.ump_num_bytes = length;
+                context.midi1 = translation_buffer;
+                context.midi1_num_bytes = sizeof(translation_buffer);
+                context.group = 0;
+
+                if (cmidi2_convert_ump_to_midi1(&context) != CMIDI2_CONVERSION_RESULT_OK) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Failed to translate MIDI 2.0 UMP inputs to MIDI 1.0 stream");
+                    return 0;
+                }
+                memcpy(bytes + offset, translation_buffer, context.ump_proceeded_bytes);
+                return context.midi1_proceeded_bytes;
             }
         } else {
             // It receives MIDI1 bytestream. If port is MIDI2, we translate to UMPs.
