@@ -145,7 +145,11 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                     buttonStatePerRow.value = true
                 }
             }) { Text(if (pluginAppliedState) "On" else "Off") }
-            Button(onClick = {}) { Text("UI") }
+            Button(onClick = {
+                coroutineScope.launch { previewState.playMidiNotes() }
+                }) {
+                Text("MIDI")
+            }
             Button(onClick = {
                 coroutineScope.launch { previewState.playSound(pluginAppliedState) }
                 }) {

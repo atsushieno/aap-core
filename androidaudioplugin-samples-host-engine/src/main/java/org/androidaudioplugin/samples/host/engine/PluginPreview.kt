@@ -4,16 +4,25 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.midi.MidiDeviceInfo.PortInfo
+import android.media.midi.MidiInputPort
+import android.media.midi.MidiManager
 import dev.atsushieno.ktmidi.*
 import dev.atsushieno.ktmidi.ci.CIFactory
 import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
-import org.androidaudioplugin.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.androidaudioplugin.ParameterInformation
+import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class PluginPreview(context: Context) {
+class PluginPreview(private val context: Context) {
 
     companion object {
         const val FRAMES_PER_TICK = 100
@@ -39,7 +48,6 @@ class PluginPreview(context: Context) {
 
 
     fun dispose() {
-        track.release()
         host.dispose()
     }
 
@@ -413,51 +421,17 @@ class PluginPreview(context: Context) {
         }
     }
 
-    private val track: AudioTrack
-    private val audioTrackBufferSizeInBytes: Int
-
-    fun playSound(postApplied: Boolean)
+    fun setupAudioTrack() : Pair<AudioTrack,Int>
     {
-        val w = if(postApplied) outBuf else inBuf
-
-        track.play()
-
-        // It is somewhat annoying...
-        val fb = ByteBuffer.wrap(w).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-        val fa = FloatArray(w.size / 4)
-        for (i in fa.indices)
-            fa[i] = fb[i]
-
-        var i = 0
-        while (i < fa.size) {
-            val ret = track.write(fa, i, audioTrackBufferSizeInBytes / 4, AudioTrack.WRITE_BLOCKING)
-            if (ret <= 0)
-                break
-            i += ret
-        }
-        track.flush()
-        track.stop()
-    }
-
-    init {
-        host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
-        host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
-
-        val assets = context.applicationContext.assets
-        val wavAsset = assets.open("sample.wav")
-        inBuf = wavAsset.readBytes().drop(88).toByteArray()
-        wavAsset.close()
-        outBuf = ByteArray(inBuf.size)
-
         // set up AudioTrack
         // FIXME: once we support resampling then support platform audio configuration.
         val sampleRate = PCM_DATA_SAMPLE_RATE
-        audioTrackBufferSizeInBytes = AudioTrack.getMinBufferSize(
+        val audioTrackBufferSizeInBytes = AudioTrack.getMinBufferSize(
             PCM_DATA_SAMPLE_RATE,
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_FLOAT
         )
-        track = AudioTrack.Builder()
+        val track = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -480,5 +454,88 @@ class PluginPreview(context: Context) {
         val fa = FloatArray(1024)
         for (i in 0 .. 10)
             track.write(fa, 0, 1024, AudioTrack.WRITE_BLOCKING)
+        return Pair(track, audioTrackBufferSizeInBytes)
+    }
+
+    fun playSound(postApplied: Boolean)
+    {
+        val w = if(postApplied) outBuf else inBuf
+
+        val (track, audioTrackBufferSizeInBytes) = setupAudioTrack()
+
+        track.play()
+
+        // It is somewhat annoying...
+        val fb = ByteBuffer.wrap(w).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+        val fa = FloatArray(w.size / 4)
+        for (i in fa.indices)
+            fa[i] = fb[i]
+
+        var i = 0
+        while (i < fa.size) {
+            val ret = track.write(fa, i, audioTrackBufferSizeInBytes / 4, AudioTrack.WRITE_BLOCKING)
+            if (ret <= 0)
+                break
+            i += ret
+        }
+        track.flush()
+        track.stop()
+        track.release()
+    }
+
+    private var midi_input: MidiInputPort? = null
+
+    fun playMidiNotes()
+    {
+        val doSendMessages = { input: MidiInputPort ->
+            input.send(byteArrayOf(0x90.toByte(), 0x40, 0x78), 0, 3)
+            input.send(byteArrayOf(0x90.toByte(), 0x44, 0x78), 0, 3)
+            input.send(byteArrayOf(0x90.toByte(), 0x47, 0x78), 0, 3)
+            Thread.sleep(1000)
+            input.send(byteArrayOf(0x80.toByte(), 0x40, 0x78), 0, 3)
+            input.send(byteArrayOf(0x80.toByte(), 0x44, 0x78), 0, 3)
+            input.send(byteArrayOf(0x80.toByte(), 0x47, 0x78), 0, 3)
+        }
+        val doPlayNotes = {
+            val input = midi_input
+            if (input != null) {
+                CoroutineScope(Dispatchers.Default).launch {
+                    withContext(Dispatchers.IO) {
+                        doSendMessages(input)
+                    }
+                }
+            }
+        }
+
+        val input = midi_input
+        if (input != null) {
+            doPlayNotes()
+        } else {
+            val manager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
+            val deviceInfo = manager.devices.firstOrNull { deviceInfo ->
+                (deviceInfo.properties.get("service_info") as android.content.pm.ServiceInfo?)?.packageName == (context.packageName
+                    ?: false)
+            }
+            if (deviceInfo != null) {
+                manager.openDevice(deviceInfo, { device ->
+                    val portNumber = deviceInfo.ports.firstOrNull {
+                        it.type == PortInfo.TYPE_INPUT
+                    }?.portNumber ?: return@openDevice
+                    midi_input = device.openInputPort(portNumber)
+                    doPlayNotes()
+                }, null)
+            }
+        }
+    }
+
+    init {
+        host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
+        host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
+
+        val assets = context.applicationContext.assets
+        val wavAsset = assets.open("sample.wav")
+        inBuf = wavAsset.readBytes().drop(88).toByteArray()
+        wavAsset.close()
+        outBuf = ByteArray(inBuf.size)
     }
 }
