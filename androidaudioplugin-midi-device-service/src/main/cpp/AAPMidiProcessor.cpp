@@ -240,10 +240,17 @@ namespace aapmidideviceservice {
         state = AAP_MIDI_PROCESSOR_STATE_INACTIVE;
     }
 
+    int32_t failed_plugin_process_count;
     // Called by Oboe audio callback implementation. It calls process.
     void AAPMidiProcessor::callPluginProcess() {
         auto data = instance_data.get();
-        assert(data);
+        if (!data) {
+            // It's not ready to process audio yet.
+            if (failed_plugin_process_count++ < 10)
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "callPluginProcess() failed. Plugin instance data Not ready uet.");
+            return;
+        }
+
         client->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
@@ -251,10 +258,16 @@ namespace aapmidideviceservice {
                 ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi1_in_port])->length = 0;
             if (data->midi2_in_port >= 0)
                 ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi2_in_port])->length = 0;
+        } else {
+            if (failed_plugin_process_count++ < 10)
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "callPluginProcess() is invoked while there is no instrument plugin instantiated.");
+            return;
         }
     }
 
-    // Called by Oboe audio callback implementation. It is called after AAP processing, and
+    int32_t failed_audio_output_count{0};
+
+    // Called by Oboe audio callback (`onAudioReady()`) implementation. It is called after AAP processing, and
     //  fill the audio outputs into an intermediate buffer, interleaving the results,
     //  then copied into the ring buffer.
     void AAPMidiProcessor::fillAudioOutput() {
@@ -264,7 +277,15 @@ namespace aapmidideviceservice {
         memset(interleave_buffer, 0, channel_count * aap_frame_size * sizeof(float));
 
         auto data = instance_data.get();
-        assert(data);
+        if (!data) {
+            // It's not ready to process audio yet.
+            if (failed_audio_output_count++ < 10)
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "fillAudioOutput() for Oboe audio callback failed. Plugin instance data Not ready uet.");
+            return;
+        }
+        else
+            failed_audio_output_count = 0;
+
         if (data->instance_id == instrument_instance_id) {
             int numPorts = data->getAudioOutPorts()->size();
             for (int p = 0; p < numPorts; p++) {
@@ -274,32 +295,14 @@ namespace aapmidideviceservice {
                 for (int i = 0; i < aap_frame_size; i++)
                     interleave_buffer[i * numPorts + p] = src[i];
             }
+            failed_audio_output_count = 0;
+        } else {
+            if (failed_audio_output_count++ < 10)
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "fillAudioOutput() is invoked while there is no instrument plugin instantiated.");
+            return;
         }
 
         zix_ring_write(aap_input_ring_buffer, interleave_buffer, channel_count * aap_frame_size * sizeof(float));
-    }
-
-    int getTicksFromNanoseconds(int deltaTimeSpec, uint64_t value) {
-        double bpm = 120.0;
-        auto ticksPerSec = deltaTimeSpec / (bpm / 60);
-        auto ret = ticksPerSec * value / 1000000000;
-        return (int) ret;
-    }
-
-    int set7BitEncodedLength(uint8_t* buffer, int value) {
-        int pos = 0;
-        do {
-            buffer[pos] = value % 80;
-            value /= 0x80;
-            if (value > 0)
-                buffer[pos] &= 0x80;
-            pos++;
-        } while (value != 0);
-        return pos;
-    }
-
-    PluginInstanceData* AAPMidiProcessor::getAAPMidiInputData() {
-        return instance_data ? instance_data.get() : nullptr;
     }
 
     int32_t AAPMidiProcessor::getAAPMidiInputPortType() {
