@@ -52,9 +52,9 @@ android {
 dependencies {
     implementation (project(":androidaudioplugin"))
 
-    implementation ("androidx.core:core-ktx:1.7.0")
+    implementation ("androidx.core:core-ktx:1.9.0")
     implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    implementation ("androidx.appcompat:appcompat:1.4.1")
+    implementation ("androidx.appcompat:appcompat:1.5.1")
 
     androidTestImplementation ("androidx.test:rules:1.4.0")
     androidTestImplementation ("androidx.test.ext:junit:1.1.3")
