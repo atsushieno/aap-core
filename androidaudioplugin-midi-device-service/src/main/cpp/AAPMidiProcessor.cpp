@@ -327,6 +327,8 @@ namespace aapmidideviceservice {
     }
 
     size_t AAPMidiProcessor::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
+        if (length == 0)
+            return 0;
         if (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
             // It receives UMPs. If port is MIDI1, we translate to MIDI1 bytestream.
             if (getAAPMidiInputPortType() != CMIDI2_PROTOCOL_TYPE_MIDI2) {
@@ -398,7 +400,8 @@ namespace aapmidideviceservice {
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
         auto dstMBH = (AAPMidiBufferHeader*) dst8;
         if (dst8 != nullptr) {
-            uint32_t currentOffset = dstMBH->length;
+            uint32_t savedOffset = dstMBH->length;
+            uint32_t currentOffset = savedOffset;
             if (getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2) {
                 int32_t tIter = 0;
                 for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
@@ -407,11 +410,19 @@ namespace aapmidideviceservice {
                             (int32_t) cmidi2_ump_jr_timestamp_direct(0,
                                                                      ticks > 31250 ? 31250 : ticks);
                 }
-                dstMBH->length += tIter * 4;
+                currentOffset += tIter * 4;
                 currentOffset += tIter * 4;
                 // process MIDI 2.0 data
                 memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
-                dstMBH->length += length;
+                currentOffset += length;
+                // FIXME: use atomic compare-exchange or whatever
+                if (savedOffset != dstMBH->length) {
+                    // updated
+                    memcpy(dst8 + 32, dst8 + 32 + savedOffset, length);
+                    dstMBH->length = currentOffset - savedOffset;
+                }
+                else
+                    dstMBH->length = currentOffset;
                 dstMBH->time_options = 0; // reserved in MIDI2 mode
                 for (int i = 2; i < 8; i++)
                     dstMBH->reserved[i - 2] = 0; // reserved

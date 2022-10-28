@@ -489,13 +489,17 @@ class PluginPreview(private val context: Context) {
             CoroutineScope(Dispatchers.IO).launch {
                 val input = midi_input ?: return@launch
                 withContext(Dispatchers.IO) {
-                    input.send(byteArrayOf(0x90.toByte(), 0x40, 0x78), 0, 3)
-                    input.send(byteArrayOf(0x90.toByte(), 0x44, 0x78), 0, 3)
-                    input.send(byteArrayOf(0x90.toByte(), 0x47, 0x78), 0, 3)
+                    input.send(byteArrayOf(
+                        0x90.toByte(), 0x40, 0x78,
+                        0x91.toByte(), 0x44, 0x78,
+                        0x92.toByte(), 0x47, 0x78,
+                    ), 0, 9)
                     delay(1000)
-                    input.send(byteArrayOf(0x80.toByte(), 0x40, 0x78), 0, 3)
-                    input.send(byteArrayOf(0x80.toByte(), 0x44, 0x78), 0, 3)
-                    input.send(byteArrayOf(0x80.toByte(), 0x47, 0x78), 0, 3)
+                    input.send(byteArrayOf(
+                        0x80.toByte(), 0x40, 0,
+                        0x81.toByte(), 0x44, 0,
+                        0x82.toByte(), 0x47, 0,
+                    ), 0, 9)
                 }
             }
         }
