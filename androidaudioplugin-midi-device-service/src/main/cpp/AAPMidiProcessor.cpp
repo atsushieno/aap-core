@@ -411,7 +411,6 @@ namespace aapmidideviceservice {
                                                                      ticks > 31250 ? 31250 : ticks);
                 }
                 currentOffset += tIter * 4;
-                currentOffset += tIter * 4;
                 // process MIDI 2.0 data
                 memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
                 currentOffset += length;
