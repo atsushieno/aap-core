@@ -43,7 +43,6 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
     }
 
     fun onDeviceClosed() {
-        assert(instance != null)
         instance?.onDeviceClosed()
         instance = null
     }
