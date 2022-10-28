@@ -329,6 +329,7 @@ AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, 
 	if (!plugin_buffer) {
         assert(numPorts >= 0);
         assert(numFrames > 0);
+        assert(defaultControlBytesPerBlock > 0);
         allocateAudioPluginBuffer(numPorts, numFrames, defaultControlBytesPerBlock);
     }
 	return plugin_buffer->getAudioPluginBuffer();

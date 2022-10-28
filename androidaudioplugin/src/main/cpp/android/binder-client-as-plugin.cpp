@@ -26,7 +26,6 @@ public:
 	ndk::SpAIBinder spAIBinder{nullptr};
 	std::unique_ptr<aap::PluginSharedMemoryStore> shm_store{nullptr};
 	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
-	AndroidAudioPluginBuffer *previous_buffer{nullptr};
 	aap_state_extension_t state_ext;
 	aap_state_t state{};
     aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
@@ -120,8 +119,6 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
         }
 
-		ctx->previous_buffer = ctx->shm_store->getAudioPluginBuffer();
-
 		ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
     }
 }
@@ -149,11 +146,11 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
 		return;
 
+    auto shmBuffer = ctx->shm_store->getAudioPluginBuffer();
+
 	// FIXME: copy only input ports
 	for (size_t i = 0; i < buffer->num_buffers; i++) {
-		if (ctx->previous_buffer->buffers[i] != buffer->buffers[i])
-			memcpy(ctx->previous_buffer->buffers[i], buffer->buffers[i],
-				   buffer->num_frames * sizeof(float));
+		memcpy(shmBuffer->buffers[i], buffer->buffers[i], buffer->num_frames * sizeof(float));
 	}
 
 	auto status = ctx->proxy->process(ctx->instance_id, timeoutInNanoseconds);
@@ -164,9 +161,7 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 
 	// FIXME: copy only output ports
 	for (size_t i = 0; i < buffer->num_buffers; i++) {
-		if (ctx->previous_buffer->buffers[i] != buffer->buffers[i])
-			memcpy(buffer->buffers[i], ctx->previous_buffer->buffers[i],
-				   buffer->num_frames * sizeof(float));
+		memcpy(buffer->buffers[i], shmBuffer->buffers[i], buffer->num_frames * sizeof(float));
 	}
 }
 

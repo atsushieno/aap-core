@@ -69,11 +69,12 @@ namespace aapmidideviceservice {
         // AAP
         aap::PluginListSnapshot plugin_list{};
         std::unique_ptr<aap::PluginClient> client{nullptr};
-        int sample_rate{0};
-        int aap_frame_size{4096};
-        int channel_count{2};
+        int32_t sample_rate{0};
+        int32_t aap_frame_size{4096};
+        int32_t midi_buffer_size{4096};
+        int32_t channel_count{2};
         std::unique_ptr<PluginInstanceData> instance_data;
-        int instrument_instance_id{0};
+        int32_t instrument_instance_id{0};
         // MIDI protocol type of the messages it receives via JNI
         int32_t receiver_midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
 
@@ -96,7 +97,7 @@ namespace aapmidideviceservice {
         virtual AAPMidiProcessorPAL* pal() = 0;
 
     public:
-        void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize, int32_t maxMidiBufferSize);
+        void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t channelCount, int32_t aapFrameSize, int32_t midiBufferSize);
 
         void instantiatePlugin(std::string pluginId);
 

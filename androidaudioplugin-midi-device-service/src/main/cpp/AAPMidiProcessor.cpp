@@ -58,6 +58,7 @@ namespace aapmidideviceservice {
         client = std::make_unique<aap::PluginClient>(connections, &plugin_list);
         sample_rate = sampleRate;
         aap_frame_size = aapFrameSize;
+        midi_buffer_size = midiBufferSize;
         channel_count = audioOutChannelCount;
 
         aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
@@ -170,7 +171,7 @@ namespace aapmidideviceservice {
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
             data->instance_id = instanceId;
-            data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size);
+            data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size, midi_buffer_size);
 
             for (int i = 0; i < numPorts; i++) {
                 auto port = instance->getPort(i);
