@@ -312,7 +312,7 @@ namespace aapmidideviceservice {
         // Returns
         // - MIDI2 port if MIDI2 port exists and MIDI2 protocol is specified.
         // - MIDI1 port unless MIDI1 port does not exist.
-        // - MIDI2 port (or -1 if none exists).
+        // - MIDI2 port (translation needed).
         return (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2 && data->midi2_in_port >= 0) ?
             CMIDI2_PROTOCOL_TYPE_MIDI2 :
             data->midi1_in_port >= 0 ? CMIDI2_PROTOCOL_TYPE_MIDI1 :
@@ -393,6 +393,8 @@ namespace aapmidideviceservice {
             actualTimestamp = (timestampInNanoseconds + diff) % nanosecondsPerCycle;
         }
 
+        // FIXME: rewrite this part to work fine along with realtime consumer.
+        //  Currently read (consomption) occurs while it is preparing for MIDI buffer and things become inconsistent.
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
         auto dstMBH = (AAPMidiBufferHeader*) dst8;
         if (dst8 != nullptr) {

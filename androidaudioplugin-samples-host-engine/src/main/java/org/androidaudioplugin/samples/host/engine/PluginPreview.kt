@@ -4,16 +4,14 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.midi.MidiDevice
 import android.media.midi.MidiDeviceInfo.PortInfo
 import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
 import dev.atsushieno.ktmidi.*
 import dev.atsushieno.ktmidi.ci.CIFactory
 import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
@@ -485,36 +483,31 @@ class PluginPreview(private val context: Context) {
 
     private var midi_input: MidiInputPort? = null
 
-    fun playMidiNotes()
+    fun playMidiNotes() : Boolean
     {
-        val doSendMessages = { input: MidiInputPort ->
-            input.send(byteArrayOf(0x90.toByte(), 0x40, 0x78), 0, 3)
-            input.send(byteArrayOf(0x90.toByte(), 0x44, 0x78), 0, 3)
-            input.send(byteArrayOf(0x90.toByte(), 0x47, 0x78), 0, 3)
-            Thread.sleep(1000)
-            input.send(byteArrayOf(0x80.toByte(), 0x40, 0x78), 0, 3)
-            input.send(byteArrayOf(0x80.toByte(), 0x44, 0x78), 0, 3)
-            input.send(byteArrayOf(0x80.toByte(), 0x47, 0x78), 0, 3)
-        }
         val doPlayNotes = {
-            val input = midi_input
-            if (input != null) {
-                CoroutineScope(Dispatchers.Default).launch {
-                    withContext(Dispatchers.IO) {
-                        doSendMessages(input)
-                    }
+            CoroutineScope(Dispatchers.IO).launch {
+                val input = midi_input ?: return@launch
+                withContext(Dispatchers.IO) {
+                    input.send(byteArrayOf(0x90.toByte(), 0x40, 0x78), 0, 3)
+                    input.send(byteArrayOf(0x90.toByte(), 0x44, 0x78), 0, 3)
+                    input.send(byteArrayOf(0x90.toByte(), 0x47, 0x78), 0, 3)
+                    delay(1000)
+                    input.send(byteArrayOf(0x80.toByte(), 0x40, 0x78), 0, 3)
+                    input.send(byteArrayOf(0x80.toByte(), 0x44, 0x78), 0, 3)
+                    input.send(byteArrayOf(0x80.toByte(), 0x47, 0x78), 0, 3)
                 }
             }
         }
 
-        val input = midi_input
-        if (input != null) {
+        if (midi_input != null) {
             doPlayNotes()
         } else {
             val manager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
             val deviceInfo = manager.devices.firstOrNull { deviceInfo ->
-                (deviceInfo.properties.get("service_info") as android.content.pm.ServiceInfo?)?.packageName == (context.packageName
-                    ?: false)
+                val serviceInfo = deviceInfo.properties.get("service_info") as android.content.pm.ServiceInfo?
+                val pluginInfo = this.pluginInfo
+                serviceInfo != null && pluginInfo != null && serviceInfo.packageName == pluginInfo.packageName
             }
             if (deviceInfo != null) {
                 manager.openDevice(deviceInfo, { device ->
@@ -525,7 +518,13 @@ class PluginPreview(private val context: Context) {
                     doPlayNotes()
                 }, null)
             }
+            else {
+                android.util.Log.e("AAP.PluginPreview", "MidiDeviceService cannot be opened.")
+                return false
+            }
         }
+
+        return true
     }
 
     init {
