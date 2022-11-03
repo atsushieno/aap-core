@@ -13,8 +13,9 @@ val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
-    buildFeatures {
-        viewBinding = true
+    // We enable K2 except for compose support (K2 is not ready for compiler plugins yet)
+    kotlinOptions {
+        useK2 = true
     }
     defaultConfig {
         applicationId = "org.androidaudioplugin.aaphostsample"

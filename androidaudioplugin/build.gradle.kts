@@ -76,6 +76,11 @@ android {
         jniLibs.excludes.add("**/libc++_shared.so")
     }
 
+    // We enable K2 except for compose support (K2 is not ready for compiler plugins yet)
+    kotlinOptions {
+        useK2 = true
+    }
+
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
     // It's been long time until I got this working, and I have no idea why it started working.
     //  If you don't get this working, you are not alone: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
