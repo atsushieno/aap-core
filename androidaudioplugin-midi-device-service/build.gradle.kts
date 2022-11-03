@@ -67,12 +67,6 @@ android {
         jniLibs.excludes.add("**/libc++_shared.so")
         jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }
-
-    // We enable K2 except for compose support (K2 is not ready for compiler plugins yet)
-    kotlinOptions {
-        useK2 = true
-    }
-
     namespace = "org.androidaudioplugin.midideviceservice"
 }
 

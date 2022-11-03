@@ -50,10 +50,6 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
-    // We enable K2 except for compose support (K2 is not ready for compiler plugins yet)
-    kotlinOptions {
-        useK2 = true
-    }
     namespace = "org.androidaudioplugin.aapinstrumentsample"
 }
 

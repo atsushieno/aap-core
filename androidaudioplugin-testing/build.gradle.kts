@@ -27,12 +27,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-
-    // We enable K2 except for compose support (K2 is not ready for compiler plugins yet)
-    kotlinOptions {
-        useK2 = true
-    }
-
     namespace = "org.androidaudioplugin.androidaudioplugin.testing"
 }
 
