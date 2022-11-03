@@ -25,7 +25,7 @@ android {
         externalNativeBuild {
             cmake {
                 // https://github.com/google/prefab/blob/bccf5a6a75b67add30afbb6d4f7a7c50081d2d86/api/src/main/kotlin/com/google/prefab/api/Android.kt#L243
-                arguments ("-DANDROID_API=33", "-D__ANDROID_API__=33", "-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DCOMPILE_SDK_VERSION=33", "-DTARGET_SDK_VERSION=33", "-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
             }
         }
     }
