@@ -43,6 +43,9 @@ target_include_directories (androidaudioplugin
 target_compile_options (androidaudioplugin
   PRIVATE
   -std=c++17 -Wall -Wshadow
+  # see https://issuetracker.google.com/issues/219987524#comment37
+  -D__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__
+  -Werror=unguarded-availability
   )
 
 target_link_libraries (androidaudioplugin
