@@ -4,24 +4,11 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "aap/ext/plugin-info.h"
 #include "aap/port-properties.h"
 
 namespace aap {
 
-
-enum ContentType {
-    AAP_CONTENT_TYPE_UNDEFINED = 0,
-    AAP_CONTENT_TYPE_AUDIO = 1,
-    AAP_CONTENT_TYPE_MIDI = 2,
-    // FIXME: we will remove it. There will be only one MIDI port that would switch
-    //  between MIDI2 and MIDI1, using MIDI-CI Set New Protocol.
-    AAP_CONTENT_TYPE_MIDI2 = 3,
-};
-
-enum PortDirection {
-    AAP_PORT_DIRECTION_INPUT,
-    AAP_PORT_DIRECTION_OUTPUT
-};
 
 enum PluginInstantiationState {
     PLUGIN_INSTANTIATION_STATE_INITIAL,
@@ -63,19 +50,19 @@ public:
 class PortInformation : public PropertyContainer {
     uint32_t index{0};
     std::string name{};
-    ContentType content_type;
-    PortDirection direction;
+    aap_content_type content_type;
+    aap_port_direction direction;
 
 public:
-    PortInformation(uint32_t portIndex, std::string portName, ContentType content, PortDirection portDirection)
+    PortInformation(uint32_t portIndex, std::string portName, aap_content_type content, aap_port_direction portDirection)
             : index(portIndex), name(portName), content_type(content), direction(portDirection)
     {
     }
 
     int32_t getIndex() const { return index; }
     const char* getName() const { return name.c_str(); }
-    ContentType getContentType() const { return content_type; }
-    PortDirection getPortDirection() const { return direction; }
+    aap_content_type getContentType() const { return content_type; }
+    aap_port_direction getPortDirection() const { return direction; }
 };
 
 class ParameterInformation : public PropertyContainer {

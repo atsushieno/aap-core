@@ -239,8 +239,8 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 		jobject port = env->CallObjectMethod(pluginInformation, j_method_get_declared_port, i);
 		auto index = (uint32_t) env->CallIntMethod(port, j_method_port_get_index);
 		auto name = strdup_fromJava(env, (jstring) env->CallObjectMethod(port, j_method_port_get_name));
-		auto content = (aap::ContentType) (int) env->CallIntMethod(port, j_method_port_get_content);
-		auto direction = (aap::PortDirection) (int) env->CallIntMethod(port, j_method_port_get_direction);
+		auto content = (aap_content_type) (int) env->CallIntMethod(port, j_method_port_get_content);
+		auto direction = (aap_port_direction) (int) env->CallIntMethod(port, j_method_port_get_direction);
 		auto nativePort = new aap::PortInformation(index, name, content, direction);
 		nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes)));
 		aapPI->addDeclaredPort(nativePort);
