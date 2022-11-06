@@ -21,6 +21,7 @@
 #include "aap/ext/presets.h"
 #include "aap/ext/state.h"
 #include "aap/ext/port-config.h"
+#include "aap/ext/plugin-info.h"
 #include "plugin-connections.h"
 #include "../aapxs/extension-service.h"
 #include "../aapxs/standard-extensions.h"
@@ -269,8 +270,16 @@ class LocalPluginInstance : public PluginInstance {
 	AndroidAudioPluginHost plugin_host_facade{};
 	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
 	LocalPluginInstanceStandardExtensionsImpl standards;
+	aap_host_plugin_info_extension_t host_plugin_info{};
+
+	static aap_plugin_info_t get_plugin_info(AndroidAudioPluginHost* host, const char* pluginId);
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
+		if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
+			auto instance = (LocalPluginInstance*) host->context;
+			instance->host_plugin_info.get = get_plugin_info;
+			return &instance->host_plugin_info;
+		}
 		return nullptr;
 	}
 

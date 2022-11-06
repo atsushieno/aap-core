@@ -11,7 +11,7 @@ VST3 specifics, LV2 specifics, etc. should be processed by (so-called) plugin wr
 
 We end up using XML for the metadata format (`aap_metadata.xml`).
 
-LV2 uses Turtle format, which is [questionable](https://drobilla.net/2019/11/11/lv2-the-good-bad-and-ugly.html) in that the format brings in extraneous learning curve.
+LV2 uses Turtle format, which is [questionable](https://drobilla.net/2019/11/11/lv2-the-good-bad-and-ugly.html) in that the format brings in extraneous learning curve. Even if Turtle itself is alright, having only serd and sord as the actual parser/loader implementation is problematic.
 
 A better alternative is obviously JSON, but for AAP there is a constraining reason to use XML - we have to retrieve plugin metadata contents, and only XML meets these two constraints:
 
@@ -32,6 +32,12 @@ Since we were using an XML parser that does not support XML Namespaces (tinyxml2
 But since we cannot switch to JSON anyways, we rather went back to the basics and eliminated any XML parsing bits from native code on Android, and used authentic XML parser (libxml2) on desktop.
 
 At that stage, there is no point of avoiding standard URI format for port property identifiers, so we simply use "urn:" for the parameters. (It can be "http:", but I guess it would be weird if the protocol without 's' will stay forever and if it matches "cool URLs don't change." concept...)
+
+### Metadata retrieval, XML as the master metadata, not code
+
+AAP expects plugin metadata as in declarative manner. Some other plugin formats such as CLAP, on the other hand, retrieves metadata from code. And it is implemented by the plugin developer to return precise information.
+
+AAP so far does not expect plugin developers to return such metadata by code. It is going to lead to inconsistency in metadata (code vs. XML). It is trivial to "fix" such an issue by automated metadata code generator as in custom Gradle task, but host-based information suffices... so far, it is rather provided by the `AndroidAudioPluginHost*`, via the `plugin-info` host extension.
 
 ### out-process model
 
