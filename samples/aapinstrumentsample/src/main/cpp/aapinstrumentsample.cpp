@@ -379,14 +379,14 @@ AndroidAudioPlugin *sample_plugin_new(
     auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host->get_extension_data(host, AAP_PLUGIN_INFO_EXTENSION_URI);
     if (pluginInfoExt != nullptr) {
         auto info = pluginInfoExt->get(host, pluginUniqueId);
-        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "plugin-info test: displayName: %s", info.display_name(info.context));
-        for (uint32_t i = 0; i < info.get_port_count(info.context); i++) {
-            auto port = info.get_port(info.context, i);
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "plugin-info test: displayName: %s", info.display_name(&info));
+        for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
+            auto port = info.get_port(&info, i);
             aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "  plugin-info test: port %d: %s %s %s",
-                         port.index(port.context),
-                         port.content_type(port.context) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(port.context) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
-                         port.direction(port.context) == AAP_PORT_DIRECTION_INPUT ? "IN" : "OUT",
-                         port.name(port.context));
+                         port.index(&port),
+                         port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
+                         port.direction(&port) == AAP_PORT_DIRECTION_INPUT ? "IN" : "OUT",
+                         port.name(&port));
         }
     }
 

@@ -450,13 +450,13 @@ AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiati
 }
 
 // plugin-info host extension implementation.
-static uint32_t plugin_info_port_get_index(void* context) { return ((PortInformation*) context)->getIndex(); }
-static const char* plugin_info_port_get_name(void* context) { return ((PortInformation*) context)->getName(); }
-static aap_content_type plugin_info_port_get_content_type(void* context) { return (aap_content_type) ((PortInformation*) context)->getContentType(); }
-static aap_port_direction plugin_info_port_get_direction(void* context) { return (aap_port_direction) ((PortInformation*) context)->getPortDirection(); }
+static uint32_t plugin_info_port_get_index(aap_plugin_info_port_t* port) { return ((PortInformation*) port->context)->getIndex(); }
+static const char* plugin_info_port_get_name(aap_plugin_info_port_t* port) { return ((PortInformation*) port->context)->getName(); }
+static aap_content_type plugin_info_port_get_content_type(aap_plugin_info_port_t* port) { return (aap_content_type) ((PortInformation*) port->context)->getContentType(); }
+static aap_port_direction plugin_info_port_get_direction(aap_plugin_info_port_t* port) { return (aap_port_direction) ((PortInformation*) port->context)->getPortDirection(); }
 
-static aap_plugin_info_port_t plugin_info_get_port(void* context, uint32_t index) {
-	auto port = ((LocalPluginInstance*) context)->getPort(index);
+static aap_plugin_info_port_t plugin_info_get_port(aap_plugin_info_t* plugin, uint32_t index) {
+	auto port = ((LocalPluginInstance*) plugin->context)->getPort(index);
 	return aap_plugin_info_port_t{(void *) port,
 								  plugin_info_port_get_index,
 								  plugin_info_port_get_name,
@@ -464,25 +464,25 @@ static aap_plugin_info_port_t plugin_info_get_port(void* context, uint32_t index
 								  plugin_info_port_get_direction};
 }
 
-static const char* plugin_info_get_plugin_package_name(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getPluginPackageName().c_str(); }
-static const char* plugin_info_get_plugin_local_name(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getPluginLocalName().c_str(); }
-static const char* plugin_info_get_display_name(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getDisplayName().c_str(); }
-static const char* plugin_info_get_manufacturer_name(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getManufacturerName().c_str(); }
-static const char* plugin_info_get_version(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getVersion().c_str(); }
-static const char* plugin_info_get_primary_category(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getPrimaryCategory().c_str(); }
-static const char* plugin_info_get_identifier_string(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getStrictIdentifier().c_str(); }
-static const char* plugin_info_get_plugin_id(void* context) { return ((LocalPluginInstance*) context)->getPluginInformation()->getPluginID().c_str(); }
-static uint32_t plugin_info_get_port_count(void* context) { return ((LocalPluginInstance*) context)->getNumPorts(); }
-static uint32_t plugin_info_get_parameter_count(void* context) { return ((LocalPluginInstance*) context)->getNumParameters(); }
+static const char* plugin_info_get_plugin_package_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPluginPackageName().c_str(); }
+static const char* plugin_info_get_plugin_local_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPluginLocalName().c_str(); }
+static const char* plugin_info_get_display_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getDisplayName().c_str(); }
+static const char* plugin_info_get_manufacturer_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getManufacturerName().c_str(); }
+static const char* plugin_info_get_version(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getVersion().c_str(); }
+static const char* plugin_info_get_primary_category(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPrimaryCategory().c_str(); }
+static const char* plugin_info_get_identifier_string(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getStrictIdentifier().c_str(); }
+static const char* plugin_info_get_plugin_id(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPluginID().c_str(); }
+static uint32_t plugin_info_get_port_count(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getNumPorts(); }
+static uint32_t plugin_info_get_parameter_count(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getNumParameters(); }
 
-static uint32_t plugin_info_parameter_get_id(void* context) { return ((ParameterInformation*) context)->getId(); }
-static const char* plugin_info_parameter_get_name(void* context) { return ((ParameterInformation*) context)->getName(); }
-static float plugin_info_parameter_get_min_value(void* context) { return (aap_content_type) ((ParameterInformation*) context)->getMinimumValue(); }
-static float plugin_info_parameter_get_max_value(void* context) { return (aap_content_type) ((ParameterInformation*) context)->getMaximumValue(); }
-static float plugin_info_parameter_get_default_value(void* context) { return (aap_content_type) ((ParameterInformation*) context)->getDefaultValue(); }
+static uint32_t plugin_info_parameter_get_id(aap_plugin_info_parameter_t* parameter) { return ((ParameterInformation*) parameter->context)->getId(); }
+static const char* plugin_info_parameter_get_name(aap_plugin_info_parameter_t* parameter) { return ((ParameterInformation*) parameter->context)->getName(); }
+static float plugin_info_parameter_get_min_value(aap_plugin_info_parameter_t* parameter) { return (aap_content_type) ((ParameterInformation*) parameter->context)->getMinimumValue(); }
+static float plugin_info_parameter_get_max_value(aap_plugin_info_parameter_t* parameter) { return (aap_content_type) ((ParameterInformation*) parameter->context)->getMaximumValue(); }
+static float plugin_info_parameter_get_default_value(aap_plugin_info_parameter_t* parameter) { return (aap_content_type) ((ParameterInformation*) parameter->context)->getDefaultValue(); }
 
-static aap_plugin_info_parameter_t plugin_info_get_parameter(void* context, uint32_t index) {
-	auto port = ((LocalPluginInstance*) context)->getPort(index);
+static aap_plugin_info_parameter_t plugin_info_get_parameter(aap_plugin_info_t* plugin, uint32_t index) {
+	auto port = ((LocalPluginInstance*) plugin->context)->getPort(index);
 	return aap_plugin_info_parameter_t{(void *) port,
 									   plugin_info_parameter_get_id,
 									   plugin_info_parameter_get_name,
