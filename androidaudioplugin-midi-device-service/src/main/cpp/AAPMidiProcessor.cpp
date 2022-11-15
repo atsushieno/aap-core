@@ -396,7 +396,7 @@ namespace aapmidideviceservice {
         }
 
         // FIXME: rewrite this part to work fine along with realtime consumer.
-        //  Currently read (consomption) occurs while it is preparing for MIDI buffer and things become inconsistent.
+        //  Currently read (consumption) occurs while it is preparing for MIDI buffer and things become inconsistent.
         auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
         auto dstMBH = (AAPMidiBufferHeader*) dst8;
         if (dst8 != nullptr) {

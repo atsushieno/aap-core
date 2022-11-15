@@ -10,8 +10,8 @@ extern "C" {
 
 // This parameters extension assumes that parameter updates by host are sent to the plugin using
 // MIDI2 inputs, and parameter change notification back to the host is sent from the plugin
-// using MIDI2 outputs. The primary source for the inputs is a MIDI2 input port, and the destination
-// (note that we do not say "primary" here) should be a MIDI2 output port.
+// using MIDI2 outputs. The source input is a MIDI2 input port, and the destination
+// should be a MIDI2 output port. There is the only one input and the only one output.
 //
 // ## MIDI2-parameters mapping schemes
 //
@@ -20,13 +20,18 @@ extern "C" {
 // - When it returns `AAP_PARAMETERS_MAPPING_POLICY_ACC`, then the host can assume that parameter
 //   changes requests from the host and the change notification to the host can be represented as
 //   MIDI2 Assignable Controller (ACC) UMP.
-// - When it returns `AAP_PARAMETERS_MAPPING_POLICY_ACC2`, it works quite like
-//   AAP_PARAMETERS_MAPPING_POLICY_ACC, except that for AAP parameter changes and notifications
-//   the most significant BIT of the ACC MSB is always 1 (i.e. always negative as int16_t),
-//   so that the range of the valid parameter index is limited (but almost harmless in practive -
-//   who has >32768 parameters?).
-//   For this mode, plugins are responsible to remove tha flag when decoding the ACC UMP message.
-//   It is useful IF the plugin should receive any MIDI message sent by host.
+// - When it returns `AAP_PARAMETERS_MAPPING_POLICY_SYSEX8`, then it is one single Sysex8 packet
+//   of 16 bits which looks like `5g sz pc 7E  7F 00 00 ch  k.n.idx.  value...`, where -
+//   - g : UMP group
+//   - sz : status and size, always 0F
+//   - pc : packet, always 00
+//   - ch : channel, 00-0F
+//   - k. : key for per-note parameter change, 00-7F
+//   - n. : reserved, but it might be used for note ID for per note parameter change, 00-7F.
+//          If it is being used for note ID, host can assign a consistent number across note on/off
+//          w/ attribute and this message. But I find it ugly and impractical so far.
+//   - idx. : parameter index, 0-16383
+//   - value... : parameter value, 32-bit float
 // - None does not have any premise. Host in general has no idea how to send the parameter changes.
 //   Some specific hosts may be able to control such a plugin (for example, via some
 //   Universal System Exclusive messages, or based on some Profile Configuration).
@@ -93,14 +98,37 @@ extern "C" {
 #define AAP_MAX_PARAMETER_NAME_CHARS 256
 #define AAP_MAX_PARAMETER_PATH_CHARS 256
 
+static inline void aapMidi2ParameterSysex8(uint32_t *dst1, uint32_t *dst2, uint32_t *dst3, uint32_t *dst4, uint8_t group, uint8_t channel, uint8_t key, uint16_t extra, uint16_t index, float value) {
+    *dst1 = ((0x50 + group) << 24) + 0x7E;
+    *dst2 = 0x7F000000 + channel;
+    *dst3 = (key << 24) + (extra << 16) + index;
+    *dst4 = *(uint32_t*) (void*) &value;
+}
+
+static inline bool aapReadMidi2ParameterSysex8(uint8_t* group, uint8_t* channel,
+                                               uint8_t* key, uint8_t* extra, uint16_t* index, float* value,
+                                               uint32_t src1, uint32_t src2, uint32_t src3, uint32_t src4) {
+    *group = (uint8_t) (src1 >> 24) & 0xF;
+    *channel = src2 & 0xF;
+    *key = src3 >> 24;
+    *extra = (src3 >> 16) & 0xFF;
+    *index = src3 & 0xFFFF;
+    *value = *(float*) &src4;
+    return (src1 >> 24) == 0x50 + *group && (src1 & 0xFF) == 0x7E && src2 == 0x7F000000 + *channel;
+}
+
 typedef struct aap_parameter_info_t {
     // Parameter ID.
     // For plugin users sake, parameter ID must be "stable", preserved for backward compatibility
     // (otherwise songs your users authored get broken and you plugin developers will be blamed).
-    // Since there may be "dropped" indices, this does not mean the index in any parameter list.
+    // Since there may be "dropped" parameters after continuous development, the parameter ID
+    // does not mean the index in any parameter list.
     //
-    // Type is int32_t so that any API that deals with parameters can return -1 for "not found" etc.
-    int32_t stable_id;
+    // Type is int16_t and the expected parameter range is actually 0 to 16383 so that...
+    // - any API that deals with parameters can return -1 for "not found" etc.
+    // - it can be mapped to MIDI 1.0 7-bit MSB and LSB, which is compatible with NRPN or
+    //   MIDI 2.0 Assignable Controllers.
+    int16_t stable_id;
     // A name string to display, for human beings etc.
     char display_name[AAP_MAX_PARAMETER_NAME_CHARS];
     // A file-tree style structural path for the parameter (following the CLAP way here).

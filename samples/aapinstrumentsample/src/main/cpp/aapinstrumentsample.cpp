@@ -10,14 +10,16 @@ extern "C" {
 
 #include "ayumi.h"
 #include "cmidi2.h"
-#include "aap/ext/aap-midi2.h"
-#include "aap/ext/plugin-info.h"
+#include <aap/ext/aap-midi2.h>
+#include <aap/ext/plugin-info.h>
+#include <aap/ext/parameters.h>
 
 #define AYUMI_AAP_MIDI2_IN_PORT 0
 #define AYUMI_AAP_MIDI2_OUT_PORT 1
 #define AYUMI_AAP_AUDIO_OUT_LEFT 2
 #define AYUMI_AAP_AUDIO_OUT_RIGHT 3
 #define AYUMI_AAP_PARAM_ENVELOPE 0x0F
+// Plugin Parameter index is MIDI_CC, including below.
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_H 0x10
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_M 0x11
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_L 0x12
@@ -141,6 +143,15 @@ void ayumi_aap_process_midi_event(AyumiHandle *a, uint8_t *midi1Event) {
     }
 }
 
+bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t* extra,
+                        uint16_t *index, float *value, cmidi2_ump* ump) {
+    if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
+        return false;
+    auto raw = (uint32_t*) ump;
+    return aapReadMidi2ParameterSysex8(group, channel, key, extra, index, value,
+                                 *raw, *(raw + 1), *(raw + 2), *(raw + 3));
+}
+
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
@@ -161,6 +172,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
         CMIDI2_UMP_SEQUENCE_FOREACH(midi2ptr, aapmb->length, ev) {
             auto ump = (cmidi2_ump *) ev;
+            uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
+            uint16_t paramIndex;
+            float paramValue;
+            uint32_t intValue;
+            bool relative{false};
             if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
                 cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
                 uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
@@ -173,52 +189,71 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                 }
                 currentTicks = max;
                 continue;
-            } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL &&
-                       cmidi2_ump_get_status_code(ump) == CMIDI2_STATUS_NRPN) {
-                auto channel = cmidi2_ump_get_channel(ump);
-                auto data7bit = (int32_t) (cmidi2_ump_get_midi2_nrpn_data(ump) >> 25) & 0x7F; // get 7-bit data
-                switch ((cmidi2_ump_get_midi2_nrpn_msb(ump) << 7) + cmidi2_ump_get_midi2_nrpn_lsb(ump)) {
-                    case CMIDI2_CC_BANK_SELECT: {
-                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
-                        auto mixer = (int32_t) *(float*) &value;
-                        auto tone_switch = mixer & 1;
-                        auto noise_switch = (mixer >> 1) & 1;
-                        auto env_switch = (mixer >> 2) & 1;
-                        context->mixer[channel] = mixer << 5;
-                        ayumi_set_mixer(context->impl, channel, tone_switch, noise_switch,
-                                        env_switch);
+            } else if (readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra, &paramIndex, &paramValue, ump)) {
+                intValue = (int32_t) *(float*) &paramValue;
+            } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL) {
+                switch (cmidi2_ump_get_status_code(ump)) {
+                    // enable this if it supports per-note parameters.
+                    case CMIDI2_STATUS_PER_NOTE_ACC:
+                        paramKey = cmidi2_ump_get_midi2_pnacc_note(ump); // FIXME: implement it maybe?
                         break;
-                    }
-                    case CMIDI2_CC_PAN: {
-                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
-                        float pan = *(float*) &value;
-                        ayumi_set_pan(context->impl, channel, pan, 0);
+                    case CMIDI2_STATUS_RELATIVE_NRPN:
+                        relative = true; // FIXME: implement it maybe?
                         break;
-                    }
-                    case CMIDI2_CC_VOLUME: {
-                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
-                        auto volume = (int32_t) *(float*) &value;
-                        ayumi_set_volume(context->impl, channel, volume);
+                    case CMIDI2_STATUS_NRPN:
                         break;
-                    }
-                    case AYUMI_AAP_PARAM_ENVELOPE: {
-                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
-                        auto env = ((int32_t) *(float *) &value) & 0xFFFF;
-                        context->envelope = env;
-                        ayumi_set_envelope(context->impl, context->envelope);
-                        break;
-                    }
-                    case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
-                        uint32_t value = cmidi2_ump_get_midi2_nrpn_data(ump);
-                        auto shape = (int32_t) *(float*) &value;
-                        ayumi_set_envelope_shape(context->impl, shape);
-                        break;
+                    default:
+                        // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
+                        uint8_t midi1Bytes[16];
+                        if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
+                            ayumi_aap_process_midi_event(context, midi1Bytes);
+                        continue;
                 }
+                paramGroup = cmidi2_ump_get_group(ump);
+                paramChannel = cmidi2_ump_get_channel(ump);
+                paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
+                intValue = cmidi2_ump_get_midi2_nrpn_data(ump);
+                paramValue = *(float*) &intValue;
             } else {
-                // FIXME: fully downconvert to MIDI1 and process it (sysex can be lengthier)
+                // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
                 uint8_t midi1Bytes[16];
                 if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
                     ayumi_aap_process_midi_event(context, midi1Bytes);
+                continue;
+            }
+
+            // process parameter changes
+            switch (paramIndex & 0xFF) {
+                case CMIDI2_CC_BANK_SELECT: {
+                    auto mixer = intValue & 0xFF;
+                    auto tone_switch = mixer & 1;
+                    auto noise_switch = (mixer >> 1) & 1;
+                    auto env_switch = (mixer >> 2) & 1;
+                    context->mixer[paramChannel] = mixer << 5;
+                    ayumi_set_mixer(context->impl, paramChannel, tone_switch, noise_switch,
+                                    env_switch);
+                    break;
+                }
+                case CMIDI2_CC_PAN: {
+                    float pan = *(float*) &paramValue; // 0.0..1.0
+                    ayumi_set_pan(context->impl, paramChannel, pan, 0);
+                    break;
+                }
+                case CMIDI2_CC_VOLUME: {
+                    auto volume = (int32_t) *(float*) &paramValue; // there is no valur range mapping for this parameter.
+                    ayumi_set_volume(context->impl, paramChannel, volume);
+                    break;
+                }
+                case AYUMI_AAP_PARAM_ENVELOPE: {
+                    auto env = ((int32_t) *(float *) &paramValue) & 0xFFFF;
+                    context->envelope = env;
+                    ayumi_set_envelope(context->impl, context->envelope);
+                    break;
+                }
+                case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
+                    auto shape = (int32_t) *(float*) &paramValue;
+                    ayumi_set_envelope_shape(context->impl, shape);
+                    break;
             }
         }
     } else {

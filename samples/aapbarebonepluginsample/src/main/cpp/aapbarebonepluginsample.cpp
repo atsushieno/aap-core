@@ -2,6 +2,7 @@
 #include <aap/android-audio-plugin.h>
 #include <aap/ext/state.h>
 #include <aap/ext/aap-midi2.h>
+#include <aap/ext/parameters.h>
 #include <cassert>
 #include <cstring>
 #include "../../../../../external/cmidi2/cmidi2.h"
@@ -52,6 +53,13 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer 
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
 
+bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t* extra, uint16_t *index, float *value, cmidi2_ump* ump) {
+    if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
+        return false;
+    auto raw = (uint32_t*) ump;
+    return aapReadMidi2ParameterSysex8(group, channel, key, extra, index, value, *raw, *(raw + 1), *(raw + 2), *(raw + 3));
+}
+
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            AndroidAudioPluginBuffer *buffer,
                            long timeoutInNanoseconds) {
@@ -79,69 +87,80 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     if (midiSeq->length > 0) {
         CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {
             auto ump = (cmidi2_ump*) iter;
+            uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
+            uint16_t paramIndex;
+            float paramValue;
+            uint32_t rawIntValue;
+            bool relative;
             switch (cmidi2_ump_get_message_type(ump)) {
                 case CMIDI2_MESSAGE_TYPE_UTILITY:
                     if (cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
                         // FIXME: ideally there should be timestamp-based sample accuracy adjustment here
                         //  and the audio processing code later should take care of it, but we're lazy here...
                     }
-                    break;
+                    continue;
+                case CMIDI2_MESSAGE_TYPE_SYSEX8_MDS: {
+                    if (!readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra,
+                                            &paramIndex, &paramValue, ump))
+                        continue;
+                    rawIntValue = *(uint32_t *) &paramValue;
+                } break;
                 case CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL: {
-                    bool relative = false;
-                    bool perNote = false;
                     switch (cmidi2_ump_get_status_code(ump)) {
+                        // enable this if it supports per-note parameters.
                         case CMIDI2_STATUS_PER_NOTE_ACC:
-                            perNote = true;
+                            paramKey = cmidi2_ump_get_midi2_pnacc_note(ump); // FIXME: implement it maybe?
                             break;
                         case CMIDI2_STATUS_RELATIVE_NRPN:
-                            relative = true;
+                            relative = true; // FIXME: implement it maybe?
                             break;
                         case CMIDI2_STATUS_NRPN:
                             break;
                         default:
                             continue;
                     }
-                    auto target = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 +
-                                  cmidi2_ump_get_midi2_nrpn_lsb(ump);
-                    uint32_t rawIntValue;
-                    float valueIn0To2048;
-                    float mod;
-                    switch (target) {
-                        case PARAM_ID_VOLUME_L:
-                            rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump) + (relative ? *(uint32_t*) (&ctx->modL) : 0);
-                            mod = *(float*) (&rawIntValue);
-                            if (perNote)
-                                ctx->modL_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
-                            else
-                                ctx->modL = mod;
-                            break;
-                        case PARAM_ID_VOLUME_R:
-                            rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump) + (relative ? *(uint32_t*) (&ctx->modR) : 0);
-                            mod = *(float*) (&rawIntValue);
-                            if (perNote)
-                                ctx->modR_pn[cmidi2_ump_get_midi2_pnacc_note(ump)] = mod;
-                            else
-                                ctx->modR = mod;
-                            break;
-                        case PARAM_ID_DELAY_L:
-                            if (perNote)
-                                break; // FIXME: implement or log it?
-                            rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
-                            valueIn0To2048 = *((float*) &rawIntValue);
-                            ctx->delayL = relative ? ctx->delayL + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
-                            break;
-                        case PARAM_ID_DELAY_R:
-                            if (perNote)
-                                break; // FIXME: implement or log it?
-                            rawIntValue = (cmidi2_ump_get_midi2_nrpn_data(ump));
-                            valueIn0To2048 = *((float*) &rawIntValue);
-                            ctx->delayR = relative ? ctx->delayR + (uint32_t) valueIn0To2048 : (uint32_t) valueIn0To2048;
-                            break;
-                        default:
-                            continue; // invalid parameter index FIXME: log it
-                    }
+                    paramGroup = cmidi2_ump_get_group(ump);
+                    paramChannel = cmidi2_ump_get_channel(ump);
+process_acc:
+                    paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
+                    rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump);
+                    paramValue = *(float*) &rawIntValue;
+                } break;
+            }
+            float valueIn0To2048;
+            float mod;
+            uint32_t intValue;
+            switch (paramIndex) {
+                case PARAM_ID_VOLUME_L:
+                    intValue = rawIntValue + (relative ? *(uint32_t*) (&ctx->modL) : 0);
+                    mod = *(float*) (&intValue);
+                    if (paramKey != 0)
+                        ctx->modL_pn[paramKey] = mod;
+                    else
+                        ctx->modL = mod;
                     break;
-                }
+                case PARAM_ID_VOLUME_R:
+                    intValue = rawIntValue + (relative ? *(uint32_t*) (&ctx->modR) : 0);
+                    mod = *(float*) (&intValue);
+                    if (paramKey != 0)
+                        ctx->modR_pn[paramKey] = mod;
+                    else
+                        ctx->modR = mod;
+                    break;
+                case PARAM_ID_DELAY_L:
+                    if (paramKey != 0)
+                        break; // FIXME: implement or log it?
+                    valueIn0To2048 = *((float*) &rawIntValue);
+                    ctx->delayL = (uint32_t) valueIn0To2048 + (relative ? ctx->delayL : 0);
+                    break;
+                case PARAM_ID_DELAY_R:
+                    if (paramKey != 0)
+                        break; // FIXME: implement or log it?
+                    valueIn0To2048 = *((float*) &rawIntValue);
+                    ctx->delayR = (uint32_t) valueIn0To2048 + (relative ? ctx->delayR : 0);
+                    break;
+                default:
+                    continue; // invalid parameter index FIXME: log it
             }
         }
     }

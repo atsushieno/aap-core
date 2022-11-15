@@ -17,6 +17,7 @@ import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -155,18 +156,12 @@ class PluginPreview(private val context: Context) {
         if (midi2In >= 0) {
             (0 until instance.getParameterCount()).map { paraI ->
                 val para = instance.getParameter(paraI)
-
-                val ump = Ump(
-                    UmpFactory.midi2NRPN(
-                        0,
-                        0,
-                        para.id / 0x80,
-                        para.id % 0x80,
-                        parameters[paraI].toRawBits().toLong()
-                    )
-                )
-                // generate Assignable Controllers into midi2Bytes.
-                midi2Bytes.addAll(ump.toPlatformNativeBytes().toTypedArray())
+                val value = parameters[paraI]
+                // generate Sysex8 packet for Parameter Changes and push into midi2Bytes.
+                // 7Eh, 7Fh, 0, 0, 7Fh, key, noteId, pIndex / 80h, pIndex % 80h, pVal1, pVal2, pVal3, pVal4
+                val arr = UmpHelper.aapUmpSysex8Parameter(para.id.toUInt(), value, 0, 0, 0, 0u)
+                val ump = Ump(arr[0], arr[1], arr[2], arr[3])
+                midi2Bytes.addAll(ump.toPlatformNativeBytes().toList())
             }
         } else {
             // If there are parameter elements, look for ports based on each parameter's name.
