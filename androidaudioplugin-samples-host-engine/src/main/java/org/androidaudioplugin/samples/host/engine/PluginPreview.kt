@@ -484,9 +484,13 @@ class PluginPreview(private val context: Context) {
             }
             if (deviceInfo != null) {
                 manager.openDevice(deviceInfo, { device ->
-                    val portNumber = deviceInfo.ports.firstOrNull {
+                    val port = deviceInfo.ports.firstOrNull {
+                        it.type == PortInfo.TYPE_INPUT &&
+                        it.name == pluginInfo?.displayName
+                    } ?: deviceInfo.ports.firstOrNull {
                         it.type == PortInfo.TYPE_INPUT
-                    }?.portNumber ?: return@openDevice
+                    }
+                    val portNumber = port?.portNumber ?: return@openDevice
                     midi_input = device.openInputPort(portNumber)
                     doPlayNotes()
                 }, null)
