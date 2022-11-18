@@ -482,8 +482,8 @@ static float plugin_info_parameter_get_max_value(aap_plugin_info_parameter_t* pa
 static float plugin_info_parameter_get_default_value(aap_plugin_info_parameter_t* parameter) { return (aap_content_type) ((ParameterInformation*) parameter->context)->getDefaultValue(); }
 
 static aap_plugin_info_parameter_t plugin_info_get_parameter(aap_plugin_info_t* plugin, uint32_t index) {
-	auto port = ((LocalPluginInstance*) plugin->context)->getPort(index);
-	return aap_plugin_info_parameter_t{(void *) port,
+	auto para = ((LocalPluginInstance*) plugin->context)->getParameter(index);
+	return aap_plugin_info_parameter_t{(void *) para,
 									   plugin_info_parameter_get_id,
 									   plugin_info_parameter_get_name,
 									   plugin_info_parameter_get_min_value,
