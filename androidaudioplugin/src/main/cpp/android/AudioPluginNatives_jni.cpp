@@ -229,7 +229,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
         auto def = env->CallDoubleMethod(para, j_method_parameter_get_default_value);
         auto min = env->CallDoubleMethod(para, j_method_parameter_get_minimum_value);
         auto max = env->CallDoubleMethod(para, j_method_parameter_get_maximum_value);
-        auto nativePara = new aap::ParameterInformation(id, name, def, min, max);
+        auto nativePara = new aap::ParameterInformation(id, name, min, max, def);
         aapPI->addDeclaredParameter(nativePara);
         free((void*) name);
     }
