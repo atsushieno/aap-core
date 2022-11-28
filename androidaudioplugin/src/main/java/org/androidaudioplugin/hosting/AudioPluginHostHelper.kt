@@ -94,9 +94,9 @@ class AudioPluginHostHelper {
                             val maximum = xp.getAttributeValue(null, "maximum")
                             // FIXME: handle parse errors gracefully
                             val para = ParameterInformation(id.toInt(), name,
-                                default?.toDouble() ?: 0.0,
                                 minimum?.toDouble() ?: 0.0,
-                                maximum?.toDouble() ?: 1.0
+                                maximum?.toDouble() ?: 1.0,
+                                default?.toDouble() ?: 0.0
                             )
                             currentPlugin.parameters.add(para)
                         }
