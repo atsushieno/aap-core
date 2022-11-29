@@ -40,17 +40,13 @@ T usingUTFChars(const char* s, std::function<T(jstring)> func) {
     });
 }
 
-template <typename T>
-T usingJString(jstring s, std::function<T(const char*)> func) {
-	return usingJNIEnv<T>([=](JNIEnv* env) {
-		if (!s)
-			return func(nullptr);
-		const char *u8 = env->GetStringUTFChars(s, nullptr);
-		auto ret = func(u8);
+std::string jstringToStdString(JNIEnv* env, jstring s) {
+    jboolean b{false};
+    const char *u8 = env->GetStringUTFChars(s, &b);
+    std::string ret{u8};
+    if (b)
         env->ReleaseStringUTFChars(s, u8);
-		return ret;
-	});
-
+    return ret;
 }
 
 const char *strdup_fromJava(JNIEnv *env, jstring s) {
@@ -325,35 +321,27 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
                                                                 jstring packageName, jstring className, jobject binder) {
-	usingJString<void*>(packageName, [=](const char* packageNameChars) {
-		usingJString<void*>(className, [=](const char* classNameChars) {
-			auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+    std::string packageNameString = jstringToStdString(env, packageName);
+    std::string classNameString = jstringToStdString(env, className);
+    auto aiBinder = AIBinder_fromJavaBinder(env, binder);
 
-			auto list = client_connection_list_per_scope[connectorInstanceId];
-			if (list == nullptr) {
-				client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
-				list = client_connection_list_per_scope[connectorInstanceId];
-			}
-			list->add(std::make_unique<aap::PluginClientConnection>(packageNameChars, classNameChars, aiBinder));
-			return nullptr;
-		});
-		return nullptr;
-	});
+    auto list = client_connection_list_per_scope[connectorInstanceId];
+    if (list == nullptr) {
+        client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
+        list = client_connection_list_per_scope[connectorInstanceId];
+    }
+    list->add(std::make_unique<aap::PluginClientConnection>(packageNameString.c_str(), classNameString.c_str(), aiBinder));
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jint connectorInstanceId,
 																   jstring packageName, jstring className) {
-	usingJString<void*>(packageName, [=](const char* packageNameChars) {
-		usingJString<void*>(className, [=](const char* classNameChars) {
-			auto list = client_connection_list_per_scope[connectorInstanceId];
-			if (list != nullptr)
-				list->remove(packageNameChars, classNameChars);
-			return nullptr;
-		});
-		return nullptr;
-	});
+	std::string packageNameString = jstringToStdString(env, packageName);
+	std::string classNameString = jstringToStdString(env, className);
+	auto list = client_connection_list_per_scope[connectorInstanceId];
+	if (list != nullptr)
+		list->remove(packageNameString.c_str(), classNameString.c_str());
 }
 
 // --------------------------------------------------
@@ -456,19 +444,18 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
 		JNIEnv *env, jclass clazz, jstring plugin_id, jint sampleRate, jlong clientPointer) {
 	assert(clientPointer != 0);
 	auto client = (aap::PluginClient*) (void*) clientPointer;
-	return usingJString<jint>(plugin_id, [&](const char* pluginId) {
-		auto result = client->createInstance(pluginId, sampleRate, true);
-		if (!result.error.empty()) {
-            aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
-            return (jlong) -1;
-        }
-        auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(result.value));
-		assert(instance);
-        instance->completeInstantiation();
-		instance->scanParametersAndBuildList();
-		instance->configurePorts();
-        return (jlong) result.value;
-	});
+	std::string pluginIdString = jstringToStdString(env, plugin_id);
+	auto result = client->createInstance(pluginIdString.c_str(), sampleRate, true);
+	if (!result.error.empty()) {
+		aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
+		return (jlong) -1;
+	}
+	auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(result.value));
+	assert(instance);
+	instance->completeInstantiation();
+	instance->scanParametersAndBuildList();
+	instance->configurePorts();
+	return (jlong) result.value;
 }
 
 extern "C"
