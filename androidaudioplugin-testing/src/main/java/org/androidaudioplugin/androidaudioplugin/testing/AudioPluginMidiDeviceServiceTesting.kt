@@ -40,6 +40,8 @@ class AudioPluginMidiDeviceServiceTesting(private val applicationContext: Contex
                     }
                     if (error != null)
                         throw AssertionError("MIDI output test failure", error)
+
+                    device.close()
                 }
             }, null)
 

@@ -34,7 +34,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
                     Thread.sleep(1)
 
                 val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-                host.instantiatedPlugins.forEach { instance -> instance.prepare(floatCount) }
+                host.instantiatedPlugins.forEach { instance -> instance.prepare(floatCount, host.defaultControlBufferSizeInBytes) }
                 host.instantiatedPlugins.forEach { instance -> instance.activate() }
                 host.instantiatedPlugins.forEach { instance -> instance.process() }
                 host.instantiatedPlugins.forEach { instance -> instance.deactivate() }
