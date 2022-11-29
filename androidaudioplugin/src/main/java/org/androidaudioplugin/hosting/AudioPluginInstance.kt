@@ -60,10 +60,7 @@ class AudioPluginInstance internal constructor(
         }
     }
 
-    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int = 0) {
-        val controlBytesPerBlock =
-            if (defaultControlBytesPerBlock <= 0) audioSamplesPerBlock * 4
-            else defaultControlBytesPerBlock
+    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int) {
         runCatchingRemoteException {
             proxy.prepare(audioSamplesPerBlock, defaultControlBytesPerBlock)
             state = InstanceState.INACTIVE
