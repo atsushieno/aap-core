@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ServiceTestRule
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.androidaudioplugin.testing.AudioPluginServiceTesting
+import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 
@@ -24,8 +25,13 @@ class PluginTest {
     }
 
     @Test
-    fun getPluginServiceInfo() {
-        testing.getPluginServiceInfo()
+    fun testPluginInfo() {
+        testing.testSinglePluginInformation {
+            Assert.assertEquals("urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter", it.pluginId)
+            Assert.assertEquals("androidaudioplugin.org", it.author)
+            Assert.assertEquals(8, it.parameters.size)
+            Assert.assertEquals(6, it.ports.size) // FIXME: 0 once we get implicit ports working.
+        }
     }
 
     @Test

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.rule.ServiceTestRule
 import org.androidaudioplugin.androidaudioplugin.testing.AudioPluginServiceTesting
+import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 
@@ -14,8 +15,13 @@ class PluginTest {
     val serviceRule = ServiceTestRule()
 
     @Test
-    fun getPluginServiceInfo() {
-        testing.getPluginServiceInfo()
+    fun testPluginInfo() {
+        testing.testSinglePluginInformation {
+            Assert.assertEquals("urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample", it.pluginId)
+            Assert.assertEquals("androidaudioplugin.org", it.author)
+            Assert.assertEquals(5, it.parameters.size)
+            Assert.assertEquals(0, it.ports.size)
+        }
     }
 
     @Test

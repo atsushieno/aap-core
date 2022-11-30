@@ -5,12 +5,24 @@ import junit.framework.Assert.assertEquals
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PluginServiceInformation
 
 class AudioPluginServiceTesting(private val applicationContext: Context) {
 
-    fun getPluginServiceInfo() {
+    @Deprecated("Use testPluginServiceInfo", replaceWith = ReplaceWith("testPluginServiceInfo()"))
+    fun getPluginServiceInfo() = testPluginServiceInformation {}
+
+    fun testPluginServiceInformation(serviceInfoTest: (serviceInfo: PluginServiceInformation) -> Unit = {}) {
         val audioPluginServiceInfo = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext)
         assertEquals ("packageName", applicationContext.packageName, audioPluginServiceInfo.packageName)
+        serviceInfoTest(audioPluginServiceInfo)
+    }
+
+    fun testSinglePluginInformation(pluginInfoTest: (info: PluginInformation) -> Unit) {
+        testPluginServiceInformation { serviceInfo ->
+            assertEquals("There are more than one plugins. Not suitable for this test function", 1, serviceInfo.plugins.size)
+            pluginInfoTest(serviceInfo.plugins[0])
+        }
     }
 
     fun basicServiceOperationsForAllPlugins() {
