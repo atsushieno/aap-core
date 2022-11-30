@@ -1,18 +1,13 @@
-<plugins xmlns="urn:org.androidaudioplugin.core" xmlns:pp="urn:org.androidaudioplugin.port">
-  <plugin name="Instrument Sample" category="Instrument" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample" library="libaapinstrumentsample.so">
+<plugins xmlns="urn:org.androidaudioplugin.core">
+  <plugin name="Instrument Sample" category="Instrument" author="androidaudioplugin.org" manufacturer="androidaudioplugin.org" unique-id="urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample" library="libaapinstrumentsample.so">
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
     </extensions>
-    <!-- FIXME: remove those declared ports and get default configuration working with PluginPreview
-         (which does not support midi2 in port right now -->
-    <ports>
-      <port direction="input" content="midi2" name="MIDI In" />
-      <port direction="output" content="midi2" name="MIDI Out" />
-      <port direction="output" content="audio" name="Left Out" />
-      <port direction="output" content="audio" name="Right Out" />
-    </ports>
+
+    <!-- All ports are created implicitly now. -->
+
     <!-- parameters extension. Note that they work only with MIDI2 port. -->
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
       <parameter id="0" name="Mixer" default="2" minimum="0" maximum="4" />
