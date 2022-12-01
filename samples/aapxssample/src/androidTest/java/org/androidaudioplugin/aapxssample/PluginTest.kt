@@ -15,7 +15,7 @@ class PluginTest {
 
     @Test
     fun getPluginServiceInfo() {
-        testing.getPluginServiceInfo()
+        testing.testPluginServiceInformation {}
     }
 
     @Test

@@ -1,6 +1,9 @@
 // Extension API --------------------------------------
 
-const char * AAPXS_EXAMPLE_TEST_EXTENSION_URI = "urn://androidaudioplugin.org/examples/aapxs/test1/v1";
+#ifndef AAPXS_SAMPLE_TEST_EXTENSION_H_INCLUDED
+#define AAPXS_SAMPLE_TEST_EXTENSION_H_INCLUDED
+
+#define AAPXS_EXAMPLE_TEST_EXTENSION_URI "urn://androidaudioplugin.org/examples/aapxs/test1/v1"
 
 // we have to resort to this forward declaration in the function typedefs below.
 struct example_test_extension_t;
@@ -20,3 +23,4 @@ typedef struct example_test_extension_t {
     barFunc bar;
 } example_test_extension_t;
 
+#endif

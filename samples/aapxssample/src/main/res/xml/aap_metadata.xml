@@ -1,0 +1,15 @@
+<plugins xmlns="urn:org.androidaudioplugin.core">
+  <plugin name="AAPXS Sample" category="Effect" author="androidaudioplugin.org" manufacturer="androidaudioplugin.org" unique-id="urn:org.androidaudioplugin/samples/aapxssample/InstrumentSample" library="libaapxssample.so">
+    <extensions>
+      <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
+    </extensions>
+
+    <!-- All ports are created implicitly now. -->
+
+    <!-- parameters extension. Note that they work only with MIDI2 port. -->
+    <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
+    </parameters>
+  </plugin>
+</plugins>

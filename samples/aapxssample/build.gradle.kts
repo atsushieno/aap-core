@@ -1,5 +1,5 @@
 plugins {
-    id ("com.android.library")
+    id ("com.android.application")
     id ("kotlin-android")
 }
 
@@ -51,6 +51,7 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
+    implementation (project(":androidaudioplugin-ui-compose"))
 
     implementation ("androidx.core:core-ktx:1.9.0")
     implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
