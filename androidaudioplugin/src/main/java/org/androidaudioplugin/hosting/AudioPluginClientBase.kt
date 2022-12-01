@@ -13,6 +13,8 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
 
     val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
+    var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
+
     fun dispose() {
         for (instance in instantiatedPlugins)
             instance.destroy()
@@ -39,7 +41,11 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        val instance = AudioPluginInstance(serviceConnector, conn!!, pluginInfo, sampleRate)
+        val instance = AudioPluginInstance(serviceConnector, conn!!,
+            {i ->
+                instantiatedPlugins.remove(i)
+                onInstanceDestroyed(i)
+            }, pluginInfo, sampleRate)
         instantiatedPlugins.add(instance)
         return instance
     }
@@ -48,7 +54,10 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     {
         connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
             if (conn != null) {
-                val instance = AudioPluginInstance(serviceConnector, conn, pluginInfo, sampleRate)
+                val instance = AudioPluginInstance(serviceConnector, conn,
+                    {i ->
+                        instantiatedPlugins.remove(i)
+                        onInstanceDestroyed(i) }, pluginInfo, sampleRate)
                 instantiatedPlugins.add(instance)
                 pluginInstantiatedListeners.forEach { l -> l(instance) }
                 callback(instance, null)

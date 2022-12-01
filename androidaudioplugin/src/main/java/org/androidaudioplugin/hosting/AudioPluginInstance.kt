@@ -15,7 +15,8 @@ import java.nio.ByteBuffer
 class AudioPluginInstance internal constructor(
     serviceConnector: AudioPluginServiceConnector,
     conn: PluginServiceConnection,
-    var pluginInfo: PluginInformation,
+    private val onDestroy: (instance: AudioPluginInstance) -> Unit,
+    val pluginInfo: PluginInformation,
     sampleRate: Int) {
 
     enum class InstanceState {
@@ -29,8 +30,6 @@ class AudioPluginInstance internal constructor(
     private val client = NativePluginClient(sampleRate, serviceConnector)
     var state = InstanceState.UNPREPARED
 
-    private class SharedMemoryBuffer (var shm : SharedMemory, var fd : Int, var buffer: ByteBuffer)
-    private var shmList = mutableListOf<SharedMemoryBuffer>()
     private val proxy : NativeRemotePluginInstance
 
     var proxyError: Exception? = null
@@ -95,6 +94,8 @@ class AudioPluginInstance internal constructor(
         if (state == InstanceState.INACTIVE || state == InstanceState.ERROR) {
             try {
                 proxy.destroy()
+
+                onDestroy(this)
             } catch (ex: Exception) {
                 // nothing we can do here
             }
