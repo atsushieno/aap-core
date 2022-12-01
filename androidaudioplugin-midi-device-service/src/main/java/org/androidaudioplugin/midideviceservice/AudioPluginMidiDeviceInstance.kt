@@ -25,14 +25,17 @@ class AudioPluginMidiDeviceInstance private constructor(
             ret.initializeMidiProcessor(client.serviceConnector.instanceId,
                 sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize, ret.midiBufferSize)
 
-            client.pluginInstantiatedListeners.add { instance ->
-                ret.instantiatePlugin(instance.pluginInfo.pluginId!!)
-                ret.activate()
-            }
-
-            val plugin = ownerService.plugins.first { p -> p.pluginId == pluginId }
-            client.instantiatePluginAsync(plugin) { _, error ->
-                callback(ret, error)
+            val pluginInfo = ownerService.plugins.first { p -> p.pluginId == pluginId }
+            client.connectToPluginServiceAsync(pluginInfo.packageName) { _, error ->
+                if (error != null)
+                    callback(null, error)
+                try {
+                    ret.instantiatePlugin(pluginId)
+                    ret.activate()
+                    callback(ret, error)
+                } catch (e: Exception) {
+                    callback(null, e)
+                }
             }
         }
     }

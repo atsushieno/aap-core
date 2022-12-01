@@ -50,6 +50,10 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
         return instance
     }
 
+    @Deprecated("Use safer option of combining connectToPluginServiceAsync and instantiatePlugin",
+        replaceWith = ReplaceWith("connectToPluginServiceAsync(pluginInfo.packageName) { _, connectionError -> " +
+                " if (connectionError != null) callback(null, connectionError)" +
+                " else try { callback(instantiatePlugin(pluginInfo), null) } catch (instancingError: Exception) { callback(null, instancingError) } }"))
     fun instantiatePluginAsync(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) -> Unit)
     {
         connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->

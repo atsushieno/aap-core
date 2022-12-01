@@ -31,7 +31,7 @@ class PluginTest {
     }
 
     @Test
-    fun repeatDirectServieOperations() {
+    fun repeatDirectServiceOperations() {
         val pluginInfo = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins.first()
 
         for (i in 0 until 5)

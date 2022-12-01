@@ -55,17 +55,20 @@ class PluginPreview(private val context: Context) {
             callback(null, Exception("A plugin ${pluginInfo.pluginId} is already loaded"))
         } else {
             this.pluginInfo = pluginInfo
-            host.instantiatePluginAsync(pluginInfo) { instance, error ->
+            host.connectToPluginServiceAsync(pluginInfo.packageName) { _, error ->
                 if (error != null) {
                     lastError = error
                     callback(null, error)
-                } else if (instance != null) { // should be always true
-                    this.instance = instance
+                } else { // should be always true
+                    assert(this.instance == null) // avoid race condition
+
+                    val instance = host.instantiatePlugin(pluginInfo)
                     instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
                     if (instance.proxyError != null) {
                         callback(null, instance.proxyError!!)
                     } else {
-                        callback(instance, null)
+                        this.instance = instance
+                            callback(instance, null)
                     }
                 }
             }
