@@ -68,7 +68,7 @@ class PluginPreview(private val context: Context) {
                         callback(null, instance.proxyError!!)
                     } else {
                         this.instance = instance
-                            callback(instance, null)
+                        callback(instance, null)
                     }
                 }
             }
@@ -94,7 +94,7 @@ class PluginPreview(private val context: Context) {
     val instancePorts : List<PortInformation>
         get() = if (instance == null) listOf() else (0 until instance!!.getPortCount()).map { instance!!.getPort(it) }
 
-    fun applyPlugin(parametersOnUI: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
+    fun applyPlugin(instanceParameterValues: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
         val instance = this.instance ?: return
 
         outBuf.fill(0)
@@ -107,14 +107,14 @@ class PluginPreview(private val context: Context) {
             audioProcessingBufferSizesInBytes.add(size)
         }
 
-        processPluginOnce(parametersOnUI)
+        processPluginOnce(instanceParameterValues)
         if (instance.proxyError != null)
             errorCallback(instance.proxyError!!)
     }
 
-    private fun processPluginOnce(parametersOnUI: FloatArray?) {
+    private fun processPluginOnce(instanceParameterValues: FloatArray?) {
         val instance = this.instance!!
-        val parameters = parametersOnUI ?: (0 until instance.getParameterCount()).map { instance.getParameter(it).defaultValue .toFloat() }.toFloatArray()
+        val parameters = instanceParameterValues ?: (0 until instance.getParameterCount()).map { instance.getParameter(it).defaultValue .toFloat() }.toFloatArray()
 
         host.resetInputBuffers()
         host.resetOutputBuffers()
@@ -157,9 +157,9 @@ class PluginPreview(private val context: Context) {
         val midi2Bytes = mutableListOf<Byte>()
 
         if (midi2In >= 0) {
-            (0 until instance.getParameterCount()).map { paraI ->
-                val para = instance.getParameter(paraI)
-                val value = parameters[paraI]
+            (instanceParameterValues?.indices)?.map { paraI ->
+                val para = instanceParameters[paraI]
+                val value = instanceParameterValues[paraI]
                 // generate Sysex8 packet for Parameter Changes and push into midi2Bytes.
                 // 7Eh, 7Fh, 0, 0, 7Fh, key, noteId, pIndex / 80h, pIndex % 80h, pVal1, pVal2, pVal3, pVal4
                 val arr = UmpHelper.aapUmpSysex8Parameter(para.id.toUInt(), value, 0, 0, 0, 0u)
@@ -458,9 +458,9 @@ class PluginPreview(private val context: Context) {
     fun playMidiNotes() : Boolean
     {
         val doPlayNotes = {
-            CoroutineScope(Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.Default).launch {
                 val input = midi_input ?: return@launch
-                withContext(Dispatchers.IO) {
+                withContext(Dispatchers.Default) {
                     input.send(byteArrayOf(
                         0x90.toByte(), 0x40, 0x78,
                         0x91.toByte(), 0x44, 0x78,
