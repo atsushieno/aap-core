@@ -10,7 +10,7 @@ object UmpHelper {
         val subId2: Byte = 0
         return arrayOf(i8x4to32((0x50 + group).toByte(), 0, streamId, 0x7E),
             i8x4to32(0x7F, subId, subId2, channel),
-            i8x4to32(key, noteId.toByte(), (parameterId / 0x100u).toByte(), (parameterId % 0x100u).toByte()),
+            i8x4to32(key, noteId.toByte(), 0, 0) + (parameterId and 0x3FFFu).toInt(),
             parameterValue.toRawBits())
     }
 }
