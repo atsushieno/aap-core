@@ -206,7 +206,17 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
     auto status = ctx->proxy->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
     if (!status.isOk()) {
-        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "beginCreate() failed: %s", /*status.getDescription().c_str()*/"(FIXME: due to Android SDK/NDK issue 219987524 we cannot retrieve failure details here)");
+        // FIXME: apply this logging condition everywhere...
+#ifdef __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__
+		if (__builtin_available(android 30, *)) {
+#else
+		if (__ANDROID_API__ >= 30) {
+#endif
+			aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "beginCreate() failed: %s",
+						 status.getDescription().c_str());
+		} else {
+			aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP.proxy", "beginCreate() failed");
+		}
         // It will still return the plugin instance anyways, even though it is not really usable.
         ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
     } else {
