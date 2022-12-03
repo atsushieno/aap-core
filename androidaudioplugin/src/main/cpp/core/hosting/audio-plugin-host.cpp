@@ -13,6 +13,7 @@
 #include "../extensions/midi2-service.h"
 #include "../extensions/port-config-service.h"
 
+#define AAP_HOST_TAG "AAP_HOST"
 
 namespace aap
 {
@@ -196,17 +197,17 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	auto entrypoint = descriptor->getLocalPluginLibraryEntryPoint();
 	auto dl = dlopen(file.length() > 0 ? file.c_str() : "libandroidaudioplugin.so", RTLD_LAZY);
 	if (dl == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP library %s could not be loaded.\n", file.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR,  AAP_HOST_TAG, "aap::PluginHost: AAP library %s could not be loaded: %s", file.c_str(), dlerror());
 		return nullptr;
 	}
 	auto factoryGetter = (aap_factory_t) dlsym(dl, entrypoint.length() > 0 ? entrypoint.c_str() : "GetAndroidAudioPluginFactory");
 	if (factoryGetter == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s was not found in %s.\n", entrypoint.c_str(), file.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s was not found in %s.", entrypoint.c_str(), file.c_str());
 		return nullptr;
 	}
 	auto pluginFactory = factoryGetter();
 	if (pluginFactory == nullptr) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAP factory %s could not instantiate a plugin.\n", entrypoint.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
 	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
@@ -287,7 +288,7 @@ void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const Plu
 int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 	auto info = plugin_list->getPluginInformation(identifier);
 	if (!info) {
-		aap::a_log_f(AAP_LOG_LEVEL_ERROR, "libandroidaudioplugin", "Plugin information was not found for: %s ", identifier.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginService: Plugin information was not found for: %s ", identifier.c_str());
 		return -1;
 	}
 	instantiateLocalPlugin(info, sampleRate);
