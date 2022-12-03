@@ -1,5 +1,7 @@
 # designing buses, ports, and parameters
 
+IMPORTANT NOTE: this was written as of aap-core 0.7.2. The latest version (as of this edit) is 0.7.4, which has a lot of changes made as "V2" protocol. Plus, MIDI-CI protocol negotiation specification will go away, so some of the design principle is outdated. We will have to revisit this document and make appropriate updates.
+
 It is a documentation to describe future plans on how to change ports. NOT a documentation that describes CURRENT implementation.
 
 ## Current design: ports are ports, no further difference
