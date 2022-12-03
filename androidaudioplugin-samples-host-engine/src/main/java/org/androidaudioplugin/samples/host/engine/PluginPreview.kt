@@ -26,7 +26,7 @@ class PluginPreview(private val context: Context) {
     companion object {
         const val FRAMES_PER_TICK = 100
         const val AUDIO_BUFFER_SIZE = 4096
-        const val DEFAULT_CONTROL_BUFFER_SIZE = 32768
+        const val DEFAULT_CONTROL_BUFFER_SIZE = 131072
         // In this Plugin preview example engine, we don't really use the best sampling rate for the device
         // as it only performs static audio processing and does not involve device audio inputs.
         // We just process audio data based on 44100KHz, produce audio on the same rate, then play it as is.
