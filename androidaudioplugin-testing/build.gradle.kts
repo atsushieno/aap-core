@@ -7,12 +7,6 @@ plugins {
 
 apply { from ("../common.gradle") }
 
-// What a mess...
-val kotlin_version: String by rootProject
-val dokka_version: String by rootProject
-val compose_version: String by rootProject
-val aap_version: String by rootProject
-
 android {
     ext["description"] = "AndroidAudioPlugin - testing"
 
@@ -33,14 +27,17 @@ android {
 apply { from ("../publish-pom.gradle") }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.9.0")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    implementation ("androidx.appcompat:appcompat:1.5.1")
     implementation (project(":androidaudioplugin"))
-    implementation ("junit:junit:4.13.2")
-    implementation ("androidx.test:core:1.4.0")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
-    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
+
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.androidx.appcompat)
+    implementation (libs.coroutines.core)
+    implementation (libs.coroutines.android)
+    implementation (libs.junit)
+
+    testImplementation (libs.junit)
+    testImplementation (libs.test.core)
+    androidTestImplementation (libs.test.ext.junit)
+    androidTestImplementation (libs.test.espresso.core)
 }

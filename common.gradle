@@ -1,13 +1,13 @@
 
 android {
     compileSdk = 33
-    buildToolsVersion = "33.0.0"
+    buildToolsVersion = libs.versions.build.tools.get()
 
     defaultConfig {
         minSdk = 29
         targetSdk = 33
         versionCode = 1
-        versionName = "$aap_version"
+        versionName = libs.versions.aap.core.get()
     }
 
     // This should not be necessary in normal projects, but we specify c++_shared and thus
@@ -16,7 +16,7 @@ android {
     // NDK version in use. It is not realistic when it becomes for public uses, but so far
     // we have to take this pill...
     //ndkVersion = "21.4.7075529"
-    ndkVersion = "24.0.8215888"
+    ndkVersion = libs.versions.ndk.get()
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

@@ -9,10 +9,6 @@ plugins {
 apply { from ("../common.gradle") }
 
 // What a mess...
-val kotlin_version: String by rootProject
-val dokka_version: String by rootProject
-val compose_version: String by rootProject
-val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
@@ -96,14 +92,14 @@ android {
 apply { from ("../publish-pom.gradle") }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation ("androidx.startup:startup-runtime:1.1.1")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    testImplementation ("junit:junit:4.13.2")
-    androidTestImplementation ("androidx.test:core:1.4.0")
-    androidTestImplementation ("androidx.test:rules:1.4.0")
-    androidTestImplementation ("androidx.test:runner:1.4.0")
-    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.kotlin.stdlib.jdk7)
+    implementation(libs.coroutines.core)
+    implementation (libs.startup.runtime)
+    testImplementation (libs.junit)
+    androidTestImplementation (libs.test.core)
+    androidTestImplementation (libs.test.rules)
+    androidTestImplementation (libs.test.runner)
+    androidTestImplementation (libs.test.ext.junit)
+    androidTestImplementation (libs.test.espresso.core)
 }

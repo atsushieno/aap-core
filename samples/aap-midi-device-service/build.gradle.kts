@@ -6,10 +6,6 @@ plugins {
 apply { from ("../../common.gradle") }
 
 // What a mess...
-val kotlin_version: String by rootProject
-val dokka_version: String by rootProject
-val compose_version: String by rootProject
-val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
@@ -32,7 +28,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = compose_version
+        kotlinCompilerExtensionVersion = libs.versions.compose.get()
     }
     packagingOptions {
         resources {
@@ -45,22 +41,29 @@ android {
 }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.9.0")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    implementation ("androidx.appcompat:appcompat:1.5.1")
-    implementation ("androidx.preference:preference-ktx:1.2.0")
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-midi-device-service"))
-    runtimeOnly ("dev.atsushieno:libcxx-provider:24.0.8215888")
-    implementation ("com.google.android.material:material:1.7.0")
-    implementation ("androidx.compose.ui:ui:$compose_version")
-    implementation ("androidx.compose.material:material:$compose_version")
-    implementation ("androidx.compose.ui:ui-tooling:$compose_version")
-    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.5.1")
-    implementation ("androidx.activity:activity-compose:1.6.1")
-    implementation ("androidx.webkit:webkit:1.5.0")
-    testImplementation ("junit:junit:4.13.2")
-    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
-    androidTestImplementation ("androidx.compose.ui:ui-test-junit4:$compose_version")
+
+    runtimeOnly (libs.libcxx.provider)
+
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.androidx.appcompat)
+    implementation (libs.preference.ktx)
+    implementation (libs.material)
+
+    implementation (platform(libs.compose.bom.get()))
+    androidTestImplementation (platform(libs.compose.bom.get()))
+
+    implementation (libs.compose.ui)
+    implementation (libs.compose.material)
+    implementation (libs.compose.ui.tooling)
+
+    implementation (libs.lifecycle.runtime.ktx)
+    implementation (libs.activity.compose)
+    implementation (libs.webkit)
+
+    testImplementation (libs.junit)
+    androidTestImplementation (libs.test.ext.junit)
+    androidTestImplementation (libs.test.espresso.core)
 }

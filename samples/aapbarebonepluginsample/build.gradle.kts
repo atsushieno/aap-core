@@ -6,10 +6,6 @@ plugins {
 apply { from ("../../common.gradle") }
 
 // What a mess...
-val kotlin_version: String by rootProject
-val dokka_version: String by rootProject
-val compose_version: String by rootProject
-val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
@@ -54,16 +50,18 @@ android {
 }
 
 dependencies {
-    implementation ("androidx.core:core-ktx:1.9.0")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    implementation ("androidx.appcompat:appcompat:1.5.1")
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-ui-compose"))
-
-    androidTestImplementation ("androidx.test:rules:1.4.0")
-    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation ("androidx.compose.ui:ui-test-junit4:$compose_version")
     androidTestImplementation (project(":androidaudioplugin-testing"))
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.androidx.appcompat)
+
+    testImplementation (libs.junit)
+    androidTestImplementation (libs.test.rules)
+    androidTestImplementation (libs.test.ext.junit)
+    androidTestImplementation (libs.test.espresso.core)
+    androidTestImplementation (libs.compose.ui.test.junit)
 }
 
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.

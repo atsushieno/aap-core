@@ -44,12 +44,14 @@ android {
     //  If you don't get this working, you are not alone: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
     // Also note that you have to use custom sdk channel so far: ./gradlew testDevice2DebugAndroidTest -Pandroid.sdk.channel=3
     testOptions {
-        devices {
-            this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice2") {
-                device = "Pixel 5"
-                apiLevel = 30
-                systemImageSource = "aosp-atd"
-                //abi = "x86"
+        managedDevices {
+            devices {
+                this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice") {
+                    device = "Pixel 5"
+                    apiLevel = 30
+                    systemImageSource = "aosp-atd"
+                    //abi = "x86"
+                }
             }
         }
     }
@@ -63,25 +65,22 @@ dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-samples-host-engine"))
     implementation (project(":androidaudioplugin-ui-compose"))
+    androidTestImplementation (project(":androidaudioplugin-testing"))
 
-    runtimeOnly ("dev.atsushieno:libcxx-provider:24.0.8215888")
+    runtimeOnly (libs.libcxx.provider)
 
-    implementation ("androidx.core:core-ktx:1.9.0")
-    implementation ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version")
-    implementation ("androidx.appcompat:appcompat:1.5.1")
+    implementation (libs.androidx.core.ktx)
+    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.androidx.appcompat)
+    implementation (libs.coroutines.core)
+    implementation (libs.coroutines.android)
 
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation (libs.compose.ui)
 
-    implementation ("androidx.compose.ui:ui:$compose_version")
-
-    testImplementation ("junit:junit:4.13.2")
-
-    androidTestImplementation ("androidx.test:core:1.4.0")
-    androidTestImplementation ("androidx.test:rules:1.4.0")
-    androidTestImplementation ("androidx.test:runner:1.4.0")
-    androidTestImplementation ("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation ("androidx.test.espresso:espresso-core:3.4.0")
+    testImplementation (libs.junit)
+    androidTestImplementation (libs.test.rules)
+    androidTestImplementation (libs.test.ext.junit)
+    androidTestImplementation (libs.test.espresso.core)
 }
 
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
