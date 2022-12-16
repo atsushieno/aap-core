@@ -20,13 +20,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
-    - name: cache NDK
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-ndk
-      with:
-        path: /usr/local/lib/android/sdk/ndk/21.4.7075529
-        key: ${{ runner.os }}-ndk_r21d_linux
     - name: cache AVD
       uses: actions/cache@v2
       env:
@@ -44,8 +37,6 @@ jobs:
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
-    - name: stupid NDK setup workaround for GitHub Actions
-      run: sudo mkdir -p /usr/local/lib/android/sdk/ndk && sudo chmod 777 /usr/local/lib/android/sdk/ndk
     - name: build
       run: ./gradlew build dokkaHtml publishToMavenLocal
     - name: run instrumented tests (disabled)
@@ -78,7 +69,6 @@ jobs:
   osx-build:
     name: build on osx
     runs-on: macos-10.15
-    if: false
     steps:
     - name: checkout
       uses: actions/checkout@v1
@@ -88,13 +78,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
-    - name: cache NDK
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-ndk
-      with:
-        path: /Users/runner/Library/Android/sdk/ndk/21.4.7075529
-        key: ${{ runner.os }}-ndk_r21d_osx
     - name: cache AVD
       uses: actions/cache@v2
       env:
