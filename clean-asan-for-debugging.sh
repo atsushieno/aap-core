@@ -19,7 +19,7 @@ CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG
 
 ALL_ABIS=("x86" "x86_64" "armeabi-v7a" "arm64-v8a")
 
-ALL_APPS=("samples/aaphostsample2" "samples/aaphostsample" "samples/aapbarebonepluginsample" "samples/aapinstrumentsample")
+ALL_APPS=("samples/aaphostsample2" "samples/aaphostsample" "samples/aapbarebonepluginsample" "samples/aapinstrumentsample" "samples/aapxssample")
 
 for sample in "${ALL_APPS[@]}"; do
 
