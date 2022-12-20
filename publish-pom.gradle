@@ -36,10 +36,6 @@ afterEvaluate {
                 version = android.defaultConfig.versionName
                 from components.release
             }
-            debug(MavenPublication) {
-                version = android.defaultConfig.versionName
-                from components.debug
-            }
 
             all {
                 artifact(javadocJar)
