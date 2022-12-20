@@ -8,6 +8,9 @@ android {
         targetSdk = 33
         versionCode = 1
         versionName = libs.versions.aap.core.get()
+
+        consumerProguardFiles ("consumer-rules.pro")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // This should not be necessary in normal projects, but we specify c++_shared and thus
@@ -17,6 +20,9 @@ android {
     // we have to take this pill...
     //ndkVersion = "21.4.7075529"
     ndkVersion = libs.versions.ndk.get()
+    buildFeatures {
+        prefab = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

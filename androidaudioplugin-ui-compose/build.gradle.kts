@@ -8,12 +8,8 @@ plugins {
 apply { from ("../common.gradle") }
 
 android {
+    namespace = "org.androidaudioplugin.ui.compose"
     ext["description"] = "AndroidAudioPlugin - UI (Jetpack Compose)"
-
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles ("consumer-rules.pro")
-    }
 
     buildTypes {
         release {
@@ -27,7 +23,6 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.get()
     }
-    namespace = "org.androidaudioplugin.ui.compose"
 }
 
 apply { from ("../publish-pom.gradle") }

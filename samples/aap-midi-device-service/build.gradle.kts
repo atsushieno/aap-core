@@ -9,9 +9,9 @@ apply { from ("../../common.gradle") }
 val enable_asan: Boolean by rootProject
 
 android {
+    namespace = "org.androidaudioplugin.midideviceservice.app"
     defaultConfig {
         applicationId = "org.androidaudioplugin.aap_midi_device_service.app"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -37,7 +37,6 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
-    namespace = "org.androidaudioplugin.midideviceservice.app"
 }
 
 dependencies {

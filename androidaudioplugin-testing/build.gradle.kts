@@ -8,12 +8,8 @@ plugins {
 apply { from ("../common.gradle") }
 
 android {
+    namespace = "org.androidaudioplugin.androidaudioplugin.testing"
     ext["description"] = "AndroidAudioPlugin - testing"
-
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles ("consumer-rules.pro")
-    }
 
     buildTypes {
         release {
@@ -21,7 +17,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    namespace = "org.androidaudioplugin.androidaudioplugin.testing"
 }
 
 apply { from ("../publish-pom.gradle") }

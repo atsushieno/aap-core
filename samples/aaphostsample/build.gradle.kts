@@ -13,12 +13,9 @@ val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
-    buildFeatures {
-        viewBinding = true
-    }
+    namespace = "org.androidaudioplugin.aaphostsample"
     defaultConfig {
         applicationId = "org.androidaudioplugin.aaphostsample"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {
         prefab = true
@@ -58,7 +55,6 @@ android {
     androidResources {
         noCompress += listOf("sample.wav")
     }
-    namespace = "org.androidaudioplugin.aaphostsample"
 }
 
 dependencies {

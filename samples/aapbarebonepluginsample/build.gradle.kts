@@ -9,9 +9,9 @@ apply { from ("../../common.gradle") }
 val enable_asan: Boolean by rootProject
 
 android {
+    namespace = "org.androidaudioplugin.aapbarebonepluginsample"
     defaultConfig {
         applicationId = "org.androidaudioplugin.aapbarebonepluginsample"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {
             cmake {
@@ -24,7 +24,7 @@ android {
     }
     externalNativeBuild {
         cmake {
-            version = "3.18.1"
+            version = "3.22.1"
             path ("src/main/cpp/CMakeLists.txt")
         }
     }
@@ -46,7 +46,6 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
-    namespace = "org.androidaudioplugin.aapbarebonepluginsample"
 }
 
 dependencies {

@@ -1,3 +1,13 @@
+android {
+    publishing {
+        multipleVariants {
+            allVariants()
+            withJavadocJar()
+            withSourcesJar()
+        }
+    }
+}
+
 afterEvaluate {
 
     tasks.register('javadocJar', Jar) {

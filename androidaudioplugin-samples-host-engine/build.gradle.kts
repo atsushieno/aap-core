@@ -8,11 +8,8 @@ plugins {
 apply { from ("../common.gradle") }
 
 android {
+    namespace = "org.androidaudioplugin.samples.host.engine"
     ext["description"] = "AndroidAudioPlugin - sample host engine (not for public use)"
-
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 
     buildTypes {
         release {
@@ -20,7 +17,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    namespace = "org.androidaudioplugin.samples.host.engine"
 }
 
 apply { from ("../publish-pom.gradle") }

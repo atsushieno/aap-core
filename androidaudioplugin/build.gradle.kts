@@ -12,11 +12,10 @@ apply { from ("../common.gradle") }
 val enable_asan: Boolean by rootProject
 
 android {
+    namespace = "org.androidaudioplugin"
     this.ext["description"] = "AndroidAudioPlugin - core"
 
     defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles ("consumer-rules.pro")
 
         externalNativeBuild {
             cmake {
@@ -46,19 +45,14 @@ android {
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            version = "3.18.1"
-            path ("src/main/cpp/CMakeLists.txt")
-        }
-    }
-
-    lint {
-        disable.add("EnsureInitializerMetadata")
-    }
-
     buildFeatures {
         prefabPublishing = true
+    }
+    externalNativeBuild {
+        cmake {
+            version = "3.22.1"
+            path ("src/main/cpp/CMakeLists.txt")
+        }
     }
     prefab {
         create("androidaudioplugin") {
@@ -66,10 +60,13 @@ android {
             headers = "../include"
         }
     }
-
     // https://github.com/google/prefab/issues/127
     packagingOptions {
         jniLibs.excludes.add("**/libc++_shared.so")
+    }
+
+    lint {
+        disable.add("EnsureInitializerMetadata")
     }
 
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
@@ -86,7 +83,6 @@ android {
             }
         }
     }
-    namespace = "org.androidaudioplugin"
 }
 
 apply { from ("../publish-pom.gradle") }

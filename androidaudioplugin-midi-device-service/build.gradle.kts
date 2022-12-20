@@ -11,11 +11,10 @@ apply { from ("../common.gradle") }
 val enable_asan: Boolean by rootProject
 
 android {
+    namespace = "org.androidaudioplugin.midideviceservice"
     this.ext["description"] = "AndroidAudioPlugin - MidiDeviceService support"
 
     defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
         externalNativeBuild {
             cmake {
                 // https://github.com/google/prefab/blob/bccf5a6a75b67add30afbb6d4f7a7c50081d2d86/api/src/main/kotlin/com/google/prefab/api/Android.kt#L243
@@ -41,29 +40,25 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    buildFeatures {
+        prefabPublishing = true
+    }
     externalNativeBuild {
         cmake {
-            version = "3.18.1"
+            version = "3.22.1"
             path ("src/main/cpp/CMakeLists.txt")
         }
-    }
-
-    buildFeatures {
-        prefab = true
-        prefabPublishing = true
     }
     prefab {
         create("androidaudioplugin-midi-device-service") {
             name = "aapmidideviceservice"
         }
     }
-
     // https://github.com/google/prefab/issues/127
     packagingOptions {
         jniLibs.excludes.add("**/libc++_shared.so")
         jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }
-    namespace = "org.androidaudioplugin.midideviceservice"
 }
 
 apply { from ("../publish-pom.gradle") }
