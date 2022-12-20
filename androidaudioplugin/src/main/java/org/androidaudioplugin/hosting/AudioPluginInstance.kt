@@ -91,15 +91,17 @@ class AudioPluginInstance internal constructor(
     fun destroy() {
         if (state == InstanceState.ACTIVE)
             deactivate()
-        if (state == InstanceState.INACTIVE || state == InstanceState.ERROR) {
+        if (state != InstanceState.DESTROYED) {
             try {
                 proxy.destroy()
-
+            } catch (ex: Exception) {
+                // nothing we can do here
+            }
+            try {
                 onDestroy(this)
             } catch (ex: Exception) {
                 // nothing we can do here
             }
-
             state = InstanceState.DESTROYED
         }
     }
