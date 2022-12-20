@@ -15,7 +15,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_STL=c++_shared")
+                arguments ("-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
             }
         }
     }

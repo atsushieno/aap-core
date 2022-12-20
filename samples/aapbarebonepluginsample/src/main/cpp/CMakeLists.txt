@@ -53,6 +53,19 @@ else ()
 target_link_libraries(aapbarebonepluginsample android log)
 endif ()
 
-# uncomment this if you want to enable AddressSanitizer
-#set_target_properties(aapbarebonepluginsample PROPERTIES LINK_FLAGS -fsanitize=address)
+# You can set it via build.gradle
+if (${AAP_ENABLE_ASAN})
+    target_compile_options (aapbarebonepluginsample
+            PUBLIC
+            -fsanitize=address -fno-omit-frame-pointer
+            )
 
+    target_link_options(aapbarebonepluginsample
+            PUBLIC
+            -fsanitize=address
+            )
+
+    set_target_properties(aapbarebonepluginsample
+            PROPERTIES LINK_FLAGS -fsanitize=address
+            )
+endif()
