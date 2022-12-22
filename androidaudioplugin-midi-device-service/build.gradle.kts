@@ -66,6 +66,7 @@ dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (libs.androidx.core.ktx)
     implementation (libs.startup.runtime)
+    implementation (libs.coroutines.core)
 
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)

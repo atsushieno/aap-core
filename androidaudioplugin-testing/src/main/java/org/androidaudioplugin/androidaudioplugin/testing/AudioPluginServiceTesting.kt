@@ -3,8 +3,6 @@ package org.androidaudioplugin.androidaudioplugin.testing
 import android.content.Context
 import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
@@ -33,8 +31,6 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             testInstancingAndProcessing(pluginInfo)
     }
 
-    // FIXME: historically we had some reproducible issues that started occur at 4th iteration somehow.
-    //  It should be bigger than >=3. It is set to 1 because we are stuck at some failing tests here...
     fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 1) {
 
         val host = AudioPluginClient(applicationContext)
@@ -42,20 +38,15 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
         val controlBufferSize = host.defaultControlBufferSizeInBytes
 
         runBlocking {
-            // we should come up with appropriate locks...
-            val mutex = Mutex(true)
-            host.connectToPluginServiceAsync(pluginInfo.packageName) { _, _ ->
-                for (i in 0 until cycles) {
-                    val instance = host.instantiatePlugin(pluginInfo)
-                    instance.prepare(floatCount, controlBufferSize)
-                    instance.activate()
-                    instance.process()
-                    instance.deactivate()
-                    instance.destroy()
-                }
-                mutex.unlock()
-            }
-            mutex.withLock { }
+            val conn = host.connectToPluginService(pluginInfo.packageName)
+        }
+        for (i in 0 until cycles) {
+            val instance = host.instantiatePlugin(pluginInfo)
+            instance.prepare(floatCount, controlBufferSize)
+            instance.activate()
+            instance.process()
+            instance.deactivate()
+            instance.destroy()
         }
 
         // FIXME: we should also enable this part to sanity check async instantiation.

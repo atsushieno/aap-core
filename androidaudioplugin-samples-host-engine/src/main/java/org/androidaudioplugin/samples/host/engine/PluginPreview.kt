@@ -4,13 +4,10 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.media.midi.MidiDevice
 import android.media.midi.MidiDeviceInfo.PortInfo
 import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
 import dev.atsushieno.ktmidi.*
-import dev.atsushieno.ktmidi.ci.CIFactory
-import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
 import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
@@ -20,6 +17,8 @@ import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class PluginPreview(private val context: Context) {
 
@@ -50,29 +49,22 @@ class PluginPreview(private val context: Context) {
         host.dispose()
     }
 
-    fun loadPlugin(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) ->Unit = {_,_ -> }) {
-        if (instance != null) {
-            callback(null, Exception("A plugin ${pluginInfo.pluginId} is already loaded"))
-        } else {
-            this.pluginInfo = pluginInfo
-            host.connectToPluginServiceAsync(pluginInfo.packageName) { _, error ->
-                if (error != null) {
-                    lastError = error
-                    callback(null, error)
-                } else { // should be always true
-                    assert(this.instance == null) // avoid race condition
+    suspend fun loadPlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
+        if (instance != null)
+            // FIXME: use some dedicated type
+            throw Exception("A plugin ${pluginInfo.pluginId} is already loaded")
 
-                    val instance = host.instantiatePlugin(pluginInfo)
-                    instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
-                    if (instance.proxyError != null) {
-                        callback(null, instance.proxyError!!)
-                    } else {
-                        this.instance = instance
-                        callback(instance, null)
-                    }
-                }
-            }
-        }
+        this.pluginInfo = pluginInfo
+
+        host.connectToPluginService(pluginInfo.packageName)
+        assert(this.instance == null) // avoid race condition
+
+        val instance = host.instantiatePlugin(pluginInfo)
+        instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
+        if (instance.proxyError != null)
+            throw instance.proxyError!!
+        this.instance = instance
+        return instance
     }
 
     fun unloadPlugin() {
@@ -458,56 +450,44 @@ class PluginPreview(private val context: Context) {
 
     private var midi_input: MidiInputPort? = null
 
-    fun playMidiNotes() : Boolean
-    {
-        val doPlayNotes = {
-            CoroutineScope(Dispatchers.Default).launch {
-                val input = midi_input ?: return@launch
-                withContext(Dispatchers.Default) {
-                    input.send(byteArrayOf(
-                        0x90.toByte(), 0x40, 0x78,
-                        0x91.toByte(), 0x44, 0x78,
-                        0x92.toByte(), 0x47, 0x78,
-                    ), 0, 9)
-                    delay(1000)
-                    input.send(byteArrayOf(
-                        0x80.toByte(), 0x40, 0,
-                        0x81.toByte(), 0x44, 0,
-                        0x82.toByte(), 0x47, 0,
-                    ), 0, 9)
-                }
-            }
-        }
+    fun playMidiNotes() {
+        CoroutineScope(Dispatchers.Default).launch { doPlayMidiNotes() }
+    }
 
-        if (midi_input != null) {
-            doPlayNotes()
-        } else {
-            val manager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
-            val deviceInfo = manager.devices.firstOrNull { deviceInfo ->
-                val serviceInfo = deviceInfo.properties.get("service_info") as android.content.pm.ServiceInfo?
-                val pluginInfo = this.pluginInfo
-                serviceInfo != null && pluginInfo != null && serviceInfo.packageName == pluginInfo.packageName
-            }
-            if (deviceInfo != null) {
-                manager.openDevice(deviceInfo, { device ->
-                    val port = deviceInfo.ports.firstOrNull {
-                        it.type == PortInfo.TYPE_INPUT &&
+    private suspend fun openMidiDevice(): MidiInputPort = suspendCoroutine { continuation ->
+        val manager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
+        val deviceInfo = manager.devices.first { deviceInfo ->
+            val serviceInfo = deviceInfo.properties.get("service_info") as android.content.pm.ServiceInfo?
+            val pluginInfo = this.pluginInfo
+            serviceInfo != null && pluginInfo != null && serviceInfo.packageName == pluginInfo.packageName
+        }
+        manager.openDevice(deviceInfo, { device ->
+            val port = deviceInfo.ports.firstOrNull {
+                it.type == PortInfo.TYPE_INPUT &&
                         it.name == pluginInfo?.displayName
-                    } ?: deviceInfo.ports.firstOrNull {
-                        it.type == PortInfo.TYPE_INPUT
-                    }
-                    val portNumber = port?.portNumber ?: return@openDevice
-                    midi_input = device.openInputPort(portNumber)
-                    doPlayNotes()
-                }, null)
+            } ?: deviceInfo.ports.firstOrNull {
+                it.type == PortInfo.TYPE_INPUT
             }
-            else {
-                android.util.Log.e("AAP.PluginPreview", "MidiDeviceService cannot be opened.")
-                return false
-            }
-        }
+            val portNumber = port?.portNumber ?: return@openDevice
+            continuation.resume(device.openInputPort(portNumber))
+        }, null)
+    }
 
-        return true
+    private suspend fun doPlayMidiNotes() {
+        if (midi_input == null)
+            midi_input = openMidiDevice()
+        val input = midi_input!!
+        input.send(byteArrayOf(
+            0x90.toByte(), 0x40, 0x78,
+            0x91.toByte(), 0x44, 0x78,
+            0x92.toByte(), 0x47, 0x78,
+        ), 0, 9)
+        delay(1000)
+        input.send(byteArrayOf(
+            0x80.toByte(), 0x40, 0,
+            0x81.toByte(), 0x44, 0,
+            0x82.toByte(), 0x47, 0,
+        ), 0, 9)
     }
 
     init {

@@ -11,7 +11,7 @@ class AudioPluginMidiDeviceInstance private constructor(
     private val client: AudioPluginClientBase) {
 
     companion object {
-        fun createAsync(pluginId: String, ownerService: AudioPluginMidiDeviceService, callback: (AudioPluginMidiDeviceInstance?, Exception?) -> Unit) {
+        suspend fun create(pluginId: String, ownerService: AudioPluginMidiDeviceService) : AudioPluginMidiDeviceInstance {
             val audioManager = ownerService.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
             val oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
@@ -26,17 +26,10 @@ class AudioPluginMidiDeviceInstance private constructor(
                 sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize, ret.midiBufferSize)
 
             val pluginInfo = ownerService.plugins.first { p -> p.pluginId == pluginId }
-            client.connectToPluginServiceAsync(pluginInfo.packageName) { _, error ->
-                if (error != null)
-                    callback(null, error)
-                try {
-                    ret.instantiatePlugin(pluginId)
-                    ret.activate()
-                    callback(ret, error)
-                } catch (e: Exception) {
-                    callback(null, e)
-                }
-            }
+            client.connectToPluginService(pluginInfo.packageName)
+            ret.instantiatePlugin(pluginId)
+            ret.activate()
+            return ret
         }
     }
 

@@ -8,6 +8,8 @@ import android.os.IBinder
 import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /*
   A host client class that manages one or more connections to AudioPluginServices.
@@ -15,12 +17,15 @@ import org.androidaudioplugin.PluginServiceInformation
   Native hosts also use this class to instantiate plugins and manage them.
  */
 class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseable {
-    internal class Connection(private val parent: AudioPluginServiceConnector, private val serviceInfo: PluginServiceInformation) : ServiceConnection {
+    /*
+    The ServiceConnection implementation class for AudioPluginService.
+     */
+    internal class Connection(private val parent: AudioPluginServiceConnector, private val serviceInfo: PluginServiceInformation, private val additionalOnServiceConnected: (PluginServiceConnection?) -> Unit) : ServiceConnection {
 
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             Log.d("AAP", "AudioPluginServiceConnector: onServiceConnected")
             if (binder != null)
-                parent.registerNewConnection(this, serviceInfo, binder)
+                additionalOnServiceConnected(parent.registerNewConnection(this, serviceInfo, binder))
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -45,13 +50,11 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
     var instanceId = serial++
 
-    val serviceConnectedListeners = mutableListOf<(conn: PluginServiceConnection?, error: Exception?) -> Unit>()
-
     val connectedServices = mutableListOf<PluginServiceConnection>()
 
     private var isClosed = false
 
-    fun bindAudioPluginService(service: PluginServiceInformation) {
+    suspend fun bindAudioPluginService(service: PluginServiceInformation) = suspendCoroutine { continuation ->
         assert(!isClosed)
 
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
@@ -60,7 +63,13 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             service.className
         )
 
-        val conn = Connection(this, service)
+        val conn = Connection(this, service) { pluginServiceConnection ->
+            if (pluginServiceConnection != null)
+                continuation.resume(pluginServiceConnection)
+            else
+                // FIXME: use dedicated Exception type
+                throw Exception("Failed to bind AudioPluginService: Intent = $intent")
+        }
 
         Log.d(
             "AudioPluginHost",
@@ -69,7 +78,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         assert(applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 
-    private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) {
+    private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
         val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder)
         AudioPluginNatives.addBinderForClient(
             instanceId,
@@ -79,10 +88,8 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         )
         connectedServices.add(conn)
 
-        // avoid conflicting concurrent updates
-        val currentListeners = serviceConnectedListeners.toTypedArray()
-        currentListeners.forEach { f -> f(conn, null) }
         nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
+        return conn
     }
 
     private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
@@ -109,7 +116,6 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
                 conn.serviceInfo.className
             )
         }
-        serviceConnectedListeners.clear()
         isClosed = true
     }
 }

@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Bundle
 import android.util.Log
+import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.*
 import org.xmlpull.v1.XmlPullParser
 
@@ -234,23 +235,15 @@ class AudioPluginHostHelper {
             if (existing != null)
                 return
 
-            val listener: (PluginServiceConnection?, Exception?) -> Unit = { conn, error ->
-                if (conn != null) {
-                    Log.d("AAP", "Audio Plugin Service connected: ${conn.serviceInfo.packageName}")
-                    val binder = conn.binder
-                    if (binder != null)
-                        AudioPluginNatives.addBinderForClient(
-                            connector.instanceId,
-                            service.packageName,
-                            service.className,
-                            binder
-                        )
-                }
-                else
-                    Log.e("AAP", "Audio Plugin Service connection error : $error")
+            runBlocking {
+                val conn = connector.bindAudioPluginService(service)
+                AudioPluginNatives.addBinderForClient(
+                    connector.instanceId,
+                    service.packageName,
+                    service.className,
+                    conn.binder
+                )
             }
-            connector.serviceConnectedListeners.add(listener)
-            connector.bindAudioPluginService(service)
         }
     }
 }

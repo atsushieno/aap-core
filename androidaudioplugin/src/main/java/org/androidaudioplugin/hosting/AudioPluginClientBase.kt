@@ -9,8 +9,6 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     // Service connection
     val serviceConnector = AudioPluginServiceConnector(applicationContext)
 
-    val pluginInstantiatedListeners = mutableListOf<(conn: AudioPluginInstance) -> Unit>()
-
     val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
@@ -21,21 +19,14 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
         serviceConnector.close()
     }
 
-    fun connectToPluginServiceAsync(packageName: String, callback: (PluginServiceConnection?, Exception?) -> Unit) {
+    suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
         val conn = serviceConnector.findExistingServiceConnection(packageName)
         if (conn == null) {
-            var serviceConnectedListener: (PluginServiceConnection?, Exception?) -> Unit = { _, _ -> }
-            serviceConnectedListener = { c, e ->
-                serviceConnector.serviceConnectedListeners.remove(serviceConnectedListener)
-                callback(c, e)
-            }
-            serviceConnector.serviceConnectedListeners.add(serviceConnectedListener)
             val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
                 .first { c -> c.packageName == packageName }
-            serviceConnector.bindAudioPluginService(service)
+            return serviceConnector.bindAudioPluginService(service)
         }
-        else
-            callback(conn, null)
+        return conn
     }
 
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
@@ -48,27 +39,6 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
             }, pluginInfo, sampleRate)
         instantiatedPlugins.add(instance)
         return instance
-    }
-
-    @Deprecated("Use safer option of combining connectToPluginServiceAsync and instantiatePlugin",
-        replaceWith = ReplaceWith("connectToPluginServiceAsync(pluginInfo.packageName) { _, connectionError -> " +
-                " if (connectionError != null) callback(null, connectionError)" +
-                " else try { callback(instantiatePlugin(pluginInfo), null) } catch (instancingError: Exception) { callback(null, instancingError) } }"))
-    fun instantiatePluginAsync(pluginInfo: PluginInformation, callback: (AudioPluginInstance?, Exception?) -> Unit)
-    {
-        connectToPluginServiceAsync(pluginInfo.packageName) { conn: PluginServiceConnection?, error: Exception? ->
-            if (conn != null) {
-                val instance = AudioPluginInstance(serviceConnector, conn,
-                    {i ->
-                        instantiatedPlugins.remove(i)
-                        onInstanceDestroyed(i) }, pluginInfo, sampleRate)
-                instantiatedPlugins.add(instance)
-                pluginInstantiatedListeners.forEach { l -> l(instance) }
-                callback(instance, null)
-            }
-            else
-                callback(null, error)
-        }
     }
 
     var sampleRate : Int

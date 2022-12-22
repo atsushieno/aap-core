@@ -3,7 +3,6 @@ package org.androidaudioplugin.ui.compose
 import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
@@ -13,10 +12,13 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 
 @Composable
 fun PluginListApp(viewModel: PluginListViewModel) {
@@ -54,11 +56,11 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                                         "plugin $pluginId is somehow not found on the system."
                                     return@PluginList
                                 }
-                                preview.loadPlugin(pluginInfo) { _, error ->
-                                    if (error == null)
-                                        navController.navigate("plugin_details/" + Uri.encode(p.pluginId))
-                                    else
-                                        errorMessage = error.message ?: ""
+                                CoroutineScope(Dispatchers.Default).launch {
+                                    val i = preview.loadPlugin(pluginInfo)
+                                    Dispatchers.Main.dispatch(currentCoroutineContext()) {
+                                        navController.navigate("plugin_details/" + Uri.encode(i.pluginInfo.pluginId))
+                                    }
                                 }
                             }, pluginServices = viewModel.availablePluginServices)
                         }
