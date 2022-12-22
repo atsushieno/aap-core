@@ -11,9 +11,15 @@
 # > android.packagingOptions.jniLibs.useLegacyPackaging = true
 #
 if [ "$ANDROID_NDK_PATH" == "" ]; then
-  ANDROID_NDK_PATH=~/Android/Sdk/ndk/25.1.8937393
+  if [ `uname` == "Darwin" ]; then
+    ANDROID_NDK_PATH=~/Library/Android/Sdk/ndk/25.1.8937393
+  else
+    ANDROID_NDK_PATH=~/Android/Sdk/ndk/25.1.8937393
+  fi
 fi
-HOST_ARCH_LIB=linux-x86_64/lib64
+UNAMEXX=`uname | tr '[:upper:]' '[:lower:]'`
+echo "UNAME: $UNAMEXX"
+HOST_ARCH_LIB=$UNAMEXX-x86_64/lib64
 CLANG_VER=14.0.6
 CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG_VER/lib
 
