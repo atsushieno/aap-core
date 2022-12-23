@@ -291,8 +291,6 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *env, jclass clazz,
                                                                       jobject binder) {
-    auto abinder = AIBinder_fromJavaBinder(env, binder);
-    AIBinder_decStrong(abinder);
     sp_binder.reset();
 }
 

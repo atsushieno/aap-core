@@ -31,7 +31,8 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             testInstancingAndProcessing(pluginInfo)
     }
 
-    fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 1) {
+    // FIXME: cycles should be bigger than 3 (tests still fail).
+    fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 3) {
 
         val host = AudioPluginClientBase(applicationContext)
         val floatCount = 1024
