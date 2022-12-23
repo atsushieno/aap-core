@@ -3,7 +3,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 import android.content.Context
 import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.runBlocking
-import org.androidaudioplugin.hosting.AudioPluginClient
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
@@ -33,12 +33,12 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
     fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 1) {
 
-        val host = AudioPluginClient(applicationContext)
-        val floatCount = host.audioBufferSizeInBytes / 4 // 4 is sizeof(float)
-        val controlBufferSize = host.defaultControlBufferSizeInBytes
+        val host = AudioPluginClientBase(applicationContext)
+        val floatCount = 1024
+        val controlBufferSize = 0x10000
 
         runBlocking {
-            val conn = host.connectToPluginService(pluginInfo.packageName)
+            host.connectToPluginService(pluginInfo.packageName)
         }
         for (i in 0 until cycles) {
             val instance = host.instantiatePlugin(pluginInfo)
@@ -48,28 +48,6 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             instance.deactivate()
             instance.destroy()
         }
-
-        // FIXME: we should also enable this part to sanity check async instantiation.
-        /*
-        for (i in 0..3) {
-            runBlocking {
-                // we should come up with appropriate locks...
-                val mutex = Mutex(true)
-
-                host.instantiatePluginAsync(pluginInfo) { _, _ ->
-
-                    host.instantiatedPlugins.forEach { instance -> instance.prepare(floatCount, controlBufferSize) }
-                    host.instantiatedPlugins.forEach { instance -> instance.activate() }
-                    host.instantiatedPlugins.forEach { instance -> instance.process() }
-                    host.instantiatedPlugins.forEach { instance -> instance.deactivate() }
-                    host.instantiatedPlugins.forEach { instance -> instance.destroy() }
-
-                    mutex.unlock()
-                }
-
-                mutex.withLock { }
-            }
-        }*/
 
         assert(host.instantiatedPlugins.size == 0)
 

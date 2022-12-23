@@ -14,9 +14,8 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
 
     fun dispose() {
-        for (instance in instantiatedPlugins)
-            instance.destroy()
-        serviceConnector.close()
+        instantiatedPlugins.forEach { it.destroy() }
+        serviceConnector.connectedServices.forEach { disconnectPluginService(it.serviceInfo.packageName) }
     }
 
     suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
@@ -27,6 +26,12 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
             return serviceConnector.bindAudioPluginService(service)
         }
         return conn
+    }
+
+    fun disconnectPluginService(packageName: String) {
+        val conn = serviceConnector.findExistingServiceConnection(packageName)
+        if (conn != null)
+            serviceConnector.unbindAudioPluginService(conn.serviceInfo.packageName)
     }
 
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {

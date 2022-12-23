@@ -48,8 +48,9 @@ open class AudioPluginService : Service()
         if (enableDebug)
             android.os.Debug.waitForDebugger()
         AudioPluginLocalHost.initialize(this)
-        if (native_binder != null)
-            AudioPluginNatives.destroyBinderForService(native_binder!!)
+        val existing = native_binder
+        if (existing != null)
+            AudioPluginNatives.destroyBinderForService(existing)
         native_binder = AudioPluginNatives.createBinderForService()
         Log.d("AudioPluginService", "onBind done");
         return native_binder
@@ -57,9 +58,10 @@ open class AudioPluginService : Service()
 
     override fun onUnbind(intent: Intent?): Boolean {
         AudioPluginLocalHost.cleanup()
-        var binder = native_binder
+        val binder = native_binder
         if (binder != null)
             AudioPluginNatives.destroyBinderForService(binder)
+        native_binder = null
         return true
     }
 

@@ -12,7 +12,6 @@ import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
-import org.androidaudioplugin.hosting.AudioPluginClient
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer

@@ -1,13 +1,14 @@
-package org.androidaudioplugin.hosting
+package org.androidaudioplugin.samples.host.engine
 
 import android.content.Context
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 import java.lang.UnsupportedOperationException
 
 /** This class not to endorse any official API for hosting AAP.
  * Its implementation is hacky and not really with decent API design.
  * It is to provide usable utilities for plugin developers as a proof of concept.
  */
-class AudioPluginClient(private var applicationContext: Context) : AudioPluginClientBase(applicationContext) {
+class AudioPluginClient(applicationContext: Context) : AudioPluginClientBase(applicationContext) {
 
     // Audio buses and buffers management
     // FIXME: maybe we should reconsider the API.

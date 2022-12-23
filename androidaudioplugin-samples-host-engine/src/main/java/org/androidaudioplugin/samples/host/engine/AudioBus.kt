@@ -1,4 +1,4 @@
-package org.androidaudioplugin.hosting
+package org.androidaudioplugin.samples.host.engine
 
 /** This class not to endorse any official API for hosting AAP.
  * We are still unsure if these classes will be kept alive or not.
