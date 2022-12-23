@@ -82,7 +82,9 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPlugin
 
     int n = buffer->num_buffers;
 
-	assert(ctx->shm_store->getAudioPluginBuffer()->num_buffers == 0);
+	if (ctx->shm_store->getAudioPluginBuffer()->num_buffers > 0)
+		ctx->shm_store->disposeAudioBufferFDs();
+
     auto code = ctx->shm_store->allocateClientBuffer(buffer->num_buffers, buffer->num_frames);
 	if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
 		aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", getMemoryAllocationErrorMessage(code));

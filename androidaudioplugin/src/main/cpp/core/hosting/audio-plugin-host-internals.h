@@ -23,7 +23,11 @@ public:
 
     bool allocateBuffer(size_t numPorts, size_t numFrames, PluginInstance& instance, size_t defaultControlBytesPerBlock);
 
-    AndroidAudioPluginBuffer* getAudioPluginBuffer() { return buffer.get(); }
+    AndroidAudioPluginBuffer* toPublicApi() { return buffer.get(); }
+
+    inline int32_t numBuffers() { return buffer->num_buffers; }
+    inline int32_t numFrames() { return buffer->num_frames; }
+    inline void* getBuffer(u_int32_t bufferIndex) { return buffer->buffers[bufferIndex]; }
 };
 
 //-----------------------------------

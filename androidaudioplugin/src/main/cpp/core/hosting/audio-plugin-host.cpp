@@ -322,18 +322,15 @@ void PluginInstance::dispose() {
 
 int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
 	assert(!plugin_buffer);
+	assert(numPorts >= 0);
+	assert(numFrames > 0);
+	assert(defaultControlBytesPerBlock > 0);
 	plugin_buffer = std::make_unique<PluginBuffer>();
 	return plugin_buffer->allocateBuffer(numPorts, numFrames, *this, defaultControlBytesPerBlock);
 }
 
-AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
-	if (!plugin_buffer) {
-        assert(numPorts >= 0);
-        assert(numFrames > 0);
-        assert(defaultControlBytesPerBlock > 0);
-        allocateAudioPluginBuffer(numPorts, numFrames, defaultControlBytesPerBlock);
-    }
-	return plugin_buffer->getAudioPluginBuffer();
+AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer() {
+	return plugin_buffer->toPublicApi();
 }
 
 void PluginInstance::completeInstantiation()

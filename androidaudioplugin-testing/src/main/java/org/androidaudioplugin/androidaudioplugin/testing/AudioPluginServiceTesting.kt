@@ -33,6 +33,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     }
 
     // FIXME: cycles should be bigger than 3 (tests still fail).
+    @Suppress("UnnecessaryVariable")
     fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 3) {
         // FIXME: number of parallel instances should be more than 1 (tests still fail).
         val numParallelInstances = 1
@@ -57,6 +58,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
         assert(host.instantiatedPlugins.size == 0)
 
+        host.disconnectPluginService(pluginInfo.packageName)
         host.dispose()
     }
 }

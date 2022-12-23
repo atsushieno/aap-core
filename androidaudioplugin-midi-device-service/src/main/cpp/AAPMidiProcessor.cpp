@@ -171,7 +171,8 @@ namespace aapmidideviceservice {
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
             data->instance_id = instanceId;
-            data->plugin_buffer = instance->getAudioPluginBuffer(numPorts, aap_frame_size, midi_buffer_size);
+            instance->allocateAudioPluginBuffer(numPorts, aap_frame_size, midi_buffer_size);
+            data->plugin_buffer = instance->getAudioPluginBuffer();
 
             for (int i = 0; i < numPorts; i++) {
                 auto port = instance->getPort(i);
