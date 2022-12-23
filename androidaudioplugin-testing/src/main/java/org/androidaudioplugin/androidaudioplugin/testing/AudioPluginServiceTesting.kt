@@ -7,6 +7,7 @@ import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.hosting.AudioPluginInstance
 
 class AudioPluginServiceTesting(private val applicationContext: Context) {
 
@@ -33,6 +34,8 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
     // FIXME: cycles should be bigger than 3 (tests still fail).
     fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 3) {
+        // FIXME: number of parallel instances should be more than 1 (tests still fail).
+        val numParallelInstances = 1
 
         val host = AudioPluginClientBase(applicationContext)
         val floatCount = 1024
@@ -41,13 +44,15 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
         runBlocking {
             host.connectToPluginService(pluginInfo.packageName)
         }
+
         for (i in 0 until cycles) {
-            val instance = host.instantiatePlugin(pluginInfo)
-            instance.prepare(floatCount, controlBufferSize)
-            instance.activate()
-            instance.process()
-            instance.deactivate()
-            instance.destroy()
+            val p = numParallelInstances
+            val instances = ((0 until p).map { host.instantiatePlugin(pluginInfo) })
+            (0 until p).forEach { instances[it].prepare(floatCount, controlBufferSize) }
+            (0 until p).forEach { instances[it].activate() }
+            (0 until p).forEach { instances[it].process() }
+            (0 until p).forEach { instances[it].deactivate() }
+            (0 until p).forEach { instances[it].destroy() }
         }
 
         assert(host.instantiatedPlugins.size == 0)
