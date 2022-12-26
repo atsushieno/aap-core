@@ -70,6 +70,8 @@ public:
     void* getServiceHandleForConnectedPlugin(std::string packageName, std::string className);
 
     void* getServiceHandleForConnectedPlugin(std::string pluginId);
+
+    void* getServiceHandleForConnectedService(std::string pluginId);
 };
 
 }

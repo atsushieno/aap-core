@@ -215,23 +215,29 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return instance;
 }
 
+void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
+{
+	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
+	assert (descriptor != nullptr);
+    auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
+    if (service != nullptr) {
+        auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
+        userCallback(result.value, result.error);
+    } else {
+        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string error) {
+            if (error.empty()) {
+                auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
+                userCallback(result.value, result.error);
+            }
+            else
+                userCallback(-1, error);
+        });
+    }
+}
+
 PluginClient::Result<int32_t> PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
 {
 	Result<int32_t> result;
-	createInstanceImpl(false, identifier, sampleRate, isRemoteExplicit, [&result](int32_t instanceId, std::string error) {
-		result.value = instanceId;
-		result.error = error;
-	});
-	return result;
-}
-
-void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
-{
-	createInstanceImpl(true, identifier, sampleRate, isRemoteExplicit, userCallback);
-}
-
-void PluginClient::createInstanceImpl(bool canDynamicallyConnect, std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
-{
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
 
@@ -239,24 +245,24 @@ void PluginClient::createInstanceImpl(bool canDynamicallyConnect, std::string id
 	// For remote plugins, the connection has to be established through binder.
 	auto internalCallback = [=](PluginInstance* instance, std::string error) {
 		if (instance != nullptr) {
-			userCallback(instance->getInstanceId(), "");
+			return Result<int32_t>{instance->getInstanceId(), ""};
 		}
 		else
-			userCallback(-1, error);
+			return Result<int32_t>{-1, error};
 	};
 	if (isRemoteExplicit || descriptor->isOutProcess())
-		instantiateRemotePlugin(canDynamicallyConnect, descriptor, sampleRate, internalCallback);
+		return instantiateRemotePlugin(descriptor, sampleRate);
 	else {
 		try {
 			auto instance = instantiateLocalPlugin(descriptor, sampleRate);
-			internalCallback(instance, "");
+			return internalCallback(instance, "");
 		} catch(std::exception& ex) {
-			internalCallback(nullptr, ex.what());
+			return internalCallback(nullptr, ex.what());
 		}
 	}
 }
 
-void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const PluginInformation *descriptor, int sampleRate, std::function<void(PluginInstance*, std::string)> callback)
+PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
 {
     // We first ensure to bind the remote plugin service, and then create a plugin instance.
     //  Since binding the plugin service must be asynchronous while instancing does not have to be,
@@ -271,18 +277,16 @@ void PluginClient::instantiateRemotePlugin(bool canDynamicallyConnect, const Plu
             assert (pluginFactory != nullptr);
             auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
             instances.emplace_back(instance);
-            callback(instance, "");
+            return Result<int32_t>{instance->getInstanceId(), ""};
         }
         else
-            callback(nullptr, error);
+			return Result<int32_t>{-1, error};
     };
     auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
     if (service != nullptr)
-        internalCallback("");
-    else if (!canDynamicallyConnect)
-        internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
+        return internalCallback("");
     else
-        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), internalCallback);
+		return internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
 }
 
 int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
