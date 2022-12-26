@@ -345,9 +345,9 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, 
 // --------------------------------------------------
 
 jobject audio_plugin_service_connector{nullptr};
-std::map<std::string,std::function<void(std::string)> > inProgressCallbacks{};
+std::map<std::string,std::function<void(std::string&)> > inProgressCallbacks{};
 
-void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string)> callback) {
+void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string&)>& callback) {
 	inProgressCallbacks[servicePackageName] = callback;
 
 	usingJNIEnv<void*> ([=](JNIEnv *env) {
@@ -384,9 +384,11 @@ Java_org_androidaudioplugin_hosting_AudioPluginServiceConnector_nativeOnServiceC
 	jboolean wasCopy;
 	const char* s = env->GetStringUTFChars(servicePackageName, &wasCopy);
 	auto entry = inProgressCallbacks.find(s);
-	if (entry != inProgressCallbacks.end())
+	if (entry != inProgressCallbacks.end()) {
 		// FIXME: what kind of error propagation could be achieved here?
-		entry->second("");
+		std::string empty{};
+		entry->second(empty);
+	}
     env->ReleaseStringUTFChars(servicePackageName, s);
 }
 

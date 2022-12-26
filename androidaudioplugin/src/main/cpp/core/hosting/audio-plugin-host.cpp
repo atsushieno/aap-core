@@ -215,7 +215,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return instance;
 }
 
-void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> userCallback)
+void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& userCallback)
 {
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
@@ -224,14 +224,15 @@ void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, b
         auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
         userCallback(result.value, result.error);
     } else {
-        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string error) {
+        std::function<void(std::string&)> cb = [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string& error) {
             if (error.empty()) {
                 auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
                 userCallback(result.value, result.error);
             }
             else
                 userCallback(-1, error);
-        });
+        };
+        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), cb);
     }
 }
 

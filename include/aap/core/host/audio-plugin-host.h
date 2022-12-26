@@ -99,7 +99,7 @@ public:
 	Result<int32_t> createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit);
 
 	// Asynchronous version that allows service connection on the fly.
-	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string)> callback);
+	void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& callback);
 };
 
 //-------------------------------------------------------

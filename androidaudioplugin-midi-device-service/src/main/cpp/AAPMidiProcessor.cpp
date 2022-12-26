@@ -150,7 +150,7 @@ namespace aapmidideviceservice {
         }
 
         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "host is going to instantiate %s", pluginId.c_str());
-        client->createInstanceAsync(pluginId, sample_rate, true, [&](int32_t instanceId, std::string error) {
+        std::function<void(int32_t,std::string&)> cb = [&](int32_t instanceId, std::string error) {
             if (instanceId < 0) {
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor",
                              "Plugin \"%s\" could not be instantiated.",
@@ -197,7 +197,8 @@ namespace aapmidideviceservice {
 
             aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPMidiProcessor", "instantiated plugin %s",
                          pluginId.c_str());
-        });
+        };
+        client->createInstanceAsync(pluginId, sample_rate, true, cb);
     }
 
     // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.

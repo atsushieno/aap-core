@@ -16,7 +16,7 @@ public:
 
     virtual int32_t createSharedMemory(size_t size) = 0;
 
-    virtual void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string)> callback) = 0;
+    virtual void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)>& callback) = 0;
 
     virtual std::vector<std::string> getPluginPaths() = 0;
     virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
