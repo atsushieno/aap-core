@@ -333,7 +333,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForHost(JNIEnv *env, jclass clazz, jint connectorInstanceId,
+Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
 																   jstring packageName, jstring className) {
 	std::string packageNameString = jstringToStdString(env, packageName);
 	std::string classNameString = jstringToStdString(env, className);

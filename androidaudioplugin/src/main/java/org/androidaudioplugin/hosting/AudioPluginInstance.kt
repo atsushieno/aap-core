@@ -34,6 +34,9 @@ class AudioPluginInstance internal constructor(
 
     var proxyError: Exception? = null
 
+    val instanceId: Int
+        get() = proxy.instanceId
+
     init {
         if (!client.serviceConnector.connectedServices.contains(conn))
             client.serviceConnector.connectedServices.add(conn)

@@ -29,7 +29,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     fun getCurrentPresetName(index: Int) = getCurrentPresetName(client.native, instanceId, index)
 
     // aap::RemotePluginInstance*
-    private val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
+    val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
 
     fun getParameterCount() = getParameterCount(client.native, instanceId)
     fun getParameter(index: Int) = getParameter(client.native, instanceId, index)

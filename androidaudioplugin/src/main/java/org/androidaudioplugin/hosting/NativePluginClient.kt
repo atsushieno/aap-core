@@ -6,7 +6,7 @@ package org.androidaudioplugin.hosting
 internal class NativePluginClient(private val sampleRate: Int, val serviceConnector: AudioPluginServiceConnector) {
 
     // aap::PluginClient*
-    val native: Long = newInstance(serviceConnector.instanceId)
+    val native: Long = newInstance(serviceConnector.serviceConnectionId)
 
     fun createInstanceFromExistingConnection(pluginId: String) : NativeRemotePluginInstance {
         return NativeRemotePluginInstance(pluginId, sampleRate, this)

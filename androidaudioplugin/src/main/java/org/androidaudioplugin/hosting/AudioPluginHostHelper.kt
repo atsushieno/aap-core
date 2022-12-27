@@ -238,7 +238,7 @@ class AudioPluginHostHelper {
             runBlocking {
                 val conn = connector.bindAudioPluginService(service)
                 AudioPluginNatives.addBinderForClient(
-                    connector.instanceId,
+                    connector.serviceConnectionId,
                     service.packageName,
                     service.className,
                     conn.binder

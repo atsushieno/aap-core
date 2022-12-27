@@ -25,7 +25,7 @@ internal class AudioPluginNatives
         external fun addBinderForClient(connectorInstanceId: Int, packageName: String, className: String, binder: IBinder)
 
         @JvmStatic
-        external fun removeBinderForHost(connectorInstanceId: Int, packageName: String, className: String)
+        external fun removeBinderForClient(connectorInstanceId: Int, packageName: String, className: String)
 
         @JvmStatic
         external fun getSharedMemoryFD(shm: SharedMemory) : Int
