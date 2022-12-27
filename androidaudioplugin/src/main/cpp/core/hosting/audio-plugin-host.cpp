@@ -180,6 +180,21 @@ void PluginHost::destroyInstance(PluginInstance* instance)
 	delete instance;
 }
 
+PluginInstance* PluginHost::getInstanceByIndex(int32_t index) {
+    assert(0 <= index);
+    assert(index < instances.size());
+    return instances[index];
+}
+
+PluginInstance* PluginHost::getInstanceById(int32_t instanceId) {
+    for (auto i: instances)
+        if (i->getInstanceId() == instanceId)
+            return i;
+    return nullptr;
+}
+
+int32_t localInstanceIdSerial{0};
+
 PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
 {
 	dlerror(); // clean up any previous error state
@@ -210,7 +225,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
-	auto instance = new LocalPluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(this, localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
 	instances.emplace_back(instance);
 	return instance;
 }
@@ -276,8 +291,10 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(this, static_cast<int32_t>(instances.size()), descriptor, pluginFactory, sampleRate);
+            auto instance = new RemotePluginInstance(this, descriptor, pluginFactory, sampleRate);
             instances.emplace_back(instance);
+            instance->completeInstantiation();
+            instance->scanParametersAndBuildList();
             return Result<int32_t>{instance->getInstanceId(), ""};
         }
         else
@@ -296,15 +313,14 @@ int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginService: Plugin information was not found for: %s ", identifier.c_str());
 		return -1;
 	}
-	instantiateLocalPlugin(info, sampleRate);
-	return instances.size() - 1;
+	auto instance = instantiateLocalPlugin(info, sampleRate);
+	return instance->getInstanceId();
 }
 
 //-----------------------------------
 
-PluginInstance::PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+PluginInstance::PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
 		: sample_rate(sampleRate),
-		  instance_id(instanceId),
 		  plugin_factory(loadedPluginFactory),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
 		  plugin(nullptr),
@@ -340,6 +356,8 @@ AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer() {
 
 void PluginInstance::completeInstantiation()
 {
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL)
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "Unexpected call to completeInstantiation() at state: %d (instanceId: %d)", instantiation_state, instance_id);
 	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
 
 	AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
@@ -351,8 +369,8 @@ void PluginInstance::completeInstantiation()
 
 //----
 
-RemotePluginInstance::RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-        : PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+RemotePluginInstance::RemotePluginInstance(PluginClient *client, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
           client(client),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
@@ -440,10 +458,11 @@ void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode)
 //----
 
 LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-        : PluginInstance(instanceId, pluginInformation, loadedPluginFactory, sampleRate),
+        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
           service(service),
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this) {
+    instance_id = instanceId;
 }
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -529,7 +548,7 @@ AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *featur
 	assert (aapxsClientInstances.get(uri) == nullptr);
 	if (dataSize < 0)
 		dataSize = feature->shared_memory_size;
-	aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->getInstanceId(), nullptr, dataSize}));
+	aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->instance_id, nullptr, dataSize}));
 	auto ret = aapxsClientInstances.get(uri);
 	ret->extension_message = staticSendExtensionMessage;
 	return ret;

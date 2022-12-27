@@ -55,9 +55,10 @@ public:
 
 	size_t getInstanceCount() { return instances.size(); }
 
-	inline PluginInstance* getInstance(int32_t instanceId) {
-		return instances[(size_t) instanceId];
-	}
+    // Note that the argument is NOT instanceId
+	PluginInstance* getInstanceByIndex(int32_t index);
+
+    PluginInstance* getInstanceById(int32_t instanceId);
 };
 
 
@@ -71,7 +72,7 @@ public:
 	int createInstance(std::string identifier, int sampleRate);
 
 	inline LocalPluginInstance* getLocalInstance(int32_t instanceId) {
-		return (LocalPluginInstance*) getInstance(instanceId);
+		return (LocalPluginInstance*) getInstanceById(instanceId);
 	}
 };
 
@@ -116,13 +117,13 @@ class PluginInstance
 	friend class RemotePluginInstanceStandardExtensions;
 
 	int sample_rate{44100};
-	int instance_id;
 
 	AndroidAudioPluginFactory *plugin_factory;
 	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
 protected:
-    PluginInstantiationState instantiation_state;
+	int instance_id{-1};
+    PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
 	bool are_ports_configured{false};
 	AndroidAudioPlugin *plugin;
 	PluginSharedMemoryStore *aapxs_shared_memory_store;
@@ -131,7 +132,7 @@ protected:
 	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
 	aap_parameters_mapping_policy parameter_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
 
-	PluginInstance(int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+	PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
 	virtual AndroidAudioPluginHost* getHostFacadeForCompleteInstantiation() = 0;
 
@@ -139,7 +140,7 @@ public:
 
     virtual ~PluginInstance();
 
-	inline int32_t getInstanceId() { return instance_id; }
+    virtual int32_t getInstanceId() = 0;
 
     // As numPorts is required, the client and the plugin need agreement on how many ports will be used first (not including AAPXS).
 	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock);
@@ -289,6 +290,8 @@ protected:
 public:
 	LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
+    int32_t getInstanceId() override { return instance_id; }
+
     void confirmPorts() {
 		// FIXME: implementation is feature parity with client side so far, but it should be based on port config negotiation.
 		auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
@@ -361,7 +364,15 @@ protected:
 public:
 	// The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
 	// (binder-client-as-plugin does so, and desktop implementation should do so too.)
-    RemotePluginInstance(PluginClient *client, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+    RemotePluginInstance(PluginClient *client, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
+
+    int32_t getInstanceId() override {
+        // Make sure that we never try to retrieve it before being initialized at completeInstantiation() (at client)
+        assert(instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL);
+        return instance_id;
+    }
+
+	void setInstanceId(int32_t instanceId) { instance_id = instanceId; }
 
     // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
     void configurePorts();

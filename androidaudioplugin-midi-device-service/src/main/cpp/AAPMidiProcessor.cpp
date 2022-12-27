@@ -74,7 +74,7 @@ namespace aapmidideviceservice {
     void AAPMidiProcessor::terminate() {
         if (instance_data != nullptr) {
             if (instance_data->instance_id >= 0) {
-                auto instance = client->getInstance(instance_data->instance_id);
+                auto instance = client->getInstanceById(instance_data->instance_id);
                 if (!instance)
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "instance of instance_id %d was not found",
                                  instance_data->instance_id);
@@ -125,7 +125,7 @@ namespace aapmidideviceservice {
         }
 
         if (instance_data) {
-            const auto& instance = client->getInstance(instance_data->instance_id);
+            const auto& instance = client->getInstanceById(instance_data->instance_id);
             if (instance)
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
                              instance->getPluginInformation()->getDisplayName().c_str());
@@ -158,12 +158,10 @@ namespace aapmidideviceservice {
                 state = AAP_MIDI_PROCESSOR_STATE_ERROR;
                 return;
             }
-            auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(instanceId));
+            auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
             assert(instance);
 
             instrument_instance_id = instanceId;
-
-            instance->completeInstantiation();
 
             instance->configurePorts();
 
@@ -220,7 +218,7 @@ namespace aapmidideviceservice {
 
         // activate instances
         for (int i = 0; i < client->getInstanceCount(); i++)
-            client->getInstance(i)->activate();
+            client->getInstanceByIndex(i)->activate();
 
         state = AAP_MIDI_PROCESSOR_STATE_ACTIVE;
     }
@@ -236,7 +234,7 @@ namespace aapmidideviceservice {
 
         // deactivate AAP instances
         for (int i = 0; i < client->getInstanceCount(); i++)
-            client->getInstance(i)->deactivate();
+            client->getInstanceByIndex(i)->deactivate();
 
         pal()->stopStreaming();
 
@@ -254,7 +252,7 @@ namespace aapmidideviceservice {
             return;
         }
 
-        client->getInstance(data->instance_id)->process(data->plugin_buffer, 1000000000);
+        client->getInstanceById(data->instance_id)->process(data->plugin_buffer, 1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
             if (data->midi1_in_port >= 0)

@@ -79,8 +79,8 @@ public:
     }
 
     ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override {
-        svc->getInstance(in_instanceID)->completeInstantiation();
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(in_instanceID));
+        svc->getInstanceById(in_instanceID)->completeInstantiation();
+        auto instance = static_cast<LocalPluginInstance*>(svc->getInstanceById(in_instanceID));
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();
     }
@@ -89,7 +89,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        *_aidl_return = svc->getInstance(in_instanceID) != nullptr;
+        *_aidl_return = svc->getInstanceById(in_instanceID) != nullptr;
         return ndk::ScopedAStatus::ok();
     }
 
@@ -100,7 +100,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstance(in_instanceID));
+        auto instance = static_cast<LocalPluginInstance*>(svc->getInstanceById(in_instanceID));
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
@@ -121,7 +121,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance *>(svc->getInstance(in_instanceID));
+        auto instance = static_cast<LocalPluginInstance *>(svc->getInstanceById(in_instanceID));
 
         instance->confirmPorts();
         instance->scanParametersAndBuildList();
@@ -136,7 +136,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance *>(svc->getInstance(in_instanceID));
+        auto instance = static_cast<LocalPluginInstance *>(svc->getInstanceById(in_instanceID));
 
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
@@ -214,7 +214,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstance(in_instanceID)->activate();
+        svc->getInstanceById(in_instanceID)->activate();
         return ndk::ScopedAStatus::ok();
     }
 
@@ -222,7 +222,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstance(in_instanceID)->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
+        svc->getInstanceById(in_instanceID)->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
         return ndk::ScopedAStatus::ok();
     }
 
@@ -230,7 +230,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstance(in_instanceID)->deactivate();
+        svc->getInstanceById(in_instanceID)->deactivate();
         return ndk::ScopedAStatus::ok();
     }
 
@@ -247,7 +247,7 @@ public:
         if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->destroyInstance(svc->getInstance(in_instanceID));
+        svc->destroyInstance(svc->getInstanceById(in_instanceID));
         return ndk::ScopedAStatus::ok();
     }
 };

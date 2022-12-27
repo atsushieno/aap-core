@@ -30,7 +30,6 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
         override fun onServiceDisconnected(name: ComponentName?) {
             Log.d("AAP", "AudioPluginServiceConnector: onServiceDisconnected - FIXME: implement")
-            parent.unbindAudioPluginService(serviceInfo.packageName)
         }
 
         override fun onNullBinding(name: ComponentName?) {
