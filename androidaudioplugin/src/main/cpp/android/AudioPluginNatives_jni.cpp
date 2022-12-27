@@ -315,20 +315,32 @@ aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorIn
 	return ret;
 }
 
+std::map<AIBinder*,aap::AndroidPluginClientConnectionData*> live_connection_data{};
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, jclass clazz, jint connectorInstanceId,
                                                                 jstring packageName, jstring className, jobject binder) {
     std::string packageNameString = jstringToStdString(env, packageName);
     std::string classNameString = jstringToStdString(env, className);
-    auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+	aap::AndroidPluginClientConnectionData* connectionData = nullptr;
+	for (auto &pair : live_connection_data)
+		if (pair.first == aiBinder)
+			connectionData = pair.second;
+    if (!connectionData) {
+        connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
+        live_connection_data[aiBinder] = connectionData;
+		AIBinder_incStrong(aiBinder);
+    }
+	AIBinder_decStrong(aiBinder);
 
     auto list = client_connection_list_per_scope[connectorInstanceId];
     if (list == nullptr) {
         client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
         list = client_connection_list_per_scope[connectorInstanceId];
     }
-    list->add(std::make_unique<aap::PluginClientConnection>(packageNameString, classNameString, aiBinder));
+    list->add(std::make_unique<aap::PluginClientConnection>(packageNameString, classNameString, connectionData));
 }
 
 extern "C"

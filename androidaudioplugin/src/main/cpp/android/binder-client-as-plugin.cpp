@@ -20,30 +20,18 @@
 class AAPClientContext {
 
 public:
-	AIBinder* binder{nullptr};
 	const char *unique_id{nullptr};
 	int32_t instance_id{-1};
-	ndk::SpAIBinder spAIBinder{nullptr};
 	std::unique_ptr<aap::PluginSharedMemoryStore> shm_store{nullptr};
-	std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy{nullptr};
+	aap::AndroidPluginClientConnectionData* connection_data{nullptr};
 	aap_state_extension_t state_ext;
 	aap_state_t state{};
     aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
 	int state_ashmem_fd{0};
 
-    int initialize(int sampleRate, const char *pluginUniqueId)
-	{
-		unique_id = pluginUniqueId;
-    	if(binder == nullptr)
-    		return 1; // unexpected
-        spAIBinder.set(binder);
-		proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
-		return 0;
-    }
-
     ~AAPClientContext();
 
-	aidl::org::androidaudioplugin::IAudioPluginInterface* getProxy() { return proxy.get(); }
+	aidl::org::androidaudioplugin::IAudioPluginInterface* getProxy() { return connection_data->getProxy(); }
 };
 
 void releaseStateBuffer(AAPClientContext *ctx)
@@ -202,10 +190,9 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();
-    ctx->binder = (AIBinder*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
+    ctx->connection_data = (aap::AndroidPluginClientConnectionData*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
 
-	if(ctx->initialize(aapSampleRate, pluginUniqueId))
-		return nullptr;
+    ctx->unique_id = pluginUniqueId;
     ctx->shm_store = std::make_unique<aap::PluginSharedMemoryStore>();
 
     auto status = ctx->getProxy()->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);

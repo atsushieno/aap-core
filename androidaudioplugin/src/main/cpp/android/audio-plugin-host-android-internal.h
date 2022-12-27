@@ -40,6 +40,19 @@ public:
     getPluginsFromMetadataPaths(std::vector<std::string> &aapMetadataPaths) override;
 };
 
+class AndroidPluginClientConnectionData {
+    ndk::SpAIBinder spAIBinder;
+    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
+
+public:
+    AndroidPluginClientConnectionData(AIBinder* aiBinder) {
+        spAIBinder.set(aiBinder);
+        proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
+    }
+
+    aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
+};
+
 } // namespace aap
 
 #endif //AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H

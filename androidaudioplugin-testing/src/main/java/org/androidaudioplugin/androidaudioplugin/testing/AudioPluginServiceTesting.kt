@@ -32,11 +32,11 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             testInstancingAndProcessing(pluginInfo)
     }
 
-    // FIXME: cycles should be bigger than 3 (tests still fail).
+    // cycle: number of audio instancing and processing cycle. It is multiplied by numParallelInstances.
     @Suppress("UnnecessaryVariable")
-    fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 3) {
-        // FIXME: number of parallel instances should be more than 1 (tests still fail).
-        val numParallelInstances = 1
+    fun testInstancingAndProcessing(pluginInfo: PluginInformation, cycles: Int = 5) {
+        // number of parallel instances
+        val numParallelInstances = 3
 
         val host = AudioPluginClientBase(applicationContext)
         val floatCount = 1024
