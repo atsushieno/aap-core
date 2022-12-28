@@ -37,16 +37,13 @@ jobs:
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
-    - name: build
-      run: ./gradlew build dokkaHtml publishToMavenLocal
-    - name: run instrumented tests (disabled)
-      if: false
-      # > Gradle was not able to complete device setup for: dev30_google_x86_Pixel_5
-      # > The emulator failed to open the managed device to generate the snapshot.
-      # also https://github.com/actions/virtual-environments/issues/183
-      run:
+    - name: process Android SDK license
+      run: echo y | /home/runner/Android/sdk/cmdline-tools/8.0/bin/sdkmanager --licenses
+    - name: build, test, publish
+      run: |
+        ./gradlew build || exit 1
         ./gradlew testDevice1DebugAndroidTest || exit 1
-        ./gradlew testDevice2DebugAndroidTest || exit 1
+        ./gradlew dokkaHtml publishToMavenLocal || exit 1
     - name: upload artifact
       if: success()
       uses: actions/upload-artifact@v2
@@ -95,7 +92,12 @@ jobs:
     - name: install deps
       run: |
         brew tap grpc/grpc && brew install doxygen libxml2 ninja graphviz openssl grpc
-    - name: build
-      run: ./gradlew build dokkaHtml publishToMavenLocal
+    - name: process Android SDK license
+      run: echo y | /Users/runner/Library/Android/sdk/cmdline-tools/8.0/bin/sdkmanager --licenses
+    - name: build, test, publish
+      run: |
+        ./gradlew build || exit 1
+        ./gradlew testDevice1DebugAndroidTest || exit 1
+        ./gradlew dokkaHtml publishToMavenLocal || exit 1
       env:
         ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
