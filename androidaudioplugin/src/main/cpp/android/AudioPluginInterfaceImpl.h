@@ -1,6 +1,7 @@
 #ifndef ANDROIDAUDIOPLUGIN_AUDIOPLUGININTERFACEIMPL_H
 #define ANDROIDAUDIOPLUGIN_AUDIOPLUGININTERFACEIMPL_H
 
+#include <sstream>
 #include <android/sharedmem.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
@@ -11,6 +12,8 @@
 #include <android/binder_auto_utils.h>
 #include "aap/core/host/audio-plugin-host.h"
 #include "../core/hosting/shared-memory-store.h"
+
+#define AAP_AIDL_SVC_LOG_TAG "AAP.aidl.svc"
 
 namespace aap {
 
@@ -55,20 +58,31 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
+#define CHECK_INSTANCE(_instance_, _id_) { \
+    if (_instance_ == nullptr) { \
+        std::stringstream msg; \
+        msg << "The specified instance " << _id_ << " does not exist."; \
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG, msg.str().c_str()); \
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage( \
+                AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, msg.str().c_str()); \
+    } \
+}
+
     ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string &in_uri,
                                       const ::ndk::ScopedFileDescriptor &in_sharedMemoryFD,
                                       int32_t in_size) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto feature = svc->getExtensionFeature(in_uri.c_str());
         if (feature == nullptr) {
-            a_log_f(AAP_LOG_LEVEL_WARN, "AAP", "The host requested plugin extension \"%s\", but this plugin service does not support it.", in_uri.c_str());
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_UNEXPECTED_FEATURE_URI, (std::string{"The host requested plugin extension '"} + in_uri + "', but this plugin service does not support it.").c_str());
         } else {
-            auto aapxsInstance = svc->getLocalInstance(in_instanceID)->setupAAPXSInstance(feature, in_size);
+            auto instance = svc->getLocalInstance(in_instanceID);
+            CHECK_INSTANCE(instance, in_instanceID)
+
+            auto aapxsInstance = instance->setupAAPXSInstance(feature, in_size);
             aapxsInstance->plugin_instance_id = in_instanceID;
             if (in_size > 0) {
-                auto shmExt = svc->getLocalInstance(in_instanceID)->getAAPXSSharedMemoryStore();
+                auto shmExt = instance->getAAPXSSharedMemoryStore();
                 assert(shmExt != nullptr);
                 auto fdRemote = in_sharedMemoryFD.get();
                 auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
@@ -79,17 +93,17 @@ public:
     }
 
     ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override {
-        svc->getInstanceById(in_instanceID)->completeInstantiation();
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstanceById(in_instanceID));
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
+        instance->completeInstantiation();
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool *_aidl_return) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        *_aidl_return = svc->getInstanceById(in_instanceID) != nullptr;
+        auto instance = svc->getLocalInstance(in_instanceID);
+        *_aidl_return = instance != nullptr;
         return ndk::ScopedAStatus::ok();
     }
 
@@ -97,10 +111,9 @@ public:
     // Here we just cache the FDs, and process them later at prepare().
     ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex,
                                        const ::ndk::ScopedFileDescriptor &in_sharedMemoryFD) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance*>(svc->getInstanceById(in_instanceID));
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
@@ -118,10 +131,8 @@ public:
 
     ::ndk::ScopedAStatus
     beginPrepare(int32_t in_instanceID) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance *>(svc->getInstanceById(in_instanceID));
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
 
         instance->confirmPorts();
         instance->scanParametersAndBuildList();
@@ -133,10 +144,8 @@ public:
 
     ::ndk::ScopedAStatus
     endPrepare(int32_t in_instanceID, int32_t in_frameCount) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        auto instance = static_cast<LocalPluginInstance *>(svc->getInstanceById(in_instanceID));
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
 
         auto shmExt = instance->getAAPXSSharedMemoryStore();
         if (shmExt == nullptr)
@@ -211,43 +220,42 @@ public:
     }
 
     ::ndk::ScopedAStatus activate(int32_t in_instanceID) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstanceById(in_instanceID)->activate();
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
+        instance->activate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstanceById(in_instanceID)->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
+        instance->process(&buffers[in_instanceID], in_timeoutInNanoseconds);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->getInstanceById(in_instanceID)->deactivate();
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
+        instance->deactivate();
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
         auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
         instance->controlExtension(in_uri, in_size);
         return ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override {
-        if (in_instanceID < 0 || in_instanceID >= svc->getInstanceCount())
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, "instance ID is out of range");
-        svc->destroyInstance(svc->getInstanceById(in_instanceID));
+        auto instance = svc->getLocalInstance(in_instanceID);
+        CHECK_INSTANCE(instance, in_instanceID)
+
+        svc->destroyInstance(instance);
         return ndk::ScopedAStatus::ok();
     }
 };
