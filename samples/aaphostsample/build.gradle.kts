@@ -35,25 +35,24 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
+    androidResources {
+        noCompress += listOf("sample.wav")
+    }
 
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
     // It's been long time until I got this working, and I have no idea why it started working.
     //  If you don't get this working, you are not alone: https://github.com/atsushieno/android-audio-plugin-framework/issues/85
-    // Also note that you have to use custom sdk channel so far: ./gradlew testDevice2DebugAndroidTest -Pandroid.sdk.channel=3
+    // Also note that you have to use custom sdk channel so far: ./gradlew testDevice1DebugAndroidTest -Pandroid.sdk.channel=3
     testOptions {
         managedDevices {
             devices {
-                this.register<com.android.build.api.dsl.ManagedVirtualDevice>("testDevice") {
-                    device = "Pixel 5"
+                maybeCreate<com.android.build.api.dsl.ManagedVirtualDevice> ("testDevice1").apply {
+                    device = "Pixel 2"
                     apiLevel = 30
                     systemImageSource = "aosp-atd"
-                    //abi = "x86"
                 }
             }
         }
-    }
-    androidResources {
-        noCompress += listOf("sample.wav")
     }
 }
 
