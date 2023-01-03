@@ -50,6 +50,15 @@ PluginInformation::PluginInformation(bool isOutProcess, const char* pluginPackag
 	free(cp);
 }
 
+PluginExtensionInformation PluginInformation::getExtension(const char *uri) const {
+	for (int i = 0, n = getNumExtensions(); i < n; i++) {
+		auto ext = getExtension(i);
+		if (strcmp(ext.uri.c_str(), uri) == 0)
+			return ext;
+	}
+	return {};
+}
+
 
 //-----------------------------------
 
@@ -386,6 +395,7 @@ void RemotePluginInstance::configurePorts() {
 			// configure ports using port-config extension.
 
 			// FIXME: implement
+			assert(false);
 
 	} else if (pluginInfo->getNumDeclaredPorts() == 0)
 		setupPortConfigDefaults();
@@ -397,12 +407,15 @@ void PluginInstance::setupPortConfigDefaults() {
 	// If there is no declared ports, apply default ports configuration.
 	uint32_t nPort = 0;
 
-	if (pluginInfo->isInstrument()) {
-		PortInformation midi_in{nPort++, "MIDI In", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-		PortInformation midi_out{nPort++, "MIDI Out", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
-		configured_ports->emplace_back(midi_in);
-		configured_ports->emplace_back(midi_out);
-	} else {
+    // MIDI2 in/out ports are always populated
+    PortInformation midi_in{nPort++, "MIDI In", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    PortInformation midi_out{nPort++, "MIDI Out", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+    configured_ports->emplace_back(midi_in);
+    configured_ports->emplace_back(midi_out);
+
+    // Populate audio in ports only if it is not an instrument.
+	// FIXM#: there may be better ways to guess whether audio in ports are required or not.
+	if (!pluginInfo->isInstrument()) {
 		PortInformation audio_in_l{nPort++, "Audio In L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
 		configured_ports->emplace_back(audio_in_l);
 		PortInformation audio_in_r{nPort++, "Audio In R", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};

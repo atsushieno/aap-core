@@ -1,15 +1,9 @@
 <plugins xmlns="urn:org.androidaudioplugin.core">
   <plugin name="Test Filter" category="Effect" author="androidaudioplugin.org" manufacturer="androidaudioplugin.org" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter" library="libaapbarebonepluginsample.so">
-    <ports>
-      <!-- FIXME: populate ports correctly and remove them  -->
-      <port direction="input" content="midi2" name="MIDI In" />
-      <port direction="output" content="midi2" name="MIDI Out" />
-      <port direction="input" content="audio" name="Left In" />
-      <port direction="input" content="audio" name="Right In" />
-      <port direction="output" content="audio" name="Left Out" />
-      <port direction="output" content="audio" name="Right Out" />
-    </ports>
-    <!-- parameters extension -->
+    <extensions>
+      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
+    </extensions>
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
       <parameter id="0" name="Output Volume L" default="0.5" minimum="0" maximum="1" />
       <parameter id="1" name="Output Volume R" default="0.5" minimum="0" maximum="1" />

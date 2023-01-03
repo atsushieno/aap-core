@@ -1,5 +1,6 @@
 
 #include <aap/android-audio-plugin.h>
+#include <aap/ext/plugin-info.h>
 #include <aap/ext/state.h>
 #include <aap/ext/aap-midi2.h>
 #include <aap/ext/parameters.h>
@@ -9,16 +10,7 @@
 
 extern "C" {
 
-#define MIDI_PORT_IN 0
-#define MIDI_PORT_OUT 1
-#define AUDIO_PORT_IN_L 2
-#define AUDIO_PORT_IN_R 3
-#define AUDIO_PORT_OUT_L 4
-#define AUDIO_PORT_OUT_R 5
-#define CONTROL_PORT_VOLUME_L 6
-#define CONTROL_PORT_VOLUME_R 7
-#define CONTROL_PORT_DELAY_L 8
-#define CONTROL_PORT_DELAY_R 9
+#define PLUGIN_URI "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter"
 
 #define PARAM_ID_VOLUME_L 0
 #define PARAM_ID_VOLUME_R 1
@@ -26,15 +18,22 @@ extern "C" {
 #define PARAM_ID_DELAY_R 3
 
 typedef struct SamplePluginSpecific {
-    /* any kind of extension information, which will be passed as void* */
+    AndroidAudioPluginHost host;
     float modL{0.5f};
     float modR{0.5f};
     float modL_pn[128];
     float modR_pn[128];
     uint32_t delayL{0};
     uint32_t delayR{0};
+    int32_t midiInPort{-1};
+    int32_t midiOutPort{-1};
+    int32_t audioInPortL{-1};
+    int32_t audioInPortR{-1};
+    int32_t audioOutPortL{-1};
+    int32_t audioOutPortR{-1};
 
-    SamplePluginSpecific() {
+    SamplePluginSpecific(AndroidAudioPluginHost *host) {
+        this->host = *host;
         for (size_t i = 0; i < 128; i++)
             modL_pn[i] = modR_pn[i] = 0.5f;
     }
@@ -48,7 +47,45 @@ void sample_plugin_delete(
 }
 
 void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer *buffer) {
-    /* do something */
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
+    auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension_data(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    assert(ext);
+    auto pluginInfo = ext->get(&ctx->host, PLUGIN_URI);
+    auto numPorts = pluginInfo.get_port_count(&pluginInfo);
+    assert(buffer->num_buffers >= numPorts);
+    for (int32_t i = 0, n = numPorts; i < n; i++) {
+        auto port = pluginInfo.get_port(&pluginInfo, i);
+        switch (port.content_type(&port)) {
+            case AAP_CONTENT_TYPE_MIDI2:
+                switch (port.direction(&port)) {
+                    case AAP_PORT_DIRECTION_INPUT:
+                        ctx->midiInPort = i;
+                        break;
+                    case AAP_PORT_DIRECTION_OUTPUT:
+                        ctx->midiOutPort = i;
+                        break;
+                }
+                break;
+            case AAP_CONTENT_TYPE_AUDIO:
+                switch (port.direction(&port)) {
+                    case AAP_PORT_DIRECTION_INPUT:
+                        if (ctx->audioInPortL < 0)
+                            ctx->audioInPortL = i;
+                        else if (ctx->audioInPortR < 0)
+                            ctx->audioInPortR = i;
+                        break;
+                    case AAP_PORT_DIRECTION_OUTPUT:
+                        if (ctx->audioOutPortL < 0)
+                            ctx->audioOutPortL = i;
+                        else if (ctx->audioOutPortR < 0)
+                            ctx->audioOutPortR = i;
+                        break;
+                }
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
@@ -69,20 +106,13 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     int size = buffer->num_frames * sizeof(float);
 
-    /* This is the old way to support "parameters" via ports.
-    ctx->modL = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_L])[0];
-    ctx->modR = ((float *) buffer->buffers[CONTROL_PORT_VOLUME_R])[0];
-    ctx->delayL = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_L])[0];
-    ctx->delayR = (uint32_t) ((float *) buffer->buffers[CONTROL_PORT_DELAY_R])[0];
-     */
-
-    auto fIL = (float *) buffer->buffers[AUDIO_PORT_IN_L];
-    auto fIR = (float *) buffer->buffers[AUDIO_PORT_IN_R];
-    auto fOL = (float *) buffer->buffers[AUDIO_PORT_OUT_L];
-    auto fOR = (float *) buffer->buffers[AUDIO_PORT_OUT_R];
+    auto fIL = (float *) buffer->buffers[ctx->audioInPortL];
+    auto fIR = (float *) buffer->buffers[ctx->audioInPortR];
+    auto fOL = (float *) buffer->buffers[ctx->audioOutPortL];
+    auto fOR = (float *) buffer->buffers[ctx->audioOutPortR];
 
     // update parameters via MIDI2 messages
-    auto midiSeq = (AAPMidiBufferHeader*) buffer->buffers[MIDI_PORT_IN];
+    auto midiSeq = (AAPMidiBufferHeader*) buffer->buffers[ctx->midiInPort];
     auto midiSeqData = midiSeq + 1;
     if (midiSeq->length > 0) {
         CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {
@@ -212,7 +242,7 @@ AndroidAudioPlugin *sample_plugin_new(
         int sampleRate,
         AndroidAudioPluginHost *host) {
     return new AndroidAudioPlugin{
-            new SamplePluginSpecific(),
+            new SamplePluginSpecific(host),
             sample_plugin_prepare,
             sample_plugin_activate,
             sample_plugin_process,

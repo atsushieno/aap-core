@@ -213,6 +213,12 @@ public:
         return extensions[(size_t) index];
     }
 
+    PluginExtensionInformation getExtension(const char* uri) const;
+
+    bool hasExtension(const char *uri) const {
+        return uri != nullptr && strlen(uri) > 0 && !getExtension(uri).uri.empty();
+    }
+
     int64_t getLastInfoUpdateTime() const
     {
         return last_info_updated_unixtime_milliseconds;
