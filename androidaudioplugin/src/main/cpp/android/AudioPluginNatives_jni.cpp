@@ -31,15 +31,6 @@ T usingJNIEnv(std::function<T(JNIEnv*)> func) {
 	return ret;
 }
 
-template <typename T>
-T usingUTFChars(const char* s, std::function<T(jstring)> func) {
-    return usingJNIEnv<T>([=](JNIEnv* env) {
-        jstring js = env->NewStringUTF(s);
-        T ret = func(js);
-        return ret;
-    });
-}
-
 std::string jstringToStdString(JNIEnv* env, jstring s) {
     jboolean b{false};
     const char *u8 = env->GetStringUTFChars(s, &b);
@@ -378,14 +369,11 @@ void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string service
 				"(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
 		assert(j_method_ensure_instance_created);
 
-        return usingUTFChars<void *>(servicePackageName.c_str(), [=](jstring packageName) {
-			env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
+		env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
 									  j_method_ensure_instance_created,
-									  packageName,
+									  env->NewStringUTF(servicePackageName.c_str()),
 									  audio_plugin_service_connector);
-
-			return nullptr;
-		});
+		return nullptr;
 	});
 }
 
