@@ -13,6 +13,7 @@ import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -35,7 +36,17 @@ class PluginPreview(private val context: Context) {
     private var instance: AudioPluginInstance? = null
     var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
-
+    var midiSettingsFlags: Int
+        get() =
+            // return meaningful value only if current app is the service
+            if (instance == null || instance!!.pluginInfo.packageName != context.packageName) 0
+            else AudioPluginMidiSettings.getMidiSettingsFromSharedPreference(context, instance!!.pluginInfo.pluginId!!)
+        set(v) {
+            if (instance == null || instance!!.pluginInfo.packageName != context.packageName)
+                return
+            else
+                AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, instance!!.pluginInfo.pluginId!!, v)
+        }
     val inBuf : ByteArray
     val outBuf : ByteArray
 

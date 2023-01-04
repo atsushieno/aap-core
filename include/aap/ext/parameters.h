@@ -16,12 +16,19 @@ extern "C" {
 // ## MIDI2-parameters mapping schemes
 //
 // The way how parameter changes and notifications are transmitted depends on get_mapping_policy().
-// extension function.
-// - When it returns `AAP_PARAMETERS_MAPPING_POLICY_ACC`, then the host can assume that parameter
-//   changes requests from the host and the change notification to the host can be represented as
-//   MIDI2 Assignable Controller (ACC) UMP.
-// - When it returns `AAP_PARAMETERS_MAPPING_POLICY_SYSEX8`, then it is one single Sysex8 packet
-//   of 16 bits which looks like `5g sz pc 7E  7F 00 00 ch  k.n.idx.  value...`, where -
+// extension function. It returns a set of flags where -
+// - `AAP_PARAMETERS_MAPPING_POLICY_CC` indicates that the plugin will treat Control Change inputs
+//   as parameter changes.
+// - `AAP_PARAMETERS_MAPPING_POLICY_ACC` indicates that the plugin will treat Assignable Controller
+//   (NRPN) inputs as parameter changes.
+// - `AAP_PARAMETERS_MAPPING_POLICY_PROGRAM` indicates that the plugin will treat Program Change
+//   inputs as preset selector.
+// - `AAP_PARAMETERS_MAPPING_POLICY_SYSEX8` indicates that the plugin will treat such a Universal
+//   SysEx8 message that conforms to certain Sysex8 packet as parameter changes. It should be
+//   almost always enabled.
+//
+// The sysex8 as parameter change UMP consists of a single UMP packet (i.e. 16 bits) and
+// looks like `5g sz pc 7E  7F 00 00 ch  k.n.idx.  value...`, where -
 //   - g : UMP group
 //   - sz : status and size, always 0F
 //   - pc : packet, always 00
@@ -32,11 +39,6 @@ extern "C" {
 //          w/ attribute and this message. But I find it ugly and impractical so far.
 //   - idx. : parameter index, 0-16383
 //   - value... : parameter value, 32-bit float
-// - None does not have any premise. Host in general has no idea how to send the parameter changes.
-//   Some specific hosts may be able to control such a plugin (for example, via some
-//   Universal System Exclusive messages, or based on some Profile Configuration).
-//   Or the plugin might want to expose all those parameters but not control and/or notify
-//   changes publicly (but all at once, not per parameter?).
 //
 // They can also be Relative Assignable Controller, or Assignable Per-Note Controller, but it is
 // up to the plugin if it accepts them or not.
@@ -152,21 +154,44 @@ typedef struct aap_parameter_info_t {
     bool per_note_enabled;
 } aap_parameter_info_t;
 
+// keep these in sync with AudioPluginMidiSettings.
 enum aap_parameters_mapping_policy {
     AAP_PARAMETERS_MAPPING_POLICY_NONE = 0,
     AAP_PARAMETERS_MAPPING_POLICY_ACC = 1,
-    AAP_PARAMETERS_MAPPING_POLICY_ACC2 = 2
+    AAP_PARAMETERS_MAPPING_POLICY_CC = 2,
+    AAP_PARAMETERS_MAPPING_POLICY_SYSEX8 = 4,
+    AAP_PARAMETERS_MAPPING_POLICY_PROGRAM = 8,
 };
 
 typedef int32_t (*parameters_extension_get_parameter_count_func_t) (AndroidAudioPluginExtensionTarget target);
 typedef aap_parameter_info_t* (*parameters_extension_get_parameter_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
-typedef enum aap_parameters_mapping_policy (*parameters_extension_get_mapping_policy_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef void (*parameters_extension_on_mapping_policy_changed_func_t) (AndroidAudioPluginExtensionTarget target, enum aap_parameters_mapping_policy value);
 
 typedef struct aap_parameters_extension_t {
+    // Returns the number of parameters.
+    // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     parameters_extension_get_parameter_count_func_t get_parameter_count;
+    // Returns the parameter information by parameter ID.
+    // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     parameters_extension_get_parameter_func_t get_parameter;
-    parameters_extension_get_mapping_policy_func_t get_mapping_policy;
+    // Called by host that the mapping policy has changed. Plugins are free to ignore it.
+    // The actual caller is most likely audio-plugin-host, not the DAW.
+    parameters_extension_on_mapping_policy_changed_func_t on_mapping_policy_changed;
 } aap_parameters_extension_t;
+
+typedef enum aap_parameters_mapping_policy (*parameters_extension_get_mapping_policy_func_t) (AndroidAudioPluginHost* host, const char* pluginId);
+typedef void (*parameters_extension_on_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
+
+typedef struct aap_host_parameters_extension_t {
+    // Notifies host that parameter layout is being changed.
+    // THe actual parameter list needs to be queried by host.
+    parameters_extension_on_parameter_list_changed_func_t on_parameters_changed;
+    // It is called by plugin to get the latest mapping policy configured by user.
+    // Plugins are free to ignore the settings.
+    // The policy value is configured for the entire plugin in the AAP Service, not per instance (hence it takes pluginId).
+    // The actual query destination is most likely audio-plugin-host, not the DAW.
+    parameters_extension_get_mapping_policy_func_t get_mapping_policy;
+} aap_host_parameters_extension_t;
 
 #ifdef __cplusplus
 } // extern "C"

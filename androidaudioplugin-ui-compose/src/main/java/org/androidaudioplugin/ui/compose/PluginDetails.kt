@@ -1,6 +1,7 @@
 package org.androidaudioplugin.ui.compose
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -9,7 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.Checkbox
 import androidx.compose.material.Slider
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 private val headerModifier = Modifier.width(120.dp)
 
@@ -37,6 +41,11 @@ private fun ColumnHeader(text: String) {
 @Composable
 fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     val scrollState = rememberScrollState(0)
+
+    var pluginDetailsExpanded by remember { mutableStateOf(false) }
+    var midiSettingsExpanded by remember { mutableStateOf(false) }
+
+    var midiSettingsFlags by remember { mutableStateOf(viewModel.preview.value.midiSettingsFlags) }
 
     val parameters by remember {
         mutableStateOf(viewModel.preview.value.instanceParameters.map { p -> p.defaultValue.toFloat() }
@@ -64,38 +73,38 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             .verticalScroll(scrollState)
     ) {
         Row {
-            Text(text = plugin.displayName, fontSize = 20.sp)
+            Text(text = (if (pluginDetailsExpanded) "[-]" else "[+]") + " details", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
+                pluginDetailsExpanded = !pluginDetailsExpanded
+            })
         }
-        Row {
-            ColumnHeader("package: ")
-        }
-        Row {
-            Text(plugin.packageName, fontSize = 14.sp)
-        }
-        Row {
-            ColumnHeader("classname: ")
-        }
-        Row {
-            Text(plugin.localName, fontSize = 14.sp)
-        }
-        if (plugin.author != null) {
+        if (pluginDetailsExpanded) {
             Row {
-                ColumnHeader("author: ")
+                ColumnHeader("package: ")
             }
             Row {
-                Text(plugin.author ?: "")
-            }
-        }
-        if (plugin.manufacturer != null) {
-            Row {
-                ColumnHeader("manufacturer: ")
+                Text(plugin.packageName, fontSize = 14.sp)
             }
             Row {
-                Text(plugin.manufacturer ?: "")
+                ColumnHeader("classname: ")
             }
-        }
-        Row {
-            Column {
+            Row {
+                Text(plugin.localName, fontSize = 14.sp)
+            }
+            if (plugin.author != null) {
+                Row {
+                    ColumnHeader("author: ")
+                }
+                Row {
+                    Text(plugin.author ?: "")
+                }
+            }
+            if (plugin.manufacturer != null) {
+                Row {
+                    ColumnHeader("manufacturer: ")
+                }
+                Row {
+                    Text(plugin.manufacturer ?: "")
+                }
             }
         }
         WaveformDrawable(waveData = waveState)
@@ -136,7 +145,50 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 Text("Play")
             }
         }
-        Text(text = "Extensions", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
+        Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " MIDI settings", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
+            midiSettingsExpanded = !midiSettingsExpanded
+        })
+        if (midiSettingsExpanded) {
+            Column {
+                Row {
+                    Switch(
+                        checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) != 0,
+                        onCheckedChange = {
+                            midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM
+                            viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
+                        })
+                    Text("Use Program Changes for Presets")
+                }
+                Row {
+                    Switch(
+                        checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC) != 0,
+                        onCheckedChange = {
+                            midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC
+                            viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
+                        })
+                    Text("Use CCs for Parameters")
+                }
+                Row {
+                    Switch(
+                        checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0,
+                        onCheckedChange = {
+                            midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC
+                            viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
+                        })
+                    Text("Use NRPNs (ACCs) for Parameters")
+                }
+                Row {
+                    Switch(
+                        checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8) != 0,
+                        onCheckedChange = {
+                            midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8
+                            viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
+                        })
+                    Text("Use SysEx8 for Parameters")
+                }
+            }
+        }
+        Text(text = "Extensions", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
         Column {
             for (extension in plugin.extensions) {
                 Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
@@ -147,7 +199,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
             }
         }
-        Text(text = "Parameters", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
+        Text(text = "Parameters", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
         Column {
             for (para in viewModel.preview.value.instanceParameters) {
                 Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
@@ -181,7 +233,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
             }
         }
-        Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(12.dp))
+        Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
         Column {
             for (port in viewModel.preview.value.instancePorts) {
                 Row(modifier = Modifier.border(1.dp, Color.LightGray)) {

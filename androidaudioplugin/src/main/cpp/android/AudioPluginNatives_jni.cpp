@@ -259,6 +259,41 @@ jobjectArray queryInstalledPluginsJNI()
 // --------------------------------------------------
 
 extern "C"
+int32_t getMidiSettingsFromSharedPreference(std::string pluginId) {
+	return usingJNIEnv<int32_t> ([pluginId](JNIEnv *env) {
+		jclass java_audio_plugin_midi_settings_class = env->FindClass(
+				"org/androidaudioplugin/hosting/AudioPluginMidiSettings");
+		assert(java_audio_plugin_midi_settings_class);
+		jmethodID j_method_get_midi_settings_from_shared_preference = env->GetStaticMethodID(
+				java_audio_plugin_midi_settings_class, "getMidiSettingsFromSharedPreference",
+				"(Landroid/content/Context;Ljava/lang/String;)I");
+		assert(j_method_get_midi_settings_from_shared_preference);
+		auto context = aap::get_android_application_context();
+		auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+		return env->CallStaticIntMethod(java_audio_plugin_midi_settings_class, j_method_get_midi_settings_from_shared_preference, context, pluginIdJString);
+	});
+}
+
+extern "C"
+void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags) {
+	usingJNIEnv<int32_t> ([pluginId,flags](JNIEnv *env) {
+		jclass java_audio_plugin_midi_settings_class = env->FindClass(
+				"org/androidaudioplugin/hosting/AudioPluginMidiSettings");
+		assert(java_audio_plugin_midi_settings_class);
+		jmethodID j_method_put_midi_settings_to_shared_preference = env->GetStaticMethodID(
+				java_audio_plugin_midi_settings_class, "putMidiSettingsToSharedPreference",
+				"(Landroid/content/Context;Ljava/lang/String;I)V");
+		assert(j_method_put_midi_settings_to_shared_preference);
+		auto context = aap::get_android_application_context();
+		auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+		env->CallStaticVoidMethod(java_audio_plugin_midi_settings_class, j_method_put_midi_settings_to_shared_preference, context, pluginIdJString, flags);
+		return 0;
+	});
+}
+
+// --------------------------------------------------
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jclass clazz,
                                                                 jobject applicationContext) {

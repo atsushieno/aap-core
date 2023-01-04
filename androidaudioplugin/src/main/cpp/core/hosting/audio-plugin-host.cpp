@@ -443,8 +443,6 @@ void PluginInstance::scanParametersAndBuildList() {
 	// FIXME: pass appropriate context
 	auto target = AndroidAudioPluginExtensionTarget{plugin, nullptr};
 
-	parameter_mapping_policy = ext->get_mapping_policy(target);
-
 	for (auto i = 0, n = ext->get_parameter_count(target); i < n; i++) {
 		auto para = ext->get_parameter(target, i);
 		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};
@@ -542,6 +540,22 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 						  plugin_info_get_parameter_count,
 						  plugin_info_get_parameter};
 	return ret;
+}
+
+#if ANDROID
+extern "C" int32_t getMidiSettingsFromSharedPreference(std::string pluginId);
+
+enum aap_parameters_mapping_policy
+LocalPluginInstance::get_mapping_policy(AndroidAudioPluginHost *host, const char* pluginId) {
+	auto instance = (LocalPluginInstance*) host->context;
+    return (aap_parameters_mapping_policy) getMidiSettingsFromSharedPreference(
+			instance->getPluginInformation()->getPluginID());
+}
+#endif
+
+void LocalPluginInstance::on_parameters_changed(AndroidAudioPluginHost *host,
+                                                AndroidAudioPlugin *plugin) {
+    assert(false); // FIXME: implement
 }
 
 //----

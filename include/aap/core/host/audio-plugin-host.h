@@ -131,7 +131,6 @@ protected:
     const PluginInformation *pluginInfo;
     std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
-	aap_parameters_mapping_policy parameter_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
 
 	PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate);
 
@@ -273,14 +272,23 @@ class LocalPluginInstance : public PluginInstance {
 	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
 	LocalPluginInstanceStandardExtensionsImpl standards;
 	aap_host_plugin_info_extension_t host_plugin_info{};
+	aap_host_parameters_extension_t host_parameters_extension{};
 
 	static aap_plugin_info_t get_plugin_info(AndroidAudioPluginHost* host, const char* pluginId);
+	static enum aap_parameters_mapping_policy get_mapping_policy(AndroidAudioPluginHost* host, const char* pluginId);
+	static void on_parameters_changed(AndroidAudioPluginHost* host, AndroidAudioPlugin* plugin);
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
 		if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
 			auto instance = (LocalPluginInstance*) host->context;
 			instance->host_plugin_info.get = get_plugin_info;
 			return &instance->host_plugin_info;
+		}
+		if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
+			auto instance = (LocalPluginInstance*) host->context;
+			instance->host_parameters_extension.get_mapping_policy = get_mapping_policy;
+			instance->host_parameters_extension.on_parameters_changed = on_parameters_changed;
+			return &instance->host_parameters_extension;
 		}
 		return nullptr;
 	}

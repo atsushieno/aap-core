@@ -74,6 +74,7 @@ apply { from ("../publish-pom.gradle") }
 dependencies {
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.preference.ktx)
     implementation(libs.coroutines.core)
     implementation (libs.startup.runtime)
     testImplementation (libs.junit)

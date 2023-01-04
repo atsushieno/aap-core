@@ -127,4 +127,8 @@ class AudioPluginInstance internal constructor(
     fun getCurrentPresetIndex() = proxy.getCurrentPresetIndex()
     fun setCurrentPresetIndex(index: Int) = proxy.setCurrentPresetIndex(index)
     fun getCurrentPresetName(index: Int) = proxy.getCurrentPresetName(index)
+
+    fun updateMidiMappingPolicy(useProgramChangesForPresets: Boolean, useAssignableControllersForParameters: Boolean, useControlChangesForParameters: Boolean) {
+        TODO()
+    }
 }
