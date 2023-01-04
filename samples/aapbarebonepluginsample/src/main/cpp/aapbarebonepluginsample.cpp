@@ -6,7 +6,7 @@
 #include <aap/ext/parameters.h>
 #include <cassert>
 #include <cstring>
-#include "../../../../../external/cmidi2/cmidi2.h"
+#include "cmidi2.h"
 
 extern "C" {
 

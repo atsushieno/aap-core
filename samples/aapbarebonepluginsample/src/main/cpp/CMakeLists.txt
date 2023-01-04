@@ -25,6 +25,7 @@ add_library( # Specifies the name of the library.
 target_include_directories(aapbarebonepluginsample
         PRIVATE
         ../../../../../include
+        ../../../../../external/cmidi2
         )
 
 target_compile_options(aapbarebonepluginsample
