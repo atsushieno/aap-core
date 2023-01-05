@@ -1,11 +1,8 @@
 package org.androidaudioplugin.hosting
 
-import android.os.ParcelFileDescriptor
 import android.os.RemoteException
-import android.os.SharedMemory
 import android.util.Log
 import org.androidaudioplugin.*
-import org.androidaudioplugin.AudioPluginNatives
 import java.nio.ByteBuffer
 
 
@@ -30,17 +27,17 @@ class AudioPluginInstance internal constructor(
     private val client = NativePluginClient(sampleRate, serviceConnector)
     var state = InstanceState.UNPREPARED
 
-    private val proxy : NativeRemotePluginInstance
+    private val native : NativeRemotePluginInstance
 
     var proxyError: Exception? = null
 
     val instanceId: Int
-        get() = proxy.instanceId
+        get() = native.instanceId
 
     init {
         if (!client.serviceConnector.connectedServices.contains(conn))
             client.serviceConnector.connectedServices.add(conn)
-        proxy = client.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
+        native = client.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
     }
 
     private fun runCatchingRemoteException(func: () -> Unit) {
@@ -64,14 +61,14 @@ class AudioPluginInstance internal constructor(
 
     fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int) {
         runCatchingRemoteException {
-            proxy.prepare(audioSamplesPerBlock, defaultControlBytesPerBlock)
+            native.prepare(audioSamplesPerBlock, defaultControlBytesPerBlock)
             state = InstanceState.INACTIVE
         }
     }
 
     fun activate() {
         runCatchingRemoteException {
-            proxy.activate()
+            native.activate()
 
             state = InstanceState.ACTIVE
         }
@@ -79,7 +76,7 @@ class AudioPluginInstance internal constructor(
 
     fun deactivate() {
         runCatchingRemoteException {
-            proxy.deactivate()
+            native.deactivate()
 
             state = InstanceState.INACTIVE
         }
@@ -87,7 +84,7 @@ class AudioPluginInstance internal constructor(
 
     fun process() {
         runCatchingRemoteException {
-            proxy.process(0)
+            native.process(0)
         }
     }
 
@@ -96,7 +93,7 @@ class AudioPluginInstance internal constructor(
             deactivate()
         if (state != InstanceState.DESTROYED) {
             try {
-                proxy.destroy()
+                native.destroy()
             } catch (ex: Exception) {
                 // nothing we can do here
             }
@@ -110,25 +107,21 @@ class AudioPluginInstance internal constructor(
     }
 
     // port/buffer manipulation
-    fun getParameterCount() = proxy.getParameterCount()
-    fun getParameter(index: Int) = proxy.getParameter(index)
-    fun getPortCount() = proxy.getPortCount()
-    fun getPort(index: Int) = proxy.getPort(index)
-    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.getPortBuffer(portIndex, buffer, size)
-    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = proxy.setPortBuffer(portIndex, buffer, size)
+    fun getParameterCount() = native.getParameterCount()
+    fun getParameter(index: Int) = native.getParameter(index)
+    fun getPortCount() = native.getPortCount()
+    fun getPort(index: Int) = native.getPort(index)
+    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.getPortBuffer(portIndex, buffer, size)
+    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.setPortBuffer(portIndex, buffer, size)
 
     // Standard Extensions
 
-    fun getStateSize() : Int = proxy.getStateSize()
-    fun getState(data: ByteArray) = proxy.getState(data)
-    fun setState(data: ByteArray) = proxy.setState(data)
+    fun getStateSize() : Int = native.getStateSize()
+    fun getState(data: ByteArray) = native.getState(data)
+    fun setState(data: ByteArray) = native.setState(data)
 
-    fun getPresetCount() = proxy.getPresetCount()
-    fun getCurrentPresetIndex() = proxy.getCurrentPresetIndex()
-    fun setCurrentPresetIndex(index: Int) = proxy.setCurrentPresetIndex(index)
-    fun getCurrentPresetName(index: Int) = proxy.getCurrentPresetName(index)
-
-    fun updateMidiMappingPolicy(useProgramChangesForPresets: Boolean, useAssignableControllersForParameters: Boolean, useControlChangesForParameters: Boolean) {
-        TODO()
-    }
+    fun getPresetCount() = native.getPresetCount()
+    fun getCurrentPresetIndex() = native.getCurrentPresetIndex()
+    fun setCurrentPresetIndex(index: Int) = native.setCurrentPresetIndex(index)
+    fun getCurrentPresetName(index: Int) = native.getCurrentPresetName(index)
 }
