@@ -37,6 +37,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     fun getPort(index: Int) = getPort(client.native, instanceId, index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client.native, instanceId, portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client.native, instanceId, portIndex, buffer, size)
+    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client.native, instanceId)
 
     companion object {
         // Note that it returns an instanceId within the client, not the pointer to the instance.
@@ -70,6 +71,9 @@ internal class NativeRemotePluginInstance(val pluginId: String,
 
         @JvmStatic
         external fun setPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
+
+        @JvmStatic
+        external fun getMidiMappingPolicy(nativeClient: Long, instanceId: Int) : Int
 
         // Standard Extensions
 

@@ -165,6 +165,33 @@ void initializeJNIMetadata()
 												 "()I");
 }
 
+#define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }
+
+// It is required where the current Dalvik thread cannot resolve classes from current Context (app)...
+// JNI_OnLoad() at AudioPluginService does not seem to work enough to resolve classes in the apk, unlike
+// explained at https://developer.android.com/training/articles/perf-jni#faq:-why-didnt-findclass-find-my-class
+extern "C" jclass getAudioPluginMidiSettingsClass() {
+    JNIEnv *env;
+    aap::get_android_jvm()->GetEnv((void**) &env, JNI_VERSION_1_6);
+
+    auto context = aap::get_android_application_context();
+    auto contextClass = env->FindClass("android/content/Context");
+    auto getClassLoader = env->GetMethodID(contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+    auto contextClassLoader = env->CallObjectMethod(context, getClassLoader);
+
+    auto classLoaderClass = env->FindClass("java/lang/ClassLoader");
+    CLEAR_JNI_ERROR(env)
+    assert(classLoaderClass);
+    auto findClassMethod = env->GetMethodID(classLoaderClass, "findClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+    CLEAR_JNI_ERROR(env)
+    assert(findClassMethod);
+    auto settingsClassObj = env->CallObjectMethod(contextClassLoader, findClassMethod,
+                                                  env->NewStringUTF("org/androidaudioplugin/hosting/AudioPluginMidiSettings"));
+    CLEAR_JNI_ERROR(env)
+    assert(settingsClassObj);
+    return (jclass) settingsClassObj;
+}
+
 const char* keepPointer(std::vector<const char*> freeList, const char* ptr) {
 	freeList.emplace_back(ptr);
 	return ptr;
@@ -261,8 +288,7 @@ jobjectArray queryInstalledPluginsJNI()
 extern "C"
 int32_t getMidiSettingsFromSharedPreference(std::string pluginId) {
 	return usingJNIEnv<int32_t> ([pluginId](JNIEnv *env) {
-		jclass java_audio_plugin_midi_settings_class = env->FindClass(
-				"org/androidaudioplugin/hosting/AudioPluginMidiSettings");
+		auto java_audio_plugin_midi_settings_class = getAudioPluginMidiSettingsClass();
 		assert(java_audio_plugin_midi_settings_class);
 		jmethodID j_method_get_midi_settings_from_shared_preference = env->GetStaticMethodID(
 				java_audio_plugin_midi_settings_class, "getMidiSettingsFromSharedPreference",
@@ -277,8 +303,7 @@ int32_t getMidiSettingsFromSharedPreference(std::string pluginId) {
 extern "C"
 void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags) {
 	usingJNIEnv<int32_t> ([pluginId,flags](JNIEnv *env) {
-		jclass java_audio_plugin_midi_settings_class = env->FindClass(
-				"org/androidaudioplugin/hosting/AudioPluginMidiSettings");
+		auto java_audio_plugin_midi_settings_class = getAudioPluginMidiSettingsClass();
 		assert(java_audio_plugin_midi_settings_class);
 		jmethodID j_method_put_midi_settings_to_shared_preference = env->GetStaticMethodID(
 				java_audio_plugin_midi_settings_class, "putMidiSettingsToSharedPreference",
@@ -718,4 +743,15 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNI
     auto src = env->GetDirectBufferAddress(buffer);
 	auto dst = instance->getPluginBuffer()->getBuffer(portIndex);
 	memcpy(dst, src, size);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getMidiMappingPolicy(JNIEnv *env,
+																					jclass clazz,
+																					jlong nativeClient,
+																					jint instanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	return (jint) getMidiSettingsFromSharedPreference(instance->getPluginInformation()->getPluginID());
 }

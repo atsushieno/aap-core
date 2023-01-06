@@ -37,16 +37,14 @@ class PluginPreview(private val context: Context) {
     var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
     var midiSettingsFlags: Int
-        get() =
-            // return meaningful value only if current app is the service
-            if (instance == null || instance!!.pluginInfo.packageName != context.packageName) 0
-            else AudioPluginMidiSettings.getMidiSettingsFromSharedPreference(context, instance!!.pluginInfo.pluginId!!)
+        get() = instance?.getMidiMappingPolicy() ?: 0
         set(v) {
-            if (instance == null || instance!!.pluginInfo.packageName != context.packageName)
-                return
-            else
-                AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, instance!!.pluginInfo.pluginId!!, v)
+            // We can set the value only if the plugin is within current application
+            assert(isPluginInCurrentApplication)
+            AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, instance!!.pluginInfo.pluginId!!, v)
         }
+    val isPluginInCurrentApplication
+        get() = instance != null && instance!!.pluginInfo.packageName == context.packageName
     val inBuf : ByteArray
     val outBuf : ByteArray
 

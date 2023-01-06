@@ -9,6 +9,7 @@ import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.content.Context
 import android.os.Build
+import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 /**
  * The Audio plugin service class. Every AAP (plugin) derives from this class, either directly or indirectly.

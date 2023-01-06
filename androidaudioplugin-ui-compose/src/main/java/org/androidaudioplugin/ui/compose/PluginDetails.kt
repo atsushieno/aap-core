@@ -152,6 +152,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             Column {
                 Row {
                     Switch(
+                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM
@@ -161,6 +162,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
                 Row {
                     Switch(
+                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC
@@ -170,6 +172,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
                 Row {
                     Switch(
+                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC
@@ -179,6 +182,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
                 Row {
                     Switch(
+                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8

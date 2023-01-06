@@ -106,13 +106,14 @@ class AudioPluginInstance internal constructor(
         }
     }
 
-    // port/buffer manipulation
+    // parameter/port/buffer manipulation
     fun getParameterCount() = native.getParameterCount()
     fun getParameter(index: Int) = native.getParameter(index)
     fun getPortCount() = native.getPortCount()
     fun getPort(index: Int) = native.getPort(index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.getPortBuffer(portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.setPortBuffer(portIndex, buffer, size)
+    fun getMidiMappingPolicy() = native.getMidiMappingPolicy()
 
     // Standard Extensions
 
