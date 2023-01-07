@@ -753,5 +753,5 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getMidiMappingPol
 																					jint instanceId) {
 	auto client = (aap::PluginClient *) (void *) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-	return (jint) getMidiSettingsFromSharedPreference(instance->getPluginInformation()->getPluginID());
+    return (jint) instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
 }

@@ -118,6 +118,9 @@ typedef struct AAPXSFeature {
      * Client application has access to the extension service only through the extension API via the proxy.
      */
     aapxs_feature_as_proxy_t as_proxy;
+
+    /** True if get_extension() must return non-null implementation. */
+    bool is_implementation_mandatory;
 } AAPXSFeature;
 
 #ifdef __cplusplus

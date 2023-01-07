@@ -121,7 +121,7 @@ class PortConfigExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     PortConfigExtensionFeature()
-            : PluginExtensionFeatureImpl(AAP_PORT_CONFIG_EXTENSION_URI, PORT_CONFIG_SHARED_MEMORY_SIZE),
+            : PluginExtensionFeatureImpl(AAP_PORT_CONFIG_EXTENSION_URI, true, PORT_CONFIG_SHARED_MEMORY_SIZE),
               client(std::make_unique<PortConfigPluginClientExtension>()),
               service(std::make_unique<PortConfigPluginServiceExtension>()) {
     }

@@ -3,6 +3,9 @@
 
 #include "extension-service.h"
 
+// FIXME: should this be moved to somewhere?
+extern "C" int32_t getMidiSettingsFromSharedPreference(std::string pluginId);
+
 namespace aap {
 
 class StandardExtensions {
@@ -36,6 +39,12 @@ virtual TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_pres
             state.data_size *= 2;
         }
     }
+
+#define DEFINE_WITH_PARAMETERS_EXTENSION(TYPE) \
+virtual TYPE withParametersExtension(TYPE dummyValue, std::function<TYPE(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget target)> func) = 0;
+
+    DEFINE_WITH_PARAMETERS_EXTENSION(int32_t)
+    virtual void withParametersExtension(std::function<void(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget)> func) = 0;
 
 public:
     size_t getStateSize() {
@@ -90,36 +99,57 @@ public:
             return std::string{result.name};
         });
     }
+
+    int32_t getMidiMappingPolicy(std::string pluginId) {
+        return withParametersExtension/*<int32_t >*/(0, [&](aap_parameters_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (ext && ext->get_mapping_policy)
+                return (int32_t) ext->get_mapping_policy(target, pluginId.c_str());
+            else
+                return (int32_t) AAP_PARAMETERS_MAPPING_POLICY_SYSEX8;
+        });
+    }
 };
 
 class LocalPluginInstanceStandardExtensions : public StandardExtensions {
-    template<typename T, typename X> T withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
+    template<typename T, typename X> T withExtension(bool mandatory, T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
         auto plugin = getPlugin();
         auto ext = (X*) plugin->get_extension(plugin, extensionUri);
-        if (ext == nullptr)
+        if (ext == nullptr && mandatory)
             return defaultValue;
         return func(ext, AndroidAudioPluginExtensionTarget{plugin, nullptr});
     }
 
 #define DEFINE_WITH_STATE_EXTENSION_LOCAL(TYPE) \
-TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(defaultValue, AAP_STATE_EXTENSION_URI, func); }
+TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(true, defaultValue, AAP_STATE_EXTENSION_URI, func); }
 
     DEFINE_WITH_STATE_EXTENSION_LOCAL(size_t)
     DEFINE_WITH_STATE_EXTENSION_LOCAL(const aap_state_t&)
     void withStateExtension(std::function<void(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override {
-        withExtension<int, aap_state_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+        withExtension<int, aap_state_extension_t>(true, 0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });
     }
 
 #define DEFINE_WITH_PRESETS_EXTENSION_LOCAL(TYPE) \
-TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
+TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(true, defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
 
     DEFINE_WITH_PRESETS_EXTENSION_LOCAL(int32_t)
     DEFINE_WITH_PRESETS_EXTENSION_LOCAL(std::string)
     virtual void withPresetsExtension(std::function<void(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
-        withExtension<int, aap_presets_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+        withExtension<int, aap_presets_extension_t>(true, 0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            func(ext, target);
+            return 0;
+        });
+    }
+
+
+#define DEFINE_WITH_PARAMETERS_EXTENSION_LOCAL(TYPE) \
+TYPE withParametersExtension(TYPE dummyValue, std::function<TYPE(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_parameters_extension_t>(false, 0, AAP_PARAMETERS_EXTENSION_URI, func); }
+
+    DEFINE_WITH_PARAMETERS_EXTENSION_LOCAL(int32_t)
+    virtual void withParametersExtension(std::function<void(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
+        withExtension<int, aap_parameters_extension_t>(false, 0, AAP_PARAMETERS_EXTENSION_URI, [&](aap_parameters_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });
@@ -130,10 +160,10 @@ public:
 };
 
 class RemotePluginInstanceStandardExtensions : public StandardExtensions {
-    template<typename T, typename X> T withExtension(T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
+    template<typename T, typename X> T withExtension(bool mandatory, T defaultValue, const char* extensionUri, std::function<T(X*, AndroidAudioPluginExtensionTarget target)> func) {
         auto proxyContext = getAAPXSManager()->getExtensionProxy(extensionUri);
         auto ext = (X*) proxyContext.extension;
-        if (ext == nullptr)
+        if (ext == nullptr && mandatory)
             return defaultValue;
         AndroidAudioPluginExtensionTarget target;
         target.aapxs_context = proxyContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
@@ -142,24 +172,35 @@ class RemotePluginInstanceStandardExtensions : public StandardExtensions {
     }
 
 #define DEFINE_WITH_STATE_EXTENSION_REMOTE(TYPE) \
-TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(defaultValue, AAP_STATE_EXTENSION_URI, func); }
+TYPE withStateExtension(TYPE defaultValue, std::function<TYPE(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_state_extension_t>(true, defaultValue, AAP_STATE_EXTENSION_URI, func); }
 
     DEFINE_WITH_STATE_EXTENSION_REMOTE(size_t)
     DEFINE_WITH_STATE_EXTENSION_REMOTE(const aap_state_t&)
     void withStateExtension(std::function<void(aap_state_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override {
-        withExtension<int, aap_state_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+        withExtension<int, aap_state_extension_t>(true, 0, AAP_STATE_EXTENSION_URI, [&](aap_state_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });
     }
 
 #define DEFINE_WITH_PRESETS_EXTENSION_REMOTE(TYPE) \
-TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
+TYPE withPresetsExtension(TYPE defaultValue, std::function<TYPE(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_presets_extension_t>(true, defaultValue, AAP_PRESETS_EXTENSION_URI, func); }
 
     DEFINE_WITH_PRESETS_EXTENSION_REMOTE(int32_t)
     DEFINE_WITH_PRESETS_EXTENSION_REMOTE(std::string)
     virtual void withPresetsExtension(std::function<void(aap_presets_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
-        withExtension<int, aap_presets_extension_t>(0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+        withExtension<int, aap_presets_extension_t>(true, 0, AAP_STATE_EXTENSION_URI, [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            func(ext, target);
+            return 0;
+        });
+    }
+
+#define DEFINE_WITH_PARAMETERS_EXTENSION_REMOTE(TYPE) \
+TYPE withParametersExtension(TYPE dummyValue, std::function<TYPE(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_parameters_extension_t>(false, 0, AAP_PARAMETERS_EXTENSION_URI, func); }
+
+    DEFINE_WITH_PARAMETERS_EXTENSION_REMOTE(int32_t)
+    virtual void withParametersExtension(std::function<void(aap_parameters_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
+        withExtension<int, aap_parameters_extension_t>(false, 0, AAP_PARAMETERS_EXTENSION_URI, [&](aap_parameters_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });

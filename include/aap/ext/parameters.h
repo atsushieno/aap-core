@@ -165,6 +165,7 @@ enum aap_parameters_mapping_policy {
 
 typedef int32_t (*parameters_extension_get_parameter_count_func_t) (AndroidAudioPluginExtensionTarget target);
 typedef aap_parameter_info_t* (*parameters_extension_get_parameter_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
+typedef enum aap_parameters_mapping_policy (*parameters_extension_get_mapping_policy_func_t) (AndroidAudioPluginExtensionTarget target, const char* pluginId);
 typedef void (*parameters_extension_on_mapping_policy_changed_func_t) (AndroidAudioPluginExtensionTarget target, enum aap_parameters_mapping_policy value);
 
 typedef struct aap_parameters_extension_t {
@@ -175,22 +176,25 @@ typedef struct aap_parameters_extension_t {
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     parameters_extension_get_parameter_func_t get_parameter;
     // Called by host that the mapping policy has changed. Plugins are free to ignore it.
+    // The actual callee is most likely audio-plugin-host, not the plugin.
+    parameters_extension_get_mapping_policy_func_t get_mapping_policy;
+    // Called by host that the mapping policy has changed. Plugins are free to ignore it.
     // The actual caller is most likely audio-plugin-host, not the DAW.
     parameters_extension_on_mapping_policy_changed_func_t on_mapping_policy_changed;
 } aap_parameters_extension_t;
 
-typedef enum aap_parameters_mapping_policy (*parameters_extension_get_mapping_policy_func_t) (AndroidAudioPluginHost* host, const char* pluginId);
-typedef void (*parameters_extension_on_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
+typedef enum aap_parameters_mapping_policy (*parameters_host_extension_get_user_mapping_policy_func_t) (AndroidAudioPluginHost* host, const char* pluginId);
+typedef void (*parameters_host_extension_on_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
 
 typedef struct aap_host_parameters_extension_t {
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host.
-    parameters_extension_on_parameter_list_changed_func_t on_parameters_changed;
+    parameters_host_extension_get_user_mapping_policy_func_t get_user_mapping_policy;
     // It is called by plugin to get the latest mapping policy configured by user.
     // Plugins are free to ignore the settings.
     // The policy value is configured for the entire plugin in the AAP Service, not per instance (hence it takes pluginId).
     // The actual query destination is most likely audio-plugin-host, not the DAW.
-    parameters_extension_get_mapping_policy_func_t get_mapping_policy;
+    parameters_host_extension_on_parameter_list_changed_func_t on_parameters_changed;
 } aap_host_parameters_extension_t;
 
 #ifdef __cplusplus

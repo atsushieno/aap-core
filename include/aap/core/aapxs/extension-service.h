@@ -90,6 +90,7 @@ public:
         auto e = std::make_unique<AAPXSFeature>();
         auto f = extensionService;
         e->context = f->context;
+        e->is_implementation_mandatory = f->is_implementation_mandatory;
         e->shared_memory_size = f->shared_memory_size;
         e->as_proxy = f->as_proxy;
         e->on_invoked = f->on_invoked;

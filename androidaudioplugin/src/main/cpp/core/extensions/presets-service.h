@@ -165,7 +165,7 @@ class PresetsExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     PresetsExtensionFeature()
-        : PluginExtensionFeatureImpl(AAP_PRESETS_EXTENSION_URI, PRESETS_SHARED_MEMORY_SIZE),
+        : PluginExtensionFeatureImpl(AAP_PRESETS_EXTENSION_URI, true, PRESETS_SHARED_MEMORY_SIZE),
           client(std::make_unique<PresetsPluginClientExtension>()),
           service(std::make_unique<PresetsPluginServiceExtension>()) {
     }

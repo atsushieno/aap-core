@@ -286,7 +286,7 @@ class LocalPluginInstance : public PluginInstance {
 		}
 		if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
 			auto instance = (LocalPluginInstance*) host->context;
-			instance->host_parameters_extension.get_mapping_policy = get_mapping_policy;
+			instance->host_parameters_extension.get_user_mapping_policy = get_mapping_policy;
 			instance->host_parameters_extension.on_parameters_changed = on_parameters_changed;
 			return &instance->host_parameters_extension;
 		}

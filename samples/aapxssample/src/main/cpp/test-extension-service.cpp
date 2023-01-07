@@ -82,4 +82,5 @@ AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
                                      nullptr,
                                      AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE + sizeof(int32_t),
                                      test_extension_feature_on_invoked,
-                                     test_extension_feature_as_proxy};
+                                     test_extension_feature_as_proxy,
+                                     true};

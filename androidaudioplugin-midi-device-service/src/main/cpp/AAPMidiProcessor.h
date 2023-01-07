@@ -101,6 +101,8 @@ namespace aapmidideviceservice {
 
         void instantiatePlugin(std::string pluginId);
 
+        int32_t getInstrumentMidiMappingFlags();
+
         void activate();
 
         void processMidiInput(uint8_t* bytes, size_t offset, size_t length, int64_t timestampInNanoseconds);

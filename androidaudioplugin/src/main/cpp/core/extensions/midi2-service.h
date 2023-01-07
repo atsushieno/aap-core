@@ -92,7 +92,7 @@ class Midi2ExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     Midi2ExtensionFeature()
-            : PluginExtensionFeatureImpl(AAP_MIDI2_EXTENSION_URI, sizeof(aap_midi2_extension_t)),
+            : PluginExtensionFeatureImpl(AAP_MIDI2_EXTENSION_URI, false, sizeof(aap_midi2_extension_t)),
               client(std::make_unique<Midi2PluginClientExtension>()),
               service(std::make_unique<Midi2PluginServiceExtension>()) {
     }

@@ -3,6 +3,7 @@
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
     </extensions>
 

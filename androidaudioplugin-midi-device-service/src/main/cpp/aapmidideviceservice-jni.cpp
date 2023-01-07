@@ -62,6 +62,10 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
     aap::aprintf("AudioPluginMidiReceiver terminated.");
 }
 
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_getMidiMappingFlags(JNIEnv *env, jobject thiz) {
+    AAPMIDIDEVICE_INSTANCE->getInstrumentMidiMappingFlags();
+}
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_activate(
         JNIEnv *env, jobject midiReceiver) {
     AAPMIDIDEVICE_INSTANCE->activate();

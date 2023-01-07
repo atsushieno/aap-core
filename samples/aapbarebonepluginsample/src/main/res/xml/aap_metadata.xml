@@ -2,6 +2,7 @@
   <plugin name="Test Filter" category="Effect" author="androidaudioplugin.org" manufacturer="androidaudioplugin.org" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter" library="libaapbarebonepluginsample.so">
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
     </extensions>
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">

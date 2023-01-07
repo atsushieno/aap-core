@@ -130,7 +130,7 @@ class StateExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     StateExtensionFeature()
-            : PluginExtensionFeatureImpl(AAP_STATE_EXTENSION_URI, STATE_SHARED_MEMORY_SIZE),
+            : PluginExtensionFeatureImpl(AAP_STATE_EXTENSION_URI, true, STATE_SHARED_MEMORY_SIZE),
               client(std::make_unique<StatePluginClientExtension>()),
               service(std::make_unique<StatePluginServiceExtension>()) {
     }

@@ -145,7 +145,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 Text("Play")
             }
         }
-        Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " MIDI settings", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
+        Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
             midiSettingsExpanded = !midiSettingsExpanded
         })
         if (midiSettingsExpanded) {

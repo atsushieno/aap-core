@@ -199,6 +199,15 @@ namespace aapmidideviceservice {
         client->createInstanceAsync(pluginId, sample_rate, true, cb);
     }
 
+    int32_t AAPMidiProcessor::getInstrumentMidiMappingFlags() {
+        for (int i = 0; i < client->getInstanceCount(); i++) {
+            auto instance = client->getInstanceByIndex(i);
+            if (instance->getPluginInformation()->isInstrument())
+                instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
+        }
+        return 0;
+    }
+
     // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.
     void AAPMidiProcessor::activate() {
         if (state != AAP_MIDI_PROCESSOR_STATE_INACTIVE) {
