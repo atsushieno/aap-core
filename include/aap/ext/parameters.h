@@ -23,6 +23,7 @@ extern "C" {
 //   (NRPN) inputs as parameter changes.
 // - `AAP_PARAMETERS_MAPPING_POLICY_PROGRAM` indicates that the plugin will treat Program Change
 //   inputs as preset selector.
+//   Optionally, bank select can be used to represent 8+ bits i.e. preset = bank * 128 + program
 // - `AAP_PARAMETERS_MAPPING_POLICY_SYSEX8` indicates that the plugin will treat such a Universal
 //   SysEx8 message that conforms to certain Sysex8 packet as parameter changes. It should be
 //   almost always enabled.

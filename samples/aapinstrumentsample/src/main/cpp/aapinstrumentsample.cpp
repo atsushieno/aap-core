@@ -14,6 +14,8 @@ extern "C" {
 #include <aap/ext/plugin-info.h>
 #include <aap/ext/parameters.h>
 
+#define AAP_APP_LOG_TAG "AAPInstrumentSample"
+
 #define AYUMI_AAP_MIDI2_IN_PORT 0
 #define AYUMI_AAP_MIDI2_OUT_PORT 1
 #define AYUMI_AAP_AUDIO_OUT_LEFT 2
@@ -361,6 +363,7 @@ int32_t sample_plugin_get_preset_index(AndroidAudioPluginExtensionTarget target)
 
 void sample_plugin_set_preset_index(AndroidAudioPluginExtensionTarget target, int32_t index) {
     auto handle = (AyumiHandle*) target.plugin->plugin_specific;
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "Preset changed to %d", index);
     handle->preset_index = index;
 }
 
@@ -414,10 +417,10 @@ AndroidAudioPlugin *sample_plugin_new(
     auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host->get_extension_data(host, AAP_PLUGIN_INFO_EXTENSION_URI);
     if (pluginInfoExt != nullptr) {
         auto info = pluginInfoExt->get(host, pluginUniqueId);
-        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "plugin-info test: displayName: %s", info.display_name(&info));
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
         for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
             auto port = info.get_port(&info, i);
-            aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "  plugin-info test: port %d: %s %s %s",
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "  plugin-info test: port %d: %s %s %s",
                          port.index(&port),
                          port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
                          port.direction(&port) == AAP_PORT_DIRECTION_INPUT ? "IN" : "OUT",
@@ -425,7 +428,7 @@ AndroidAudioPlugin *sample_plugin_new(
         }
     }
     auto parametersHostExt = (aap_host_parameters_extension_t*) host->get_extension_data(host, AAP_PARAMETERS_EXTENSION_URI);
-    aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAPInstrumentSample", "MIDI mapping policy: %d", parametersHostExt->get_user_mapping_policy(host, pluginUniqueId));
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "MIDI mapping policy: %d", parametersHostExt->get_user_mapping_policy(host, pluginUniqueId));
 
     return new AndroidAudioPlugin{
             handle,

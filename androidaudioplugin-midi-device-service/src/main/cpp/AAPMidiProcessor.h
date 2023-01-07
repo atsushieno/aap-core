@@ -77,6 +77,7 @@ namespace aapmidideviceservice {
         int32_t instrument_instance_id{0};
         // MIDI protocol type of the messages it receives via JNI
         int32_t receiver_midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
+        int32_t current_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_SYSEX8};
 
         int32_t getAAPMidiInputPortType();
         PluginInstanceData* getAAPMidiInputData();
@@ -84,8 +85,13 @@ namespace aapmidideviceservice {
         // used when we need MIDI1<->UMP translation.
         uint8_t* translation_buffer{nullptr};
 
+        // If needed, translate MIDI1 bytestream to MIDI2 UMP.
         // returns 0 if translation did not happen. Otherwise return the size of translated buffer in translation_buffer.
         size_t translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length);
+
+        // If needed, process MIDI mapping for parameters (CC/ACC/PNACC to sysex8) and presets (program).
+        // returns 0 if translation did not happen. Otherwise return the size of translated buffer in translation_buffer.
+        size_t runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length);
 
         // Outputs
         ZixRing *aap_input_ring_buffer{nullptr};
@@ -101,7 +107,7 @@ namespace aapmidideviceservice {
 
         void instantiatePlugin(std::string pluginId);
 
-        int32_t getInstrumentMidiMappingFlags();
+        int32_t getInstrumentMidiMappingPolicy();
 
         void activate();
 

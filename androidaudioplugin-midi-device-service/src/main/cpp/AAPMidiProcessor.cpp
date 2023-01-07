@@ -199,11 +199,12 @@ namespace aapmidideviceservice {
         client->createInstanceAsync(pluginId, sample_rate, true, cb);
     }
 
-    int32_t AAPMidiProcessor::getInstrumentMidiMappingFlags() {
+    // Note that it is an expensive operation so we cache it at activate().
+    int32_t AAPMidiProcessor::getInstrumentMidiMappingPolicy() {
         for (int i = 0; i < client->getInstanceCount(); i++) {
             auto instance = client->getInstanceByIndex(i);
             if (instance->getPluginInformation()->isInstrument())
-                instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
+                return instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
         }
         return 0;
     }
@@ -216,6 +217,8 @@ namespace aapmidideviceservice {
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;
             return;
         }
+
+        current_mapping_policy = getInstrumentMidiMappingPolicy();
 
         auto startStreamingResult = pal()->startStreaming();
         if (startStreamingResult) {
@@ -335,45 +338,91 @@ namespace aapmidideviceservice {
         return data->plugin_buffer->buffers[portIndex];
     }
 
+    size_t AAPMidiProcessor::runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length) {
+        int32_t translatedIndex = 0;
+        CMIDI2_UMP_SEQUENCE_FOREACH(bytes + offset, length, iter) {
+            auto ump = (cmidi2_ump*) iter;
+            int32_t parameterIndex = -1;
+            uint32_t parameterValueI32 = 0;
+            int32_t parameterKey = 0;
+            int32_t parameterExtra = 0;
+            int32_t presetIndex = -1;
+            switch (cmidi2_ump_get_message_type(ump)) {
+                case CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL:
+                    switch (cmidi2_ump_get_status_code(ump)) {
+                        case CMIDI2_STATUS_CC:
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_CC) != 0) {
+                                parameterIndex = cmidi2_ump_get_midi2_cc_index(ump);
+                                parameterValueI32 = cmidi2_ump_get_midi2_cc_data(ump);
+                            }
+                            break;
+                        case CMIDI2_STATUS_PER_NOTE_ACC:
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0)
+                                parameterKey = cmidi2_ump_get_midi2_pnacc_note(ump);
+                            // no break; go to case CMIDI2_STATUS_NRPN
+                        case CMIDI2_STATUS_NRPN:
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0) {
+                                parameterIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 +
+                                        cmidi2_ump_get_midi2_nrpn_lsb(ump);
+                                parameterValueI32 = cmidi2_ump_get_midi2_nrpn_data(ump);
+                            }
+                            break;
+                        case CMIDI2_STATUS_PROGRAM:
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) != 0) {
+                                bool bankValid = (cmidi2_ump_get_midi2_program_options(ump) & CMIDI2_PROGRAM_CHANGE_OPTION_BANK_VALID) != 0;
+                                auto bank = bankValid ?
+                                        cmidi2_ump_get_midi2_program_bank_msb(ump) * 0x80 +
+                                        cmidi2_ump_get_midi2_program_bank_lsb(ump) : 0;
+                                presetIndex = cmidi2_ump_get_midi2_program_program(ump) + bank * 0x80;
+                            }
+                            break;
+                    }
+                    break;
+            }
+            if (presetIndex >= 0) {
+                for (int i = 0; i < client->getInstanceCount(); i++) {
+                    auto instance = client->getInstanceByIndex(i);
+                    if (instance->getPluginInformation()->isInstrument())
+                        instance->getStandardExtensions().setCurrentPresetIndex(presetIndex);
+                }
+            }
+            // If a translated AAP parameter change message is detected, then output sysex8.
+            if (parameterIndex < 0) {
+                auto size = cmidi2_ump_get_message_size_bytes(ump);
+                memcpy(translation_buffer + translatedIndex, ump, size);
+                translatedIndex += size;
+            }
+            else {
+                auto intBuf = (uint32_t*) ((uint8_t*) translation_buffer + translatedIndex);
+                aapMidi2ParameterSysex8(intBuf, intBuf + 1, intBuf + 2, intBuf + 3,
+                                        cmidi2_ump_get_group(ump), cmidi2_ump_get_channel(ump), parameterKey, parameterExtra, parameterIndex, *(float*) (void*) &parameterValueI32);
+                translatedIndex += 16;
+            }
+        }
+        memcpy(bytes + offset, translation_buffer, translatedIndex);
+        return translatedIndex;
+    }
+
     size_t AAPMidiProcessor::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
         if (length == 0)
             return 0;
-        if (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
-            // It receives UMPs. If port is MIDI1, we translate to MIDI1 bytestream.
-            if (getAAPMidiInputPortType() != CMIDI2_PROTOCOL_TYPE_MIDI2) {
-                cmidi2_midi_conversion_context context;
-                cmidi2_midi_conversion_context_initialize(&context);
-                context.ump = (cmidi2_ump*) bytes + offset;
-                context.ump_num_bytes = length;
-                context.midi1 = translation_buffer;
-                context.midi1_num_bytes = sizeof(translation_buffer);
-                context.group = 0;
+        if (receiver_midi_protocol != CMIDI2_PROTOCOL_TYPE_MIDI2) {
+            // It receives MIDI1 bytestream. We translate to MIDI2 UMPs.
+            cmidi2_midi_conversion_context context;
+            cmidi2_midi_conversion_context_initialize(&context);
+            context.midi1 = bytes + offset;
+            context.midi_protocol = CMIDI2_PROTOCOL_TYPE_MIDI2;
+            context.midi1_num_bytes = length;
+            context.ump = (cmidi2_ump*) translation_buffer;
+            context.ump_num_bytes = sizeof(translation_buffer);
+            context.group = 0;
 
-                if (cmidi2_convert_ump_to_midi1(&context) != CMIDI2_CONVERSION_RESULT_OK) {
-                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Failed to translate MIDI 2.0 UMP inputs to MIDI 1.0 stream");
-                    return 0;
-                }
-                memcpy(bytes + offset, translation_buffer, context.ump_proceeded_bytes);
-                return context.midi1_proceeded_bytes;
+            if (cmidi2_convert_midi1_to_ump(&context) != CMIDI2_CONVERSION_RESULT_OK) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Failed to translate MIDI 1.0 inputs to MIDI 2.0 UMPs");
+                return 0;
             }
-        } else {
-            // It receives MIDI1 bytestream. If port is MIDI2, we translate to UMPs.
-            if (getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2) {
-                cmidi2_midi_conversion_context context;
-                cmidi2_midi_conversion_context_initialize(&context);
-                context.midi1 = bytes + offset;
-                context.midi1_num_bytes = length;
-                context.ump = (cmidi2_ump*) translation_buffer;
-                context.ump_num_bytes = sizeof(translation_buffer);
-                context.group = 0;
-
-                if (cmidi2_convert_midi1_to_ump(&context) != CMIDI2_CONVERSION_RESULT_OK) {
-                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "Failed to translate MIDI 1.0 inputs to MIDI 2.0 UMPs");
-                    return 0;
-                }
-                memcpy(bytes + offset, translation_buffer, context.ump_proceeded_bytes);
-                return context.ump_proceeded_bytes;
-            }
+            memcpy(bytes + offset, translation_buffer, context.ump_proceeded_bytes);
+            return context.ump_proceeded_bytes;
         }
         return 0;
     }
@@ -393,6 +442,9 @@ namespace aapmidideviceservice {
         pal()->midiInputReceived(bytes, offset, length, timestampInNanoseconds);
 
         size_t translated = translateMidiBufferIfNeeded(bytes, offset, length);
+        if (translated > 0)
+            length = translated;
+        translated = runThroughMidi2UmpForMidiMapping(bytes, offset, length);
         if (translated > 0)
             length = translated;
 
