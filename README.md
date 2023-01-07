@@ -1,5 +1,5 @@
 
-# AAP: Android Audio Plugin Framework
+# AAP: Audio Plugins For Android
 
 ![](https://github.com/atsushieno/android-audio-plugin-framework/workflows/build%20dist/badge.svg)
 
@@ -13,9 +13,9 @@ disclaimer: the README is either up to date, partially obsoleted, or sometimes (
 
 ## What is AAP?
 
-Android lacks commonly used Audio Plugin Framework. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LV2 is used, as well as VST2 (or compatibility) and VST3.
+Android lacks commonly used audio plugin format. On Windows and other desktops, VSTs are popular. On Mac and iOS (including iPadOS) there is AudioUnit. On Linux LV2 is used, as well as VST2 (or compatibility) and VST3.
 
-There is no such thing in Android. AAP (which implies Android Audio Plugin) Framework is to fill this gap.
+There is no such thing in Android. Audio Plugins For Android (AAP) is to fill this gap.
 
 What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on.
 
@@ -118,7 +118,7 @@ It is also used by samples/aaphostsample that lists **all** plugins on the syste
 
 ## Licenses
 
-Android Audio Plugin Framework is released under the MIT License.
+Audio Plugins For Android is released under the MIT License.
 
 In aap-midi-device-service, there are some sources copied from [jalv](https://gitlab.com/drobilla/jalv) project included in aap-midi-device-service module, namely those files under `zix` directory, and they are distributed under the ISC license.
 
