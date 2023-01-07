@@ -1,10 +1,8 @@
 package org.androidaudioplugin.hosting
 
-import android.os.ParcelFileDescriptor
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
-import kotlin.properties.Delegates
 
 
 /* maps to aap::RemotePluginInstance */
@@ -26,7 +24,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     fun getPresetCount() = getPresetCount(client.native, instanceId)
     fun getCurrentPresetIndex() = getCurrentPresetIndex(client.native, instanceId)
     fun setCurrentPresetIndex(index: Int) = setCurrentPresetIndex(client.native, instanceId, index)
-    fun getCurrentPresetName(index: Int) = getCurrentPresetName(client.native, instanceId, index)
+    fun getPresetName(index: Int) = getPresetName(client.native, instanceId, index)
 
     // aap::RemotePluginInstance*
     val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
@@ -93,6 +91,6 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         @JvmStatic
         external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
         @JvmStatic
-        external fun getCurrentPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
+        external fun getPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
     }
 }

@@ -91,7 +91,7 @@ public:
         });
     }
 
-    std::string getCurrentPresetName(int index)
+    std::string getPresetName(int index)
     {
         return withPresetsExtension/*<std::string>*/("", [&](aap_presets_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             aap_preset_t result;
@@ -166,7 +166,7 @@ class RemotePluginInstanceStandardExtensions : public StandardExtensions {
         if (ext == nullptr && mandatory)
             return defaultValue;
         AndroidAudioPluginExtensionTarget target;
-        target.aapxs_context = proxyContext.aapxs_context; // it should be PresetsPluginClientExtension::Instance
+        target.aapxs_context = proxyContext.aapxs_context; // it should be PluginClientExtension::Instance
         target.plugin = getPlugin();
         return func(ext, target);
     }

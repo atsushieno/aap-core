@@ -94,6 +94,11 @@ class PluginPreview(private val context: Context) {
     val instancePorts : List<PortInformation>
         get() = if (instance == null) listOf() else (0 until instance!!.getPortCount()).map { instance!!.getPort(it) }
 
+    val presetCount : Int
+        get() = if (instance == null) 0 else instance!!.getPresetCount()
+
+    fun getPresetName(index: Int) = if (instance == null) null else instance!!.getPresetName(index)
+
     fun applyPlugin(instanceParameterValues: FloatArray?, errorCallback: (Exception?) ->Unit = {}) {
         val instance = this.instance ?: return
 

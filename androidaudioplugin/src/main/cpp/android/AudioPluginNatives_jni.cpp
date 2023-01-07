@@ -651,14 +651,14 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setCurrentPresetI
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getCurrentPresetName(JNIEnv *env,
-																					jclass clazz,
-																					jlong nativeClient,
-																					jint instanceId,
-																					jint index) {
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPresetName__JII(JNIEnv *env,
+																				  jclass clazz,
+																				  jlong nativeClient,
+																				  jint instanceId,
+																				  jint index) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-	return env->NewStringUTF(instance->getStandardExtensions().getCurrentPresetName(index).c_str());
+	return env->NewStringUTF(instance->getStandardExtensions().getPresetName(index).c_str());
 }
 
 extern "C"

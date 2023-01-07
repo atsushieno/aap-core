@@ -44,6 +44,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
 
     var pluginDetailsExpanded by remember { mutableStateOf(false) }
     var midiSettingsExpanded by remember { mutableStateOf(false) }
+    var presetsExpanded by remember { mutableStateOf(false) }
 
     var midiSettingsFlags by remember { mutableStateOf(viewModel.preview.value.midiSettingsFlags) }
 
@@ -200,6 +201,21 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                         (if (extension.required) "[req]" else "[opt]") + " " + (extension.uri
                             ?: "(uri unspecified)"), fontSize = 12.sp
                     )
+                }
+            }
+        }
+        Text(text = (if (presetsExpanded) "[-]" else "[+]") + " Presets", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
+            presetsExpanded = !presetsExpanded
+        })
+        if (presetsExpanded) {
+            Column {
+                (0 until viewModel.preview.value.presetCount).forEach { index ->
+                    Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                        Text(
+                            fontSize = 14.sp,
+                            text = "$index: ${viewModel.preview.value.getPresetName(index)}"
+                        )
+                    }
                 }
             }
         }
