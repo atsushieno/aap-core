@@ -275,7 +275,6 @@ class LocalPluginInstance : public PluginInstance {
 	aap_host_parameters_extension_t host_parameters_extension{};
 
 	static aap_plugin_info_t get_plugin_info(AndroidAudioPluginHost* host, const char* pluginId);
-	static enum aap_parameters_mapping_policy get_mapping_policy(AndroidAudioPluginHost* host, const char* pluginId);
 	static void on_parameters_changed(AndroidAudioPluginHost* host, AndroidAudioPlugin* plugin);
 
 	inline static void* internalGetExtensionData(AndroidAudioPluginHost *host, const char* uri) {
@@ -286,7 +285,6 @@ class LocalPluginInstance : public PluginInstance {
 		}
 		if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
 			auto instance = (LocalPluginInstance*) host->context;
-			instance->host_parameters_extension.get_user_mapping_policy = get_mapping_policy;
 			instance->host_parameters_extension.on_parameters_changed = on_parameters_changed;
 			return &instance->host_parameters_extension;
 		}

@@ -427,8 +427,6 @@ AndroidAudioPlugin *sample_plugin_new(
                          port.name(&port));
         }
     }
-    auto parametersHostExt = (aap_host_parameters_extension_t*) host->get_extension_data(host, AAP_PARAMETERS_EXTENSION_URI);
-    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "MIDI mapping policy: %d", parametersHostExt->get_user_mapping_policy(host, pluginUniqueId));
 
     return new AndroidAudioPlugin{
             handle,

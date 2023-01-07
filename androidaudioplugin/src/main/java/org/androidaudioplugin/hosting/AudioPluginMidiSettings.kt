@@ -14,9 +14,7 @@ class AudioPluginMidiSettings {
         const val AAP_PARAMETERS_MAPPING_POLICY_CC = 2
         const val AAP_PARAMETERS_MAPPING_POLICY_SYSEX8 = 4
         const val AAP_PARAMETERS_MAPPING_POLICY_PROGRAM = 8
-        const val AAP_PARAMETERS_MAPPING_POLICY_DEFAULT = AAP_PARAMETERS_MAPPING_POLICY_ACC or
-                AAP_PARAMETERS_MAPPING_POLICY_SYSEX8 or
-                AAP_PARAMETERS_MAPPING_POLICY_PROGRAM
+        const val AAP_PARAMETERS_MAPPING_POLICY_DEFAULT = AAP_PARAMETERS_MAPPING_POLICY_NONE
 
         @JvmStatic
         fun putMidiSettingsToSharedPreference(context: Context, pluginId: String, flags: Int) {

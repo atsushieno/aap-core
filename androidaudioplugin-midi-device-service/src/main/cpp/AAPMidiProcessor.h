@@ -77,7 +77,7 @@ namespace aapmidideviceservice {
         int32_t instrument_instance_id{0};
         // MIDI protocol type of the messages it receives via JNI
         int32_t receiver_midi_protocol{CMIDI2_PROTOCOL_TYPE_MIDI1};
-        int32_t current_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_SYSEX8};
+        int32_t current_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
 
         int32_t getAAPMidiInputPortType();
         PluginInstanceData* getAAPMidiInputData();

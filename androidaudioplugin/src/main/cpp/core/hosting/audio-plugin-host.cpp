@@ -548,17 +548,6 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 	return ret;
 }
 
-#if ANDROID
-extern "C" int32_t getMidiSettingsFromSharedPreference(std::string pluginId);
-
-enum aap_parameters_mapping_policy
-LocalPluginInstance::get_mapping_policy(AndroidAudioPluginHost *host, const char* pluginId) {
-	auto instance = (LocalPluginInstance*) host->context;
-    return (aap_parameters_mapping_policy) getMidiSettingsFromSharedPreference(
-			instance->getPluginInformation()->getPluginID());
-}
-#endif
-
 void LocalPluginInstance::on_parameters_changed(AndroidAudioPluginHost *host,
                                                 AndroidAudioPlugin *plugin) {
     assert(false); // FIXME: implement

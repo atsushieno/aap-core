@@ -357,18 +357,21 @@ namespace aapmidideviceservice {
                             }
                             break;
                         case CMIDI2_STATUS_PER_NOTE_ACC:
-                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0)
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0 &&
+                                    (current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_SYSEX8) == 0)
                                 parameterKey = cmidi2_ump_get_midi2_pnacc_note(ump);
                             // no break; go to case CMIDI2_STATUS_NRPN
                         case CMIDI2_STATUS_NRPN:
-                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0) {
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0 &&
+                                (current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_SYSEX8) == 0) {
                                 parameterIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 +
                                         cmidi2_ump_get_midi2_nrpn_lsb(ump);
                                 parameterValueI32 = cmidi2_ump_get_midi2_nrpn_data(ump);
                             }
                             break;
                         case CMIDI2_STATUS_PROGRAM:
-                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) != 0) {
+                            // unless the plugin requires it to be passed directly, treat them as preset setter.
+                            if ((current_mapping_policy & AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) == 0) {
                                 bool bankValid = (cmidi2_ump_get_midi2_program_options(ump) & CMIDI2_PROGRAM_CHANGE_OPTION_BANK_VALID) != 0;
                                 auto bank = bankValid ?
                                         cmidi2_ump_get_midi2_program_bank_msb(ump) * 0x80 +

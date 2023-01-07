@@ -151,44 +151,44 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         if (midiSettingsExpanded) {
             Column {
                 Row {
-                    Switch(
-                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
+                    Checkbox(
+                        enabled = false,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_PROGRAM
                             viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
                         })
-                    Text("Use Program Changes for Presets")
+                    Text("Consumes Program Changes by its own")
                 }
                 Row {
-                    Switch(
-                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
+                    Checkbox(
+                        enabled = false,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_CC
                             viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
                         })
-                    Text("Use CCs for Parameters")
+                    Text("Consumes CCs by its own")
                 }
                 Row {
-                    Switch(
-                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
+                    Checkbox(
+                        enabled = false,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_ACC
                             viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
                         })
-                    Text("Use NRPNs (ACCs) for Parameters")
+                    Text("Consumes NRPNs (ACCs) by its own")
                 }
                 Row {
-                    Switch(
-                        enabled = viewModel.preview.value.isPluginInCurrentApplication,
+                    Checkbox(
+                        enabled = false,
                         checked = (midiSettingsFlags and AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8) != 0,
                         onCheckedChange = {
                             midiSettingsFlags = midiSettingsFlags xor AudioPluginMidiSettings.AAP_PARAMETERS_MAPPING_POLICY_SYSEX8
                             viewModel.preview.value.midiSettingsFlags = midiSettingsFlags
                         })
-                    Text("Use SysEx8 for Parameters")
+                    Text("Consumes SysEx8 by its own")
                 }
             }
         }
