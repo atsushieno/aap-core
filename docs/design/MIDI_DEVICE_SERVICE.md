@@ -48,7 +48,7 @@ It is just compliant to Android MIDI API. The metadata should be modified to mat
 
 ## Design limitations
 
-First of all, there seems no way to specify multiple `<device>` elements within the top-level `<devices>` element in the `midi_device_info.xml` (or whatever you name). As far as I tried, only the first `<device>` element is recognized (see [the relevant issue](https://github.com/atsushieno/android-audio-plugin-framework/issues/91)).
+First of all, there seems no way to specify multiple `<device>` elements within the top-level `<devices>` element in the `midi_device_info.xml` (or whatever you name). As far as I tried, only the first `<device>` element is recognized (see [the relevant issue](https://github.com/atsushieno/aap-core/issues/91)).
 
 Also We cannot dynamically add or remove `<port>`s in the meta-data XML. Therefore, whenever you want to instantiate an arbitrary AAP instrument, you have to designate particular AAPs in the `<port>` elements in prior.
 

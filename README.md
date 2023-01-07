@@ -1,7 +1,7 @@
 
 # AAP: Audio Plugins For Android
 
-![](https://github.com/atsushieno/android-audio-plugin-framework/workflows/build%20dist/badge.svg)
+![](https://github.com/atsushieno/aap-core/workflows/build%20dist/badge.svg)
 
   
 
@@ -21,7 +21,7 @@ What AAP aims is to become like an inclusive standard for audio plugin, adopted 
 
 On the other hand, it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support, ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
 
-We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have some plugins from these world working (to some extent) - check out our [Wiki page](https://github.com/atsushieno/android-audio-plugin-framework/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
+We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have some plugins from these world working (to some extent) - check out our [Wiki page](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
 
 ## AAP features, characteristics, unique points
 

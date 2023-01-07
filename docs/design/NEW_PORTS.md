@@ -172,17 +172,17 @@ Setting up the channels is easier than other tasks, and some other tasks depend 
 
 ## diffs from former issues
 
-- https://github.com/atsushieno/android-audio-plugin-framework/issues/95
+- https://github.com/atsushieno/aap-core/issues/95
   - Nothing particular
-- https://github.com/atsushieno/android-audio-plugin-framework/issues/73
+- https://github.com/atsushieno/aap-core/issues/73
   - Nothing particular. The new system message channels are non-realtime.
-- https://github.com/atsushieno/android-audio-plugin-framework/issues/69
+- https://github.com/atsushieno/aap-core/issues/69
   - Nothing particular. We still keep non-audio general ports.
-- https://github.com/atsushieno/android-audio-plugin-framework/issues/44
+- https://github.com/atsushieno/aap-core/issues/44
   - Still nothing to be planned, but there are some implementation ideas now.
   - From plugin to return dynamic ports information, there are now system message ports that will transmit Profile Configuration or Property Exchange.
   - some concrete C API ideas are dropped from this document, as it was written without the concept of system message channels.
-- https://github.com/atsushieno/android-audio-plugin-framework/issues/80
+- https://github.com/atsushieno/aap-core/issues/80
   - It is quite close to the point where I decided to write this, yet we covered realtime requirements on this document.
   - No particular mention on `<parameter>` definitions in aap_metadata in this document yet.
 

@@ -18,7 +18,7 @@ rewrite wherever appropriate.
     contain `externalNativeBuild` sections.
   - Add `org.androidaudioplugin:androidaudioplugin:(version)` package in `dependencies`.
     (Note that at this stage we haven't published those Maven artifacts, so you will
-    have to submodule this `android-audio-plugin-framework` and run
+    have to submodule this `aap-core` and run
     `./gradlew build publishToMavenLocal`, add `mavenLocal()` to the
     `repositories { ... }` block in `build.gradle(.kts)`.)
   - As part of "prefab"-based packaging transition, we are based on the

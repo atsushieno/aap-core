@@ -296,7 +296,7 @@ A host application has to prepare its own `AAPXSRegistry` instance, and manage w
 
 At this moment, the scope of extension services is limited to non-realtime request/reply messaging. If your plugin needs realtime plugin controls, then it should provide a MIDI channel and transmit any operation as in System Exclusive messages etc. there.
 
-We may have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/android-audio-plugin-framework/issues/104#issuecomment-1100858628
+We may have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/aap-core/issues/104#issuecomment-1100858628
 
 Hopefully can be upgraded only about internals without changing the public AAPXS API surface.
 

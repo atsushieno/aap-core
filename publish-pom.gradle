@@ -44,14 +44,14 @@ afterEvaluate {
                 pom {
                     name.set(project.name)
                     description.set(android.ext.description)
-                    url.set("https://github.com/atsushieno/android-audio-plugin-framework")
+                    url.set("https://github.com/atsushieno/aap-core")
                     scm {
-                        url.set("https://github.com/atsushieno/android-audio-plugin-framework")
+                        url.set("https://github.com/atsushieno/aap-core")
                     }
                     licenses {
                         license {
                             name.set("the MIT License")
-                            url.set("https://github.com/atsushieno/android-audio-plugin-framework/blob/main/LICENSE")
+                            url.set("https://github.com/atsushieno/aap-core/blob/main/LICENSE")
                         }
                     }
                     developers {
