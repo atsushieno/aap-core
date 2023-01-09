@@ -15,7 +15,6 @@
 #include <map>
 #include <string>
 #include "aap/android-audio-plugin.h"
-#include "aap/port-properties.h"
 #include "aap/unstable/logging.h"
 #include "aap/ext/parameters.h"
 #include "aap/ext/presets.h"

@@ -5,7 +5,10 @@
 #include <vector>
 #include <map>
 #include "aap/ext/plugin-info.h"
-#include "aap/port-properties.h"
+
+#define AAP_PORT_URL "urn:org.androidaudioplugin.port"
+#define AAP_PORT_BASE AAP_PORT_URL "#"
+#define AAP_PORT_MINIMUM_SIZE AAP_PORT_BASE "minimumSize"
 
 namespace aap {
 
