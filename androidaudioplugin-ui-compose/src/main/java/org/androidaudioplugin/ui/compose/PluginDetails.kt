@@ -46,7 +46,10 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
 
     var midiSettingsFlags by remember { mutableStateOf(viewModel.preview.value.midiSettingsFlags) }
 
-    var selectedPresetIndex by remember { mutableStateOf(-1) }
+    var selectedPresetIndex by remember {
+        viewModel.preview.value.selectedPresetIndex = -1 // reset before remembering
+        mutableStateOf(-1)
+    }
     val parameters by remember {
         mutableStateOf(viewModel.preview.value.instanceParameters.map { p -> p.defaultValue.toFloat() }
             .toFloatArray())
