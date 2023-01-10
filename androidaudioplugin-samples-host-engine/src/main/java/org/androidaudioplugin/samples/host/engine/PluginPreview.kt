@@ -47,6 +47,7 @@ class PluginPreview(private val context: Context) {
         get() = instance != null && instance!!.pluginInfo.packageName == context.packageName
     val inBuf : ByteArray
     val outBuf : ByteArray
+    var selectedPresetIndex = -1
 
     // FIXME: maybe we don't need per-port allocation?
     private val audioProcessingBuffers = mutableListOf<ByteBuffer>()
@@ -164,7 +165,9 @@ class PluginPreview(private val context: Context) {
 
         val midi2Bytes = mutableListOf<Byte>()
 
-        if (midi2In >= 0) {
+        if (selectedPresetIndex >= 0)
+            instance.setCurrentPresetIndex(selectedPresetIndex)
+        else if (midi2In >= 0) {
             (instanceParameterValues?.indices)?.map { paraI ->
                 val para = instanceParameters[paraI]
                 val value = instanceParameterValues[paraI]

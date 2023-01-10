@@ -2,17 +2,15 @@ package org.androidaudioplugin.ui.compose
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Checkbox
 import androidx.compose.material.Slider
-import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +46,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
 
     var midiSettingsFlags by remember { mutableStateOf(viewModel.preview.value.midiSettingsFlags) }
 
+    var selectedPresetIndex by remember { mutableStateOf(-1) }
     val parameters by remember {
         mutableStateOf(viewModel.preview.value.instanceParameters.map { p -> p.defaultValue.toFloat() }
             .toFloatArray())
@@ -208,13 +207,17 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             presetsExpanded = !presetsExpanded
         })
         if (presetsExpanded) {
-            Column {
+            LazyColumn(modifier = Modifier.height(80.dp)) {
                 (0 until viewModel.preview.value.presetCount).forEach { index ->
-                    Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                    item {
                         Text(
                             fontSize = 14.sp,
-                            text = "$index: ${viewModel.preview.value.getPresetName(index)}"
-                        )
+                            fontWeight = if (index == selectedPresetIndex) FontWeight.Bold else FontWeight.Normal,
+                            text = "$index: ${viewModel.preview.value.getPresetName(index)}",
+                            modifier = Modifier.selectable(selected = index == selectedPresetIndex) {
+                                viewModel.preview.value.selectedPresetIndex = index
+                                selectedPresetIndex = index
+                            })
                     }
                 }
             }
