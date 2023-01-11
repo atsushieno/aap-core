@@ -61,6 +61,10 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
             aapxsInstance = clientInstance;
         }
 
+        ~Instance() {
+
+        }
+
         void clientInvokePluginExtension(int32_t opcode) {
             owner->clientInvokePluginExtension(aapxsInstance, opcode);
         }
@@ -133,7 +137,7 @@ public:
             if (instances[last] == nullptr)
                 break;
             if (instances[last]->aapxsInstance == clientInstance)
-                return instances[instance_map[last]]->asProxy();
+                return instances[instance_map[clientInstance->plugin_instance_id]]->asProxy();
         }
         instances[last] = std::make_unique<Instance>(this, clientInstance);
         instance_map[clientInstance->plugin_instance_id] = (int32_t) last;
