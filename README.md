@@ -23,6 +23,10 @@ On the other hand, it is designed so that cross-audio-plugin SDKs can support it
 
 We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have some plugins from these world working (to some extent) - check out our [Wiki page](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
 
+## Trying it out
+
+We have some hacky ["AAP APK Installer"](https://github.com/atsushieno/aap-ci-package-installer) Android application that facilitates installing the latest APK builds from GitHub Actions build artifacts. Note that they are not trusted application for your Android system, whereas they are fully automated except for those packages I upload to DeployGate (you can also build AAP APK Installer from source on Android Studio, which is much easier than building and installing each plugin app from source).
+
 ## AAP features, characteristics, unique points
 
 **Android is supported, and it is the first citizen** : no other audio plugin frameworks achieve that (except for [AudioRoute SDK](https://github.com/AudioRoute/AudioRoute-SDK), as far as @atsushieno knows). Hosts and plugins are distributed as different apps and therefore live in different process spaces.
