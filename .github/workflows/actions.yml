@@ -17,18 +17,19 @@ jobs:
       run: |
         sudo apt-get update
     - name: set up JDK 11
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v3
       with:
         java-version: 11
+        distribution: temurin
     - name: cache AVD
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-avd
       with:
         path: /home/runner/.android/gradle/avd
         key: ${{ runner.os }}-gradle-avd
     - name: cache gradle caches
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-gradle-caches
       with:
@@ -49,22 +50,12 @@ jobs:
         ./gradlew testDevice2DebugAndroidTest || exit 1
     - name: upload artifact
       if: success()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
-        name: androidaudioplugin-debug.aar
-        path: androidaudioplugin/build/outputs/aar/androidaudioplugin-debug.aar
-    - name: upload artifact
-      if: success()
-      uses: actions/upload-artifact@v2
-      with:
-        name: aapbarebonepluginsample-debug.apk
-        path: samples/aapbarebonepluginsample/build/outputs/apk/debug/aapbarebonepluginsample-debug.apk
-    - name: upload artifact
-      if: success()
-      uses: actions/upload-artifact@v2
-      with:
-        name: aaphostsample-debug.apk
-        path: samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk
+        name: aap-core-apps-and-libs
+        path: |
+          ./*/build/outputs/aar/*.aar
+          samples/*/build/outputs/apk/debug/*.apk
 
   osx-build:
     name: build on osx
@@ -75,18 +66,19 @@ jobs:
       with:
         submodules: recursive
     - name: set up JDK 11
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v3
       with:
         java-version: 11
+        distribution: temurin
     - name: cache AVD
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-avd
       with:
         path: /Users/runner/.android/gradle/avd
         key: ${{ runner.os }}-gradle-avd
     - name: cache gradle caches
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-gradle-caches
       with:
