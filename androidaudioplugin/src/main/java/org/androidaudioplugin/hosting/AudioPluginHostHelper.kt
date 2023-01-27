@@ -231,7 +231,7 @@ class AudioPluginHostHelper {
 
         @JvmStatic
         fun ensureBinderConnected(service: PluginServiceInformation, connector: AudioPluginServiceConnector) {
-            val existing = connector.connectedServices.firstOrNull { c -> c.serviceInfo.packageName == service.packageName && c.serviceInfo.className == service.className }
+            val existing = connector.findExistingServiceConnection(service.packageName)
             if (existing != null)
                 return
 

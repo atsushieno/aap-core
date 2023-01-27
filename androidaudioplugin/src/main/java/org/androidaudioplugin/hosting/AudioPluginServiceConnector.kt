@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
 import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.PluginServiceInformation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -94,7 +95,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
     private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
 
     fun findExistingServiceConnection(packageName: String) =
-        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName }
+        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == AudioPluginService::class.qualifiedName }
 
     fun unbindAudioPluginService(packageName: String) {
         val conn = findExistingServiceConnection(packageName) ?: return
