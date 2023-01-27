@@ -410,10 +410,10 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForClient(JNIEnv *env
 jobject audio_plugin_service_connector{nullptr};
 std::map<std::string,std::function<void(std::string&)> > inProgressCallbacks{};
 
-void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string&)>& callback) {
+void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName, std::function<void(std::string&)> callback) {
 	inProgressCallbacks[servicePackageName] = callback;
 
-	usingJNIEnv<void*> ([=](JNIEnv *env) {
+	usingJNIEnv<void*> ([&](JNIEnv *env) {
 
         if (audio_plugin_service_connector == nullptr) {
             jclass connector_class = env->FindClass("org/androidaudioplugin/hosting/AudioPluginServiceConnector");

@@ -15,7 +15,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation);
 jobjectArray queryInstalledPluginsJNI();
 
 void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName,
-                                   std::function<void(std::string&)>& callback);
+                                   std::function<void(std::string&)> callback);
 
 int32_t getConnectorInstanceId(aap::PluginClientConnectionList *connections);
 

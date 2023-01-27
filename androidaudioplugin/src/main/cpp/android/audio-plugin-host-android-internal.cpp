@@ -42,7 +42,7 @@ std::vector<PluginInformation*> AndroidPluginClientSystem::getPluginsFromMetadat
     return results;
 }
 
-void AndroidPluginClientSystem::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)>& callback) {
+void AndroidPluginClientSystem::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)> callback) {
     ensureServiceConnectedFromJni(getConnectorInstanceId(connections), serviceName, callback);
 }
 

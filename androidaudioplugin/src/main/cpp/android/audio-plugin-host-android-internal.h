@@ -26,7 +26,7 @@ public:
         return ASharedMemory_create(nullptr, size);
     }
 
-    void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)>& callback) override;
+    void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)> callback) override;
 
     std::vector<std::string> getPluginPaths() override;
 
