@@ -14,8 +14,6 @@
 namespace aap {
 
 // implementation details
-const int32_t OPCODE_GET_MAPPING_POLICY = 0;
-
 const int32_t MAX_PLUGIN_ID_SIZE = 1024; // FIXME: there should be some official definition.
 
 class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
@@ -27,10 +25,6 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
         ParametersPluginClientExtension *owner;
         AAPXSClientInstance* aapxsInstance;
 
-        static enum aap_parameters_mapping_policy internalGetMappingPolicy(AndroidAudioPluginExtensionTarget target, const char* pluginId) {
-            return ((Instance *) target.aapxs_context)->getMappingPolicy(pluginId);
-        }
-
     public:
         Instance(ParametersPluginClientExtension *owner, AAPXSClientInstance *clientInstance)
             : owner(owner)
@@ -38,21 +32,11 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
             aapxsInstance = clientInstance;
         }
 
-        enum aap_parameters_mapping_policy getMappingPolicy(const char* pluginId) {
-            auto len = strlen(pluginId);
-            assert(len < MAX_PLUGIN_ID_SIZE);
-            *((int32_t*) aapxsInstance->data) = len;
-            strcpy((char*) ((int32_t*) aapxsInstance->data + 1), pluginId);
-            clientInvokePluginExtension(OPCODE_GET_MAPPING_POLICY);
-            return *((enum aap_parameters_mapping_policy *) aapxsInstance->data);
-        }
-
         void clientInvokePluginExtension(int32_t opcode) {
             owner->clientInvokePluginExtension(aapxsInstance, opcode);
         }
 
         AAPXSProxyContext asProxy() {
-            proxy.get_mapping_policy = internalGetMappingPolicy;
             return AAPXSProxyContext{aapxsInstance, this, &proxy};
         }
     };
@@ -95,15 +79,6 @@ public:
     // invoked by AudioPluginService
     void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override {
-        switch (opcode) {
-            case OPCODE_GET_MAPPING_POLICY:
-                auto len = *(int32_t*) extensionInstance->data;
-                assert(len < MAX_PLUGIN_ID_SIZE);
-                char* pluginId = (char*) calloc(len, 1);
-                strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
-                *((int32_t*) extensionInstance->data) = getMidiSettingsFromSharedPreference(pluginId);
-                return;
-        }
         assert(false); // should not happen
     }
 };

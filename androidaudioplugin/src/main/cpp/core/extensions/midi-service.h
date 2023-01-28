@@ -6,7 +6,7 @@
 #include <functional>
 #include "aap/android-audio-plugin.h"
 #include "aap/unstable/aapxs.h"
-#include "aap/ext/aap-midi2.h"
+#include "aap/ext/midi.h"
 #include "aap/unstable/logging.h"
 #include "aap/core/aapxs/extension-service.h"
 #include "extension-service-impl.h"
@@ -14,32 +14,45 @@
 namespace aap {
 
 // implementation details
+const int32_t OPCODE_GET_MAPPING_POLICY = 0;
 
-class Midi2PluginClientExtension : public PluginClientExtensionImplBase {
+
+class MidiPluginClientExtension : public PluginClientExtensionImplBase {
     class Instance {
-        friend class Midi2PluginClientExtension;
+        friend class MidiPluginClientExtension;
 
         aap_midi2_extension_t proxy{};
 
-        //Midi2PluginClientExtension *owner;
+        MidiPluginClientExtension *owner;
         AAPXSClientInstance* aapxsInstance;
 
+        static enum aap_midi_mapping_policy internalGetMappingPolicy(AndroidAudioPluginExtensionTarget target, const char* pluginId) {
+            return ((Instance *) target.aapxs_context)->getMappingPolicy(pluginId);
+        }
+
     public:
-        Instance(Midi2PluginClientExtension *owner, AAPXSClientInstance *clientInstance)
-                //: owner(owner)
+        Instance(MidiPluginClientExtension *owner, AAPXSClientInstance *clientInstance)
+                : owner(owner)
         {
             aapxsInstance = clientInstance;
         }
 
-        /*
+        enum aap_midi_mapping_policy getMappingPolicy(const char* pluginId) {
+            auto len = strlen(pluginId);
+            assert(len < MAX_PLUGIN_ID_SIZE);
+            *((int32_t*) aapxsInstance->data) = len;
+            strcpy((char*) ((int32_t*) aapxsInstance->data + 1), pluginId);
+            clientInvokePluginExtension(OPCODE_GET_MAPPING_POLICY);
+            return *((enum aap_midi_mapping_policy *) aapxsInstance->data);
+        }
+
         void clientInvokePluginExtension(int32_t opcode) {
             owner->clientInvokePluginExtension(aapxsInstance, opcode);
         }
-        */
 
         AAPXSProxyContext asProxy() {
-            proxy.context = this;
-            return AAPXSProxyContext{aapxsInstance, nullptr, &proxy};
+            proxy.get_mapping_policy = internalGetMappingPolicy;
+            return AAPXSProxyContext{aapxsInstance, this, &proxy};
         }
     };
 
@@ -47,19 +60,19 @@ class Midi2PluginClientExtension : public PluginClientExtensionImplBase {
 //  to each Instance that at least lives as long as AAPXSClientInstance lifetime.
 //  (Should we add `addDisposableListener` at AAPXSClient to make it possible to free
 //  this Instance at plugin instance disposal? Maybe when if 1024 for instances sounds insufficient...)
-#define MIDI2_AAPXS_MAX_INSTANCE_COUNT 1024
+#define MIDI_AAPXS_MAX_INSTANCE_COUNT 1024
 
-    std::unique_ptr<Instance> instances[MIDI2_AAPXS_MAX_INSTANCE_COUNT]{};
+    std::unique_ptr<Instance> instances[MIDI_AAPXS_MAX_INSTANCE_COUNT]{};
     std::map<int32_t,int32_t> instance_map{}; // map from instanceId to the index of the Instance in `instances`.
 
 public:
-    Midi2PluginClientExtension()
+    MidiPluginClientExtension()
             : PluginClientExtensionImplBase() {
     }
 
     AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) override {
         size_t last = 0;
-        for (; last < MIDI2_AAPXS_MAX_INSTANCE_COUNT; last++) {
+        for (; last < MIDI_AAPXS_MAX_INSTANCE_COUNT; last++) {
             if (instances[last] == nullptr)
                 break;
             if (instances[last]->aapxsInstance == clientInstance)
@@ -71,30 +84,39 @@ public:
     }
 };
 
-class Midi2PluginServiceExtension : public PluginServiceExtensionImplBase {
+class MidiPluginServiceExtension : public PluginServiceExtensionImplBase {
 
 public:
-    Midi2PluginServiceExtension()
-            : PluginServiceExtensionImplBase(AAP_MIDI2_EXTENSION_URI) {
+    MidiPluginServiceExtension()
+            : PluginServiceExtensionImplBase(AAP_MIDI_EXTENSION_URI) {
     }
 
     // invoked by AudioPluginService
     void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                    int32_t opcode) override {
+        switch (opcode) {
+            case OPCODE_GET_MAPPING_POLICY:
+                auto len = *(int32_t*) extensionInstance->data;
+                assert(len < MAX_PLUGIN_ID_SIZE);
+                char* pluginId = (char*) calloc(len, 1);
+                strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
+                *((int32_t*) extensionInstance->data) = getMidiSettingsFromSharedPreference(pluginId);
+                return;
+        }
         assert(false); // should not happen
     }
 };
 
 
-class Midi2ExtensionFeature : public PluginExtensionFeatureImpl {
+class MidiExtensionFeature : public PluginExtensionFeatureImpl {
     std::unique_ptr<PluginClientExtensionImplBase> client;
     std::unique_ptr<PluginServiceExtensionImplBase> service;
 
 public:
-    Midi2ExtensionFeature()
-            : PluginExtensionFeatureImpl(AAP_MIDI2_EXTENSION_URI, false, sizeof(aap_midi2_extension_t)),
-              client(std::make_unique<Midi2PluginClientExtension>()),
-              service(std::make_unique<Midi2PluginServiceExtension>()) {
+    MidiExtensionFeature()
+            : PluginExtensionFeatureImpl(AAP_MIDI_EXTENSION_URI, false, sizeof(aap_midi2_extension_t)),
+              client(std::make_unique<MidiPluginClientExtension>()),
+              service(std::make_unique<MidiPluginServiceExtension>()) {
     }
 
     PluginClientExtensionImplBase* getClient() { return client.get(); }

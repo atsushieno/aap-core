@@ -10,7 +10,7 @@ extern "C" {
 
 #include "ayumi.h"
 #include "cmidi2.h"
-#include <aap/ext/aap-midi2.h>
+#include <aap/ext/midi.h>
 #include <aap/ext/plugin-info.h>
 #include <aap/ext/parameters.h>
 

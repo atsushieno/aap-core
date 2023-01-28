@@ -11,7 +11,7 @@
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/parameters-service.h"
 #include "../extensions/presets-service.h"
-#include "../extensions/midi2-service.h"
+#include "../extensions/midi-service.h"
 #include "../extensions/port-config-service.h"
 
 #define AAP_HOST_TAG "AAP_HOST"
@@ -153,7 +153,7 @@ int32_t PluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& cli
 std::unique_ptr<StateExtensionFeature> aapxs_state{nullptr};
 std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
 std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
-std::unique_ptr<Midi2ExtensionFeature> aapxs_midi2{nullptr};
+std::unique_ptr<MidiExtensionFeature> aapxs_midi2{nullptr};
 std::unique_ptr<ParametersExtensionFeature> aapxs_parameters{nullptr};
 
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
@@ -177,7 +177,7 @@ PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	aapxs_registry->add(aapxs_state->asPublicApi());
 	// midi2
 	if (aapxs_midi2 == nullptr)
-		aapxs_midi2 = std::make_unique<Midi2ExtensionFeature>();
+		aapxs_midi2 = std::make_unique<MidiExtensionFeature>();
 	aapxs_registry->add(aapxs_midi2->asPublicApi());
 	// parameters
 	if (aapxs_parameters == nullptr)

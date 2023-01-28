@@ -12,7 +12,9 @@ import android.os.Build
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 /**
- * The Audio plugin service class. Every AAP (plugin) derives from this class, either directly or indirectly.
+ * The Audio plugin service class. It should not be derived. We check the service class name strictly.
+ *
+ * Every AAP should implement AudioPluginInterface.aidl, in native code.
  *
  * Typical user developers don't have to write any code to create their own plugins in Kotlin code.
  * They are implemented in native code to get closest to realtime audio processing.
