@@ -56,6 +56,11 @@ jobs:
         path: |
           ./*/build/outputs/aar/*.aar
           samples/*/build/outputs/apk/debug/*.apk
+    - name: Create Release
+      uses: ncipollo/release-action@v1.12.0
+      if: success() && startsWith(github.ref, 'refs/tags/')
+      with:
+        artifacts: ./*/build/outputs/aar/*.aar,samples/*/build/outputs/apk/debug/*.apk
 
   osx-build:
     name: build on osx
