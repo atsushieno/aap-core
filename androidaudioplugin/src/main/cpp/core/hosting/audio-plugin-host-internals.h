@@ -6,7 +6,7 @@
 #if ANDROID
 AndroidAudioPluginFactory *GetAndroidAudioPluginFactoryClientBridge(aap::PluginClient *client);
 #else
-AndroidAudioPluginFactory* (GetDesktopAudioPluginFactoryClientBridge)();
+AndroidAudioPluginFactory *GetDesktopAudioPluginFactoryClientBridge(aap::PluginClient *client);
 #endif
 
 namespace aap {

@@ -303,7 +303,7 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
 #if ANDROID
             auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
 #else
-            auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge();
+            auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
             auto instance = new RemotePluginInstance(this, descriptor, pluginFactory, sampleRate);

@@ -7,7 +7,7 @@
 #include "aap/ext/presets.h"
 
 // FIXME: should this be moved to somewhere?
-extern "C" int32_t getMidiSettingsFromSharedPreference(std::string pluginId);
+extern "C" int32_t getMidiSettingsFromLocalConfig(std::string pluginId);
 
 namespace aap {
 

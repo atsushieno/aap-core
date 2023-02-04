@@ -14,11 +14,7 @@ set (androidaudioplugin_SOURCES
 	"core/extensions/port-config-service.cpp"
 	)
 
-set (androidaudioplugin_INCLUDES
-	"../../../../include/"
-	"android/gen/include"
-	)
-
+if (ANDROID)
 set (androidaudioplugin_SOURCES
 	${androidaudioplugin_SOURCES}
 	"android/binder-client-as-plugin.cpp"
@@ -28,34 +24,47 @@ set (androidaudioplugin_SOURCES
 	"android/AudioPluginNatives_jni.cpp"
 	"android/audio-plugin-host-android-internal.cpp"
 	)
-
-set (androidaudioplugin_LIBS ${androidaudioplugin_LIBS} android log binder_ndk)
+else (ANDROID)
+set (androidaudioplugin_SOURCES
+	${androidaudioplugin_SOURCES}
+	desktop/audio-plugin-host-desktop-internal.cpp
+)
+endif (ANDROID)
 
 add_library (androidaudioplugin
   SHARED
   ${androidaudioplugin_SOURCES}
   )
 
-target_include_directories (androidaudioplugin
-  PRIVATE
-  ${androidaudioplugin_INCLUDES})
-
 target_compile_options (androidaudioplugin
-  PRIVATE
-  -std=c++17 -Wall -Wshadow
-  # see https://issuetracker.google.com/issues/219987524#comment37
-  -D__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__
-  -Werror=unguarded-availability
-  )
-
-target_link_libraries (androidaudioplugin
-  ${androidaudioplugin_LIBS}
-  )
+		PRIVATE
+		-std=c++17 -Wall -Wshadow
+		# see https://issuetracker.google.com/issues/219987524#comment37
+		-Werror=unguarded-availability
+		)
 
 target_compile_definitions (androidaudioplugin
 		PUBLIC
-		ANDROID=${ANDROID}
+		__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__=1
 		)
+
+target_include_directories (androidaudioplugin
+		PRIVATE
+		"../../../../include/"
+		)
+
+if (ANDROID)
+target_include_directories (androidaudioplugin
+		PRIVATE
+		"android/gen/include"
+		)
+
+target_link_libraries (androidaudioplugin
+		android
+		log
+		binder_ndk
+		)
+endif (ANDROID)
 
 # You can set it via build.gradle.
 if (${AAP_ENABLE_ASAN})

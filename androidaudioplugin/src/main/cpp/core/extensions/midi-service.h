@@ -100,7 +100,7 @@ public:
                 assert(len < MAX_PLUGIN_ID_SIZE);
                 char* pluginId = (char*) calloc(len, 1);
                 strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
-                *((int32_t*) extensionInstance->data) = getMidiSettingsFromSharedPreference(pluginId);
+                *((int32_t*) extensionInstance->data) = getMidiSettingsFromLocalConfig(pluginId);
                 return;
         }
         assert(false); // should not happen
