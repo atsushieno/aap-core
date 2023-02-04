@@ -3,13 +3,13 @@
 
 ![](https://github.com/atsushieno/aap-core/workflows/build%20dist/badge.svg)
 
-  
+[![aap-juce-helio in action](https://github.com/atsushieno/aap-juce-helio/raw/main/Screenshots/helio-android-plugins.png)](https://imgur.com/a/Hh91JAI "aap-juce-helio in action 2023.01")
 
 [![AAP demo 20200708](http://img.youtube.com/vi/gKCpHvYzupU/0.jpg)](http://www.youtube.com/watch?v=gKCpHvYzupU  "AAP demo 20200708")
 
 ![AAP Instruments on Kmmk virtual MIDI keyboard](./docs/images/aap-instruments-on-kmmk.png) ![AAPHostSample](./docs/images/aaphostsample.png)
 
-disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation (to describe the ideal state). Do not trust it too much.
+disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
 ## What is AAP?
 
@@ -17,13 +17,13 @@ Android lacks commonly used audio plugin format. On Windows and other desktops, 
 
 There is no such thing in Android. Audio Plugins For Android (AAP) is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on.
+What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on. They don't work on Android, so we need another one like [AudioUnit v3 on iOS](https://developer.apple.com/documentation/audiotoolbox/audio_unit_v3_plug-ins).
 
-On the other hand, it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support, ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
+On the other hand, it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
 
-We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have some plugins from these world working (to some extent) - check out our [Wiki page](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
+We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have many plugins from these world, as long as AAP provides functionality - check out our [Wiki page](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
 
-## Trying it out
+## Trying it out on Android devices
 
 We have some hacky ["AAP APK Installer"](https://github.com/atsushieno/aap-ci-package-installer) Android application that facilitates installing the latest APK builds from GitHub Actions build artifacts. Note that they are not trusted application for your Android system, whereas they are fully automated except for those packages I upload to DeployGate (you can also build AAP APK Installer from source on Android Studio, which is much easier than building and installing each plugin app from source).
 
@@ -74,40 +74,12 @@ We basically recommend (2) or (3) as our API is not quite stabilized yet. So if 
 
 (We don't really assure the consistency on how we import LV2 and JUCE bits either, but *their* API would be mostly stable.)
 
- 
-## Code in this repo, and build instructions
+## Building
 
 You can open this directory in Android Studio (Dolphin 2021.3.1 is required) as the top-level project directory and build it. Or run `./gradlew` there from your terminal.
 
-### androidaudioplugin
+For more details, see [DEVELOPERS.md](./docs/DEVELPOPERS.md) and [HACKING.md](./docs/HACKING.md).
 
-This library provides AudioPluginService which is mandatory for every AAP (plugin), as well as some hosting functionality.
-
-### androidaudioplugin-midi-device-service and aap-midi-device-service
-
-AAP instrument plugins can be extended to work as a virtual MIDI device service (software MIDI device).
-
-`aap-midi-device-service` is an example application that turns any instrument plugins into MIDI device services (since it is simply possible).
-
-At this state the audio generation feature not in usable quality at all.
-
-### androidaudioplugin-ui-compose
-
-`androidaudioplugin-ui-compose` module contains `PluginListActivity` which can be used as a launcher activity by any audio plugin application.
-
-It lists the plugins within the package, and when selected it can perform applying it to either some MIDI sequence or some wave inputs.
-
-The UI is based on Jetpack Compose.
-
-(It depends on `androidaudioplugin-samples-host-engine` internal component to provide in-app plugin preview (tryout) feature which will be rewritten at some stage.)
-
-It is also used by samples/aaphostsample that lists **all** plugins on the system.
-
-### aaphostsample and aapbarebonepluginsample
-
-`aaphostsample` lists existing AAPs (services) that are installed on the same device, and demonstrates how they work, using some raw audio data example as well as some example MIDI input messages. As of writing this, the app does not respect any audio format and processes in fixed size, and sends some fixed MIDI messages (note on/off-s) to AAP plugins.
-
-`aapbarebonepluginsample` is a sample AAP (plugin) that does "nothing". It can be rather used as a plugin template project.
 
 ## Further documentation
 
