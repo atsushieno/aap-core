@@ -13,6 +13,7 @@
 #include "../extensions/presets-service.h"
 #include "../extensions/midi-service.h"
 #include "../extensions/port-config-service.h"
+#include "../extensions/gui-service.h"
 
 #define AAP_HOST_TAG "AAP_HOST"
 
@@ -155,6 +156,7 @@ std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
 std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
 std::unique_ptr<MidiExtensionFeature> aapxs_midi2{nullptr};
 std::unique_ptr<ParametersExtensionFeature> aapxs_parameters{nullptr};
+std::unique_ptr<GuiExtensionFeature> aapxs_gui{nullptr};
 
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	: plugin_list(contextPluginList)
@@ -182,7 +184,10 @@ PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	// parameters
 	if (aapxs_parameters == nullptr)
 		aapxs_parameters = std::make_unique<ParametersExtensionFeature>();
-	aapxs_registry->add(aapxs_parameters->asPublicApi());
+	// gui
+	if (aapxs_gui == nullptr)
+		aapxs_gui = std::make_unique<GuiExtensionFeature>();
+	aapxs_registry->add(aapxs_gui->asPublicApi());
 }
 
 AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {

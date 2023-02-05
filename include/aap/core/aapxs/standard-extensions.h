@@ -5,6 +5,7 @@
 #include "aap/ext/midi.h"
 #include "aap/ext/state.h"
 #include "aap/ext/presets.h"
+#include "aap/ext/gui.h"
 
 // FIXME: should this be moved to somewhere?
 extern "C" int32_t getMidiSettingsFromLocalConfig(std::string pluginId);
@@ -54,6 +55,12 @@ virtual TYPE withMidiExtension(TYPE dummyValue, std::function<TYPE(aap_midi_exte
 
     DEFINE_WITH_MIDI_EXTENSION(int32_t)
     virtual void withMidiExtension(std::function<void(aap_midi_extension_t*, AndroidAudioPluginExtensionTarget)> func) = 0;
+
+#define DEFINE_WITH_GUI_EXTENSION(TYPE) \
+virtual TYPE withGuiExtension(TYPE dummyValue, std::function<TYPE(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget target)> func) = 0;
+
+    DEFINE_WITH_GUI_EXTENSION(int32_t)
+    virtual void withGuiExtension(std::function<void(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget)> func) = 0;
 
 public:
     size_t getStateSize() {
@@ -117,6 +124,22 @@ public:
                 return (int32_t) AAP_PARAMETERS_MAPPING_POLICY_SYSEX8;
         });
     }
+
+    int32_t showGui() {
+        return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (ext && ext->show)
+                return ext->show(target);
+            else
+                return 0;
+        });
+    }
+
+    void hideGui() {
+        return withGuiExtension([&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (ext && ext->hide)
+                ext->hide(target);
+        });
+    }
 };
 
 class LocalPluginInstanceStandardExtensions : public StandardExtensions {
@@ -165,11 +188,22 @@ TYPE withParametersExtension(TYPE dummyValue, std::function<TYPE(aap_parameters_
     }
 
 #define DEFINE_WITH_MIDI_EXTENSION_LOCAL(TYPE) \
-TYPE withMidiExtension(TYPE dummyValue, std::function<TYPE(aap_midi_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_midi_extension_t>(false, 0, AAP_PARAMETERS_EXTENSION_URI, func); }
+TYPE withMidiExtension(TYPE dummyValue, std::function<TYPE(aap_midi_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_midi_extension_t>(false, 0, AAP_MIDI_EXTENSION_URI, func); }
 
     DEFINE_WITH_MIDI_EXTENSION_LOCAL(int32_t)
     virtual void withMidiExtension(std::function<void(aap_midi_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
         withExtension<int, aap_midi_extension_t>(false, 0, AAP_MIDI_EXTENSION_URI, [&](aap_midi_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            func(ext, target);
+            return 0;
+        });
+    }
+
+#define DEFINE_WITH_GUI_EXTENSION_LOCAL(TYPE) \
+TYPE withGuiExtension(TYPE dummyValue, std::function<TYPE(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_gui_extension_t>(false, 0, AAP_GUI_EXTENSION_URI, func); }
+
+    DEFINE_WITH_GUI_EXTENSION_LOCAL(int32_t)
+    virtual void withGuiExtension(std::function<void(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
+        withExtension<int, aap_gui_extension_t>(false, 0, AAP_GUI_EXTENSION_URI, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });
@@ -232,6 +266,17 @@ TYPE withMidiExtension(TYPE dummyValue, std::function<TYPE(aap_midi_extension_t*
     DEFINE_WITH_MIDI_EXTENSION_REMOTE(int32_t)
     virtual void withMidiExtension(std::function<void(aap_midi_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
         withExtension<int, aap_midi_extension_t>(false, 0, AAP_MIDI_EXTENSION_URI, [&](aap_midi_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            func(ext, target);
+            return 0;
+        });
+    }
+
+#define DEFINE_WITH_GUI_EXTENSION_REMOTE(TYPE) \
+TYPE withGuiExtension(TYPE dummyValue, std::function<TYPE(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget target)> func) override { return withExtension<TYPE, aap_gui_extension_t>(false, 0, AAP_GUI_EXTENSION_URI, func); }
+
+    DEFINE_WITH_GUI_EXTENSION_REMOTE(int32_t)
+    virtual void withGuiExtension(std::function<void(aap_gui_extension_t*, AndroidAudioPluginExtensionTarget)> func) override {
+        withExtension<int, aap_gui_extension_t>(false, 0, AAP_GUI_EXTENSION_URI, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             func(ext, target);
             return 0;
         });

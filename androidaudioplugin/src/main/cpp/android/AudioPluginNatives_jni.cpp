@@ -661,6 +661,46 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPresetName__JI
 	return env->NewStringUTF(instance->getStandardExtensions().getPresetName(index).c_str());
 }
 
+// MIDI extension
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getMidiMappingPolicy(JNIEnv *env,
+																					jclass clazz,
+																					jlong nativeClient,
+																					jint instanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	return (jint) instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
+}
+
+// GUI extension
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_showGui(JNIEnv *env,
+																	   jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	instance->getStandardExtensions().showGui();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_hideGui(JNIEnv *env,
+																	   jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	instance->getStandardExtensions().hideGui();
+}
+
+
+// plugin instance (dynamic) information retrieval
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterCount(JNIEnv *env,
@@ -743,15 +783,4 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNI
     auto src = env->GetDirectBufferAddress(buffer);
 	auto dst = instance->getPluginBuffer()->getBuffer(portIndex);
 	memcpy(dst, src, size);
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getMidiMappingPolicy(JNIEnv *env,
-																					jclass clazz,
-																					jlong nativeClient,
-																					jint instanceId) {
-	auto client = (aap::PluginClient *) (void *) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-    return (jint) instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
 }

@@ -17,25 +17,32 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         destroy(client.native, instanceId)
     }
 
+    // aap::RemotePluginInstance*
+    val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
+
+    // standard extensions
+    // state
     fun getStateSize() : Int = getStateSize(client.native, instanceId)
     fun getState(data: ByteArray) = getState(client.native, instanceId, data)
     fun setState(data: ByteArray) = setState(client.native, instanceId, data)
-
+    // presets
     fun getPresetCount() = getPresetCount(client.native, instanceId)
     fun getCurrentPresetIndex() = getCurrentPresetIndex(client.native, instanceId)
     fun setCurrentPresetIndex(index: Int) = setCurrentPresetIndex(client.native, instanceId, index)
     fun getPresetName(index: Int) = getPresetName(client.native, instanceId, index)
+    // midi
+    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client.native, instanceId)
+    // gui
+    fun showGui() = showGui(client.native, instanceId)
+    fun hideGui() = hideGui(client.native, instanceId)
 
-    // aap::RemotePluginInstance*
-    val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
-
+    // plugin instance (dynamic) information retrieval
     fun getParameterCount() = getParameterCount(client.native, instanceId)
     fun getParameter(index: Int) = getParameter(client.native, instanceId, index)
     fun getPortCount() = getPortCount(client.native, instanceId)
     fun getPort(index: Int) = getPort(client.native, instanceId, index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client.native, instanceId, portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client.native, instanceId, portIndex, buffer, size)
-    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client.native, instanceId)
 
     companion object {
         // Note that it returns an instanceId within the client, not the pointer to the instance.
@@ -70,9 +77,6 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         @JvmStatic
         external fun setPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
 
-        @JvmStatic
-        external fun getMidiMappingPolicy(nativeClient: Long, instanceId: Int) : Int
-
         // Standard Extensions
 
         // state
@@ -92,5 +96,15 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
         @JvmStatic
         external fun getPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
+
+        // midi
+        @JvmStatic
+        external fun getMidiMappingPolicy(nativeClient: Long, instanceId: Int) : Int
+
+        // gui
+        @JvmStatic
+        external fun showGui(nativeClient: Long, instanceId: Int)
+        @JvmStatic
+        external fun hideGui(nativeClient: Long, instanceId: Int)
     }
 }

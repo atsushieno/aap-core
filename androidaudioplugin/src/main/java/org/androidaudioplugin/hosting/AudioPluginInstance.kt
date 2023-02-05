@@ -125,4 +125,7 @@ class AudioPluginInstance internal constructor(
     fun getCurrentPresetIndex() = native.getCurrentPresetIndex()
     fun setCurrentPresetIndex(index: Int) = native.setCurrentPresetIndex(index)
     fun getPresetName(index: Int) = native.getPresetName(index)
+
+    fun showGui() = native.showGui()
+    fun hideGui() = native.hideGui()
 }
