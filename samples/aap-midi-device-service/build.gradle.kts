@@ -41,6 +41,7 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
+    implementation (project(":androidaudioplugin-ui-web"))
     implementation (project(":androidaudioplugin-midi-device-service"))
 
     runtimeOnly (libs.libcxx.provider)

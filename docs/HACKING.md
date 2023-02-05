@@ -30,6 +30,10 @@ The UI is based on Jetpack Compose.
 
 It is also used by samples/aaphostsample that lists **all** plugins on the system.
 
+### androidaudioplugin-ui-web
+
+Experimental Web UI bits that may or may not be used in the future. To be documented.
+
 ### aaphostsample and aapbarebonepluginsample
 
 `aaphostsample` lists existing AAPs (services) that are installed on the same device, and demonstrates how they work, using some raw audio data example as well as some example MIDI input messages. As of writing this, the app does not respect any audio format and processes in fixed size, and sends some fixed MIDI messages (note on/off-s) to AAP plugins.

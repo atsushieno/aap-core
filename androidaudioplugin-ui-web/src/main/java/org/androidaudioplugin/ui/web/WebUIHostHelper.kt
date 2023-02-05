@@ -1,4 +1,4 @@
-package org.androidaudioplugin.midideviceservice
+package org.androidaudioplugin.ui.web
 
 import android.annotation.SuppressLint
 import android.content.Context
