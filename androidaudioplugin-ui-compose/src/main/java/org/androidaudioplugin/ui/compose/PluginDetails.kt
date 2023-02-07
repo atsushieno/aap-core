@@ -112,27 +112,27 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         }
         WaveformDrawable(waveData = waveState)
         Row {
-            val buttonStatePerRow = remember { mutableStateOf(true) }
+            val buttonAppliedState = remember { mutableStateOf(true) }
             val coroutineScope = rememberCoroutineScope()
-            Button(enabled = buttonStatePerRow.value, onClick = {
+            Button(enabled = buttonAppliedState.value, onClick = {
                 if (!pluginAppliedState) {
-                    buttonStatePerRow.value = false
+                    buttonAppliedState.value = false
                     previewState.processAudioCompleted = {
                         waveState = previewState.outBuf
                         pluginAppliedState = true
-                        buttonStatePerRow.value = true
+                        buttonAppliedState.value = true
                     }
                     coroutineScope.launch {
                         previewState.applyPlugin(parameters) {
                             pluginErrorState = it.toString()
-                            buttonStatePerRow.value = true
+                            buttonAppliedState.value = true
                         }
                     }
                 } else {
-                    buttonStatePerRow.value = false
+                    buttonAppliedState.value = false
                     waveState = previewState.inBuf
                     pluginAppliedState = false
-                    buttonStatePerRow.value = true
+                    buttonAppliedState.value = true
                 }
             }) { Text(if (pluginAppliedState) "On" else "Off") }
             // FIXME: we need better instrument detector
@@ -147,6 +147,14 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             }) {
                 Text("Play")
             }
+            val buttonGuiState = remember { mutableStateOf(false) }
+            Button(onClick = {
+                buttonGuiState.value = !buttonGuiState.value
+                if (buttonGuiState.value)
+                    previewState.showGui()
+                else
+                    previewState.hideGui()
+            }) { Text(if (buttonGuiState.value) "Hide GUI" else "Show GUI") }
         }
         Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
             midiSettingsExpanded = !midiSettingsExpanded

@@ -5,14 +5,15 @@
 #include <aap/unstable/logging.h>
 #include <aap/ext/presets.h>
 #include <aap/ext/state.h>
-
-extern "C" {
-
-#include "ayumi.h"
-#include "cmidi2.h"
 #include <aap/ext/midi.h>
 #include <aap/ext/plugin-info.h>
 #include <aap/ext/parameters.h>
+#include <aap/ext/gui.h>
+#include "cmidi2.h"
+
+extern "C" {
+#include "ayumi.h"
+}
 
 #define AAP_APP_LOG_TAG "AAPInstrumentSample"
 
@@ -373,11 +374,24 @@ aap_presets_extension_t presets_extension{sample_plugin_get_preset_count,
                                           sample_plugin_get_preset_index,
                                           sample_plugin_set_preset_index};
 
+int32_t sample_plugin_gui_show(AndroidAudioPluginExtensionTarget target) {
+    aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI SHOW !!!");
+    return AAP_GUI_RESULT_OK;
+}
+
+void sample_plugin_gui_hide(AndroidAudioPluginExtensionTarget target) {
+    aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI HIDE !!!");
+}
+
+aap_gui_extension_t gui_extension{sample_plugin_gui_show, sample_plugin_gui_hide};
+
 void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
     if (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0)
         return &state_extension;
     if (strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0)
         return &presets_extension;
+    if (strcmp(uri, AAP_GUI_EXTENSION_URI) == 0)
+        return &gui_extension;
     return nullptr;
 }
 
@@ -440,8 +454,6 @@ AndroidAudioPlugin *sample_plugin_new(
 
 AndroidAudioPluginFactory factory{sample_plugin_new, sample_plugin_delete};
 
-AndroidAudioPluginFactory *GetAndroidAudioPluginFactory() {
+extern "C" AndroidAudioPluginFactory *GetAndroidAudioPluginFactory() {
     return &factory;
-}
-
 }

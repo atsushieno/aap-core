@@ -113,22 +113,25 @@ namespace aap {
                        int32_t opcode) override {
             switch (opcode) {
                 case OPCODE_SHOW:
-                case OPCODE_HIDE:
-                    auto len = *(int32_t*) extensionInstance->data;
+                case OPCODE_HIDE: {
+                    auto len = *(int32_t *) extensionInstance->data;
                     assert(len < MAX_PLUGIN_ID_SIZE);
-                    char* pluginId = (char*) calloc(len, 1);
-                    strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
+                    char *pluginId = (char *) calloc(len, 1);
+                    strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
+                            len);
 
                     withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                               AndroidAudioPluginExtensionTarget target) {
+                                                             AndroidAudioPluginExtensionTarget target) {
                         if (opcode == OPCODE_SHOW)
                             ext->show(target);
                         else
                             ext->hide(target);
                     });
+                }
                     break;
+                default:
+                    assert(false); // should not happen
             }
-            assert(false); // should not happen
         }
     };
 

@@ -506,6 +506,14 @@ class PluginPreview(private val context: Context) {
         ), 0, 9)
     }
 
+    fun showGui() {
+        instance?.showGui()
+    }
+
+    fun hideGui() {
+        instance?.hideGui()
+    }
+
     init {
         host.audioBufferSizeInBytes = AUDIO_BUFFER_SIZE
         host.defaultControlBufferSizeInBytes = DEFAULT_CONTROL_BUFFER_SIZE
