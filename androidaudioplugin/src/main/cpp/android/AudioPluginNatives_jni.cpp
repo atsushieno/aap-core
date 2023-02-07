@@ -291,7 +291,7 @@ int32_t getMidiSettingsFromLocalConfig(std::string pluginId) {
 		auto java_audio_plugin_midi_settings_class = getAudioPluginMidiSettingsClass();
 		assert(java_audio_plugin_midi_settings_class);
 		jmethodID j_method_get_midi_settings_from_shared_preference = env->GetStaticMethodID(
-				java_audio_plugin_midi_settings_class, "getMidiSettingsFromLocalConfig",
+				java_audio_plugin_midi_settings_class, "getMidiSettingsFromSharedPreference",
 				"(Landroid/content/Context;Ljava/lang/String;)I");
 		assert(j_method_get_midi_settings_from_shared_preference);
 		auto context = aap::get_android_application_context();
