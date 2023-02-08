@@ -95,9 +95,8 @@ class WebUIHostHelper {
         }
 
         @JavascriptInterface
-        fun write(port: Int, value: String) {
-            tmpBuffer.asFloatBuffer().put(0, value.toFloat())
-            write(port, tmpBuffer.array(), 0, 4)
+        fun setParameter(parameterId: Int, value: Double) {
+            println("!!!!!!!!!!!!!!! setParameter($parameterId, $value)")
         }
         private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
 
@@ -133,21 +132,16 @@ class WebUIHostHelper {
         }
 
         class JsParameterInformation(val para: ParameterInformation) {
-            @get:JavascriptInterface
-            val id: Int
-                get() = para.id
-            @get:JavascriptInterface
-            val name: String
-                get() = para.name
-            @get:JavascriptInterface
-            val minValue: Double
-                get() = para.minimumValue
-            @get:JavascriptInterface
-            val maxValue: Double
-                get() = para.maximumValue
-            @get:JavascriptInterface
-            val defaultValue: Double
-                get() = para.defaultValue
+            @JavascriptInterface
+            fun getId() = para.id
+            @JavascriptInterface
+            fun getName() = para.name
+            @JavascriptInterface
+            fun getMinValue() = para.minimumValue
+            @JavascriptInterface
+            fun getMaxValue() = para.maximumValue
+            @JavascriptInterface
+            fun getDefaultValue() = para.defaultValue
         }
     }
 

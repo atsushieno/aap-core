@@ -1,8 +1,6 @@
 package org.androidaudioplugin.ui.web
 
 import android.content.Context
-import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.util.zip.ZipEntry

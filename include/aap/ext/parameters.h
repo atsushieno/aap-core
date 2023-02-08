@@ -56,7 +56,7 @@ typedef struct aap_parameters_extension_t {
     // Returns the number of parameters.
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     parameters_extension_get_parameter_count_func_t get_parameter_count;
-    // Returns the parameter information by parameter ID.
+    // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     parameters_extension_get_parameter_func_t get_parameter;
 } aap_parameters_extension_t;
