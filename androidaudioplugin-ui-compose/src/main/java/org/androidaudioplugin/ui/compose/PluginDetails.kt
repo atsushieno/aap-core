@@ -1,5 +1,6 @@
 package org.androidaudioplugin.ui.compose
 
+import android.content.Context
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,10 +25,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
+import org.androidaudioplugin.ui.web.WebUIHostHelper
 
 private val headerModifier = Modifier.width(120.dp)
 
@@ -60,6 +64,9 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     var waveState by remember { mutableStateOf(waveViewSource) }
     var pluginErrorState by remember { viewModel.errorMessage }
 
+    var showNativeUIState by remember { mutableStateOf(false) }
+    var showWebUIState by remember { mutableStateOf(false) }
+
     if (pluginErrorState != "") {
         AlertDialog(onDismissRequest = {},
             confirmButton = {
@@ -76,9 +83,11 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             .verticalScroll(scrollState)
     ) {
         Row {
-            Text(text = (if (pluginDetailsExpanded) "[-]" else "[+]") + " details", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
-                pluginDetailsExpanded = !pluginDetailsExpanded
-            })
+            Text(text = (if (pluginDetailsExpanded) "[-]" else "[+]") + " details", fontSize = 20.sp, modifier = Modifier
+                .padding(vertical = 12.dp)
+                .clickable {
+                    pluginDetailsExpanded = !pluginDetailsExpanded
+                })
         }
         if (pluginDetailsExpanded) {
             Row {
@@ -138,8 +147,8 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             // FIXME: we need better instrument detector
             Button(enabled = plugin.category?.contains("Instrument") == true,
                 onClick = {
-                coroutineScope.launch { previewState.playMidiNotes() }
-            }) {
+                    coroutineScope.launch { previewState.playMidiNotes() }
+                }) {
                 Text("MIDI")
             }
             Button(onClick = {
@@ -147,18 +156,28 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             }) {
                 Text("Play")
             }
-            val buttonGuiState = remember { mutableStateOf(false) }
+        }
+        Row {
             Button(onClick = {
-                buttonGuiState.value = !buttonGuiState.value
-                if (buttonGuiState.value)
+                showWebUIState = !showWebUIState
+                if (showWebUIState)
                     previewState.showGui()
                 else
                     previewState.hideGui()
-            }) { Text(if (buttonGuiState.value) "Hide GUI" else "Show GUI") }
+            }) { Text(if (showWebUIState) "Hide Web UI" else "Show Web UI") }
+            Button(onClick = {
+                showNativeUIState = !showNativeUIState
+                if (showNativeUIState)
+                    previewState.showGui()
+                else
+                    previewState.hideGui()
+            }) { Text(if (showNativeUIState) "Hide Native UI" else "Show Native UI") }
         }
-        Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
-            midiSettingsExpanded = !midiSettingsExpanded
-        })
+        Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier
+            .padding(vertical = 12.dp)
+            .clickable {
+                midiSettingsExpanded = !midiSettingsExpanded
+            })
         if (midiSettingsExpanded) {
             Column {
                 Row {
@@ -214,9 +233,11 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
             }
         }
-        Text(text = (if (presetsExpanded) "[-]" else "[+]") + " Presets", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp).clickable {
-            presetsExpanded = !presetsExpanded
-        })
+        Text(text = (if (presetsExpanded) "[-]" else "[+]") + " Presets", fontSize = 20.sp, modifier = Modifier
+            .padding(vertical = 12.dp)
+            .clickable {
+                presetsExpanded = !presetsExpanded
+            })
         if (presetsExpanded) {
             LazyColumn(modifier = Modifier.height(80.dp)) {
                 (0 until viewModel.preview.value.presetCount).forEach { index ->
@@ -295,5 +316,20 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }
             }
         }
+    }
+    val instance = previewState.instance
+    if (showWebUIState && instance != null)
+        PluginWebUI(instance)
+}
+
+@Composable
+fun PluginWebUI(instance: AudioPluginInstance) {
+    Column {
+        AndroidView(
+            modifier = Modifier
+                .padding(40.dp)
+                .border(2.dp, Color.Black),
+            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, instance) }
+        )
     }
 }

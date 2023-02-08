@@ -11,6 +11,7 @@ import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -112,9 +113,9 @@ class WebUIHostHelper {
         }
 
         @SuppressLint("SetJavaScriptEnabled")
-        fun getWebView(ctx: Context, plugin: PluginInformation) : WebView {
+        fun getWebView(ctx: Context, plugin: AudioPluginInstance) : WebView {
 
-            val bytes = getWebUIArchive(ctx, plugin.pluginId!!)
+            val bytes = getWebUIArchive(ctx, plugin.pluginInfo.pluginId!!)
 
             return WebView(ctx).also { webView ->
                 val assetLoader = WebViewAssetLoader.Builder()
@@ -122,7 +123,6 @@ class WebUIHostHelper {
                     .addPathHandler("/zip/", ZipArchivePathHandler(bytes))
                     .build()
                 webView.webViewClient = object : WebViewClient() {
-                    @RequiresApi(21)
                     override fun shouldInterceptRequest(
                         view: WebView,
                         request: WebResourceRequest

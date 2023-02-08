@@ -1,6 +1,5 @@
 package org.androidaudioplugin.midideviceservice
 
-import android.content.Context
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -20,14 +19,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.midideviceservice.ui.theme.AAPMidiDeviceServiceTheme
-import org.androidaudioplugin.ui.web.WebUIHostHelper
 
 interface WebUIUpdater {
     fun setInstrumentPlugin(plugin: PluginInformation)
@@ -64,19 +60,12 @@ fun App() {
     val plugins: List<PluginInformation> = model.pluginServices.flatMap { s -> s.plugins }.toList()
         .filter { p -> p.category?.contains("Instrument") ?: false || p.category?.contains("Synth") ?: false }
 
-    var pluginViewShown by remember { mutableStateOf(false) }
-
     AAPMidiDeviceServiceTheme {
         Surface(color = MaterialTheme.colors.background) {
             Column {
                 AvailablePlugins(onItemClick = { plugin -> updater.setInstrumentPlugin(plugin) }, plugins)
                 PluginInstanceControllerUI()
-                Button(onClick = { pluginViewShown = !pluginViewShown }) {
-                    Text(if (pluginViewShown) "hide WebUI" else "show WebUI")
-                }
             }
-            if (pluginViewShown)
-                PluginWebUI()
         }
     }
 }
@@ -146,15 +135,5 @@ fun PluginInstanceControllerUI() {
             Text("Play")
         }
 
-    }
-}
-
-@Composable
-fun PluginWebUI() {
-    Column {
-        AndroidView(
-            modifier = Modifier.padding(40.dp).border(2.dp, Color.Black),
-            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, model.specifiedInstrument!!) }
-        )
     }
 }

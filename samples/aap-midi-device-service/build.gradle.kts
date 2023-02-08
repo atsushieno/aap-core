@@ -41,7 +41,6 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
-    implementation (project(":androidaudioplugin-ui-web"))
     implementation (project(":androidaudioplugin-midi-device-service"))
 
     runtimeOnly (libs.libcxx.provider)
@@ -61,7 +60,6 @@ dependencies {
 
     implementation (libs.lifecycle.runtime.ktx)
     implementation (libs.activity.compose)
-    implementation (libs.webkit)
 
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)

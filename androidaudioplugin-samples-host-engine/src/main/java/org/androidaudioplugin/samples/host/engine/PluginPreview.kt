@@ -33,7 +33,7 @@ class PluginPreview(private val context: Context) {
     }
 
     private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
-    private var instance: AudioPluginInstance? = null
+    var instance: AudioPluginInstance? = null
     var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
     var midiSettingsFlags: Int
@@ -82,11 +82,11 @@ class PluginPreview(private val context: Context) {
             if (instance.state == AudioPluginInstance.InstanceState.ACTIVE)
                 instance.deactivate()
             instance.destroy()
-        }
 
-        host.serviceConnector.unbindAudioPluginService(instance!!.pluginInfo.packageName)
-        pluginInfo = null
-        this.instance = null
+            host.serviceConnector.unbindAudioPluginService(instance.pluginInfo.packageName)
+            pluginInfo = null
+            this.instance = null
+        }
     }
 
     val instanceParameters : List<ParameterInformation>
