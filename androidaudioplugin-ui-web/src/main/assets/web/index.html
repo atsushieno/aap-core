@@ -1,0 +1,85 @@
+<html>
+<head>
+    <style type='text/css'>
+webaudio-knob { padding: 5px; }
+</style>
+    <script type='text/javascript'><!--
+    /* debugging aid
+    var AAPInterop = {};
+    AAPInterop.getParameterCount = function() { return 2; };
+    AAPInterop.getParameter = function(id) {
+      var para = {};
+      para.getName = function() { return "Whee"; }
+      para.getMinValue = function() { return 0.0; }
+      para.getMaxValue = function() { return 1.0; }
+      para.getDefaultValue = function() { return 0.5; }
+      return para;
+    };
+    */
+  var midiChannel = 0;
+  var octave = 4;
+  var noteVelocity = 100;
+
+  function initialize() {
+    for (el of document.getElementsByTagName('webaudio-knob')) {
+      el.addEventListener('input', function(e) {
+        sendInput(e.target.getAttribute('id_'), e.target.value);
+      });
+    }
+    for (el of document.getElementsByTagName('webaudio-keyboard')) {
+      el.addEventListener('change', function(e) {
+        sendNote(e.note[0], e.note[1] + octave * 12);
+      });
+    }
+
+    var paramTable = document.getElementById('parameters');
+    var nParams = AAPInterop.getParameterCount();
+    var nCols = 2;
+    var tr = null;
+    for (var i = 0; i < nParams; i++) {
+      var para = AAPInterop.getParameter(i);
+      if (i % nCols == 0) {
+        tr = document.createElement('tr');
+        paramTable.appendChild(tr);
+      }
+      var th = document.createElement('th');
+      var name = document.createTextNode(para.getName());
+      th.appendChild(name);
+      tr.appendChild(th);
+      var td = document.createElement('td');
+      tr.appendChild(td);
+      var knob = document.createElement('webaudio-knob');
+      knob.setAttribute('min', para.getMinValue());
+      knob.setAttribute('max', para.getMaxValue());
+      knob.setAttribute('value', para.getDefaultValue());
+      knob.setAttribute('src', 'bright_life.png');
+      td.appendChild(knob);
+    }
+
+    AAPInterop.onInitialize();
+    AAPInterop.onShow();
+  }
+
+  function terminate() {
+    AAPInterop.onHide();
+    AAPInterop.onCleanup();
+  }
+
+  function sendInput(i, v) {
+    AAPInterop.write(i, v);
+  }
+
+  function sendNote(state, note) {
+    AAPInterop.writeMidi(state ? [0x90 + midiChannel, note, noteVelocity] : [0x80 + midiChannel, note, 0]);
+  }
+//--></script>
+    <script type='text/javascript' src='webcoomponents-lite.js'></script>
+    <script type='text/javascript' src='webaudio-controls.js'></script>
+</head>
+<body onLoad='initialize()' onUnload='terminate()'>
+<p>(parameters are read only so far)</p>
+<webaudio-keyboard width="300" height="50" keys="24"></webaudio-keyboard>
+<table id='parameters'>
+</table>
+</body>
+</html>

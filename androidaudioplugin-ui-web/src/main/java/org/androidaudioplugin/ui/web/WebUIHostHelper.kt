@@ -10,7 +10,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.webkit.WebViewAssetLoader
+import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -51,7 +53,8 @@ class ZipArchivePathHandler(private val zipArchiveBytes: ByteArray) : WebViewAss
 
 class WebUIHostHelper {
 
-    private class AAPScriptInterface {
+    @Suppress("unused")
+    private class AAPScriptInterface(val instance: AudioPluginInstance) {
         @JavascriptInterface
         fun log(s: String) {
             println(s)
@@ -102,20 +105,65 @@ class WebUIHostHelper {
         fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
             println("!!!!!!!!!!!!!!! write($port, ${ByteBuffer.wrap(data).asFloatBuffer().get(offset)})")
         }
+
+        @get:JavascriptInterface
+        val portCount: Int
+            get() = instance.getPortCount()
+        @JavascriptInterface
+        fun getPort(index: Int) = JsPortInformation(instance.getPort(index))
+        @get:JavascriptInterface
+        val parameterCount: Int
+            get() = instance.getParameterCount()
+        @JavascriptInterface
+        fun getParameter(id: Int) = JsParameterInformation(instance.getParameter(id))
+
+        class JsPortInformation(val port: PortInformation) {
+            @get:JavascriptInterface
+            val index: Int
+                get() = port.index
+            @get:JavascriptInterface
+            val name: String
+                get() = port.name
+            @get:JavascriptInterface
+            val content: Int
+                get() = port.content
+            @get:JavascriptInterface
+            val direction: Int
+                get() = port.direction
+        }
+
+        class JsParameterInformation(val para: ParameterInformation) {
+            @get:JavascriptInterface
+            val id: Int
+                get() = para.id
+            @get:JavascriptInterface
+            val name: String
+                get() = para.name
+            @get:JavascriptInterface
+            val minValue: Double
+                get() = para.minimumValue
+            @get:JavascriptInterface
+            val maxValue: Double
+                get() = para.maximumValue
+            @get:JavascriptInterface
+            val defaultValue: Double
+                get() = para.defaultValue
+        }
     }
 
     companion object {
 
+        // FIXME:
         // Right now it does not make a lot of sense because WebUIHelper is in the same library,
         // but it will be implemented to request AAP services to send their UI resource archive.
-        private fun getWebUIArchive(ctx: Context, pluginId: String) : ByteArray {
+        private fun retrieveWebUIArchive(ctx: Context, pluginId: String) : ByteArray {
             return WebUIHelper.getUIZipArchive(ctx, pluginId)
         }
 
         @SuppressLint("SetJavaScriptEnabled")
-        fun getWebView(ctx: Context, plugin: AudioPluginInstance) : WebView {
+        fun getWebView(ctx: Context, instance: AudioPluginInstance) : WebView {
 
-            val bytes = getWebUIArchive(ctx, plugin.pluginInfo.pluginId!!)
+            val bytes = retrieveWebUIArchive(ctx, instance.pluginInfo.pluginId!!)
 
             return WebView(ctx).also { webView ->
                 val assetLoader = WebViewAssetLoader.Builder()
@@ -131,7 +179,7 @@ class WebUIHostHelper {
                     }
                 }
                 webView.settings.javaScriptEnabled = true
-                webView.addJavascriptInterface(AAPScriptInterface(), "AAPInterop")
+                webView.addJavascriptInterface(AAPScriptInterface(instance), "AAPInterop")
 
                 webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
             }
