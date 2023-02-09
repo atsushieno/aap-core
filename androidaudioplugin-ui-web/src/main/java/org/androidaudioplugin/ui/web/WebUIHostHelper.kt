@@ -2,24 +2,53 @@ package org.androidaudioplugin.ui.web
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.annotation.RequiresApi
 import androidx.webkit.WebViewAssetLoader
-import org.androidaudioplugin.ParameterInformation
-import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.PortInformation
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
+import java.util.concurrent.Semaphore
 import java.util.zip.ZipInputStream
 
-// WebView Asset PathHandler that returns contents of a zip archive.
+// Asynchronous version of ZipArchivePathHandler that waits for asynchronous content resolution from plugin.
+@OptIn(DelicateCoroutinesApi::class)
+class LazyZipArchivePathHandler(context: Context, instance: AudioPluginInstance) : WebViewAssetLoader.PathHandler {
+    private val semaphore = Semaphore(1)
+    lateinit var resolver: ZipArchivePathHandler
+    override fun handle(path: String): WebResourceResponse? {
+        // wait for zip resource acquisition.
+        try {
+            semaphore.acquire()
+            return resolver.handle(path)
+        } finally {
+            semaphore.release()
+        }
+    }
+
+    init {
+        semaphore.acquire()
+        GlobalScope.launch {
+            val bytes = WebUIHostHelper.retrieveWebUIArchive(
+                context,
+                instance.pluginInfo.pluginId!!,
+                instance.pluginInfo.packageName
+            )
+                ?: throw IllegalStateException("The requested Web UI archive could not be retrieved.")
+            resolver = ZipArchivePathHandler(bytes)
+            semaphore.release()
+        }
+    }
+}
+
+// WebView Asset PathHandler that returns contents of a zip archive. Synchronous version.
 class ZipArchivePathHandler(private val zipArchiveBytes: ByteArray) : WebViewAssetLoader.PathHandler {
 
     override fun handle(path: String): WebResourceResponse? {
@@ -51,132 +80,52 @@ class ZipArchivePathHandler(private val zipArchiveBytes: ByteArray) : WebViewAss
     }
 }
 
-class WebUIHostHelper {
-
-    @Suppress("unused")
-    private class AAPScriptInterface(val instance: AudioPluginInstance) {
-        @JavascriptInterface
-        fun log(s: String) {
-            println(s)
-        }
-
-        @JavascriptInterface
-        fun onInitialize() {
-            println("!!!!!!!!!!!!!!! onInitialize")
-        }
-
-        @JavascriptInterface
-        fun onCleanup() {
-            println("!!!!!!!!!!!!!!! onCleanup")
-        }
-
-        @JavascriptInterface
-        fun onShow() {
-            println("!!!!!!!!!!!!!!! onShow")
-        }
-
-        @JavascriptInterface
-        fun onHide() {
-            println("!!!!!!!!!!!!!!! onHide")
-        }
-
-        @JavascriptInterface
-        fun onNotify(port: Int, data: ByteArray, offset: Int, length: Int) {
-            println("!!!!!!!!!!!!!!! onNotify")
-        }
-
-        @JavascriptInterface
-        fun listen(port: Int) {
-        }
-
-        @JavascriptInterface
-        fun writeMidi(data: ByteArray) {
-            println("!!!!!!!!!!!!!!! writeMidi(${data[0]}, ${data[1]}, ${data[2]})")
-        }
-
-        @JavascriptInterface
-        fun setParameter(parameterId: Int, value: Double) {
-            println("!!!!!!!!!!!!!!! setParameter($parameterId, $value)")
-        }
-        private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
-
-        @JavascriptInterface
-        fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
-            println("!!!!!!!!!!!!!!! write($port, ${ByteBuffer.wrap(data).asFloatBuffer().get(offset)})")
-        }
-
-        @get:JavascriptInterface
-        val portCount: Int
-            get() = instance.getPortCount()
-        @JavascriptInterface
-        fun getPort(index: Int) = JsPortInformation(instance.getPort(index))
-        @get:JavascriptInterface
-        val parameterCount: Int
-            get() = instance.getParameterCount()
-        @JavascriptInterface
-        fun getParameter(id: Int) = JsParameterInformation(instance.getParameter(id))
-
-        class JsPortInformation(val port: PortInformation) {
-            @get:JavascriptInterface
-            val index: Int
-                get() = port.index
-            @get:JavascriptInterface
-            val name: String
-                get() = port.name
-            @get:JavascriptInterface
-            val content: Int
-                get() = port.content
-            @get:JavascriptInterface
-            val direction: Int
-                get() = port.direction
-        }
-
-        class JsParameterInformation(val para: ParameterInformation) {
-            @JavascriptInterface
-            fun getId() = para.id
-            @JavascriptInterface
-            fun getName() = para.name
-            @JavascriptInterface
-            fun getMinValue() = para.minimumValue
-            @JavascriptInterface
-            fun getMaxValue() = para.maximumValue
-            @JavascriptInterface
-            fun getDefaultValue() = para.defaultValue
-        }
-    }
-
-    companion object {
-
+object WebUIHostHelper {
+    suspend fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
         // FIXME:
         // Right now it does not make a lot of sense because WebUIHelper is in the same library,
         // but it will be implemented to request AAP services to send their UI resource archive.
-        private fun retrieveWebUIArchive(ctx: Context, pluginId: String) : ByteArray {
-            return WebUIHelper.getUIZipArchive(ctx, pluginId)
-        }
+        if (false) {
+            val pluginInfo =
+                (if (packageName != null) AudioPluginHostHelper.queryAudioPluginService(
+                    context,
+                    packageName
+                ).plugins.firstOrNull { it.pluginId == pluginId }
+                else AudioPluginHostHelper.queryAudioPlugins(context)
+                    .firstOrNull { it.pluginId == pluginId }) ?: return null
+            TODO("Not implemented")
+        } else
+            return WebUIHelper.getDefaultUIZipArchive(context, pluginId)
+    }
 
-        @SuppressLint("SetJavaScriptEnabled")
-        fun getWebView(ctx: Context, instance: AudioPluginInstance) : WebView {
+    @SuppressLint("SetJavaScriptEnabled")
+    fun getWebView(
+        ctx: Context,
+        instance: AudioPluginInstance,
+        supportInProcessAssets: Boolean = false
+    ): WebView {
 
-            val bytes = retrieveWebUIArchive(ctx, instance.pluginInfo.pluginId!!)
-
-            return WebView(ctx).also { webView ->
-                val assetLoader = WebViewAssetLoader.Builder()
-                    .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
-                    .addPathHandler("/zip/", ZipArchivePathHandler(bytes))
+        return WebView(ctx).also { webView ->
+            val builder = WebViewAssetLoader.Builder()
+            if (supportInProcessAssets)
+            // it is used for local assets, meaning that it is not for remote plugin process.
+                builder.addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
+            val assetLoader =
+                // it is used for the remote zip archive. It is then asynchronously loaded.
+                builder.addPathHandler("/zip/", LazyZipArchivePathHandler(ctx, instance))
                     .build()
-                webView.webViewClient = object : WebViewClient() {
-                    override fun shouldInterceptRequest(
-                        view: WebView,
-                        request: WebResourceRequest
-                    ): WebResourceResponse? {
-                        return assetLoader.shouldInterceptRequest(request.url)
-                    }
+            webView.webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): WebResourceResponse? {
+                    return assetLoader.shouldInterceptRequest(request.url)
                 }
-                webView.settings.javaScriptEnabled = true
-                webView.addJavascriptInterface(AAPScriptInterface(instance), "AAPInterop")
-
-                webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
             }
+            webView.settings.javaScriptEnabled = true
+            webView.addJavascriptInterface(AAPScriptInterface(instance), "AAPInterop")
+
+            webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
         }
     }
 }

@@ -6,32 +6,21 @@ import java.io.InputStreamReader
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-class WebUIHelper {
-    companion object {
+object WebUIHelper {
 
-        fun getUIZipArchive(ctx: Context, pluginId: String) : ByteArray {
-            val ms = ByteArrayOutputStream()
-            val os = ZipOutputStream(ms)
-            os.writer().use {w ->
-                for (s in arrayOf("index.html", "webcomponents-lite.js", "webaudio-controls.js")) {
-                    os.putNextEntry(ZipEntry(s))
-                    ctx.assets.open("web/$s").use {
-                        InputStreamReader(it).use {
-                            w.write(it.readText())
-                        }
-                    }
-                    w.flush()
+    fun getDefaultUIZipArchive(ctx: Context, pluginId: String) : ByteArray {
+        val ms = ByteArrayOutputStream()
+        val os = ZipOutputStream(ms)
+        os.writer().use {w ->
+            for (s in arrayOf("index.html", "webcomponents-lite.js", "webaudio-controls.js", "bright_life.png")) {
+                os.putNextEntry(ZipEntry(s))
+                ctx.assets.open("web/$s").use {
+                    it.copyTo(os)
                 }
-                for (s in arrayOf("bright_life.png")) {
-                    os.putNextEntry(ZipEntry(s))
-                    ctx.assets.open("web/$s").use {
-                        it.copyTo(os)
-                    }
-                    w.flush()
-                }
+                w.flush()
             }
-            return ms.toByteArray()
         }
+        return ms.toByteArray()
     }
 }
 
