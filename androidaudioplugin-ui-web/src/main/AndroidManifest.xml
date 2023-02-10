@@ -1,7 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <application>
+    <application tools:node="merge">
+        <!-- It is required for AudioPluginService (not the host) that supports Web UI -->
+        <provider android:name="org.androidaudioplugin.ui.web.WebUIArchiveContentProvider"
+            android:authorities="${applicationId}.aap_zip_provider"
+            android:exported="true"
+            android:grantUriPermissions="true">
+        </provider>
     </application>
 
 </manifest>

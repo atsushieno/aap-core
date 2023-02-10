@@ -1,12 +1,16 @@
 package org.androidaudioplugin.ui.web
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.content.FileProvider
+import androidx.core.net.toFile
 import androidx.webkit.WebViewAssetLoader
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -15,19 +19,21 @@ import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
 import java.util.concurrent.Semaphore
 import java.util.zip.ZipInputStream
 
 // Asynchronous version of ZipArchivePathHandler that waits for asynchronous content resolution from plugin.
-@OptIn(DelicateCoroutinesApi::class)
+// NOTE: it is meant to be asynchronous, but so far use of content resolver is all synchronous operation (should not be harmful though).
 class LazyZipArchivePathHandler(context: Context, instance: AudioPluginInstance) : WebViewAssetLoader.PathHandler {
     private val semaphore = Semaphore(1)
-    lateinit var resolver: ZipArchivePathHandler
+    private var resolver: ZipArchivePathHandler? = null
     override fun handle(path: String): WebResourceResponse? {
         // wait for zip resource acquisition.
         try {
             semaphore.acquire()
-            return resolver.handle(path)
+            return resolver?.handle(path)
         } finally {
             semaphore.release()
         }
@@ -35,16 +41,14 @@ class LazyZipArchivePathHandler(context: Context, instance: AudioPluginInstance)
 
     init {
         semaphore.acquire()
-        GlobalScope.launch {
-            val bytes = WebUIHostHelper.retrieveWebUIArchive(
-                context,
-                instance.pluginInfo.pluginId!!,
-                instance.pluginInfo.packageName
-            )
-                ?: throw IllegalStateException("The requested Web UI archive could not be retrieved.")
+        val bytes = WebUIHostHelper.retrieveWebUIArchive(
+            context,
+            instance.pluginInfo.pluginId!!,
+            instance.pluginInfo.packageName
+        )
+        if (bytes != null)
             resolver = ZipArchivePathHandler(bytes)
-            semaphore.release()
-        }
+        semaphore.release()
     }
 }
 
@@ -81,21 +85,22 @@ class ZipArchivePathHandler(private val zipArchiveBytes: ByteArray) : WebViewAss
 }
 
 object WebUIHostHelper {
-    suspend fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
-        // FIXME:
-        // Right now it does not make a lot of sense because WebUIHelper is in the same library,
-        // but it will be implemented to request AAP services to send their UI resource archive.
-        if (false) {
-            val pluginInfo =
-                (if (packageName != null) AudioPluginHostHelper.queryAudioPluginService(
-                    context,
-                    packageName
-                ).plugins.firstOrNull { it.pluginId == pluginId }
-                else AudioPluginHostHelper.queryAudioPlugins(context)
-                    .firstOrNull { it.pluginId == pluginId }) ?: return null
-            TODO("Not implemented")
-        } else
-            return WebUIHelper.getDefaultUIZipArchive(context, pluginId)
+    fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
+        val pluginInfo =
+            (if (packageName != null) AudioPluginHostHelper.queryAudioPluginService(
+                context,
+                packageName
+            ).plugins.firstOrNull { it.pluginId == pluginId }
+            else AudioPluginHostHelper.queryAudioPlugins(context)
+                .firstOrNull { it.pluginId == pluginId }) ?: return null
+
+        val providerUri = "content://${pluginInfo.packageName}.aap_zip_provider"
+        val uri = Uri.parse("$providerUri/org.androidaudioplugin.ui.web/web-ui.zip")
+        context.contentResolver.openFile(uri, "r", null).use {
+            if (it == null)
+                return null
+            FileInputStream(it.fileDescriptor).use { stream -> return stream.readBytes() }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
