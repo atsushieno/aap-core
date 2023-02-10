@@ -96,7 +96,13 @@ object WebUIHostHelper {
 
         val providerUri = "content://${pluginInfo.packageName}.aap_zip_provider"
         val uri = Uri.parse("$providerUri/org.androidaudioplugin.ui.web/web-ui.zip")
+        context.contentResolver.acquireContentProviderClient(uri). use {
+            // It does not offer the Web UI
+            if (it == null)
+                return null
+        }
         context.contentResolver.openFile(uri, "r", null).use {
+            // The Content Provider somehow does not serve the zip resource under the URI above.
             if (it == null)
                 return null
             FileInputStream(it.fileDescriptor).use { stream -> return stream.readBytes() }
