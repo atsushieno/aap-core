@@ -7,7 +7,6 @@ import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import androidx.core.content.FileProvider
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream

@@ -34,6 +34,7 @@ class PluginPreview(private val context: Context) {
 
     private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
     var instance: AudioPluginInstance? = null
+    var guiInstanceId: Int? = null
     var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
     var midiSettingsFlags: Int
@@ -507,11 +508,16 @@ class PluginPreview(private val context: Context) {
     }
 
     fun showGui() {
-        instance?.showGui()
+        guiInstanceId = instance?.createGui()
+        instance?.showGui(guiInstanceId!!)
     }
 
     fun hideGui() {
-        instance?.hideGui()
+        if (guiInstanceId != null) {
+            instance?.hideGui(guiInstanceId!!)
+            instance?.destroyGui(guiInstanceId!!)
+            guiInstanceId = null
+        }
     }
 
     init {

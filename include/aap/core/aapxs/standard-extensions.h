@@ -125,19 +125,55 @@ public:
         });
     }
 
-    int32_t showGui() {
+    aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId) {
         return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-            if (ext && ext->show)
-                return ext->show(target);
-            else
-                return 0;
+            if (!ext)
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            if (!ext->create)
+                return AAP_GUI_ERROR_NO_CREATE_DEFINED;
+            return ext->create(target, pluginId.c_str(), instanceId);
         });
     }
 
-    void hideGui() {
-        return withGuiExtension([&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
-            if (ext && ext->hide)
-                ext->hide(target);
+    int32_t showGui(aap_gui_instance_id guiInstanceId) {
+        return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (!ext)
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            if (!ext->show)
+                return AAP_GUI_ERROR_NO_SHOW_DEFINED;
+            return ext->show(target, guiInstanceId);
+        });
+    }
+
+    int32_t hideGui(aap_gui_instance_id guiInstanceId) {
+        return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (!ext)
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            if (!ext->hide)
+                return AAP_GUI_ERROR_NO_HIDE_DEFINED;
+            ext->hide(target, guiInstanceId);
+            return AAP_GUI_RESULT_OK;
+        });
+    }
+
+    int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
+        return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (!ext)
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            if (!ext->resize)
+                return AAP_GUI_ERROR_NO_RESIZE_DEFINED;
+            return ext->resize(target, guiInstanceId, width,height);
+        });
+    }
+
+    int32_t destroyGui(aap_gui_instance_id guiInstanceId) {
+        return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
+            if (!ext)
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            if (!ext->destroy)
+                return AAP_GUI_ERROR_NO_DESTROY_DEFINED;
+            ext->destroy(target, guiInstanceId);
+            return AAP_GUI_RESULT_OK;
         });
     }
 };

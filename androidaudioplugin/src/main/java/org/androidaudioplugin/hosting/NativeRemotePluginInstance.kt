@@ -33,8 +33,11 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     // midi
     fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client.native, instanceId)
     // gui
-    fun showGui() = showGui(client.native, instanceId)
-    fun hideGui() = hideGui(client.native, instanceId)
+    fun createGui() = createGui(client.native, instanceId)
+    fun showGui(guiInstanceId: Int) = showGui(client.native, instanceId, guiInstanceId)
+    fun hideGui(guiInstanceId: Int) = hideGui(client.native, instanceId, guiInstanceId)
+    fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = resizeGui(client.native, instanceId, guiInstanceId, width, height)
+    fun destroyGui(guiInstanceId: Int) = destroyGui(client.native, instanceId, guiInstanceId)
 
     // plugin instance (dynamic) information retrieval
     fun getParameterCount() = getParameterCount(client.native, instanceId)
@@ -103,8 +106,14 @@ internal class NativeRemotePluginInstance(val pluginId: String,
 
         // gui
         @JvmStatic
-        external fun showGui(nativeClient: Long, instanceId: Int)
+        external fun createGui(nativeClient: Long, instanceId: Int) : Int
         @JvmStatic
-        external fun hideGui(nativeClient: Long, instanceId: Int)
+        external fun showGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+        @JvmStatic
+        external fun hideGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+        @JvmStatic
+        external fun resizeGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int, width: Int, height: Int) : Int
+        @JvmStatic
+        external fun destroyGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
     }
 }

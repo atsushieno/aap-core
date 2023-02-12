@@ -10,19 +10,47 @@ extern "C" {
 
 #define AAP_GUI_EXTENSION_URI "urn://androidaudioplugin.org/extensions/gui/v1"
 
+typedef int32_t aap_gui_instance_id;
+
+// some pre-defined error codes
 #define AAP_GUI_RESULT_OK 0
-#define AAP_GUI_RESULT_UNSPECIFIED_ERROR 1
+#define AAP_GUI_ERROR_NO_DETAILS -1
+#define AAP_GUI_ERROR_NO_GUI_DEFINED -2
+#define AAP_GUI_ALREADY_INSTANTIATED -3
+#define AAP_GUI_ERROR_NO_CREATE_DEFINED -10
+#define AAP_GUI_ERROR_NO_SHOW_DEFINED -11
+#define AAP_GUI_ERROR_NO_HIDE_DEFINED -12
+#define AAP_GUI_ERROR_NO_RESIZE_DEFINED -13
+#define AAP_GUI_ERROR_NO_DESTROY_DEFINED -14
 
-// it should return AAP_GUI_RESULT_OK for success.
-// Non-zero return value will be defined as error code (TODO: define them if needed).
-// So far AAP_GUI_RESULT_UNSPECIFIED_ERROR is available.
-typedef int32_t (*gui_extension_show_func_t) (AndroidAudioPluginExtensionTarget target);
+// In-process GUI extension.
+// FIXME: guiInstanceId may not be required as there should not be more than one AudioPluginView.
 
-typedef void (*gui_extension_hide_func_t) (AndroidAudioPluginExtensionTarget target);
+typedef aap_gui_instance_id (*gui_extension_create_func_t) (AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instance);
+typedef int32_t (*gui_extension_show_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId);
+typedef void (*gui_extension_hide_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId);
+typedef int32_t (*gui_extension_resize_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height);
+typedef void (*gui_extension_destroy_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId);
 
 typedef struct aap_gui_extension_t {
+    // creates a new GUI View interanally. It will be shown as an overlay window later (by `show()`).
+    // returns > 0 for a new GUI instance ID or <0 for error code e.g. already instantiated or no GUI found.
+    // The actual instantiation could be asynchronously done.
+    gui_extension_create_func_t create;
+
+    // shows the view (using `WindowManager.addView()`).
+    // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
     gui_extension_show_func_t show;
+
+    // hides the view (using `WindowManager.removeView()`).
     gui_extension_hide_func_t hide;
+
+    // resizes the View (by using `WindowManager.updateViewLayout()`.
+    // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
+    gui_extension_resize_func_t resize;
+
+    // frees the view.
+    gui_extension_destroy_func_t destroy;
 } aap_gui_extension_t;
 
 #ifdef __cplusplus

@@ -677,25 +677,64 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getMidiMappingPol
 // GUI extension
 
 extern "C"
-JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_showGui(JNIEnv *env,
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createGui(JNIEnv *env,
 																	   jclass clazz,
 																	   jlong nativeClient,
 																	   jint instanceId) {
 	auto client = (aap::PluginClient *) (void *) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-	instance->getStandardExtensions().showGui();
+	return instance->getStandardExtensions().createGui(instance->getPluginInformation()->getPluginID(), instanceId);
 }
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT int32_t JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_showGui(JNIEnv *env,
+																	   jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId,
+																	   jint guiInstanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	return instance->getStandardExtensions().showGui(guiInstanceId);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_hideGui(JNIEnv *env,
 																	   jclass clazz,
 																	   jlong nativeClient,
-																	   jint instanceId) {
+																	   jint instanceId,
+																	   jint guiInstanceId) {
 	auto client = (aap::PluginClient *) (void *) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-	instance->getStandardExtensions().hideGui();
+	return instance->getStandardExtensions().hideGui(guiInstanceId);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_resizeGui(JNIEnv *env,
+																		  jclass clazz,
+																		  jlong nativeClient,
+																		  jint instanceId,
+																		  jint guiInstanceId,
+																		  jint width,
+																		  jint height) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	return instance->getStandardExtensions().resizeGui(guiInstanceId, width, height);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroyGui(JNIEnv *env,
+																	   jclass clazz,
+																	   jlong nativeClient,
+																	   jint instanceId,
+																	   jint guiInstanceId) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	return instance->getStandardExtensions().destroyGui(guiInstanceId);
 }
 
 

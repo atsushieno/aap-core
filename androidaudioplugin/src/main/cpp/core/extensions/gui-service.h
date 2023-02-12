@@ -13,8 +13,11 @@
 namespace aap {
 
 // implementation details
-    const int32_t OPCODE_SHOW = 0;
-    const int32_t OPCODE_HIDE = 1;
+    const int32_t OPCODE_CREATE = 0;
+    const int32_t OPCODE_SHOW = 1;
+    const int32_t OPCODE_HIDE = 2;
+    const int32_t OPCODE_RESIZE = 3;
+    const int32_t OPCODE_DESTROY = 4;
 
 
     class GuiPluginClientExtension : public PluginClientExtensionImplBase {
@@ -26,12 +29,24 @@ namespace aap {
             GuiPluginClientExtension *owner;
             AAPXSClientInstance* aapxsInstance;
 
-            static int32_t internalShow(AndroidAudioPluginExtensionTarget target) {
-                return ((Instance *) target.aapxs_context)->show();
+            static aap_gui_instance_id internalCreate(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId) {
+                return ((Instance *) target.aapxs_context)->create(pluginId, instanceId);
             }
 
-            static void internalHide(AndroidAudioPluginExtensionTarget target) {
-                return ((Instance *) target.aapxs_context)->hide();
+            static int32_t internalShow(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
+                return ((Instance *) target.aapxs_context)->show(guiInstanceId);
+            }
+
+            static void internalHide(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
+                return ((Instance *) target.aapxs_context)->hide(guiInstanceId);
+            }
+
+            static int32_t internalResize(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
+                return ((Instance *) target.aapxs_context)->resize(guiInstanceId, width, height);
+            }
+
+            static void internalDestroy(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
+                ((Instance *) target.aapxs_context)->destroy(guiInstanceId);
             }
 
         public:
@@ -41,13 +56,36 @@ namespace aap {
                 aapxsInstance = clientInstance;
             }
 
-            int32_t show() {
+            int32_t create(std::string pluginId, int32_t instanceId) {
+                *((int32_t*) aapxsInstance->data) = pluginId.length();
+                memcpy((int32_t*) (aapxsInstance->data) + 1, pluginId.c_str(), pluginId.length());
+                *((int32_t*) (aapxsInstance->data) + 1 + pluginId.length()) = instanceId;
+                clientInvokePluginExtension(OPCODE_CREATE);
+                return *((int32_t*) aapxsInstance->data);
+            }
+
+            int32_t show(aap_gui_instance_id guiInstanceId) {
+                *((int32_t*) aapxsInstance->data) = guiInstanceId;
                 clientInvokePluginExtension(OPCODE_SHOW);
                 return *((int32_t*) aapxsInstance->data);
             }
 
-            void hide() {
+            void hide(aap_gui_instance_id guiInstanceId) {
+                *((int32_t*) aapxsInstance->data) = guiInstanceId;
                 clientInvokePluginExtension(OPCODE_HIDE);
+            }
+
+            int32_t resize(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
+                *((int32_t*) aapxsInstance->data) = guiInstanceId;
+                *((int32_t*) aapxsInstance->data + 1) = width;
+                *((int32_t*) aapxsInstance->data + 2) = height;
+                clientInvokePluginExtension(OPCODE_RESIZE);
+                return *((int32_t*) aapxsInstance->data);
+            }
+
+            void destroy(aap_gui_instance_id guiInstanceId) {
+                *((int32_t*) aapxsInstance->data) = guiInstanceId;
+                clientInvokePluginExtension(OPCODE_DESTROY);
             }
 
             void clientInvokePluginExtension(int32_t opcode) {
@@ -55,8 +93,11 @@ namespace aap {
             }
 
             AAPXSProxyContext asProxy() {
+                proxy.create = internalCreate;
                 proxy.show = internalShow;
                 proxy.hide = internalHide;
+                proxy.resize = internalResize;
+                proxy.destroy = internalDestroy;
                 return AAPXSProxyContext{aapxsInstance, this, &proxy};
             }
         };
@@ -112,20 +153,48 @@ namespace aap {
         void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                        int32_t opcode) override {
             switch (opcode) {
-                case OPCODE_SHOW:
-                case OPCODE_HIDE: {
+                case OPCODE_CREATE: {
                     auto len = *(int32_t *) extensionInstance->data;
                     assert(len < MAX_PLUGIN_ID_SIZE);
                     char *pluginId = (char *) calloc(len, 1);
                     strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
                             len);
-
+                    auto instanceId = *(int32_t *) extensionInstance->data + 1 + len;
                     withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                              AndroidAudioPluginExtensionTarget target) {
-                        if (opcode == OPCODE_SHOW)
-                            ext->show(target);
-                        else
-                            ext->hide(target);
+                        auto guiInstanceId = ext->create(target, pluginId, instanceId);
+                        *(int32_t *) extensionInstance->data = guiInstanceId;
+                    });
+                }
+                    break;
+                case OPCODE_SHOW:
+                case OPCODE_HIDE:
+                case OPCODE_DESTROY: {
+                    withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
+                                                             AndroidAudioPluginExtensionTarget target) {
+                        auto guiInstanceId = *(int32_t *) extensionInstance->data;
+                        switch (opcode) {
+                            case OPCODE_SHOW:
+                                ext->show(target, guiInstanceId);
+                                break;
+                            case OPCODE_HIDE:
+                                ext->hide(target, guiInstanceId);
+                                break;
+                            case OPCODE_DESTROY:
+                                ext->destroy(target, guiInstanceId);
+                                break;
+                        }
+                    });
+                }
+                    break;
+                case OPCODE_RESIZE: {
+                    auto guiInstanceId = *(int32_t *) extensionInstance->data;
+                    auto width = *((int32_t *) extensionInstance->data + 1);
+                    auto height = *((int32_t *) extensionInstance->data + 1);
+                    withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
+                                                             AndroidAudioPluginExtensionTarget target) {
+                        auto result = ext->resize(target, guiInstanceId, width, height);
+                        *(int32_t *) extensionInstance->data = result;
                     });
                 }
                     break;
