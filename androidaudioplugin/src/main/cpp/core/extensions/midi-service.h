@@ -21,7 +21,7 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
     class Instance {
         friend class MidiPluginClientExtension;
 
-        aap_midi2_extension_t proxy{};
+        aap_midi_extension_t proxy{};
 
         MidiPluginClientExtension *owner;
         AAPXSClientInstance* aapxsInstance;
@@ -114,7 +114,7 @@ class MidiExtensionFeature : public PluginExtensionFeatureImpl {
 
 public:
     MidiExtensionFeature()
-            : PluginExtensionFeatureImpl(AAP_MIDI_EXTENSION_URI, false, sizeof(aap_midi2_extension_t)),
+            : PluginExtensionFeatureImpl(AAP_MIDI_EXTENSION_URI, false, sizeof(aap_midi_extension_t)),
               client(std::make_unique<MidiPluginClientExtension>()),
               service(std::make_unique<MidiPluginServiceExtension>()) {
     }

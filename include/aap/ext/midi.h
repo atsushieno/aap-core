@@ -155,7 +155,7 @@ typedef struct aap_midi_extension_t {
     // consume and thus cannot be mapped to other purposes (parameter changes and preset changes).
     // The actual callee is most likely audio-plugin-host, not the plugin.
     midi_extension_get_mapping_policy_func_t get_mapping_policy;
-} aap_midi2_extension_t;
+} aap_midi_extension_t;
 
 #ifdef __cplusplus
 } // extern "C"
