@@ -1,4 +1,4 @@
-#include "aap/core/host/android/android-application-context.h"
+#include "aap/core/android/android-application-context.h"
 
 namespace aap {
 

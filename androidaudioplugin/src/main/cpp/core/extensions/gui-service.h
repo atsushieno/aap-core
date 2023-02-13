@@ -160,6 +160,14 @@ namespace aap {
                     strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
                             len);
                     auto instanceId = *(int32_t *) extensionInstance->data + 1 + len;
+
+                    // Unlike other functions, create() at AAPXS level first looks for the target
+                    // AudioPluginViewFactory class from aap_metadata.xml, and starts `AudioPluginView`
+                    // instantiation step. The factory might then continue to View instantiation, or
+                    // invokes native `create()` extension function to let native code create View
+                    // and set as content to `AudioPluginView`.
+                    
+
                     withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                              AndroidAudioPluginExtensionTarget target) {
                         auto guiInstanceId = ext->create(target, pluginId, instanceId);

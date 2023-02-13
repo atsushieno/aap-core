@@ -10,7 +10,7 @@
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
-#include "aap/core/host/android/android-application-context.h"
+#include "aap/core/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
 
 #ifndef AAP_CORE_AUDIO_PLUGIN_HOST_ANDROID_H
