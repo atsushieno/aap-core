@@ -71,7 +71,7 @@ struct aap_plugin_info_t {
     get_string_plugin_property_func plugin_package_name;
     get_string_plugin_property_func plugin_local_name;
     get_string_plugin_property_func display_name;
-    get_string_plugin_property_func manufacturer_name;
+    get_string_plugin_property_func developer_name;
     get_string_plugin_property_func version;
     get_string_plugin_property_func primary_category;
     get_string_plugin_property_func identifier_string;

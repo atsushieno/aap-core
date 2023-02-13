@@ -42,33 +42,29 @@ class AudioPluginHostHelper {
                         if (currentPlugin != null)
                             continue
                         val name = xp.getAttributeValue(null, "name")
-                        val backend = xp.getAttributeValue(null, "backend")
                         val version = xp.getAttributeValue(null, "version")
                         val category = xp.getAttributeValue(null, "category")
-                        val author = xp.getAttributeValue(null, "author")
-                        val manufacturer = xp.getAttributeValue(null, "manufacturer")
+                        val developer = xp.getAttributeValue(null, "developer")
                         val uniqueId = xp.getAttributeValue(null, "unique-id")
                         val sharedLibraryName = xp.getAttributeValue(null, "library")
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
-                        val assets = xp.getAttributeValue(null, "assets")
+                        val uiViewFactory = xp.getAttributeValue(null, "ui-view-factory")
                         val uiActivity = xp.getAttributeValue(null, "ui-activity")
                         val uiWeb = xp.getAttributeValue(null, "ui-web")
                         currentPlugin = PluginInformation(
                             packageName,
                             className,
                             name,
-                            backend,
                             version,
                             category,
-                            author,
-                            manufacturer,
+                            developer,
                             uniqueId,
                             sharedLibraryName,
                             libraryEntryPoint,
-                            assets,
+                            uiViewFactory,
                             uiActivity,
                             uiWeb,
-                            isOutProcess
+                            isOutProcess,
                         )
                         aapServiceInfo.plugins.add(currentPlugin)
                     } else if (xp.name == "extension" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
@@ -199,7 +195,7 @@ class AudioPluginHostHelper {
         }
 
         @JvmStatic
-        fun launchInProcessPluginUI(context: Context, pluginInfo: PluginInformation, instanceId: Int?) {
+        fun launchPluginUIActivity(context: Context, pluginInfo: PluginInformation, instanceId: Int?) {
             val pkg = pluginInfo.packageName
             val pkgInfo = context.packageManager.getPackageInfo(pluginInfo.packageName, PackageManager.GET_ACTIVITIES)
             val activity = pluginInfo.uiActivity ?: pkgInfo.activities?.first()?.name ?: ".MainActivity"

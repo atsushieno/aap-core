@@ -100,21 +100,28 @@ class PluginInformation
     // hosting information
     bool is_out_process;
 
+    int64_t last_info_updated_unixtime_milliseconds;
+
     // basic information
     std::string plugin_package_name{}; // service package name for Android, FIXME: determine semantics for desktop
     std::string plugin_local_name{}; // service class name for Android, FIXME: determine semantics for desktop
     std::string display_name{};
-    std::string manufacturer_name{};
+    std::string developer_name{};
     std::string version{};
     std::string identifier_string{};
     std::string shared_library_filename{};
     std::string library_entrypoint{};
     std::string plugin_id{};
     std::string metadata_full_path{};
-    int64_t last_info_updated_unixtime_milliseconds;
 
     /** NULL-terminated list of categories, separate by | */
     std::string primary_category{};
+    /** UI View factory class name */
+    std::string ui_view_factory{};
+    /** UI Activity class name */
+    std::string ui_activity{};
+    /** UI Web archive name */
+    std::string ui_web{};
     /** list of ports */
     std::vector<const PortInformation*> declared_ports;
     /** list of parameters */
@@ -130,10 +137,11 @@ public:
 
     PluginInformation(bool isOutProcess, const char* pluginPackageName,
                       const char* pluginLocalName, const char* displayName,
-                      const char* manufacturerName, const char* versionString,
+                      const char* developerName, const char* versionString,
                       const char* pluginID, const char* sharedLibraryFilename,
                       const char* libraryEntrypoint, const char* metadataFullPath,
-                      const char* primaryCategory);
+                      const char* primaryCategory, const char* uiViewFactory,
+                      const char* uiActivity, const char* uiWeb);
 
     ~PluginInformation()
     {
@@ -154,9 +162,9 @@ public:
         return display_name;
     }
 
-    const std::string& getManufacturerName() const
+    const std::string& getDeveloperName() const
     {
-        return manufacturer_name;
+        return developer_name;
     }
 
     const std::string& getVersion() const

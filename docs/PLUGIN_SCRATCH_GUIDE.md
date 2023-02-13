@@ -77,7 +77,7 @@ This is the entire content for bare bone project:
 
 ```
 <plugins>
-  <plugin name="Flat Filter" category="Effect" author="atsushieno" manufacturer="atsushieno" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbareboneplugin.so">
+  <plugin name="Flat Filter" category="Effect" developer="AAP Developers" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbareboneplugin.so">
     <ports>
       <port id="0" direction="input" content="audio" name="Left In" />
       <port id="1" direction="input" content="audio" name="Right In" />
@@ -96,7 +96,7 @@ This is the entire content for bare bone project:
 </plugins>
 ```
 
-Give appropriate name, category, author, manufacturer, and unique-id.
+Give appropriate name, category, developer, and unique-id.
 For `category` attribute, specify `Instrument` if it is.
 The `library` name should be indicated at `CMakeLists.txt` in the project.
 

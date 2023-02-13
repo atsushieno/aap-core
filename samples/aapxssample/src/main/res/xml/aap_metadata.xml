@@ -1,5 +1,5 @@
 <plugins xmlns="urn:org.androidaudioplugin.core">
-  <plugin name="AAPXS Sample" category="Effect" author="androidaudioplugin.org" manufacturer="androidaudioplugin.org" unique-id="urn:org.androidaudioplugin/samples/aapxssample/InstrumentSample" library="libaapxssample.so">
+  <plugin name="AAPXS Sample" category="Effect" developer="AAP Developers" unique-id="urn:org.androidaudioplugin/samples/aapxssample/InstrumentSample" library="libaapxssample.so">
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />

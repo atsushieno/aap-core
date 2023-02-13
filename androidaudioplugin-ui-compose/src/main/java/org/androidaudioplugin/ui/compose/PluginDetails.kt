@@ -102,20 +102,12 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             Row {
                 Text(plugin.localName, fontSize = 14.sp)
             }
-            if (plugin.author != null) {
+            if (plugin.developer != null) {
                 Row {
-                    ColumnHeader("author: ")
+                    ColumnHeader("developer: ")
                 }
                 Row {
-                    Text(plugin.author ?: "")
-                }
-            }
-            if (plugin.manufacturer != null) {
-                Row {
-                    ColumnHeader("manufacturer: ")
-                }
-                Row {
-                    Text(plugin.manufacturer ?: "")
+                    Text(plugin.developer ?: "")
                 }
             }
         }

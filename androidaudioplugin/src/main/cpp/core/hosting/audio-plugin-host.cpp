@@ -25,21 +25,25 @@ namespace aap
 
 PluginInformation::PluginInformation(bool isOutProcess, const char* pluginPackageName,
 									 const char* pluginLocalName, const char* displayName,
-									 const char* manufacturerName, const char* versionString,
+									 const char* developerName, const char* versionString,
 									 const char* pluginID, const char* sharedLibraryFilename,
 									 const char* libraryEntrypoint, const char* metadataFullPath,
-									 const char* primaryCategory)
+									 const char* primaryCategory, const char* uiViewFactory,
+									 const char* uiActivity, const char* uiWeb)
 			: is_out_process(isOutProcess),
 			  plugin_package_name(pluginPackageName),
 			  plugin_local_name(pluginLocalName),
 			  display_name(displayName),
-			  manufacturer_name(manufacturerName),
+			  developer_name(developerName),
 			  version(versionString),
 			  shared_library_filename(sharedLibraryFilename),
 			  library_entrypoint(libraryEntrypoint),
 			  plugin_id(pluginID),
 			  metadata_full_path(metadataFullPath),
-			  primary_category(primaryCategory)
+			  primary_category(primaryCategory),
+			  ui_view_factory(uiViewFactory),
+			  ui_activity(uiActivity),
+			  ui_web(uiWeb)
 {
 	struct tm epoch{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	last_info_updated_unixtime_milliseconds = (int64_t) (1000.0 * difftime(time(nullptr), mktime(&epoch)));
@@ -511,7 +515,7 @@ static aap_plugin_info_port_t plugin_info_get_port(aap_plugin_info_t* plugin, ui
 static const char* plugin_info_get_plugin_package_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPluginPackageName().c_str(); }
 static const char* plugin_info_get_plugin_local_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPluginLocalName().c_str(); }
 static const char* plugin_info_get_display_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getDisplayName().c_str(); }
-static const char* plugin_info_get_manufacturer_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getManufacturerName().c_str(); }
+static const char* plugin_info_get_developer_name(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getDeveloperName().c_str(); }
 static const char* plugin_info_get_version(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getVersion().c_str(); }
 static const char* plugin_info_get_primary_category(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getPrimaryCategory().c_str(); }
 static const char* plugin_info_get_identifier_string(aap_plugin_info_t* plugin) { return ((LocalPluginInstance*) plugin->context)->getPluginInformation()->getStrictIdentifier().c_str(); }
@@ -541,7 +545,7 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 						  plugin_info_get_plugin_package_name,
 						  plugin_info_get_plugin_local_name,
 						  plugin_info_get_display_name,
-						  plugin_info_get_manufacturer_name,
+						  plugin_info_get_developer_name,
 						  plugin_info_get_version,
 						  plugin_info_get_primary_category,
 						  plugin_info_get_identifier_string,

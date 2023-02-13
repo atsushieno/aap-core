@@ -60,12 +60,15 @@ static jmethodID
 		j_method_get_package_name,
 		j_method_get_local_name,
 		j_method_get_name,
-		j_method_get_manufacturer,
+		j_method_get_developer,
 		j_method_get_version,
 		j_method_get_plugin_id,
 		j_method_get_shared_library_filename,
 		j_method_get_library_entrypoint,
 		j_method_get_category,
+		j_method_get_ui_view_factory,
+		j_method_get_ui_activity,
+		j_method_get_ui_web,
 		j_method_get_extension_count,
 		j_method_get_extension,
 		j_method_extension_get_required,
@@ -108,8 +111,8 @@ void initializeJNIMetadata()
 												 "()Ljava/lang/String;");
 	j_method_get_name = env->GetMethodID(java_plugin_information_class, "getDisplayName",
 										 "()Ljava/lang/String;");
-	j_method_get_manufacturer = env->GetMethodID(java_plugin_information_class,
-												 "getManufacturer", "()Ljava/lang/String;");
+	j_method_get_developer = env->GetMethodID(java_plugin_information_class,
+												 "getDeveloper", "()Ljava/lang/String;");
 	j_method_get_version = env->GetMethodID(java_plugin_information_class, "getVersion",
 											"()Ljava/lang/String;");
 	j_method_get_plugin_id = env->GetMethodID(java_plugin_information_class, "getPluginId",
@@ -123,14 +126,25 @@ void initializeJNIMetadata()
 	j_method_get_category = env->GetMethodID(java_plugin_information_class,
 													   "getCategory",
 													   "()Ljava/lang/String;");
+	j_method_get_ui_view_factory = env->GetMethodID(java_plugin_information_class,
+													"getUiViewFactory",
+													"()Ljava/lang/String;");
+	j_method_get_ui_activity = env->GetMethodID(java_plugin_information_class,
+												"getUiActivity",
+												"()Ljava/lang/String;");
+	j_method_get_ui_web = env->GetMethodID(java_plugin_information_class,
+										   "getUiWeb",
+										   "()Ljava/lang/String;");
 	j_method_get_extension_count = env->GetMethodID(java_plugin_information_class,
 											   "getExtensionCount", "()I");
 	j_method_get_extension = env->GetMethodID(java_plugin_information_class, "getExtension",
 										 "(I)Lorg/androidaudioplugin/ExtensionInformation;");
+
 	j_method_extension_get_required = env->GetMethodID(java_extension_information_class, "getRequired",
 											   "()Z");
 	j_method_extension_get_uri = env->GetMethodID(java_extension_information_class, "getUri",
 											  "()Ljava/lang/String;");
+
     j_method_get_declared_parameter_count = env->GetMethodID(java_plugin_information_class,
                                                         "getDeclaredParameterCount", "()I");
     j_method_get_declared_parameter = env->GetMethodID(java_plugin_information_class, "getDeclaredParameter",
@@ -139,6 +153,7 @@ void initializeJNIMetadata()
 														"getDeclaredPortCount", "()I");
 	j_method_get_declared_port = env->GetMethodID(java_plugin_information_class, "getDeclaredPort",
 										 "(I)Lorg/androidaudioplugin/PortInformation;");
+
 	j_method_parameter_ctor = env->GetMethodID(java_parameter_information_class, "<init>",
 										  "(ILjava/lang/String;DDD)V");
     j_method_parameter_get_id = env->GetMethodID(java_parameter_information_class, "getId",
@@ -151,6 +166,7 @@ void initializeJNIMetadata()
                                                             "()D");
     j_method_parameter_get_maximum_value = env->GetMethodID(java_parameter_information_class, "getMaximumValue",
                                                             "()D");
+
 	j_method_port_ctor = env->GetMethodID(java_port_information_class, "<init>",
                                           "(ILjava/lang/String;II)V");
 	j_method_port_get_index = env->GetMethodID(java_port_information_class, "getIndex",
@@ -209,7 +225,7 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
 																 j_method_get_name))),
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_manufacturer))),
+																 j_method_get_developer))),
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
 																 j_method_get_version))),
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
@@ -220,7 +236,13 @@ pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
 																 j_method_get_library_entrypoint))),
 			"", // metadataFullPath, no use on Android
 			keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
-																 j_method_get_category)))
+																 j_method_get_category))),
+            keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+                                                                               j_method_get_ui_view_factory))),
+    keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+                                                                               j_method_get_ui_activity))),
+    keepPointer(freeList, strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
+                                                                               j_method_get_ui_web)))
 	);
 	for (auto p : freeList)
 		free((void*) p);

@@ -46,7 +46,7 @@ The `meta-data` whose `android:name` is `org.androidaudioplugin.AudioPluginServi
 ```
 <plugins xmlns="urn:org.androidaudioplugin.core"
          xmlns:pp="urn:org.androidaudioplugin.port">
-  <plugin manufacturer="AndroidAudioPluginProject"
+  <plugin developer="AAP Developers"
           name="BareBoneSamplePlugin">
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
       <parameter id="0" name="Output Volume L" default="0.5" minimum="0" maximum="1" />
@@ -75,7 +75,7 @@ The `aap_metadata.xml` metadata format is somewhat hacky for now and subject to 
 Here is the XML content details:
 
 - `<plugin>` element
-  - `manufacturer` attribute: name of the plugin manufacturer or developer or whatever. (TODO: we may rename it to `developer`. `manufacturer` sounds like MIDI too much, which were mostly for hardware vendors.)
+  - `developer` attribute: name of the plugin developer (person, team, company, etc.).
   - `name` attribute: the display name of the plugin.
   - `unique-id` attribute: unique ID like `urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter` .
   - `version` attribute: version ID of the plugin like `1.0`.
