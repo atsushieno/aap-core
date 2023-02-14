@@ -152,10 +152,6 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         Row {
             Button(onClick = {
                 showWebUIState = !showWebUIState
-                if (showWebUIState)
-                    previewState.showGui()
-                else
-                    previewState.hideGui()
             }) { Text(if (showWebUIState) "Hide Web UI" else "Show Web UI") }
             Button(onClick = {
                 showNativeUIState = !showNativeUIState
