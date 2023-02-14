@@ -8,8 +8,6 @@ import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.content.Context
-import android.os.Build
-import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 /**
  * The Audio plugin service class. It should not be derived. We check the service class name strictly.
@@ -21,6 +19,22 @@ import org.androidaudioplugin.hosting.AudioPluginMidiSettings
  */
 open class AudioPluginService : Service()
 {
+    companion object {
+        private var initialized = false
+        private var waitForDebugger = false
+
+        fun initialize(context: Context) {
+            if (initialized)
+                return
+            if (waitForDebugger) {
+                android.os.Debug.waitForDebugger()
+                waitForDebugger = true
+            }
+            AudioPluginNatives.initializeAAPJni(context)
+            initialized = true
+        }
+    }
+
     /**
      * This interface is used by AAP Service extensions that will be initialized at instantiation step.
      * Not to be confused with AAP extension in the native (audio plugin) API context (`get_extension()`).
@@ -35,58 +49,39 @@ open class AudioPluginService : Service()
         fun cleanup()
     }
 
-    companion object {
-        /**
-         * Enable it only if you're debugging. Otherwise it might suspend if the debuggee is a different process.
-         *
-         * Also, if it is true, the shutdown process by lack of active sensing messages should be disabled.
-         */
-        @JvmStatic
-        var enableDebug = false
+    private var nativeBinder : IBinder? = null
+    var extensions = mutableListOf<Extension>()
+
+    override fun onCreate() {
+        initialize(this)
     }
 
-    private var native_binder : IBinder? = null
-
     override fun onBind(intent: Intent?): IBinder? {
-        if (enableDebug)
-            android.os.Debug.waitForDebugger()
-        AudioPluginLocalHost.initialize(this)
-        val existing = native_binder
+        val existing = nativeBinder
         if (existing != null)
             AudioPluginNatives.destroyBinderForService(existing)
-        native_binder = AudioPluginNatives.createBinderForService()
-        Log.d("AudioPluginService", "onBind done");
-        return native_binder
+        nativeBinder = AudioPluginNatives.createBinderForService()
+
+        val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
+        si.extensions.forEach { e ->
+            if(e == "")
+                return@forEach
+            val c = Class.forName(e)
+            val ext = c.newInstance() as Extension
+            ext.initialize(this)
+            extensions.add(ext)
+        }
+        return nativeBinder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        AudioPluginLocalHost.cleanup()
-        val binder = native_binder
+        for(ext in extensions)
+            ext.cleanup()
+
+        val binder = nativeBinder
         if (binder != null)
             AudioPluginNatives.destroyBinderForService(binder)
-        native_binder = null
+        nativeBinder = null
         return true
-    }
-
-    // FIXME: we should probably just remove them, we're not foreground service now (still unsure for future).
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val channelID = "AndroidAudioPluginServiceChannel"
-
-        val serviceChannel = NotificationChannel(
-            channelID,
-            "AAP Foreground Service Channel",
-            NotificationManager.IMPORTANCE_LOW
-        )
-
-        val manager = getSystemService(NotificationManager::class.java)
-        manager!!.createNotificationChannel(serviceChannel)
-
-        val notification = NotificationCompat.Builder(this, channelID)
-            .setContentTitle("Foreground Service")
-            .setContentText("started FG service")
-            .build()
-        this.startForeground(startId, notification)
-
-        return START_NOT_STICKY
     }
 }
