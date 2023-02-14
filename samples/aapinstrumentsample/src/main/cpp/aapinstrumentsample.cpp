@@ -374,7 +374,7 @@ aap_presets_extension_t presets_extension{sample_plugin_get_preset_count,
                                           sample_plugin_get_preset_index,
                                           sample_plugin_set_preset_index};
 
-int32_t sample_plugin_gui_create(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId) {
+int32_t sample_plugin_gui_create(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId, void* audioPluginView) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI CREATE !!!");
     return 1;
 }

@@ -13,6 +13,9 @@
 #include "audio-plugin-host-android-internal.h"
 #include "AudioPluginNative_jni.h"
 
+// FIXME: at some stage we should reorganize this JNI part so that "audio-plugin-host" part and
+//  AAPXS part can live apart. Probably we use some decent JNI helper library
+//  (libnativehelper, fbjni, JMI, or whatever).
 
 template <typename T>
 T usingJNIEnv(std::function<T(JNIEnv*)> func) {
@@ -53,7 +56,8 @@ const char *strdup_fromJava(JNIEnv *env, jstring s) {
 const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
 		*java_extension_information_class_name = "org/androidaudioplugin/ExtensionInformation",
 		*java_parameter_information_class_name = "org/androidaudioplugin/ParameterInformation",
-		*java_port_information_class_name = "org/androidaudioplugin/PortInformation";
+		*java_port_information_class_name = "org/androidaudioplugin/PortInformation",
+		*java_audio_plugin_service_class_name = "org/androidaudioplugin/AudioPluginServiceHelper";
 
 static jmethodID
 		j_method_is_out_process,
@@ -88,7 +92,8 @@ static jmethodID
 		j_method_port_get_name,
 		j_method_port_get_direction,
 		j_method_port_get_content,
-		j_method_port_get_minimum_size_in_bytes;
+		j_method_port_get_minimum_size_in_bytes,
+		j_method_create_gui;
 
 void initializeJNIMetadata()
 {
@@ -101,7 +106,8 @@ void initializeJNIMetadata()
 	jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
 			java_extension_information_class = env->FindClass(java_extension_information_class_name),
 			java_parameter_information_class = env->FindClass(java_parameter_information_class_name),
-			java_port_information_class = env->FindClass(java_port_information_class_name);
+			java_port_information_class = env->FindClass(java_port_information_class_name),
+			java_audio_plugin_service_helper_class = env->FindClass(java_audio_plugin_service_class_name);
 
 	j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
 											   "isOutProcess", "()Z");
@@ -179,6 +185,7 @@ void initializeJNIMetadata()
 												 "()I");
 	j_method_port_get_minimum_size_in_bytes = env->GetMethodID(java_port_information_class, "getMinimumSizeInBytes",
 												 "()I");
+	j_method_create_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class, "createGui", "(Landroid/content/Context;Ljava/lang/String;I)Lorg/androidaudioplugin/AudioPluginView;");
 }
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }
@@ -336,6 +343,21 @@ void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags) {
 		env->CallStaticVoidMethod(java_audio_plugin_midi_settings_class, j_method_put_midi_settings_to_shared_preference, context, pluginIdJString, flags);
 		return 0;
 	});
+}
+
+// --------------------------------------------------
+
+extern "C" void* createGuiViaJni(std::string pluginId, int32_t instanceId) {
+
+	JavaVM* vm = aap::get_android_jvm();
+	JNIEnv *env;
+	vm->GetEnv((void**) &env, JNI_VERSION_1_6);
+
+	auto context = aap::get_android_application_context();
+	auto cls = env->FindClass(java_audio_plugin_service_class_name);
+	assert(cls);
+	auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+	return env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString, instanceId);
 }
 
 // --------------------------------------------------
@@ -706,7 +728,8 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createGui(JNIEnv 
 																	   jint instanceId) {
 	auto client = (aap::PluginClient *) (void *) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-	return instance->getStandardExtensions().createGui(instance->getPluginInformation()->getPluginID(), instanceId);
+	// AudioPluginView is not provided from host side.
+	return instance->getStandardExtensions().createGui(instance->getPluginInformation()->getPluginID(), instanceId, nullptr);
 }
 
 extern "C"
@@ -845,3 +868,4 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNI
 	auto dst = instance->getPluginBuffer()->getBuffer(portIndex);
 	memcpy(dst, src, size);
 }
+

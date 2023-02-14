@@ -125,13 +125,13 @@ public:
         });
     }
 
-    aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId) {
+    aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) {
         return withGuiExtension(0, [&](aap_gui_extension_t* ext, AndroidAudioPluginExtensionTarget target) {
             if (!ext)
                 return AAP_GUI_ERROR_NO_GUI_DEFINED;
             if (!ext->create)
                 return AAP_GUI_ERROR_NO_CREATE_DEFINED;
-            return ext->create(target, pluginId.c_str(), instanceId);
+            return ext->create(target, pluginId.c_str(), instanceId, audioPluginView);
         });
     }
 

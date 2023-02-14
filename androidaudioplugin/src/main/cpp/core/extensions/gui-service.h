@@ -10,6 +10,9 @@
 #include "aap/core/aapxs/extension-service.h"
 #include "extension-service-impl.h"
 
+// FIXME: should this be moved to somewhere?
+extern "C" void* createGuiViaJni(std::string pluginId, int32_t instanceId);
+
 namespace aap {
 
 // implementation details
@@ -29,8 +32,8 @@ namespace aap {
             GuiPluginClientExtension *owner;
             AAPXSClientInstance* aapxsInstance;
 
-            static aap_gui_instance_id internalCreate(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId) {
-                return ((Instance *) target.aapxs_context)->create(pluginId, instanceId);
+            static aap_gui_instance_id internalCreate(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId, void* audioPluginView) {
+                return ((Instance *) target.aapxs_context)->create(pluginId, instanceId, audioPluginView);
             }
 
             static int32_t internalShow(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
@@ -56,7 +59,8 @@ namespace aap {
                 aapxsInstance = clientInstance;
             }
 
-            int32_t create(std::string pluginId, int32_t instanceId) {
+            int32_t create(std::string pluginId, int32_t instanceId, void* audioPluginView) {
+                assert(audioPluginView == nullptr); // This must not be assigned at AAPXS interop.
                 *((int32_t*) aapxsInstance->data) = pluginId.length();
                 memcpy((int32_t*) (aapxsInstance->data) + 1, pluginId.c_str(), pluginId.length());
                 *((int32_t*) (aapxsInstance->data) + 1 + pluginId.length()) = instanceId;
@@ -151,65 +155,7 @@ namespace aap {
 
         // invoked by AudioPluginService
         void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
-                       int32_t opcode) override {
-            switch (opcode) {
-                case OPCODE_CREATE: {
-                    auto len = *(int32_t *) extensionInstance->data;
-                    assert(len < MAX_PLUGIN_ID_SIZE);
-                    char *pluginId = (char *) calloc(len, 1);
-                    strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
-                            len);
-                    auto instanceId = *(int32_t *) extensionInstance->data + 1 + len;
-
-                    // Unlike other functions, create() at AAPXS level first looks for the target
-                    // AudioPluginViewFactory class from aap_metadata.xml, and starts `AudioPluginView`
-                    // instantiation step. The factory might then continue to View instantiation, or
-                    // invokes native `create()` extension function to let native code create View
-                    // and set as content to `AudioPluginView`.
-                    
-
-                    withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                             AndroidAudioPluginExtensionTarget target) {
-                        auto guiInstanceId = ext->create(target, pluginId, instanceId);
-                        *(int32_t *) extensionInstance->data = guiInstanceId;
-                    });
-                }
-                    break;
-                case OPCODE_SHOW:
-                case OPCODE_HIDE:
-                case OPCODE_DESTROY: {
-                    withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                             AndroidAudioPluginExtensionTarget target) {
-                        auto guiInstanceId = *(int32_t *) extensionInstance->data;
-                        switch (opcode) {
-                            case OPCODE_SHOW:
-                                ext->show(target, guiInstanceId);
-                                break;
-                            case OPCODE_HIDE:
-                                ext->hide(target, guiInstanceId);
-                                break;
-                            case OPCODE_DESTROY:
-                                ext->destroy(target, guiInstanceId);
-                                break;
-                        }
-                    });
-                }
-                    break;
-                case OPCODE_RESIZE: {
-                    auto guiInstanceId = *(int32_t *) extensionInstance->data;
-                    auto width = *((int32_t *) extensionInstance->data + 1);
-                    auto height = *((int32_t *) extensionInstance->data + 1);
-                    withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                             AndroidAudioPluginExtensionTarget target) {
-                        auto result = ext->resize(target, guiInstanceId, width, height);
-                        *(int32_t *) extensionInstance->data = result;
-                    });
-                }
-                    break;
-                default:
-                    assert(false); // should not happen
-            }
-        }
+                       int32_t opcode) override;
     };
 
 

@@ -13,9 +13,6 @@
 
 namespace aap {
 
-// implementation details
-const int32_t MAX_PLUGIN_ID_SIZE = 1024; // FIXME: there should be some official definition.
-
 class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
     class Instance {
         friend class ParametersPluginClientExtension;

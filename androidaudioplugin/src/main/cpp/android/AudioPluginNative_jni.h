@@ -21,6 +21,9 @@ int32_t getConnectorInstanceId(aap::PluginClientConnectionList *connections);
 
 } // extern "C"
 
+
+
+// FIXME: this should be translated into native testing (when we get some testing foundation!)
 class JNIClientAAPXSManager : public aap::AAPXSClientInstanceManager {
     AndroidAudioPlugin* getPlugin() override;
     AAPXSFeature* getExtensionFeature(const char* uri) override;

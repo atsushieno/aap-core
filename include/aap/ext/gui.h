@@ -23,10 +23,10 @@ typedef int32_t aap_gui_instance_id;
 #define AAP_GUI_ERROR_NO_RESIZE_DEFINED -13
 #define AAP_GUI_ERROR_NO_DESTROY_DEFINED -14
 
-// In-process GUI extension.
+// In-process GUI extension using Android View and WindowManager.
 // FIXME: guiInstanceId may not be required as there should not be more than one AudioPluginView.
 
-typedef aap_gui_instance_id (*gui_extension_create_func_t) (AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instance);
+typedef aap_gui_instance_id (*gui_extension_create_func_t) (AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instance, void* audioPluginView);
 typedef int32_t (*gui_extension_show_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId);
 typedef void (*gui_extension_hide_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId);
 typedef int32_t (*gui_extension_resize_func_t) (AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height);
@@ -35,6 +35,8 @@ typedef void (*gui_extension_destroy_func_t) (AndroidAudioPluginExtensionTarget 
 typedef struct aap_gui_extension_t {
     // creates a new GUI View interanally. It will be shown as an overlay window later (by `show()`).
     // returns > 0 for a new GUI instance ID or <0 for error code e.g. already instantiated or no GUI found.
+    // Note that audioPluginView parameter is used only between AAPXS service and the plugin.
+    // The plugin client process has no access to the View in the AudioPluginService process.
     // The actual instantiation could be asynchronously done.
     gui_extension_create_func_t create;
 

@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+const int32_t MAX_PLUGIN_ID_SIZE = 1024; // FIXME: there should be some official definition.
+
 /* forward declarations */
 struct AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;

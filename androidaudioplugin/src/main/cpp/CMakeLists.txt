@@ -12,6 +12,7 @@ set (androidaudioplugin_SOURCES
 	"core/extensions/presets-service.cpp"
 	"core/extensions/state-service.cpp"
 	"core/extensions/port-config-service.cpp"
+	"core/extensions/gui-service.cpp"
 	)
 
 if (ANDROID)
