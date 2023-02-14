@@ -3,11 +3,10 @@ package org.androidaudioplugin.ui.web
 import android.webkit.JavascriptInterface
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
-import org.androidaudioplugin.hosting.AudioPluginInstance
 import java.nio.ByteBuffer
 
 @Suppress("unused")
-class AAPScriptInterface(val instance: AudioPluginInstance) {
+abstract class AAPScriptInterface {
     @JavascriptInterface
     fun log(s: String) {
         println(s)
@@ -51,23 +50,25 @@ class AAPScriptInterface(val instance: AudioPluginInstance) {
     fun setParameter(parameterId: Int, value: Double) {
         println("!!!!!!!!!!!!!!! setParameter($parameterId, $value)")
     }
+
     private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
 
     @JavascriptInterface
     fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
-        println("!!!!!!!!!!!!!!! write($port, ${ByteBuffer.wrap(data).asFloatBuffer().get(offset)})")
+        val buf = ByteBuffer.wrap(data, offset, length).asFloatBuffer().get(offset)
+        println("!!!!!!!!!!!!!!! write($port, ($buf), $offset, $length)")
     }
 
     @get:JavascriptInterface
-    val portCount: Int
-        get() = instance.getPortCount()
+    abstract val portCount: Int
+
     @JavascriptInterface
-    fun getPort(index: Int) = JsPortInformation(instance.getPort(index))
+    abstract fun getPort(index: Int) : JsPortInformation
+
     @get:JavascriptInterface
-    val parameterCount: Int
-        get() = instance.getParameterCount()
-    @JavascriptInterface
-    fun getParameter(id: Int) = JsParameterInformation(instance.getParameter(id))
+    abstract val parameterCount: Int
+
+    abstract fun getParameter(id: Int): JsParameterInformation
 
     class JsPortInformation(val port: PortInformation) {
         @get:JavascriptInterface
@@ -97,3 +98,4 @@ class AAPScriptInterface(val instance: AudioPluginInstance) {
         fun getDefaultValue() = para.defaultValue
     }
 }
+

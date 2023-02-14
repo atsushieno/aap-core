@@ -19,7 +19,7 @@ import java.util.zip.ZipInputStream
 
 // Asynchronous version of ZipArchivePathHandler that waits for asynchronous content resolution from plugin.
 // NOTE: it is meant to be asynchronous, but so far use of content resolver is all synchronous operation (should not be harmful though).
-class LazyZipArchivePathHandler(context: Context, instance: AudioPluginInstance) : WebViewAssetLoader.PathHandler {
+class LazyZipArchivePathHandler(context: Context, pluginId: String, packageName: String) : WebViewAssetLoader.PathHandler {
     private val semaphore = Semaphore(1)
     private var resolver: ZipArchivePathHandler? = null
     override fun handle(path: String): WebResourceResponse? {
@@ -36,8 +36,8 @@ class LazyZipArchivePathHandler(context: Context, instance: AudioPluginInstance)
         semaphore.acquire()
         val bytes = WebUIHostHelper.retrieveWebUIArchive(
             context,
-            instance.pluginInfo.pluginId!!,
-            instance.pluginInfo.packageName
+            pluginId,
+            packageName
         )
         if (bytes != null)
             resolver = ZipArchivePathHandler(bytes)
@@ -116,7 +116,8 @@ object WebUIHostHelper {
                 builder.addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
             val assetLoader =
                 // it is used for the remote zip archive. It is then asynchronously loaded.
-                builder.addPathHandler("/zip/", LazyZipArchivePathHandler(ctx, instance))
+                builder.addPathHandler("/zip/", LazyZipArchivePathHandler(
+                    ctx, instance.pluginInfo.pluginId!!, instance.pluginInfo.packageName))
                     .build()
             webView.webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -127,7 +128,7 @@ object WebUIHostHelper {
                 }
             }
             webView.settings.javaScriptEnabled = true
-            webView.addJavascriptInterface(AAPScriptInterface(instance), "AAPInterop")
+            webView.addJavascriptInterface(AAPClientScriptInterface(instance), "AAPInterop")
 
             webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
         }

@@ -61,14 +61,9 @@ webaudio-knob { padding: 5px; }
       });
       td.appendChild(knob);
     }
-
-    AAPInterop.onInitialize();
-    AAPInterop.onShow();
   }
 
   function terminate() {
-    AAPInterop.onHide();
-    AAPInterop.onCleanup();
   }
 
   function sendNote(state, note) {
