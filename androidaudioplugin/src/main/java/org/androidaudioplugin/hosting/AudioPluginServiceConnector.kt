@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
+import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.PluginServiceInformation
@@ -67,8 +68,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             if (pluginServiceConnection != null)
                 continuation.resume(pluginServiceConnection)
             else
-                // FIXME: use dedicated Exception type
-                throw Exception("Failed to bind AudioPluginService: Intent = $intent")
+                continuation.resumeWith(Result.failure(AudioPluginException("Failed to bind AudioPluginService: Intent = $intent")))
         }
 
         Log.d(

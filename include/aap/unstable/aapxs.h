@@ -34,6 +34,8 @@ typedef struct {
     void *data;
     /** The size of `data`, if it is provided a non-null pointer. */
     int32_t data_size;
+    /** extension-specific local context. Extension developer uses it. */
+    void *local_data;
 } AAPXSServiceInstance;
 
 // ---------------------------------------------------

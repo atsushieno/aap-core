@@ -7,9 +7,6 @@
 #include "aap/ext/presets.h"
 #include "aap/ext/gui.h"
 
-// FIXME: should this be moved to somewhere?
-extern "C" int32_t getMidiSettingsFromLocalConfig(std::string pluginId);
-
 namespace aap {
 
 class StandardExtensions {

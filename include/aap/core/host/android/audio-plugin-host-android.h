@@ -3,13 +3,10 @@
 #ifdef ANDROID
 
 #include <jni.h>
-#include <android/binder_ibinder.h>
-#include <android/sharedmem.h>
 #include "../audio-plugin-host.h"
 
-extern "C" aap::PluginClientConnectionList* getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist);
-
 namespace aap {
+    aap::PluginClientConnectionList* getPluginConnectionListByConnectorInstanceId(int32_t connectorInstanceId, bool createIfNotExist);
 
 } // namespace aap
 

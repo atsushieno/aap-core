@@ -13,7 +13,7 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/hosting/audio-plugin-host-internals.h"
 #include "audio-plugin-host-android-internal.h"
-#include "AudioPluginNative_jni.h"
+#include "JNIClientAAPXSManager.h"
 
 #define AAP_PXORY_LOG_TAG "AAP.proxy"
 

@@ -1,4 +1,5 @@
 #include "audio-plugin-host-android-internal.h"
+#include "../core/AAPJniFacade.h"
 
 namespace aap {
 
@@ -13,13 +14,13 @@ std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        ret.emplace_back(pluginInformation_fromJava(env, jPluginInfo));
+        ret.emplace_back(AAPJniFacade::getInstance()->pluginInformation_fromJava(env, jPluginInfo));
     }
     return ret;
 }
 
 std::vector<PluginInformation*> queryInstalledPlugins() {
-    return convertPluginList(queryInstalledPluginsJNI());
+    return convertPluginList(AAPJniFacade::getInstance()->queryInstalledPluginsJNI());
 }
 
 std::vector<std::string> AndroidPluginClientSystem::getPluginPaths() {
@@ -43,7 +44,8 @@ std::vector<PluginInformation*> AndroidPluginClientSystem::getPluginsFromMetadat
 }
 
 void AndroidPluginClientSystem::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)> callback) {
-    ensureServiceConnectedFromJni(getConnectorInstanceId(connections), serviceName, callback);
+    auto connId = AAPJniFacade::getInstance()->getConnectorInstanceId(connections);
+    AAPJniFacade::getInstance()->ensureServiceConnectedFromJni(connId, serviceName, callback);
 }
 
 // -------------------------------------------------------

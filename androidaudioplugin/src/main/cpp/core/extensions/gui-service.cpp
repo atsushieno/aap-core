@@ -1,5 +1,5 @@
 #include "gui-service.h"
-
+#include "../AAPJniFacade.h"
 
 
 namespace aap {
@@ -21,7 +21,9 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             // instantiation step. The factory might then continue to View instantiation, or
             // invokes native `create()` extension function to let native code create View
             // and set as content to `AudioPluginView`.
-            void* view = createGuiViaJni(pluginId, instanceId);
+            void* view = AAPJniFacade::getInstance()->createGuiViaJni(pluginId, instanceId);
+
+            extensionInstance->local_data = view;
 
             withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                      AndroidAudioPluginExtensionTarget target) {
@@ -37,6 +39,9 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                      AndroidAudioPluginExtensionTarget target) {
                 auto guiInstanceId = *(int32_t *) extensionInstance->data;
+                auto view = extensionInstance->local_data;
+                assert(view); // it must be assigned at create() state.
+
                 switch (opcode) {
                     case OPCODE_SHOW:
                         ext->show(target, guiInstanceId);

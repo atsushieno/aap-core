@@ -10,9 +10,6 @@
 #include "aap/core/aapxs/extension-service.h"
 #include "extension-service-impl.h"
 
-// FIXME: should this be moved to somewhere?
-extern "C" void* createGuiViaJni(std::string pluginId, int32_t instanceId);
-
 namespace aap {
 
 // implementation details

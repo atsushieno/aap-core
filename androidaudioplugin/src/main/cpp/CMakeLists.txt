@@ -24,6 +24,7 @@ set (androidaudioplugin_SOURCES
 	"android/android-application-context.cpp"
 	"android/AudioPluginNatives_jni.cpp"
 	"android/audio-plugin-host-android-internal.cpp"
+	"android/AAPJniFacade.cpp"
 	)
 else (ANDROID)
 set (androidaudioplugin_SOURCES
