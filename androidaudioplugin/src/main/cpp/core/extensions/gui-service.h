@@ -165,7 +165,7 @@ namespace aap {
 
     public:
         GuiExtensionFeature()
-                : PluginExtensionFeatureImpl(AAP_GUI_EXTENSION_URI, false, sizeof(aap_gui_extension_t)),
+                : PluginExtensionFeatureImpl(AAP_GUI_EXTENSION_URI, false, MAX_PLUGIN_ID_SIZE + sizeof(int32_t) * 3),
                   client(std::make_unique<GuiPluginClientExtension>()),
                   service(std::make_unique<GuiPluginServiceExtension>()) {
         }

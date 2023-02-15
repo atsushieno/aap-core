@@ -14,7 +14,7 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             char *pluginId = (char *) calloc(len, 1);
             strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
                     len);
-            auto instanceId = *(int32_t *) extensionInstance->data + 1 + len;
+            auto instanceId = *((int32_t *) extensionInstance->data + 1 + len);
 
             // Unlike other functions, create() at AAPXS level first looks for the target
             // AudioPluginViewFactory class from aap_metadata.xml, and starts `AudioPluginView`
