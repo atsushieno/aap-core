@@ -38,6 +38,9 @@ namespace aap {
         void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags);
 
         void *createGuiViaJni(std::string pluginId, int32_t instanceId);
+        void showGuiViaJni(std::string pluginId, int32_t instanceId, void* view);
+        void hideGuiViaJni(std::string pluginId, int32_t instanceId, void* view);
+        void destroyGuiViaJni(std::string pluginId, int32_t instanceId, void* view);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 

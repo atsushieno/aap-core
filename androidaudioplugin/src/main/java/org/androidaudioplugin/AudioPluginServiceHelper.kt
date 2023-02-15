@@ -10,14 +10,17 @@ object AudioPluginServiceHelper {
             .first { svc -> svc.packageName == context.packageName }
 
     @JvmStatic
+    external fun getServiceInstance(pluginId: String): Long
+
+    @JvmStatic
     fun createGui(context: Context, pluginId: String, instanceId: Int) : AudioPluginView {
         val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
-            ?: throw AudioPluginException("SpecifiedPlugin was not found")
+            ?: throw AudioPluginException("Specified plugin '$pluginId' was not found")
         val factoryClassName = pluginInfo.uiViewFactory
             ?: throw AudioPluginException("'ui-view-factory' attribute is not specified in aap_metadata.xml")
         val cls = Class.forName(factoryClassName)
         if (!AudioPluginViewFactory::class.java.isAssignableFrom(cls))
-            throw AudioPluginException("The class specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
+            throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
         val factory = cls.newInstance() as AudioPluginViewFactory
         val view = factory.createView(context, pluginId, instanceId)
         val audioPluginView = AudioPluginView(context)
@@ -26,5 +29,16 @@ object AudioPluginServiceHelper {
     }
 
     @JvmStatic
-    external fun getServiceInstance(pluginId: String): Long
+    fun showGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+        view.showOverlay()
+    }
+
+    @JvmStatic
+    fun hideGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+        view.hideOverlay(false)
+    }
+
+    @JvmStatic
+    fun destroyGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+    }
 }

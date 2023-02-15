@@ -4,6 +4,14 @@
 
 namespace aap {
 
+    class GuiInstance {
+    public:
+        void* view;
+        std::string pluginId;
+        int32_t instanceId;
+        int32_t guiInstanceId;
+    };
+
 void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                int32_t opcode)  {
 #if ANDROID
@@ -23,13 +31,17 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             // and set as content to `AudioPluginView`.
             void* view = AAPJniFacade::getInstance()->createGuiViaJni(pluginId, instanceId);
 
-            extensionInstance->local_data = view;
+            auto gi = new GuiInstance();
+            gi->pluginId = pluginId;
+            gi->instanceId = instanceId;
+            gi->view = view;
+            extensionInstance->local_data = gi;
 
             withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                      AndroidAudioPluginExtensionTarget target) {
                 // This nullptr must be actually a jobject of AudioPluginView.
-                auto guiInstanceId = ext->create(target, pluginId, instanceId, view);
-                *(int32_t *) extensionInstance->data = guiInstanceId;
+                gi->guiInstanceId = ext->create(target, pluginId, instanceId, view);
+                *(int32_t *) extensionInstance->data = gi->guiInstanceId;
             });
         }
             break;
@@ -39,18 +51,21 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
                                                      AndroidAudioPluginExtensionTarget target) {
                 auto guiInstanceId = *(int32_t *) extensionInstance->data;
-                auto view = extensionInstance->local_data;
-                assert(view); // it must be assigned at create() state.
+                auto gi = (GuiInstance*) extensionInstance->local_data;
+                assert(gi->view); // it must be assigned at create() state.
 
                 switch (opcode) {
                     case OPCODE_SHOW:
-                        ext->show(target, guiInstanceId);
+                        AAPJniFacade::getInstance()->showGuiViaJni(gi->pluginId, gi->instanceId, gi->view);
+                        //ext->show(target, guiInstanceId);
                         break;
                     case OPCODE_HIDE:
-                        ext->hide(target, guiInstanceId);
+                        AAPJniFacade::getInstance()->hideGuiViaJni(gi->pluginId, gi->instanceId, gi->view);
+                        //ext->hide(target, guiInstanceId);
                         break;
                     case OPCODE_DESTROY:
                         ext->destroy(target, guiInstanceId);
+                        delete gi;
                         break;
                 }
             });

@@ -44,7 +44,10 @@ namespace aap {
             j_method_port_get_direction,
             j_method_port_get_content,
             j_method_port_get_minimum_size_in_bytes,
-            j_method_create_gui;
+            j_method_create_gui,
+            j_method_show_gui,
+            j_method_hide_gui,
+            j_method_destroy_gui;
 
     void AAPJniFacade::initializeJNIMetadata() {
         JNIEnv *env;
@@ -150,6 +153,15 @@ namespace aap {
         j_method_create_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
                                                      "createGui",
                                                      "(Landroid/content/Context;Ljava/lang/String;I)Lorg/androidaudioplugin/AudioPluginView;");
+        j_method_show_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
+                                                     "showGui",
+                                                     "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+        j_method_hide_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
+                                                   "hideGui",
+                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+        j_method_destroy_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
+                                                   "destroyGui",
+                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
     }
 
 // FIXME: at some stage we should reorganize this JNI part so that "audio-plugin-host" part and
@@ -347,20 +359,50 @@ namespace aap {
 
 // --------------------------------------------------
 
-    void *AAPJniFacade::createGuiViaJni(std::string pluginId, int32_t instanceId) {
-
-        JavaVM *vm = aap::get_android_jvm();
-        JNIEnv *env;
-        vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-
-        auto context = aap::get_android_application_context();
-        auto cls = env->FindClass(java_audio_plugin_service_class_name);
-        assert(cls);
-        auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
-        return env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
-                                           instanceId);
+    template<typename T> T usingContext(std::function<T(JNIEnv* env, jclass cls, jobject context)> func) {
+        return usingJNIEnv<T>([&](JNIEnv* env) {
+            auto context = aap::get_android_application_context();
+            auto cls = env->FindClass(java_audio_plugin_service_class_name);
+            assert(cls);
+            return func(env, cls, context);
+        });
     }
 
+    void* AAPJniFacade::createGuiViaJni(std::string pluginId, int32_t instanceId) {
+        return usingContext<void*>([&](JNIEnv* env, jclass cls, jobject context) {
+            auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+            auto ret = env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
+                                               instanceId);
+            return env->NewGlobalRef(ret);
+        });
+    }
+
+    void AAPJniFacade::showGuiViaJni(std::string pluginId, int32_t instanceId, void* view) {
+        usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
+            auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+            env->CallStaticVoidMethod(cls, j_method_show_gui, context, pluginIdJString,
+                                               instanceId, (jobject) view);
+            return 0;
+        });
+    }
+
+    void AAPJniFacade::hideGuiViaJni(std::string pluginId, int32_t instanceId, void* view) {
+        usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
+            auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+            env->CallStaticVoidMethod(cls, j_method_hide_gui, context, pluginIdJString,
+                                               instanceId, (jobject) view);
+            return 0;
+        });
+    }
+
+    void AAPJniFacade::destroyGuiViaJni(std::string pluginId, int32_t instanceId, void* view) {
+        usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
+            auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
+            env->CallStaticVoidMethod(cls, j_method_destroy_gui, context, pluginIdJString,
+                                               instanceId, (jobject) view);
+            return 0;
+        });
+    }
 // --------------------------------------------------
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }
