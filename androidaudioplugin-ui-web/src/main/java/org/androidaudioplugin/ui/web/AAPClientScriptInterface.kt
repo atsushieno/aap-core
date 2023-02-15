@@ -1,6 +1,8 @@
 package org.androidaudioplugin.ui.web
 
 import android.webkit.JavascriptInterface
+import org.androidaudioplugin.ParameterInformation
+import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
 
 @Suppress("unused")
@@ -9,15 +11,13 @@ class AAPClientScriptInterface(private val instance: AudioPluginInstance) : AAPS
     // It seems that those JavaScriptInterface attributes are also needed for overriden members...
 
     @get:JavascriptInterface
-    override val portCount: Int
-        get() = instance.getPortCount()
+    override val portCount = instance.getPortCount()
 
     @JavascriptInterface
     override fun getPort(index: Int) = JsPortInformation(instance.getPort(index))
 
     @get:JavascriptInterface
-    override val parameterCount: Int
-        get() = instance.getParameterCount()
+    override val parameterCount = instance.getParameterCount()
 
     @JavascriptInterface
     override fun getParameter(id: Int) = JsParameterInformation(instance.getParameter(id))

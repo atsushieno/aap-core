@@ -7,6 +7,7 @@
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/logging.h"
 #include "shared-memory-store.h"
+#include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/parameters-service.h"
@@ -20,7 +21,13 @@
 namespace aap
 {
 
+std::unique_ptr<PluginServiceList> plugin_service_list{nullptr};
 
+PluginServiceList* PluginServiceList::getInstance() {
+	if (!plugin_service_list)
+		plugin_service_list = std::make_unique<PluginServiceList>();
+	return plugin_service_list.get();
+}
 //-----------------------------------
 
 PluginInformation::PluginInformation(bool isOutProcess, const char* pluginPackageName,

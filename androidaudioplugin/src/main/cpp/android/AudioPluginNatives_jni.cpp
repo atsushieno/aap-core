@@ -12,6 +12,7 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "audio-plugin-host-android-internal.h"
 #include "AudioPluginNative_jni.h"
+#include "../core/hosting/plugin-service-list.h"
 
 // FIXME: at some stage we should reorganize this JNI part so that "audio-plugin-host" part and
 //  AAPXS part can live apart. Probably we use some decent JNI helper library
@@ -785,54 +786,123 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroyGui(JNIEnv
 
 // plugin instance (dynamic) information retrieval
 
+jint implPluginHostGetParameterCount(jlong nativeHost,
+                                     jint instanceId) {
+    auto host = (aap::PluginHost *) (void *) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    return instance->getNumParameters();
+}
+
+jint implPluginHostGetPortCount(jlong nativeHost,
+                                jint instanceId) {
+    auto host = (aap::PluginHost*) (void*) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    return instance->getNumPorts();
+}
+
+jobject implPluginHostGetParameter(JNIEnv* env, jlong nativeHost, jint instanceId,jint index) {
+    auto host = (aap::PluginHost *) (void *) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    auto para = instance->getParameter(index);
+    auto klass = env->FindClass(java_parameter_information_class_name);
+    assert(klass);
+    return env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(),
+                          env->NewStringUTF(para->getName()), para->getMinimumValue(),
+                          para->getMaximumValue(), para->getDefaultValue());
+}
+
+jobject implPluginHostGetPort(JNIEnv* env, jlong nativeHost, jint instanceId, jint index) {
+    auto host = (aap::PluginHost *) (void *) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    auto port = instance->getPort(index);
+    auto klass = env->FindClass(java_port_information_class_name);
+    assert(klass);
+    return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(),
+                          env->NewStringUTF(port->getName()), (jint) port->getPortDirection(),
+                          (jint) port->getContentType());
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstance(JNIEnv* env,
+																		  jclass,
+																		  jstring pluginId) {
+	std::string pluginIdString = jstringToStdString(env, pluginId);
+	auto svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str());
+	return (jlong) (void*) svc;
+}
+
 extern "C"
 JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterCount(JNIEnv *env,
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameterCount(JNIEnv*,
+                                                                        jclass ,
+                                                                        jlong nativeService,
+                                                                        jint instanceId) {
+    return implPluginHostGetParameterCount(nativeService, instanceId);
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameter(JNIEnv *env, jclass,
+                                                                            jlong nativeClient,
+                                                                            jint instanceId,
+                                                                            jint index) {
+    return implPluginHostGetParameter(env, nativeClient, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getPortCount(JNIEnv*,
+                                                                        jclass ,
+                                                                        jlong nativeService,
+                                                                        jint instanceId) {
+    return implPluginHostGetPortCount(nativeService, instanceId);
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getPort(JNIEnv *env,
+                                                              jclass ,
+                                                              jlong nativeService,
+                                                              jint instanceId,
+                                                              jint index) {
+    return implPluginHostGetPort(env, nativeService, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterCount(JNIEnv *,
 																			jclass clazz,
 																			jlong nativeClient,
 																			jint instanceId) {
-	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-	return instance->getNumParameters();
+    return implPluginHostGetParameterCount(nativeClient, instanceId);
 }
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameter(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameter(JNIEnv *env, jclass ,
 																	   jlong nativeClient,
 																	   jint instanceId,
 																	   jint index) {
-	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-	auto para = instance->getParameter(index);
-	auto klass = env->FindClass(java_parameter_information_class_name);
-	assert(klass);
-	return env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(), env->NewStringUTF(para->getName()), para->getMinimumValue(), para->getMaximumValue(), para->getDefaultValue());
+    return implPluginHostGetParameter(env, nativeClient, instanceId, index);
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortCount(JNIEnv *env,
-                                                                            jclass clazz,
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortCount(JNIEnv *,
+                                                                            jclass ,
                                                                             jlong nativeClient,
                                                                             jint instanceId) {
-	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-	return instance->getNumPorts();
+    return implPluginHostGetPortCount(nativeClient, instanceId);
 }
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *env, jclass clazz,
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *env, jclass ,
 																	   jlong nativeClient,
 																	   jint instanceId,
 																	   jint index) {
-	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-	auto port = instance->getPort(index);
-	auto klass = env->FindClass(java_port_information_class_name);
-	assert(klass);
-	return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(), env->NewStringUTF(port->getName()), (jint) port->getPortDirection(), (jint) port->getContentType());
+    return implPluginHostGetPort(env, nativeClient, instanceId, index);
 }
 
 extern "C"

@@ -12,6 +12,7 @@
 #include <android/binder_auto_utils.h>
 #include "aap/core/host/audio-plugin-host.h"
 #include "../core/hosting/shared-memory-store.h"
+#include "../core/hosting/plugin-service-list.h"
 
 #define AAP_AIDL_SVC_LOG_TAG "AAP.aidl.svc"
 
@@ -31,6 +32,11 @@ public:
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
         svc.reset(new PluginService(&plugins));
+        aap::PluginServiceList::getInstance()->addBoundServiceInProcess(svc.get());
+    }
+
+    ~AudioPluginInterfaceImpl() {
+        aap::PluginServiceList::getInstance()->removeBoundServiceInProcess(svc.get());
     }
 
     ::ndk::ScopedAStatus setCallback(const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override {

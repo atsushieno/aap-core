@@ -64,6 +64,7 @@ android {
 dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-ui-compose"))
+    implementation (project(":androidaudioplugin-ui-web"))
     implementation (project(":androidaudioplugin-midi-device-service"))
     androidTestImplementation (project(":androidaudioplugin-testing"))
     implementation (libs.androidx.core.ktx)

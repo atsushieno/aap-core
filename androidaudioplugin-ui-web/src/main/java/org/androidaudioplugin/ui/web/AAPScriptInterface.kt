@@ -68,34 +68,31 @@ abstract class AAPScriptInterface {
     @get:JavascriptInterface
     abstract val parameterCount: Int
 
-    abstract fun getParameter(id: Int): JsParameterInformation
+    @JavascriptInterface
+    abstract fun getParameter(index: Int): JsParameterInformation
 
-    class JsPortInformation(val port: PortInformation) {
+
+    class JsPortInformation(port: PortInformation) {
         @get:JavascriptInterface
-        val index: Int
-            get() = port.index
+        val index = port.index
         @get:JavascriptInterface
-        val name: String
-            get() = port.name
+        val name = port.name
         @get:JavascriptInterface
-        val content: Int
-            get() = port.content
+        val content = port.content
         @get:JavascriptInterface
-        val direction: Int
-            get() = port.direction
+        val direction = port.direction
     }
 
-    class JsParameterInformation(val para: ParameterInformation) {
-        @JavascriptInterface
-        fun getId() = para.id
-        @JavascriptInterface
-        fun getName() = para.name
-        @JavascriptInterface
-        fun getMinValue() = para.minimumValue
-        @JavascriptInterface
-        fun getMaxValue() = para.maximumValue
-        @JavascriptInterface
-        fun getDefaultValue() = para.defaultValue
+    class JsParameterInformation(para: ParameterInformation) {
+        @get:JavascriptInterface
+        val id = para.id
+        @get:JavascriptInterface
+        val name = para.name
+        @get:JavascriptInterface
+        val minValue = para.minimumValue
+        @get:JavascriptInterface
+        val maxValue = para.maximumValue
+        @get:JavascriptInterface
+        val defaultValue = para.defaultValue
     }
 }
-
