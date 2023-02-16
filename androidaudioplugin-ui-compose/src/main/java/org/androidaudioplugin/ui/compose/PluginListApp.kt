@@ -12,6 +12,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -33,6 +34,14 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
         val preview by remember { viewModel.preview }
         var errorMessage by remember { mutableStateOf("") }
 
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentDestination = navBackStackEntry?.destination
+        val hierarchy = currentDestination?.hierarchy
+        if (hierarchy?.lastOrNull { it != hierarchy.lastOrNull() }?.route == "plugin_list")
+        //if (hierarchy?.any { it != hierarchy.lastOrNull() && it.route == "plugin_list" } == true)
+            if (preview.pluginInfo != null)
+                preview.unloadPlugin()
+
         NavHost(navController, startDestination="plugin_list") {
             composable("plugin_list") {
                 Scaffold(
@@ -43,8 +52,6 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                             if (errorMessage != "")
                                 Text(errorMessage, modifier = Modifier.padding(14.dp))
                             PluginList(onItemClick = { p ->
-                                if (preview.pluginInfo != null)
-                                    preview.unloadPlugin()
                                 val pluginId = p.pluginId
                                 if (pluginId == null) {
                                     errorMessage = "pluginId is missing"
@@ -57,9 +64,9 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                                     return@PluginList
                                 }
                                 CoroutineScope(Dispatchers.Default).launch {
-                                    val i = preview.loadPlugin(pluginInfo)
+                                    preview.loadPlugin(pluginInfo)
                                     Dispatchers.Main.dispatch(currentCoroutineContext()) {
-                                        navController.navigate("plugin_details/" + Uri.encode(i.pluginInfo.pluginId))
+                                        navController.navigate("plugin_details/" + Uri.encode(pluginId))
                                     }
                                 }
                             }, pluginServices = viewModel.availablePluginServices)
@@ -71,9 +78,10 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
             composable("plugin_details/{pluginId}",
                 arguments = listOf(navArgument("pluginId") { type = NavType.StringType })) {
                 viewModel.atTopLevel.value = false // it feels ugly. There should be some better way...
-                Scaffold(
-                    topBar = { TopAppBar(title = { Text(text = preview.pluginInfo!!.displayName) }) },
-                    content = { PluginDetails(preview.pluginInfo!!, viewModel) })
+                if (preview.pluginInfo != null)
+                    Scaffold(
+                        topBar = { TopAppBar(title = { Text(text = preview.pluginInfo!!.displayName) }) },
+                        content = { PluginDetails(preview.pluginInfo!!, viewModel) })
             }
         }
     }
