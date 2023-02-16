@@ -54,6 +54,18 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
     sp_binder.reset();
 }
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_startNativeLooper(JNIEnv *env, jclass clazz) {
+	aap::start_non_rt_event_looper();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_stopNativeLooper(JNIEnv *env, jclass clazz) {
+	aap::stop_non_rt_event_looper();
+}
+
 // --------------------------------------------------
 
 std::map<AIBinder*,aap::AndroidPluginClientConnectionData*> live_connection_data{};

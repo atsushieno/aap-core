@@ -22,6 +22,12 @@ internal class AudioPluginNatives
         external fun destroyBinderForService(binder: IBinder)
 
         @JvmStatic
+        external fun startNativeLooper()
+
+        @JvmStatic
+        external fun stopNativeLooper()
+
+        @JvmStatic
         external fun addBinderForClient(connectorInstanceId: Int, packageName: String, className: String, binder: IBinder)
 
         @JvmStatic

@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.content.Context
+import android.os.Looper
 
 /**
  * The Audio plugin service class. It should not be derived. We check the service class name strictly.
@@ -36,7 +37,7 @@ open class AudioPluginService : Service()
     }
 
     /**
-     * This interface is used by AAP Service extensions that will be initialized at instantiation step.
+     * This interface is used by AAP Service extensions that will be initialized at onCreate().
      * Not to be confused with AAP extension in the native (audio plugin) API context (`get_extension()`).
      *
      * By registering this extension as a `<meta-data>` element in AndroidManifest.xml, whose
@@ -54,13 +55,6 @@ open class AudioPluginService : Service()
 
     override fun onCreate() {
         initialize(this)
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        val existing = nativeBinder
-        if (existing != null)
-            AudioPluginNatives.destroyBinderForService(existing)
-        nativeBinder = AudioPluginNatives.createBinderForService()
 
         val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
         si.extensions.forEach { e ->
@@ -71,12 +65,35 @@ open class AudioPluginService : Service()
             ext.initialize(this)
             extensions.add(ext)
         }
+    }
+
+    private var eventProcessorLooper: Looper? = null
+
+    override fun onBind(intent: Intent?): IBinder? {
+        val existing = nativeBinder
+        if (existing != null)
+            AudioPluginNatives.destroyBinderForService(existing)
+        nativeBinder = AudioPluginNatives.createBinderForService()
+
+        // no need to worry about the Looper retaining; it will be released at onUnbind()
+        Thread {
+            Looper.prepare()
+            eventProcessorLooper = Looper.myLooper()
+            AudioPluginNatives.startNativeLooper()
+            Looper.loop()
+        }.start()
+
         return nativeBinder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         for(ext in extensions)
             ext.cleanup()
+
+        if (eventProcessorLooper?.thread?.isAlive == true)
+            eventProcessorLooper?.quitSafely()
+        AudioPluginNatives.stopNativeLooper()
+        eventProcessorLooper = null
 
         val binder = nativeBinder
         if (binder != null)

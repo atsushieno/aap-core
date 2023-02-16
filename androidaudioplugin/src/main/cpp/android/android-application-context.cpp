@@ -1,10 +1,13 @@
 #include "aap/core/android/android-application-context.h"
+#include <android/looper.h>
+#include <aap/unstable/logging.h>
 
 namespace aap {
 
 // Android-specific API. Not sure if we would like to keep it in the host API - it is for plugins.
 JavaVM *android_vm{nullptr};
 jobject application_context{nullptr};
+ALooper* non_rt_event_looper{nullptr};
 
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 	android_vm = vm;
@@ -27,6 +30,14 @@ void set_application_context(JNIEnv *env, jobject jobjectApplicationContext) {
 JavaVM *get_android_jvm() { return android_vm; }
 
 jobject get_android_application_context() { return application_context; }
+
+void start_non_rt_event_looper() {
+    non_rt_event_looper = ALooper_forThread();
+}
+
+void stop_non_rt_event_looper() {
+    non_rt_event_looper = nullptr;
+}
 
 AAssetManager *get_android_asset_manager(JNIEnv* env) {
 	if (!application_context)

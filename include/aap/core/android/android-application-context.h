@@ -23,6 +23,10 @@ void set_application_context(JNIEnv *env, jobject applicationContext);
  */
 void unset_application_context(JNIEnv *env);
 
+void start_non_rt_event_looper();
+
+void stop_non_rt_event_looper();
+
 JavaVM *get_android_jvm();
 
 /**
