@@ -28,7 +28,7 @@ class PluginTest {
     fun testPluginInfo() {
         testing.testSinglePluginInformation {
             Assert.assertEquals("urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter", it.pluginId)
-            Assert.assertEquals("androidaudioplugin.org", it.author)
+            Assert.assertEquals("AAP Developers", it.developer)
             Assert.assertEquals(8, it.parameters.size)
             Assert.assertEquals(0, it.ports.size)
         }
