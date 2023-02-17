@@ -29,7 +29,8 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             // instantiation step. The factory might then continue to View instantiation, or
             // invokes native `create()` extension function to let native code create View
             // and set as content to `AudioPluginView`.
-            void* view = AAPJniFacade::getInstance()->createGuiViaJni(pluginId, instanceId);
+            std::string pluginIdString{pluginId};
+            void* view = AAPJniFacade::getInstance()->createGuiViaJni(pluginIdString, instanceId);
 
             auto gi = new GuiInstance();
             gi->pluginId = pluginId;

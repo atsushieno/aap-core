@@ -1,5 +1,4 @@
 #include "aap/core/android/android-application-context.h"
-#include <android/looper.h>
 #include <aap/unstable/logging.h>
 
 namespace aap {
@@ -30,6 +29,8 @@ void set_application_context(JNIEnv *env, jobject jobjectApplicationContext) {
 JavaVM *get_android_jvm() { return android_vm; }
 
 jobject get_android_application_context() { return application_context; }
+
+ALooper* get_non_rt_event_looper() { return non_rt_event_looper; }
 
 void start_non_rt_event_looper() {
     non_rt_event_looper = ALooper_forThread();

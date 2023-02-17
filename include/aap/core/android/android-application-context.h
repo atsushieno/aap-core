@@ -5,6 +5,7 @@
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
 #include <android/binder_ibinder.h>
+#include <android/looper.h>
 
 namespace aap {
 
@@ -22,6 +23,8 @@ void set_application_context(JNIEnv *env, jobject applicationContext);
  * @param env
  */
 void unset_application_context(JNIEnv *env);
+
+ALooper* get_non_rt_event_looper();
 
 void start_non_rt_event_looper();
 
