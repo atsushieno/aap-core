@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <android/looper.h>
+#include <aap/unstable/logging.h>
 
 namespace aap {
 
@@ -39,6 +40,8 @@ namespace aap {
             // Write a byte to the write end of the pipe to wake up the looper
             uint64_t value = 1;
             write(pipe_fds[1], &value, sizeof(value));
+
+            ALooper_wake(looper);
         }
 
         static int handleMessage(int fd, int events, void* data) {

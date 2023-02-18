@@ -81,7 +81,10 @@ open class AudioPluginService : Service()
             eventProcessorLooper = Looper.myLooper()
             AudioPluginNatives.startNativeLooper()
             Looper.loop()
-        }.start()
+        }.apply {
+            this.contextClassLoader = contextClassLoader
+            this.start()
+        }
 
         return nativeBinder
     }

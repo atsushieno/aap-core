@@ -369,33 +369,36 @@ namespace aap {
         });
     }
 
+    int32_t gui_instance_id_serial;
+    int32_t getGuiInstanceSerial() { return gui_instance_id_serial++; }
+
     class CreateGuiMessage : public ALooperMessage {
-        std::string plugin_id;
-        int32_t instance_id;
-        jobject result{nullptr};
+        GuiInstance* gui_instance;
+        std::function<void()>& callback;
 
     protected:
         void handleMessage() override {
             usingContext<int>([&](JNIEnv* env, jclass cls, jobject context) {
-                auto pluginIdJString = env->NewStringUTF(plugin_id.c_str());
+                auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 auto ret = env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
-                                                       instance_id);
-                result = env->NewGlobalRef(ret);
+                                                       gui_instance->instanceId);
+                gui_instance->view = env->NewGlobalRef(ret);
+                callback();
                 return 0;
             });
         }
 
     public:
-        CreateGuiMessage(ALooper* looper, std::string& pluginId, int32_t instanceId)
-                : ALooperMessage(looper), plugin_id(pluginId), instance_id(instanceId) {}
-
-        inline void* getResult() { return result; }
+        CreateGuiMessage(ALooper* looper, GuiInstance* guiInstance, std::function<void()>& callback)
+                : ALooperMessage(looper),
+                gui_instance(guiInstance),
+                callback(callback) {
+        }
     };
 
-    void* AAPJniFacade::createGuiViaJni(std::string& pluginId, int32_t instanceId) {
-        CreateGuiMessage msg(aap::get_non_rt_event_looper(), pluginId, instanceId);
+    void AAPJniFacade::createGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
+        CreateGuiMessage msg(aap::get_non_rt_event_looper(), guiInstance, callback);
         msg.post();
-        return msg.getResult();
     }
 
 #define GUI_OPCODE_SHOW 1
@@ -403,40 +406,42 @@ namespace aap {
 #define GUI_OPCODE_DESTROY 4
     class GuiWithViewMessage : public ALooperMessage {
         int32_t opcode;
-        std::string plugin_id;
-        int32_t instance_id;
+        GuiInstance* gui_instance;
+        std::function<void()>& callback;
         void* view;
 
     protected:
         void handleMessage() override {
             usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
-                auto pluginIdJString = env->NewStringUTF(plugin_id.c_str());
+                assert(view); // it must be assigned at create() state.
+                auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 env->CallStaticVoidMethod(cls,
                                           opcode == GUI_OPCODE_SHOW ? j_method_show_gui :
                                           opcode == GUI_OPCODE_HIDE ? j_method_hide_gui :
                                           j_method_destroy_gui,
-                                          context, pluginIdJString, instance_id, (jobject) view);
+                                          context, pluginIdJString, gui_instance->instanceId, (jobject) view);
+                callback();
                 return 0;
             });
         }
 
     public:
-        GuiWithViewMessage(ALooper* looper, int32_t opcode, std::string& pluginId, int32_t instanceId, void* view)
-                : ALooperMessage(looper), opcode(opcode), plugin_id(pluginId), instance_id(instanceId), view(view) {}
+        GuiWithViewMessage(ALooper* looper, int32_t opcode, GuiInstance* guiInstance, std::function<void()>& callback, void* view)
+                : ALooperMessage(looper), opcode(opcode), gui_instance(guiInstance), callback(callback), view(view) {}
     };
 
-    void AAPJniFacade::showGuiViaJni(std::string& pluginId, int32_t instanceId, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_SHOW, pluginId, instanceId, view);
+    void AAPJniFacade::showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
+        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_SHOW, guiInstance, callback, view);
         msg.post();
     }
 
-    void AAPJniFacade::hideGuiViaJni(std::string& pluginId, int32_t instanceId, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_HIDE, pluginId, instanceId, view);
+    void AAPJniFacade::hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
+        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_HIDE, guiInstance, callback, view);
         msg.post();
     }
 
-    void AAPJniFacade::destroyGuiViaJni(std::string& pluginId, int32_t instanceId, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_DESTROY, pluginId, instanceId, view);
+    void AAPJniFacade::destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
+        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_DESTROY, guiInstance, callback, view);
         msg.post();
     }
 // --------------------------------------------------

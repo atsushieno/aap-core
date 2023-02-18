@@ -4,14 +4,6 @@
 
 namespace aap {
 
-    class GuiInstance {
-    public:
-        void* view;
-        std::string pluginId;
-        int32_t instanceId;
-        int32_t guiInstanceId;
-    };
-
 void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
                int32_t opcode)  {
 #if ANDROID
@@ -29,44 +21,44 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             // instantiation step. The factory might then continue to View instantiation, or
             // invokes native `create()` extension function to let native code create View
             // and set as content to `AudioPluginView`.
+
             std::string pluginIdString{pluginId};
-            void* view = AAPJniFacade::getInstance()->createGuiViaJni(pluginIdString, instanceId);
 
             auto gi = new GuiInstance();
+            gi->externalGuiInstanceId = getGuiInstanceSerial();
             gi->pluginId = pluginId;
             gi->instanceId = instanceId;
-            gi->view = view;
             extensionInstance->local_data = gi;
-
-            withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                     AndroidAudioPluginExtensionTarget target) {
-                // This nullptr must be actually a jobject of AudioPluginView.
-                gi->guiInstanceId = ext->create(target, pluginId, instanceId, view);
-                *(int32_t *) extensionInstance->data = gi->guiInstanceId;
+            *(int32_t *) extensionInstance->data = gi->externalGuiInstanceId;
+            // It is asynchronously dispatched to non-RT loop.
+            AAPJniFacade::getInstance()->createGuiViaJni(gi, [&]() {
+                withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
+                                                         AndroidAudioPluginExtensionTarget target) {
+                    gi->internalGuiInstanceId = ext->create(target, pluginId, instanceId, gi->view);
+                });
             });
         }
             break;
         case OPCODE_SHOW:
         case OPCODE_HIDE:
         case OPCODE_DESTROY: {
-            withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
+            withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                      AndroidAudioPluginExtensionTarget target) {
                 auto guiInstanceId = *(int32_t *) extensionInstance->data;
                 auto gi = (GuiInstance*) extensionInstance->local_data;
-                assert(gi->view); // it must be assigned at create() state.
 
                 switch (opcode) {
                     case OPCODE_SHOW:
-                        AAPJniFacade::getInstance()->showGuiViaJni(gi->pluginId, gi->instanceId, gi->view);
-                        //ext->show(target, guiInstanceId);
+                        AAPJniFacade::getInstance()->showGuiViaJni(gi, [&]() { ext->show(target, guiInstanceId); }, gi->view);
                         break;
                     case OPCODE_HIDE:
-                        AAPJniFacade::getInstance()->hideGuiViaJni(gi->pluginId, gi->instanceId, gi->view);
-                        //ext->hide(target, guiInstanceId);
+                        AAPJniFacade::getInstance()->hideGuiViaJni(gi, [&]() { ext->hide(target, guiInstanceId); }, gi->view);
                         break;
                     case OPCODE_DESTROY:
-                        ext->destroy(target, guiInstanceId);
-                        delete gi;
+                        AAPJniFacade::getInstance()->destroyGuiViaJni(gi, [&]() {
+                            ext->destroy(target, guiInstanceId);
+                            delete gi;
+                        }, gi->view);
                         break;
                 }
             });

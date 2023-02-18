@@ -7,6 +7,18 @@
 
 namespace aap {
 
+    int getGuiInstanceSerial();
+
+    class GuiInstance {
+    public:
+
+        void* view;
+        std::string pluginId;
+        int32_t instanceId;
+        int32_t externalGuiInstanceId;
+        int32_t internalGuiInstanceId;
+    };
+
     class AAPJniFacade {
 
         jclass getAudioPluginMidiSettingsClass();
@@ -37,10 +49,14 @@ namespace aap {
 
         void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags);
 
-        void *createGuiViaJni(std::string& pluginId, int32_t instanceId);
-        void showGuiViaJni(std::string& pluginId, int32_t instanceId, void* view);
-        void hideGuiViaJni(std::string& pluginId, int32_t instanceId, void* view);
-        void destroyGuiViaJni(std::string& pluginId, int32_t instanceId, void* view);
+        void createGuiViaJni(GuiInstance* guiInstance,
+                             std::function<void()> callback);
+        void showGuiViaJni(GuiInstance* guiInstance,
+                           std::function<void()> callback, void* view);
+        void hideGuiViaJni(GuiInstance* guiInstance,
+                           std::function<void()> callback, void* view);
+        void destroyGuiViaJni(GuiInstance* guiInstance,
+                              std::function<void()> callback, void* view);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 
