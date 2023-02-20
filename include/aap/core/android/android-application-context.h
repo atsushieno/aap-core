@@ -24,7 +24,8 @@ void set_application_context(JNIEnv *env, jobject applicationContext);
  */
 void unset_application_context(JNIEnv *env);
 
-ALooper* get_non_rt_event_looper();
+class NonRealtimeLoopRunner;
+NonRealtimeLoopRunner* get_non_rt_loop_runner();
 
 void prepare_non_rt_event_looper();
 

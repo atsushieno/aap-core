@@ -377,7 +377,7 @@ namespace aap {
         std::function<void()> callback;
 
     protected:
-        void handleMessage() override {
+        void handleMessage() {
             usingContext<int>([&](JNIEnv* env, jclass cls, jobject context) {
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 auto ret = env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
@@ -389,17 +389,19 @@ namespace aap {
         }
 
     public:
-        CreateGuiMessage(ALooper* looper, GuiInstance* guiInstance, std::function<void()>& callback)
-                : ALooperMessage(looper),
-                gui_instance(guiInstance),
-                callback(callback) {
+        void set(GuiInstance* guiInstance, std::function<void()>& callbackFunc) {
+            ALooperMessage::handleMessage = [&]() { handleMessage(); };
+            gui_instance = guiInstance;
+            callback = callbackFunc;
         }
     };
 
     void AAPJniFacade::createGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
-        // FIXME: we should not allocate an object here because it is part of binder loop (which is supposed to be RT ready for the future!)
-        auto msg = new CreateGuiMessage(aap::get_non_rt_event_looper(), guiInstance, callback);
-        msg->post();
+        NonRealtimeLoopRunner *runner = aap::get_non_rt_loop_runner();
+        CreateGuiMessage* msg;
+        runner->create<CreateGuiMessage>((void**) &msg);
+        msg->set(guiInstance, callback);
+        runner->postMessage(msg);
     }
 
 #define GUI_OPCODE_SHOW 1
@@ -411,7 +413,7 @@ namespace aap {
         std::function<void()> callback;
 
     protected:
-        void handleMessage() override {
+        void handleMessage() {
             usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
                 assert(gui_instance->view); // it must be assigned at create() state.
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
@@ -426,26 +428,32 @@ namespace aap {
         }
 
     public:
-        GuiWithViewMessage(ALooper* looper, int32_t opcode, GuiInstance* guiInstance, std::function<void()> callback)
-                : ALooperMessage(looper), opcode(opcode), gui_instance(guiInstance), callback(callback) {}
+        void set(int32_t opCode, GuiInstance* guiInstance, std::function<void()> callbackFunc) {
+            ALooperMessage::handleMessage = [&]() { handleMessage(); };
+            opcode = opCode;
+            gui_instance = guiInstance;
+            callback = callbackFunc;
+        }
     };
 
+    void processGuiWithViewMessage(int32_t opcode, GuiInstance* guiInstance, std::function<void()> callback) {
+        NonRealtimeLoopRunner *runner = aap::get_non_rt_loop_runner();
+        GuiWithViewMessage* msg;
+        runner->create<GuiWithViewMessage>((void**) &msg);
+        msg->set(opcode, guiInstance, callback);
+        runner->postMessage(msg);
+    }
+
     void AAPJniFacade::showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
-        // FIXME: we should not allocate an object here because it is part of binder loop (which is supposed to be RT ready for the future!)
-        auto msg = new GuiWithViewMessage(aap::get_non_rt_event_looper(), GUI_OPCODE_SHOW, guiInstance, callback);
-        msg->post();
+        processGuiWithViewMessage(GUI_OPCODE_SHOW, guiInstance, callback);
     }
 
     void AAPJniFacade::hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
-        // FIXME: we should not allocate an object here because it is part of binder loop (which is supposed to be RT ready for the future!)
-        auto msg = new GuiWithViewMessage(aap::get_non_rt_event_looper(), GUI_OPCODE_HIDE, guiInstance, callback);
-        msg->post();
+        processGuiWithViewMessage(GUI_OPCODE_HIDE, guiInstance, callback);
     }
 
     void AAPJniFacade::destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
-        // FIXME: we should not allocate an object here because it is part of binder loop (which is supposed to be RT ready for the future!)
-        auto msg = new GuiWithViewMessage(aap::get_non_rt_event_looper(), GUI_OPCODE_DESTROY, guiInstance, callback);
-        msg->post();
+        processGuiWithViewMessage(GUI_OPCODE_DESTROY, guiInstance, callback);
     }
 // --------------------------------------------------
 

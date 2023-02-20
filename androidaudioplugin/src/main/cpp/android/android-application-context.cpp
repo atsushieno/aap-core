@@ -1,4 +1,5 @@
 #include "aap/core/android/android-application-context.h"
+#include "ALooperMessage.h"
 #include <aap/unstable/logging.h>
 
 namespace aap {
@@ -6,7 +7,10 @@ namespace aap {
 // Android-specific API. Not sure if we would like to keep it in the host API - it is for plugins.
 JavaVM *android_vm{nullptr};
 jobject application_context{nullptr};
-ALooper* non_rt_event_looper{nullptr};
+// It is globally allocated, assuming that there is only one AudioPluginService object within an app.
+// and thus it is the only loop runner within an app.
+// We will have to change this assumption if there could be more than one service in an app...
+std::unique_ptr<NonRealtimeLoopRunner> non_rt_loop_runner{nullptr};
 
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 	android_vm = vm;
@@ -30,12 +34,14 @@ JavaVM *get_android_jvm() { return android_vm; }
 
 jobject get_android_application_context() { return application_context; }
 
-ALooper* get_non_rt_event_looper() { return non_rt_event_looper; }
+NonRealtimeLoopRunner* get_non_rt_loop_runner() { return non_rt_loop_runner.get(); }
 
 #include <pthread.h>
 void prepare_non_rt_event_looper() {
-	non_rt_event_looper = ALooper_prepare(0);
-	ALooper_acquire(non_rt_event_looper);
+	auto looper = ALooper_prepare(0);
+	ALooper_acquire(looper);
+	// probably we need this constant adjustable...
+	non_rt_loop_runner = std::make_unique<NonRealtimeLoopRunner>(looper, 65536);
 }
 
 void start_non_rt_event_looper() {
@@ -47,8 +53,9 @@ void start_non_rt_event_looper() {
 }
 
 void stop_non_rt_event_looper() {
-	ALooper_release(non_rt_event_looper);
-    non_rt_event_looper = nullptr;
+    auto looper = (ALooper*) non_rt_loop_runner->getLooper();
+	non_rt_loop_runner.reset(nullptr);
+	ALooper_release(looper);
 }
 
 AAssetManager *get_android_asset_manager(JNIEnv* env) {
