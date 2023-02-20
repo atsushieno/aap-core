@@ -12,7 +12,7 @@ namespace aap {
     class GuiInstance {
     public:
 
-        void* view;
+        volatile void* view;
         std::string pluginId;
         int32_t instanceId;
         int32_t externalGuiInstanceId;
@@ -51,12 +51,9 @@ namespace aap {
 
         void createGuiViaJni(GuiInstance* guiInstance,
                              std::function<void()> callback);
-        void showGuiViaJni(GuiInstance* guiInstance,
-                           std::function<void()> callback, void* view);
-        void hideGuiViaJni(GuiInstance* guiInstance,
-                           std::function<void()> callback, void* view);
-        void destroyGuiViaJni(GuiInstance* guiInstance,
-                              std::function<void()> callback, void* view);
+        void showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
+        void hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
+        void destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 

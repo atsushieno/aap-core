@@ -3,7 +3,6 @@ package org.androidaudioplugin
 import android.content.Context
 import android.os.IBinder
 import android.os.SharedMemory
-import org.androidaudioplugin.hosting.AudioPluginServiceConnector
 
 internal class AudioPluginNatives
 {
@@ -20,6 +19,9 @@ internal class AudioPluginNatives
 
         @JvmStatic
         external fun destroyBinderForService(binder: IBinder)
+
+        @JvmStatic
+        external fun prepareNativeLooper()
 
         @JvmStatic
         external fun startNativeLooper()

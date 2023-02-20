@@ -56,6 +56,12 @@ Java_org_androidaudioplugin_AudioPluginNatives_destroyBinderForService(JNIEnv *e
 
 extern "C"
 JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_AudioPluginNatives_prepareNativeLooper(JNIEnv *env, jclass clazz) {
+	aap::prepare_non_rt_event_looper();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_startNativeLooper(JNIEnv *env, jclass clazz) {
 	aap::start_non_rt_event_looper();
 }

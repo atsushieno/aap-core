@@ -25,7 +25,7 @@ set (androidaudioplugin_SOURCES
 	"android/AudioPluginNatives_jni.cpp"
 	"android/audio-plugin-host-android-internal.cpp"
 	"android/AAPJniFacade.cpp"
-	"android/ALooperHelper.cpp"
+	"android/ALooperMessage.cpp"
 	)
 else (ANDROID)
 set (androidaudioplugin_SOURCES

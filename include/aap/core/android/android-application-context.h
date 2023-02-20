@@ -26,7 +26,9 @@ void unset_application_context(JNIEnv *env);
 
 ALooper* get_non_rt_event_looper();
 
-void start_non_rt_event_looper();
+void prepare_non_rt_event_looper();
+
+[[noreturn]] void start_non_rt_event_looper();
 
 void stop_non_rt_event_looper();
 

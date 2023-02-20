@@ -1,7 +1,7 @@
 #include <cassert>
 #include "aap/core/android/android-application-context.h"
 #include "../core/AAPJniFacade.h"
-#include "ALooperHelper.h"
+#include "ALooperMessage.h"
 #include "aap/core/host/audio-plugin-host.h"
 
 namespace aap {
@@ -374,7 +374,7 @@ namespace aap {
 
     class CreateGuiMessage : public ALooperMessage {
         GuiInstance* gui_instance;
-        std::function<void()>& callback;
+        std::function<void()> callback;
 
     protected:
         void handleMessage() override {
@@ -397,8 +397,8 @@ namespace aap {
     };
 
     void AAPJniFacade::createGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
-        CreateGuiMessage msg(aap::get_non_rt_event_looper(), guiInstance, callback);
-        msg.post();
+        auto msg = std::make_unique<CreateGuiMessage>(aap::get_non_rt_event_looper(), guiInstance, callback);
+        ALooperMessage::post(std::move(msg));
     }
 
 #define GUI_OPCODE_SHOW 1
@@ -407,42 +407,41 @@ namespace aap {
     class GuiWithViewMessage : public ALooperMessage {
         int32_t opcode;
         GuiInstance* gui_instance;
-        std::function<void()>& callback;
-        void* view;
+        std::function<void()> callback;
 
     protected:
         void handleMessage() override {
             usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
-                assert(view); // it must be assigned at create() state.
+                assert(gui_instance->view); // it must be assigned at create() state.
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 env->CallStaticVoidMethod(cls,
                                           opcode == GUI_OPCODE_SHOW ? j_method_show_gui :
                                           opcode == GUI_OPCODE_HIDE ? j_method_hide_gui :
                                           j_method_destroy_gui,
-                                          context, pluginIdJString, gui_instance->instanceId, (jobject) view);
+                                          context, pluginIdJString, gui_instance->instanceId, (jobject) gui_instance->view);
                 callback();
                 return 0;
             });
         }
 
     public:
-        GuiWithViewMessage(ALooper* looper, int32_t opcode, GuiInstance* guiInstance, std::function<void()>& callback, void* view)
-                : ALooperMessage(looper), opcode(opcode), gui_instance(guiInstance), callback(callback), view(view) {}
+        GuiWithViewMessage(ALooper* looper, int32_t opcode, GuiInstance* guiInstance, std::function<void()> callback)
+                : ALooperMessage(looper), opcode(opcode), gui_instance(guiInstance), callback(callback) {}
     };
 
-    void AAPJniFacade::showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_SHOW, guiInstance, callback, view);
-        msg.post();
+    void AAPJniFacade::showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
+        auto msg = std::make_unique<GuiWithViewMessage>(aap::get_non_rt_event_looper(), GUI_OPCODE_SHOW, guiInstance, callback);
+        ALooperMessage::post(std::move(msg));
     }
 
-    void AAPJniFacade::hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_HIDE, guiInstance, callback, view);
-        msg.post();
+    void AAPJniFacade::hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
+        auto msg = std::make_unique<GuiWithViewMessage>(aap::get_non_rt_event_looper(), GUI_OPCODE_HIDE, guiInstance, callback);
+        ALooperMessage::post(std::move(msg));
     }
 
-    void AAPJniFacade::destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback, void* view) {
-        GuiWithViewMessage msg(aap::get_non_rt_event_looper(), GUI_OPCODE_DESTROY, guiInstance, callback, view);
-        msg.post();
+    void AAPJniFacade::destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
+        auto msg = std::make_unique<GuiWithViewMessage>(aap::get_non_rt_event_looper(), GUI_OPCODE_DESTROY, guiInstance, callback);
+        ALooperMessage::post(std::move(msg));
     }
 // --------------------------------------------------
 

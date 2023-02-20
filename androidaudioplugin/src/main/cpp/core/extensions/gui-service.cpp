@@ -31,10 +31,15 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             extensionInstance->local_data = gi;
             *(int32_t *) extensionInstance->data = gi->externalGuiInstanceId;
             // It is asynchronously dispatched to non-RT loop.
-            AAPJniFacade::getInstance()->createGuiViaJni(gi, [&]() {
+            AAPJniFacade::getInstance()->createGuiViaJni(gi, [pluginId, instanceId, gi, this, plugin]() {
                 withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                          AndroidAudioPluginExtensionTarget target) {
-                    gi->internalGuiInstanceId = ext->create(target, pluginId, instanceId, gi->view);
+                    if (ext && ext->create) {
+                        volatile void* v = gi->view;
+                        gi->internalGuiInstanceId = ext->create(target, pluginId, instanceId, (void*) v);
+                    }
+                    else
+                        aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "`gui` extension or `create` member does not exist. Skipping `create()`.");
                 });
             });
         }
@@ -42,26 +47,49 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
         case OPCODE_SHOW:
         case OPCODE_HIDE:
         case OPCODE_DESTROY: {
-            withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
-                                                     AndroidAudioPluginExtensionTarget target) {
-                auto guiInstanceId = *(int32_t *) extensionInstance->data;
-                auto gi = (GuiInstance*) extensionInstance->local_data;
+            auto guiInstanceId = *(int32_t *) extensionInstance->data;
+            auto gi = (GuiInstance*) extensionInstance->local_data;
+            assert(gi->externalGuiInstanceId == guiInstanceId);
 
-                switch (opcode) {
-                    case OPCODE_SHOW:
-                        AAPJniFacade::getInstance()->showGuiViaJni(gi, [&]() { ext->show(target, guiInstanceId); }, gi->view);
-                        break;
-                    case OPCODE_HIDE:
-                        AAPJniFacade::getInstance()->hideGuiViaJni(gi, [&]() { ext->hide(target, guiInstanceId); }, gi->view);
-                        break;
-                    case OPCODE_DESTROY:
-                        AAPJniFacade::getInstance()->destroyGuiViaJni(gi, [&]() {
-                            ext->destroy(target, guiInstanceId);
+            switch (opcode) {
+                case OPCODE_SHOW:
+                    AAPJniFacade::getInstance()->showGuiViaJni(gi, [gi, plugin, this]() {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
+                                                                 AndroidAudioPluginExtensionTarget target) {
+                            if (ext && ext->show)
+                                ext->show(target, gi->internalGuiInstanceId);
+                            else
+                                aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
+                                             "`gui` extension or `show` member does not exist. Skipping `show()`.");
+                        });
+                    });
+                    break;
+                case OPCODE_HIDE:
+                    AAPJniFacade::getInstance()->hideGuiViaJni(gi, [gi, plugin, this]() {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
+                                                                 AndroidAudioPluginExtensionTarget target) {
+                            if (ext && ext->hide)
+                                ext->hide(target, gi->internalGuiInstanceId);
+                            else
+                                aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
+                                             "`gui` extension or `hide` member does not exist. Skipping `hide()`.");
+                        });
+                    });
+                    break;
+                case OPCODE_DESTROY:
+                    AAPJniFacade::getInstance()->destroyGuiViaJni(gi, [gi, plugin, this]() {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
+                                                                 AndroidAudioPluginExtensionTarget target) {
+                            if (ext && ext->destroy)
+                                ext->destroy(target, gi->internalGuiInstanceId);
+                            else
+                                aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
+                                             "`gui` extension or `destroy` member does not exist. Skipping `destroy()`.");
                             delete gi;
-                        }, gi->view);
-                        break;
-                }
-            });
+                        });
+                    });
+                    break;
+            }
         }
             break;
         case OPCODE_RESIZE: {

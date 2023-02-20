@@ -32,11 +32,22 @@ jobject get_android_application_context() { return application_context; }
 
 ALooper* get_non_rt_event_looper() { return non_rt_event_looper; }
 
+#include <pthread.h>
+void prepare_non_rt_event_looper() {
+	non_rt_event_looper = ALooper_prepare(0);
+	ALooper_acquire(non_rt_event_looper);
+}
+
 void start_non_rt_event_looper() {
-    non_rt_event_looper = ALooper_forThread();
+	while(true) {
+		int fd, events;
+		void* data;
+		ALooper_pollOnce(-1, &fd, &events, &data);
+	}
 }
 
 void stop_non_rt_event_looper() {
+	ALooper_release(non_rt_event_looper);
     non_rt_event_looper = nullptr;
 }
 

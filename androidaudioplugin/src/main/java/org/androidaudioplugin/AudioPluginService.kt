@@ -3,10 +3,6 @@ package org.androidaudioplugin
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.util.Log
-import androidx.core.app.NotificationCompat
-import android.app.NotificationManager
-import android.app.NotificationChannel
 import android.content.Context
 import android.os.Looper
 
@@ -77,10 +73,9 @@ open class AudioPluginService : Service()
 
         // no need to worry about the Looper retaining; it will be released at onUnbind()
         Thread {
-            Looper.prepare()
+            AudioPluginNatives.prepareNativeLooper()
             eventProcessorLooper = Looper.myLooper()
             AudioPluginNatives.startNativeLooper()
-            Looper.loop()
         }.apply {
             this.contextClassLoader = contextClassLoader
             this.start()
