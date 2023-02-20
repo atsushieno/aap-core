@@ -1,9 +1,17 @@
 package org.androidaudioplugin.ui.compose
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -22,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -161,6 +170,16 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                     previewState.hideGui()
             }) { Text(if (showNativeUIState) "Hide Native UI" else "Show Native UI") }
         }
+        Row {
+            val context = LocalContext.current
+            Button(onClick = {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                intent.data = Uri.parse("package:${context.packageName}")
+                if (context is Activity)
+                    context.startActivityForResult(intent, 2)
+            }) { Text("Grant or revoke native UI overlay permission") }
+        }
+
         Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier
             .padding(vertical = 12.dp)
             .clickable {
