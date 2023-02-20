@@ -42,7 +42,7 @@ open class PluginListActivity : ComponentActivity() {
             PluginListApp(viewModel)
 
             if (!Settings.canDrawOverlays(this)) {
-                val info = packageManager.getPackageInfo(this.packageName, 0)
+                val info = packageManager.getPackageInfo(this.packageName, PackageManager.GET_PERMISSIONS)
                 if (info.requestedPermissions != null && info.requestedPermissions.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
                     val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
                     intent.data = Uri.parse("package:$packageName")
