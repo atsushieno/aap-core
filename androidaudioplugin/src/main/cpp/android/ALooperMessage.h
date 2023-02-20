@@ -17,27 +17,22 @@ namespace aap {
     class ALooperMessage {
         ALooper* looper;
         int pipe_fds[2];
-        static std::unique_ptr<ALooperMessage> dequeue();
-
-        void post() {
-            assert(ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, ALooperMessage::handleMessage, this));
-
-            // Write a byte to the write end of the pipe to wake up the looper
-            uint64_t value = 1;
-            write(pipe_fds[1], &value, sizeof(value));
-
-            //ALooper_wake(looper);
-        }
 
     protected:
         virtual void handleMessage() = 0;
 
     public:
-        static void post(std::unique_ptr<ALooperMessage> msg);
+        void post() {
+            // Write a byte to the write end of the pipe to wake up the looper
+            uint64_t value = 1;
+            write(pipe_fds[1], &value, sizeof(value));
+        }
 
         ALooperMessage(ALooper* looper) : looper(looper) {
             // Create the message pipe
             assert(pipe(pipe_fds) == 0);
+
+            assert(ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, ALooperMessage::handleMessage, this));
         }
 
         virtual ~ALooperMessage() {
@@ -53,9 +48,10 @@ namespace aap {
             read(fd, &value, sizeof(value));
 
             // Call the message handler function
-            auto message = dequeue();
+            auto message = (ALooperMessage*) data;
             message->handleMessage();
 
+            delete message;
             return 1; // loop continues
         }
     };
