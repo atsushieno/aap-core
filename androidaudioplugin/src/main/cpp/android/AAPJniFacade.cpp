@@ -382,6 +382,13 @@ namespace aap {
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 auto ret = env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
                                                        gui_instance->instanceId);
+                auto ex = env->ExceptionOccurred();
+                if (ex) {
+                    env->ExceptionDescribe();
+                    gui_instance->lastError = "AudioPluginServiceHelper.createGui() failed. Check the Android log for details.";
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", gui_instance->lastError.c_str());
+                    env->ExceptionClear();
+                }
                 gui_instance->view = env->NewGlobalRef(ret);
                 callback();
                 return 0;
@@ -415,13 +422,29 @@ namespace aap {
     protected:
         void handleMessage() {
             usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
-                assert(gui_instance->view); // it must be assigned at create() state.
+                if (!gui_instance->view) {
+                    // it must be assigned at create() state.
+                    gui_instance->lastError = "createGui() was either not invoked or not successful. No further operation is performed.";
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", gui_instance->lastError.c_str());
+                    callback();
+                    return 0;
+                }
+
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 env->CallStaticVoidMethod(cls,
                                           opcode == GUI_OPCODE_SHOW ? j_method_show_gui :
                                           opcode == GUI_OPCODE_HIDE ? j_method_hide_gui :
                                           j_method_destroy_gui,
                                           context, pluginIdJString, gui_instance->instanceId, (jobject) gui_instance->view);
+                auto ex = env->ExceptionOccurred();
+                if (ex) {
+                    env->ExceptionDescribe();
+                    gui_instance->lastError = std::string{"AudioPluginServiceHelper."}
+                        + (opcode == GUI_OPCODE_SHOW ? "showGui()" : opcode == GUI_OPCODE_HIDE ? "hideGui()" : "destroyGui()")
+                        + "failed. Check the Android log for details.";
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", gui_instance->lastError.c_str());
+                    env->ExceptionClear();
+                }
                 callback();
                 return 0;
             });

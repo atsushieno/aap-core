@@ -32,6 +32,8 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             *(int32_t *) extensionInstance->data = gi->externalGuiInstanceId;
             // It is asynchronously dispatched to non-RT loop.
             AAPJniFacade::getInstance()->createGuiViaJni(gi, [pluginId, instanceId, gi, this, plugin]() {
+                if (!gi->lastError.empty())
+                    return;
                 withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                          AndroidAudioPluginExtensionTarget target) {
                     if (ext && ext->create) {
@@ -49,11 +51,18 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
         case OPCODE_DESTROY: {
             auto guiInstanceId = *(int32_t *) extensionInstance->data;
             auto gi = (GuiInstance*) extensionInstance->local_data;
-            assert(gi->externalGuiInstanceId == guiInstanceId);
+            if (gi->externalGuiInstanceId != guiInstanceId) {
+                gi->lastError.clear();
+                gi->lastError = std::string{"Invalid operation: GUI state mismatch. Expected "}
+                    + std::to_string(gi->externalGuiInstanceId) + " but got " + std::to_string(guiInstanceId) + ".";
+                break;
+            }
 
             switch (opcode) {
                 case OPCODE_SHOW:
                     AAPJniFacade::getInstance()->showGuiViaJni(gi, [gi, plugin, this]() {
+                        if (!gi->lastError.empty())
+                            return;
                         withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                                  AndroidAudioPluginExtensionTarget target) {
                             if (ext && ext->show)
@@ -66,6 +75,8 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
                     break;
                 case OPCODE_HIDE:
                     AAPJniFacade::getInstance()->hideGuiViaJni(gi, [gi, plugin, this]() {
+                        if (!gi->lastError.empty())
+                            return;
                         withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                                  AndroidAudioPluginExtensionTarget target) {
                             if (ext && ext->hide)
@@ -78,6 +89,8 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
                     break;
                 case OPCODE_DESTROY:
                     AAPJniFacade::getInstance()->destroyGuiViaJni(gi, [gi, plugin, this]() {
+                        if (!gi->lastError.empty())
+                            return;
                         withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
                                                                  AndroidAudioPluginExtensionTarget target) {
                             if (ext && ext->destroy)

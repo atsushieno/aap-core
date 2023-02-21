@@ -134,4 +134,11 @@ As of Feb. 2022 `gui-service.cpp` implements the service AAPXS (`GuiPluginServic
 (By using `ALooper` especially `ALooper_addFd()` means, the posting and handling part still involves `write()` and `read()` which are system calls. Probably we will have to find some alternative solution if we are really serious about RT. IIRC stagefright also makes use of it so maybe this concern is kind of technical...)
 
 
+## aapinstrumentsample example
 
+There are some proof-of-concept example use of the GUI extension API, implemented in aapinstrumentsample. In particular:
+
+- in its `build.gradle.kts`, its `dependencies { ... }` adds `implementation project(":androidaudioplugin-ui-web")` which automatically adds a `<provider>` element for the Web UI archive. Therefore it support basic Web UI.
+- in its `aap_metadata.xml` -
+  - it adds `<extension>` element for the GUI extension
+  - its `<plugin>` element comes with `ui-view-factory` attribute, which indicates `androidaudioplugin.ui.web.AudioPluginWebViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to reuse the WebView foundation as the in-plugin-process UI.

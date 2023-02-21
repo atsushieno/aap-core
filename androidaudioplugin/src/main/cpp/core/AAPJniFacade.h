@@ -17,6 +17,7 @@ namespace aap {
         int32_t instanceId;
         int32_t externalGuiInstanceId;
         int32_t internalGuiInstanceId;
+        std::string lastError{""};
     };
 
     class AAPJniFacade {
