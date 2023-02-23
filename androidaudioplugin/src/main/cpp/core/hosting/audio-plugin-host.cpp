@@ -571,16 +571,6 @@ void LocalPluginInstance::on_parameters_changed(AndroidAudioPluginHost *host,
 
 //----
 
-AndroidAudioPlugin* RemotePluginInstanceStandardExtensionsImpl::getPlugin() { return owner->getPlugin(); }
-
-AAPXSClientInstanceManager* RemotePluginInstanceStandardExtensionsImpl::getAAPXSManager() {
-	return owner->getAAPXSManager();
-}
-
-AndroidAudioPlugin* LocalPluginInstanceStandardExtensionsImpl::getPlugin() { return owner->getPlugin(); }
-
-//----
-
 AAPXSClientInstance* RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
 	const char* uri = aapxsClientInstances.addOrGetUri(feature->uri);
 	assert (aapxsClientInstances.get(uri) == nullptr);
