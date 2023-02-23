@@ -23,6 +23,8 @@ webaudio-knob { padding: 5px; }
   var noteVelocity = 100;
 
   function initialize() {
+    AAPInterop.onInitialize();
+
     for (el of document.getElementsByTagName('webaudio-knob')) {
       el.addEventListener('input', function(e) {
         sendInput(e.target.getAttribute('id_'), e.target.value);
@@ -64,6 +66,7 @@ webaudio-knob { padding: 5px; }
   }
 
   function terminate() {
+    AAPInterop.onCleanup();
   }
 
   function sendNote(state, note) {

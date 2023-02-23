@@ -1,12 +1,28 @@
 package org.androidaudioplugin.ui.web
 
+import android.util.Log
 import android.webkit.JavascriptInterface
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 
+/**
+ * `AAPScriptInterface` is the basis for a reference implementation for the Web UI.
+ * A WebView hosting reference implementation (AAPClientScriptInterface) and a WebView
+ * native reference implementation (AAPServiceScriptInterface) make use of it.
+ *
+ * It should store the GUI events into the plugin's event input buffer, which should be -
+ *
+ * - "unified" with the audio plugin's process() event inputs, when the plugin is "activated"
+ * - immediately processed when it is not at "activated" state.
+ *
+ * The AudioPluginInstance is responsible to store those event inputs and deal with above.
+ */
 @Suppress("unused")
 abstract class AAPScriptInterface {
+
+    private val AAP_LOG_TAG = "AAPScriptInterface"
+
     @JavascriptInterface
     fun log(s: String) {
         println(s)
@@ -14,22 +30,12 @@ abstract class AAPScriptInterface {
 
     @JavascriptInterface
     fun onInitialize() {
-        println("!!!!!!!!!!!!!!! onInitialize")
+        Log.i(AAP_LOG_TAG, "onInitialize() invoked.")
     }
 
     @JavascriptInterface
     fun onCleanup() {
-        println("!!!!!!!!!!!!!!! onCleanup")
-    }
-
-    @JavascriptInterface
-    fun onShow() {
-        println("!!!!!!!!!!!!!!! onShow")
-    }
-
-    @JavascriptInterface
-    fun onHide() {
-        println("!!!!!!!!!!!!!!! onHide")
+        Log.i(AAP_LOG_TAG, "onCleanup() invoked.")
     }
 
     @JavascriptInterface
@@ -42,22 +48,15 @@ abstract class AAPScriptInterface {
     }
 
     @JavascriptInterface
-    fun writeMidi(data: ByteArray) {
-        println("!!!!!!!!!!!!!!! writeMidi(${data[0]}, ${data[1]}, ${data[2]})")
-    }
+    abstract fun sendMidi1(data: ByteArray, offset: Int, length: Int)
 
     @JavascriptInterface
-    fun setParameter(parameterId: Int, value: Double) {
-        println("!!!!!!!!!!!!!!! setParameter($parameterId, $value)")
-    }
+    abstract fun setParameter(parameterId: Int, value: Double)
 
     private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
 
     @JavascriptInterface
-    fun write(port: Int, data: ByteArray, offset: Int, length: Int) {
-        val buf = ByteBuffer.wrap(data, offset, length).asFloatBuffer().get(offset)
-        println("!!!!!!!!!!!!!!! write($port, ($buf), $offset, $length)")
-    }
+    abstract fun getPortBuffer(port: Int, data: ByteArray, length: Int)
 
     @get:JavascriptInterface
     abstract val portCount: Int

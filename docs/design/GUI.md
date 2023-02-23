@@ -51,14 +51,18 @@ Since it is communication between the host and the plugin, the API will have to 
 
 - Logging
   - `log(s: String)` : dispatches the log string to Web UI host.
-- <del>View controllers</del> They need revamps. Probably there should be some client object that holds functions to call from those `AAPInterop` members.
-  - `initialize()` : host calls it to indicate the Web UI to initialize
-  - `cleanup()` : host calls it to indicate the Web UI to cleanup
-  - `onShow()` : host calls it to indicate the Web UI to switch to "shown" state. It does not have to do anything. It also is allowed to stay at "shown" state when `initialize()` was invoked. The wrapping WebView would not be visible anyways.
-  - `onHide()` : host calls it to indicate the Web UI to switch to "hidden" state. It does not have to actually hide anything, as the wrapping WebView is supposed to be invisible anyways.
+- View controllers
+  - `onInitialize()` : the Web UI page JavaScript should invoke it when the Web page is loaded and the actual script *is about to begin* (e.g. at the head of `onload` event).
+    - It is up to the host implementation what it will do.
+    - The host might not respond to any further interop object invocation until this function is invoked (therefore it should be invoked *before* any other AAPInterop function calls).
+    - AAP WebView reference implementation only logs the call.
+  - `onCleanup()` : the Web UI page JavaScript should invoke it when the Web page is unloaded (e.g. at the bottom of `onunload` event).
+    - The host might not handle any interop processes that are expected at cleanup (e.g. saving plugin state).
+    - The host might not respond to any further interop object invocation after this function is invoked.
+    - AAP WebView reference implementation only logs the call.
 - DSP controllers
-  - `writeMidi(data: ByteArray)` : tells the Web UI host to write the MIDI message to the plugin instance
-  - `setParameter(parameterId: Int, value: Double)` : tells the Web UI host to set parameter value
+  - `sendMidi1(data: ByteArray)` : tells the Web UI host to "send" the MIDI message to the plugin instance. It should be translated to a UMP message for parameter change and enqueued to the event buffer for the next audio process. 
+  - `setParameter(parameterId: Int, value: Double)` : tells the Web UI host to "set" a parameter value. It should be translated to a UMP message for parameter change and enqueued to the event buffer for the next audio process.
   - `write(port: Int, data: ByteArray, offset: Int, length: Int)` : tells the Web UI host to write the buffer content to port
 - Plugin information retrieval
   - `getPortCount()` : returns the number of port count
@@ -82,6 +86,10 @@ Since it is communication between the host and the plugin, the API will have to 
 - `getMinValue(): Float` : returns the minimum value
 - `getMaxValue(): Float` : returns the maximum value
 - `getDefaultValue(): Float` : returns the default value
+
+### WebUIHostHelper implementation details
+
+`WebUIHostHelper.getWebView()` is a reference implementation for Web UI hosting. It takes `AudioPluginInstance` as its constructor, and it receives those event inputs from `AAPClientScriptInterface` and delegates them to `aap::RemotePluginInstance` (via `NativeRemotePluginInstance`), so that the actual inputs unification before the plugin's `process()` could be achieved at native level. A hosting application that instantiates `aap::RemotePluginInstance` is responsible to provide the plugin buffers to the UI (audio outputs, MIDI2 UMP outputs, and MIDI2 *inputs* to reflect the latest status).
 
 ## In-plugin-process View
 
@@ -131,7 +139,7 @@ In native code there is `NonRealtimeLoopRunner` class that manages message dispa
 
 As of Feb. 2022 `gui-service.cpp` implements the service AAPXS (`GuiPluginServiceExtension`). Its `onInvoked()` dispatches those requests to each JNI mediator `AAPJniFacade` to call into Dalvik VM, such as `AAPJniFacade.createGuiViaJni()` or `AAPJniFacade.showGuiViaJni()`.  Each operation is represented as a  derived class from `ALooperMessage`. They can be "created" via `NonRealtimeLoopRunner.create()` which avoids allocation in *potentially* realtime binder thread. The pre-allocated buffer works like LV2 `Atom_Forge`. The messages are then `post()`-ed to the `NonRealtimeLoopRunner`, and its non-RT processing thread picks up the posted message.
 
-(By using `ALooper` especially `ALooper_addFd()` means, the posting and handling part still involves `write()` and `read()` which are system calls. Probably we will have to find some alternative solution if we are really serious about RT. IIRC stagefright also makes use of it so maybe this concern is kind of technical...)
+(By using `ALooper` especially `ALooper_addFd()` means, the posting and handling part still involves `write()` and `read()` which are system calls. It may sounds problematic as those functions are regarded as non-RT safe, but `write()` on pipes are atomic if it is small enough below `PIPE_BUF` size. IIRC stagefright also makes use of it so maybe this concern is kind of technical...)
 
 
 ## aapinstrumentsample example

@@ -252,20 +252,20 @@ public:
 	}
 };
 
-class LocalPluginInstanceStandardExtensionsImpl : public LocalPluginInstanceStandardExtensions {
-	LocalPluginInstance *owner;
-
-public:
-	LocalPluginInstanceStandardExtensionsImpl(LocalPluginInstance* owner)
-			: owner(owner) {
-	}
-	AndroidAudioPlugin* getPlugin() override;
-};
-
 /**
  * A plugin instance that could use dlopen() and dlsym(). It can be either client side or host side.
  */
 class LocalPluginInstance : public PluginInstance {
+	class LocalPluginInstanceStandardExtensionsImpl : public LocalPluginInstanceStandardExtensions {
+		LocalPluginInstance *owner;
+
+	public:
+		LocalPluginInstanceStandardExtensionsImpl(LocalPluginInstance* owner)
+				: owner(owner) {
+		}
+		AndroidAudioPlugin* getPlugin() override {  return owner->getPlugin(); }
+	};
+
 	PluginHost *service;
 	AndroidAudioPluginHost plugin_host_facade{};
 	AAPXSInstanceMap<AAPXSServiceInstance> aapxsServiceInstances;
@@ -345,19 +345,19 @@ public:
 	}
 };
 
-class RemotePluginInstanceStandardExtensionsImpl : public RemotePluginInstanceStandardExtensions {
-	RemotePluginInstance *owner;
-
-public:
-	RemotePluginInstanceStandardExtensionsImpl(RemotePluginInstance* owner)
-			: owner(owner) {
-	}
-
-	AndroidAudioPlugin* getPlugin() override;
-	AAPXSClientInstanceManager* getAAPXSManager() override;
-};
-
 class RemotePluginInstance : public PluginInstance {
+	class RemotePluginInstanceStandardExtensionsImpl : public RemotePluginInstanceStandardExtensions {
+		RemotePluginInstance *owner;
+
+	public:
+		RemotePluginInstanceStandardExtensionsImpl(RemotePluginInstance* owner)
+				: owner(owner) {
+		}
+
+		AndroidAudioPlugin* getPlugin() override { return owner->getPlugin(); }
+		AAPXSClientInstanceManager* getAAPXSManager() override { return owner->getAAPXSManager(); }
+	};
+
 	PluginClient *client;
 	AndroidAudioPluginHost plugin_host_facade{};
     RemotePluginInstanceStandardExtensionsImpl standards;

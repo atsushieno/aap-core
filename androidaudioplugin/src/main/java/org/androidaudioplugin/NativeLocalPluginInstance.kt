@@ -1,5 +1,7 @@
 package org.androidaudioplugin
 
+import java.nio.ByteBuffer
+
 class NativeLocalPluginInstance(private val service: NativePluginService, private val instanceId: Int) {
 
     fun getPortCount() = getPortCount(service.native, instanceId)

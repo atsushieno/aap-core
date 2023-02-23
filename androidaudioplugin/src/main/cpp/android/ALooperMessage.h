@@ -48,7 +48,8 @@ namespace aap {
         void* getLooper() { return looper; }
 
         // returns an unsafe pointer within the preallocated buffer space.
-        // Since we cannot guess if the
+        // Since we cannot guess if the object is still in use, it blindly goes back to the head
+        // of the address.
         template<typename T>
         void create(void** ptr) {
             int32_t size = sizeof(T);
