@@ -3,11 +3,11 @@
 #include "aap/android-audio-plugin.h"
 #include "aap/examples/aapxs/test-extension.h"
 
-void test_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer *buffer) {}
+void test_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {}
 
 void test_plugin_activate(AndroidAudioPlugin *plugin) {}
 
-void test_plugin_process(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer *buffer, long timeoutInNanoiseconds) {}
+void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, long timeoutInNanoiseconds) {}
 
 void test_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 

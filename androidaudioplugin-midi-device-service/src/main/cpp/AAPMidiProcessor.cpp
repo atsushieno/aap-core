@@ -169,8 +169,6 @@ namespace aapmidideviceservice {
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 
             data->instance_id = instanceId;
-            instance->allocateAudioPluginBuffer(numPorts, aap_frame_size, midi_buffer_size);
-            data->plugin_buffer = instance->getAudioPluginBuffer();
 
             for (int i = 0; i < numPorts; i++) {
                 auto port = instance->getPort(i);
@@ -187,7 +185,7 @@ namespace aapmidideviceservice {
 
             // FIXME: fill default parameter values (now that we don't have them in ports).
 
-            instance->prepare(aap_frame_size, data->plugin_buffer);
+            instance->prepare(aap_frame_size);
 
             instance_data = std::move(data);
 
@@ -264,13 +262,15 @@ namespace aapmidideviceservice {
             return;
         }
 
-        client->getInstanceById(data->instance_id)->process(data->plugin_buffer, 1000000000);
+        auto instance = client->getInstanceById(data->instance_id);
+        instance->process(1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
+            auto b = instance->getAudioPluginBuffer();
             if (data->midi1_in_port >= 0)
-                ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi1_in_port])->length = 0;
+                ((AAPMidiBufferHeader*) b->get_buffer(*b, data->midi1_in_port))->length = 0;
             if (data->midi2_in_port >= 0)
-                ((AAPMidiBufferHeader*) data->plugin_buffer->buffers[data->midi2_in_port])->length = 0;
+                ((AAPMidiBufferHeader*) b->get_buffer(*b, data->midi2_in_port))->length = 0;
         } else {
             if (failed_plugin_process_count++ < 10)
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiProcessor", "callPluginProcess() is invoked while there is no instrument plugin instantiated.");
@@ -301,9 +301,11 @@ namespace aapmidideviceservice {
 
         if (data->instance_id == instrument_instance_id) {
             int numPorts = data->getAudioOutPorts()->size();
+            auto instance = client->getInstanceById(data->instance_id);
+            auto b = instance->getAudioPluginBuffer();
             for (int p = 0; p < numPorts; p++) {
                 int portIndex = data->getAudioOutPorts()->at(p);
-                auto src = (float*) data->plugin_buffer->buffers[portIndex];
+                auto src = (float*) b->get_buffer(*b, portIndex);
                 // We have to interleave separate port outputs to copy...
                 for (int i = 0; i < aap_frame_size; i++)
                     interleave_buffer[i * numPorts + p] = src[i];
@@ -335,7 +337,9 @@ namespace aapmidideviceservice {
         auto data = instance_data.get();
         assert(data);
         int portIndex = getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2 ? data->midi2_in_port : data->midi1_in_port;
-        return data->plugin_buffer->buffers[portIndex];
+        auto instance = client->getInstanceById(data->instance_id);
+        auto b = instance->getAudioPluginBuffer();
+        return b->get_buffer(*b, portIndex);
     }
 
     size_t AAPMidiProcessor::runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length) {

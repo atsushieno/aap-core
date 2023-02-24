@@ -52,15 +52,12 @@ namespace aapmidideviceservice {
         PluginInstanceData(int instanceId, size_t numPorts) : instance_id(instanceId) {
             auto arr = (void**) calloc(sizeof(void*), numPorts + 1);
             arr[numPorts] = nullptr;
-            buffer_pointers.reset(arr);
         }
         inline std::vector<int32_t>* getAudioOutPorts() { return &audio_out_ports; }
 
         int instance_id;
         int midi1_in_port{-1};
         int midi2_in_port{-1};
-        AndroidAudioPluginBuffer* plugin_buffer;
-        std::unique_ptr<void*> buffer_pointers{nullptr};
     };
 
     class AAPMidiProcessor {

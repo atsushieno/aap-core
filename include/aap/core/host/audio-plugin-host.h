@@ -108,6 +108,11 @@ public:
 class PluginBuffer;
 class PluginSharedMemoryStore;
 
+/**
+ * The common basis for client RemotePluginInstance and service LocalPluginInstance.
+ *
+ * It manages AAPXS and the audio/MIDI2 buffers (by PluginSharedMemoryStore).
+ */
 class PluginInstance
 {
 	friend class PluginHost;
@@ -119,14 +124,13 @@ class PluginInstance
 	int sample_rate{44100};
 
 	AndroidAudioPluginFactory *plugin_factory;
-	std::unique_ptr<PluginBuffer> plugin_buffer{nullptr};
 
 protected:
 	int instance_id{-1};
     PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
 	bool are_ports_configured{false};
 	AndroidAudioPlugin *plugin;
-	PluginSharedMemoryStore *aapxs_shared_memory_store;
+	PluginSharedMemoryStore *shared_memory_store;
     const PluginInformation *pluginInfo;
     std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
@@ -141,13 +145,10 @@ public:
 
     virtual int32_t getInstanceId() = 0;
 
-    // As numPorts is required, the client and the plugin need agreement on how many ports will be used first (not including AAPXS).
-	int32_t allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock);
+    inline PluginSharedMemoryStore* getSharedMemoryStore() { return shared_memory_store; }
 
 	// It may or may not be shared memory buffer.
-	AndroidAudioPluginBuffer* getAudioPluginBuffer();
-
-	PluginBuffer* getPluginBuffer() { return plugin_buffer.get(); }
+	aap_buffer_t* getAudioPluginBuffer();
 
 	const PluginInformation* getPluginInformation()
 	{
@@ -207,13 +208,7 @@ public:
 		return &(*configured_ports)[index];
 	}
 
-	void prepare(int maximumExpectedSamplesPerBlock, AndroidAudioPluginBuffer *preparedBuffer)
-	{
-		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
-
-		plugin->prepare(plugin, preparedBuffer);
-		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
-	}
+	virtual void prepare(int maximumExpectedSamplesPerBlock) = 0;
 
 	void activate()
 	{
@@ -237,10 +232,9 @@ public:
 	
 	void dispose();
 
-	// FIXME: we could simply remove this buffer argument, as nowadays it is acquired from getAudioPluginBuffer()
-	void process(AndroidAudioPluginBuffer *buffer, int32_t timeoutInNanoseconds)
+	void process(int32_t timeoutInNanoseconds)
 	{
-		plugin->process(plugin, buffer, timeoutInNanoseconds);
+		plugin->process(plugin, getAudioPluginBuffer(), timeoutInNanoseconds);
 	}
 
 	virtual StandardExtensions& getStandardExtensions() = 0;
@@ -314,9 +308,6 @@ public:
 
 	inline AndroidAudioPlugin* getPlugin() { return plugin; }
 
-	// It often moved between LocalPluginInstance and PluginInstance - currently client does not need it.
-	inline PluginSharedMemoryStore* getAAPXSSharedMemoryStore() { return aapxs_shared_memory_store; }
-
 	// unlike client host side, this function is invoked for each `addExtension()` Binder call,
 	// which is way simpler.
 	AAPXSServiceInstance* setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) {
@@ -342,6 +333,13 @@ public:
 		auto aapxsInstance = getInstanceFor(uri.c_str());
 		auto feature = service->getExtensionFeature(uri.c_str());
 		feature->on_invoked(feature, getPlugin(), aapxsInstance, opcode);
+	}
+
+	void prepare(int maximumExpectedSamplesPerBlock) override {
+		assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+
+		plugin->prepare(plugin, getAudioPluginBuffer());
+		instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 	}
 };
 
@@ -395,6 +393,8 @@ public:
     void sendExtensionMessage(const char *uri, int32_t opcode);
 
 	StandardExtensions& getStandardExtensions() override { return standards; }
+
+	void prepare(int frameCount) override;
 };
 
 class RemoteAAPXSManager : public AAPXSClientInstanceManager {

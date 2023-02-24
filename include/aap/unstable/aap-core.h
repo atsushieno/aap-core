@@ -11,24 +11,35 @@
 extern "C" {
 #endif
 
+// FIXME: there should be some definition for this constant elsewhere
+#define DEFAULT_CONTROL_BUFFER_SIZE 8192
+
+typedef struct aap_buffer_t {
+	/** implementation details that only creator of this struct should touch */
+	void* impl;
+
+	/** Number of frames in the audio buffer. It does not apply to non-audio buffers. */
+	int32_t (*num_frames)(aap_buffer_t& self);
+
+	/** Number of buffers. */
+	int32_t (*num_ports)(aap_buffer_t& self);
+
+	/**
+     * The pointer to the audio buffer. It may or may not be the shared pointer betwee host and client.
+     * It may return null.*/
+	void * (*get_buffer)(aap_buffer_t& self, int32_t index);
+
+	/**
+     * The default size of buffers can be calculated by num_frames * sizeof(float) or num_frames * sizeof (double),
+     * but note that they can be controlled by some port parameters such as `minimumSize` property. */
+	int32_t (*get_buffer_size)(aap_buffer_t& self, int32_t index);
+} aap_buffer_t;
+
 const int32_t MAX_PLUGIN_ID_SIZE = 1024; // FIXME: there should be some official definition.
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;
 struct AndroidAudioPlugin;
-
-typedef struct AndroidAudioPluginBuffer {
-	/** Number of buffers. */
-	size_t num_buffers;
-	/** The sequence of buffer pointers. It is not null-terminated.
-	 * They can contain null.
-	 * The actual buffer size has to be implicitly managed between host and plugin, based on the plugin's metadata.
-	 * The default size of buffers can be calculated by num_frames * sizeof(float) or num_frames * sizeof (double),
-	 * but note that they can be controlled by some port parameters such as `pp:minimumSize`. */
-	void **buffers;
-	/** Number of frames in the buffer. See `buffers` for details. */
-	size_t num_frames;
-} AndroidAudioPluginBuffer;
 
 struct AndroidAudioPluginHost;
 
@@ -59,13 +70,13 @@ typedef void (*aap_release_func_t) (
 
 typedef void (*aap_prepare_func_t) (
 	struct AndroidAudioPlugin *plugin,
-	AndroidAudioPluginBuffer* audioBuffer);
+	aap_buffer_t* audioBuffer);
 
 typedef void (*aap_control_func_t) (struct AndroidAudioPlugin *plugin);
 
 typedef void (*aap_process_func_t) (
 	struct AndroidAudioPlugin *plugin,
-	AndroidAudioPluginBuffer* audioBuffer,
+	aap_buffer_t* audioBuffer,
 	long timeoutInNanoseconds);
 
 typedef void* (*aap_get_extension_func_t) (

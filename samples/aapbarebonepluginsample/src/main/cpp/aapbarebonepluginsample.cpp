@@ -46,13 +46,13 @@ void sample_plugin_delete(
     delete instance;
 }
 
-void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer *buffer) {
+void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
     auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension_data(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
     assert(ext);
     auto pluginInfo = ext->get(&ctx->host, PLUGIN_URI);
     auto numPorts = pluginInfo.get_port_count(&pluginInfo);
-    assert(buffer->num_buffers >= numPorts);
+    assert(buffer->num_ports(*buffer) >= numPorts);
     for (int32_t i = 0, n = numPorts; i < n; i++) {
         auto port = pluginInfo.get_port(&pluginInfo, i);
         switch (port.content_type(&port)) {
@@ -98,21 +98,21 @@ bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t*
 }
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
-                           AndroidAudioPluginBuffer *buffer,
+                           aap_buffer_t *buffer,
                            long timeoutInNanoseconds) {
     // apply super-simple delay processing with super-simple volume adjustment per channel.
 
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
 
-    int size = buffer->num_frames * sizeof(float);
+    int size = buffer->num_frames(*buffer) * sizeof(float);
 
-    auto fIL = (float *) buffer->buffers[ctx->audioInPortL];
-    auto fIR = (float *) buffer->buffers[ctx->audioInPortR];
-    auto fOL = (float *) buffer->buffers[ctx->audioOutPortL];
-    auto fOR = (float *) buffer->buffers[ctx->audioOutPortR];
+    auto fIL = (float *) buffer->get_buffer(*buffer, ctx->audioInPortL);
+    auto fIR = (float *) buffer->get_buffer(*buffer, ctx->audioInPortR);
+    auto fOL = (float *) buffer->get_buffer(*buffer, ctx->audioOutPortL);
+    auto fOR = (float *) buffer->get_buffer(*buffer, ctx->audioOutPortR);
 
     // update parameters via MIDI2 messages
-    auto midiSeq = (AAPMidiBufferHeader*) buffer->buffers[ctx->midiInPort];
+    auto midiSeq = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, ctx->midiInPort);
     auto midiSeqData = midiSeq + 1;
     if (midiSeq->length > 0) {
         CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {

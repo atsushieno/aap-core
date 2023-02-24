@@ -75,34 +75,42 @@ PluginExtensionInformation PluginInformation::getExtension(const char *uri) cons
 
 //-----------------------------------
 
+bool AbstractPluginBuffer::initialize(int32_t numPorts, int32_t numFrames) {
+	assert(!buffers); // already allocated
+	assert(!buffer_sizes); // already allocated
+
+	num_ports = numPorts;
+	num_frames = numFrames;
+	buffers = (void **) calloc(numPorts, sizeof(float *)); // this part is always local
+	if (!buffers)
+		return false;
+	buffer_sizes = (int32_t*) calloc(numPorts, sizeof(int32_t)); // this part is always local
+	if (!buffer_sizes)
+		return false;
+	return true;
+}
+
 PluginBuffer::~PluginBuffer() {
-	if (buffer) {
-		for (size_t i = 0; i < buffer->num_buffers; i++)
-			free(buffer->buffers[i]);
-		free(buffer->buffers);
+	if (buffers) {
+		for (size_t i = 0; i < num_ports; i++)
+			free_memory(buffers[i]);
+		free_memory(buffers);
 	}
 }
 
-bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames, PluginInstance& instance, size_t defaultControlBytesPerBlock) {
-	assert(!buffer); // already allocated
+bool PluginBuffer::allocateBuffer(PluginInstance& instance, int32_t defaultControlBytesPerBlock) {
+	// ensure to call initialize in prior().
+	assert(buffers);
+	assert(buffer_sizes);
 
-	buffer = std::make_unique<AndroidAudioPluginBuffer>();
-	if (!buffer)
-		return false;
-
-	size_t defaultAudioMemSize = numFrames * sizeof(float);
-	buffer->num_buffers = numPorts;
-	buffer->num_frames = numFrames;
-	buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
-	if (!buffer->buffers)
-		return false;
-
-	for (size_t i = 0; i < numPorts; i++) {
-		size_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
-		int minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
-        int memSize = std::max(minSize, (int) defaultMemSize);
-		buffer->buffers[i] = calloc(1, memSize);
-		if (!buffer->buffers[i])
+	int32_t defaultAudioMemSize = num_frames * sizeof(float);
+	for (size_t i = 0; i < num_ports; i++) {
+		int32_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
+		int32_t minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
+        auto memSize = std::max(minSize, defaultMemSize);
+		buffers[i] = allocate(1 * memSize); // this part depends on allocator.
+		buffer_sizes[i] = memSize;
+		if (!buffers[i])
 			return false;
 	}
 
@@ -111,50 +119,53 @@ bool PluginBuffer::allocateBuffer(size_t numPorts, size_t numFrames, PluginInsta
 
 //-----------------------------------
 
-int32_t PluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, size_t numFrames) {
+int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock) {
 	memory_origin = PLUGIN_BUFFER_ORIGIN_LOCAL;
 
-	size_t memSize = numFrames * sizeof(float);
-	port_buffer->num_buffers = numPorts;
-	port_buffer->num_frames = numFrames;
-	port_buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
-	if (!port_buffer->buffers)
-		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+	size_t commonMemSize = numFrames * sizeof(float);
+	port_buffer = std::make_unique<SharedMemoryPluginBuffer>();
+	assert(port_buffer);
+	port_buffer->initialize(numPorts, numFrames);
 
 	for (size_t i = 0; i < numPorts; i++) {
+		auto port = instance.getPort(i);
+		auto memSize = port->hasProperty(AAP_PORT_MINIMUM_SIZE) ? port->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE) :
+				port->getContentType() == AAP_CONTENT_TYPE_AUDIO ? commonMemSize : defaultControllBytesPerBlock;
 		int32_t fd = PluginClientSystem::getInstance()->createSharedMemory(memSize);
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
 		port_buffer_fds->emplace_back(fd);
-        port_buffer->buffers[i] = mmap(nullptr, memSize,
-								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-		if (!port_buffer->buffers[i])
+		auto mapped = mmap(nullptr, memSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		if (!mapped)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
+		port_buffer->setBuffer(i, mapped);
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
 }
 
-int32_t PluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames) {
+int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock) {
 	memory_origin = PLUGIN_BUFFER_ORIGIN_REMOTE;
 
 	size_t numPorts = clientFDs.size();
-	size_t memSize = numFrames * sizeof(float);
-	port_buffer->num_buffers = numPorts;
-	port_buffer->num_frames = numFrames;
-	port_buffer->buffers = (void **) calloc(numPorts, sizeof(float *));
-	if (!port_buffer->buffers)
+	size_t commonMemSize = numFrames * sizeof(float);
+	port_buffer = std::make_unique<SharedMemoryPluginBuffer>();
+	assert(port_buffer);
+	if (!port_buffer->initialize(numPorts, numFrames))
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
 
 	for (size_t i = 0; i < numPorts; i++) {
+		auto port = instance.getPort(i);
+		auto memSize = port->hasProperty(AAP_PORT_MINIMUM_SIZE) ? port->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE) :
+					   port->getContentType() == AAP_CONTENT_TYPE_AUDIO ? commonMemSize : defaultControllBytesPerBlock;
 		int32_t fd = clientFDs[i];
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
 		port_buffer_fds->emplace_back(fd);
-        port_buffer->buffers[i] = mmap(nullptr, memSize,
-								  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-		if (!port_buffer->buffers[i])
+		auto mapped = mmap(nullptr, memSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		if (!mapped)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
+        port_buffer->setBuffer(i, mapped);
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
@@ -358,8 +369,6 @@ PluginInstance::PluginInstance(const PluginInformation* pluginInformation, Andro
 		  pluginInfo(pluginInformation) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
-
-	aapxs_shared_memory_store = new PluginSharedMemoryStore();
 }
 
 PluginInstance::~PluginInstance() { dispose(); }
@@ -369,20 +378,22 @@ void PluginInstance::dispose() {
 	if (plugin != nullptr)
 		plugin_factory->release(plugin_factory, plugin);
 	plugin = nullptr;
-	delete aapxs_shared_memory_store;
+	delete shared_memory_store;
 }
 
+/*
 int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
 	assert(!plugin_buffer);
 	assert(numPorts >= 0);
 	assert(numFrames > 0);
 	assert(defaultControlBytesPerBlock > 0);
 	plugin_buffer = std::make_unique<PluginBuffer>();
-	return plugin_buffer->allocateBuffer(numPorts, numFrames, *this, defaultControlBytesPerBlock);
-}
+	plugin_buffer->initialize(numPorts, numFrames);
+	return plugin_buffer->allocateBuffer(*this, defaultControlBytesPerBlock);
+}*/
 
-AndroidAudioPluginBuffer* PluginInstance::getAudioPluginBuffer() {
-	return plugin_buffer->toPublicApi();
+aap_buffer_t* PluginInstance::getAudioPluginBuffer() {
+	return shared_memory_store->getAudioPluginBuffer();
 }
 
 void PluginInstance::completeInstantiation()
@@ -405,6 +416,7 @@ RemotePluginInstance::RemotePluginInstance(PluginClient *client, const PluginInf
           client(client),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
+	shared_memory_store = new ClientPluginSharedMemoryStore();
 }
 
 void RemotePluginInstance::configurePorts() {
@@ -488,6 +500,20 @@ void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode)
     send_extension_message_impl(aapxsInstance->uri, getInstanceId(), opcode);
 }
 
+void RemotePluginInstance::prepare(int frameCount) {
+    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+
+    auto numPorts = getNumPorts();
+    auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
+    auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, DEFAULT_CONTROL_BUFFER_SIZE);
+    if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
+        aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
+    }
+
+    plugin->prepare(plugin, getAudioPluginBuffer());
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+}
+
 //----
 
 LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
@@ -495,6 +521,7 @@ LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId
           service(service),
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this) {
+	shared_memory_store = new ServicePluginSharedMemoryStore();
     instance_id = instanceId;
 }
 

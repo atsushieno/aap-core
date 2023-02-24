@@ -50,7 +50,7 @@ void sample_plugin_delete(
     delete instance;
 }
 
-void sample_plugin_prepare(AndroidAudioPlugin *plugin, AndroidAudioPluginBuffer *buffer) {
+void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     /* do something */
 }
 
@@ -156,20 +156,20 @@ bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t*
 }
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
-                           AndroidAudioPluginBuffer *buffer,
+                           aap_buffer_t *buffer,
                            long timeoutInNanoseconds) {
 
     auto context = (AyumiHandle*) plugin->plugin_specific;
     if (!context->active)
         return;
 
-    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->buffers[AYUMI_AAP_MIDI2_IN_PORT];
+    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, AYUMI_AAP_MIDI2_IN_PORT);
     int32_t lengthUnit = aapmb->time_options;
 
     uint32_t currentTicks = 0;
 
-    auto outL = (float*) buffer->buffers[AYUMI_AAP_AUDIO_OUT_LEFT];
-    auto outR = (float*) buffer->buffers[AYUMI_AAP_AUDIO_OUT_RIGHT];
+    auto outL = (float*) buffer->get_buffer(*buffer, AYUMI_AAP_AUDIO_OUT_LEFT);
+    auto outR = (float*) buffer->get_buffer(*buffer, AYUMI_AAP_AUDIO_OUT_RIGHT);
 
     if (context->midi_protocol == AAP_PROTOCOL_MIDI2_0) {
         auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
@@ -183,7 +183,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
                 cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
                 uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
-                max = max < buffer->num_frames ? max : buffer->num_frames;
+                auto numFrames = buffer->num_frames(*buffer);
+                max = max < numFrames ? max : numFrames;
                 for (uint32_t i = currentTicks; i < max; i++) {
                     ayumi_process(context->impl);
                     ayumi_remove_dc(context->impl);
@@ -285,7 +286,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     (uint32_t) ((context->sample_rate / -lengthUnit) * (deltaTime % 0x100)) + (uint32_t) (context->sample_rate * (deltaTime / 0x100 % 60)) :  // assuming values beyond minute in SMPTE don't matter.
                     (uint32_t) (1.0 * deltaTime / 240); // LAMESPEC: we should deprecate ticks specification.
             uint32_t max = currentTicks + deltaTicks;
-            max = max < buffer->num_frames ? max : buffer->num_frames;
+            auto numFrames = buffer->num_frames(*buffer);
+            max = max < numFrames ? max : numFrames;
             for (uint32_t i = currentTicks; i < max; i++) {
                 ayumi_process(context->impl);
                 ayumi_remove_dc(context->impl);
@@ -301,7 +303,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         }
     }
 
-    for (int i = currentTicks; i < buffer->num_frames; i++) {
+    auto numFrames = buffer->num_frames(*buffer);
+    for (int32_t i = currentTicks; i < numFrames; i++) {
         ayumi_process(context->impl);
         ayumi_remove_dc(context->impl);
         outL[i] = (float) context->impl->left;
