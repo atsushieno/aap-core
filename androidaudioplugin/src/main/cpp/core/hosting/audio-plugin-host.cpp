@@ -90,33 +90,6 @@ bool AbstractPluginBuffer::initialize(int32_t numPorts, int32_t numFrames) {
 	return true;
 }
 
-PluginBuffer::~PluginBuffer() {
-	if (buffers) {
-		for (size_t i = 0; i < num_ports; i++)
-			free_memory(buffers[i]);
-		free_memory(buffers);
-	}
-}
-
-bool PluginBuffer::allocateBuffer(PluginInstance& instance, int32_t defaultControlBytesPerBlock) {
-	// ensure to call initialize in prior().
-	assert(buffers);
-	assert(buffer_sizes);
-
-	int32_t defaultAudioMemSize = num_frames * sizeof(float);
-	for (size_t i = 0; i < num_ports; i++) {
-		int32_t defaultMemSize = instance.getPort(i)->getContentType() != AAP_CONTENT_TYPE_AUDIO ? defaultControlBytesPerBlock : defaultAudioMemSize;
-		int32_t minSize = instance.getPort(i)->getPropertyAsInteger(AAP_PORT_MINIMUM_SIZE);
-        auto memSize = std::max(minSize, defaultMemSize);
-		buffers[i] = allocate(1 * memSize); // this part depends on allocator.
-		buffer_sizes[i] = memSize;
-		if (!buffers[i])
-			return false;
-	}
-
-	return true;
-}
-
 //-----------------------------------
 
 int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock) {

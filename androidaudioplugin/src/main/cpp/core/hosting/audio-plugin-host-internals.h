@@ -10,9 +10,6 @@ AndroidAudioPluginFactory *GetDesktopAudioPluginFactoryClientBridge(aap::PluginC
 #endif
 
 namespace aap {
-
-//-----------------------------------
-
     class AbstractPluginBuffer
     {
         aap_buffer_t pub;
@@ -64,24 +61,5 @@ namespace aap {
             return 0 <= bufferIndex && bufferIndex < num_ports ? buffer_sizes[bufferIndex] : 0;
         }
     };
-
-    // AndroidAudioPluginBuffer holder that is comfortable in C++ memory management model.
-    class PluginBuffer : public AbstractPluginBuffer {
-        void*(*allocate)(size_t size);
-        void(*free_memory)(void* ptr);
-
-        static inline void* doCalloc(size_t size) { return calloc(size, 1); }
-
-    public:
-        PluginBuffer(void*(*allocateFunc)(size_t size) = doCalloc, void(*freeFunc)(void* ptr) = free)
-                : allocate(allocateFunc), free_memory(freeFunc) {}
-
-        ~PluginBuffer();
-
-        bool allocateBuffer(PluginInstance& instance, int32_t defaultControlBytesPerBlock);
-    };
-
-//-----------------------------------
-
 }
 #endif // AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H

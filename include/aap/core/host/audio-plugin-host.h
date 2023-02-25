@@ -105,7 +105,6 @@ public:
 
 //-------------------------------------------------------
 
-class PluginBuffer;
 class PluginSharedMemoryStore;
 
 /**
@@ -130,7 +129,7 @@ protected:
     PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
 	bool are_ports_configured{false};
 	AndroidAudioPlugin *plugin;
-	PluginSharedMemoryStore *shared_memory_store;
+	PluginSharedMemoryStore *shared_memory_store{nullptr};
     const PluginInformation *pluginInfo;
     std::unique_ptr<std::vector<PortInformation>> configured_ports{nullptr};
 	std::unique_ptr<std::vector<ParameterInformation>> cached_parameters{nullptr};
@@ -198,7 +197,7 @@ public:
     }
 
 	int32_t getNumPorts() {
-		return configured_ports ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();
+		return configured_ports != nullptr ? configured_ports->size() : pluginInfo->getNumDeclaredPorts();
 	}
 
 	const PortInformation* getPort(int32_t index) {
