@@ -6,7 +6,7 @@
 #include <vector>
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/unstable/logging.h"
-#include "shared-memory-store.h"
+#include "aap/core/host/shared-memory-store.h"
 #include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
 #include "aap/core/host/plugin-client-system.h"
@@ -152,13 +152,15 @@ std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
 std::unique_ptr<MidiExtensionFeature> aapxs_midi2{nullptr};
 std::unique_ptr<ParametersExtensionFeature> aapxs_parameters{nullptr};
 std::unique_ptr<GuiExtensionFeature> aapxs_gui{nullptr};
+std::unique_ptr<AAPXSRegistry> aapxs_registry{nullptr};
 
 PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
 	: plugin_list(contextPluginList)
 {
 	assert(contextPluginList);
 
-	aapxs_registry = std::make_unique<AAPXSRegistry>();
+	if (aapxs_registry == nullptr)
+		aapxs_registry = std::make_unique<AAPXSRegistry>();
 
 	// state
 	if (aapxs_state == nullptr)
@@ -240,7 +242,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
-	auto instance = new LocalPluginInstance(this, localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(aapxs_registry.get(), localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
 	instances.emplace_back(instance);
 	return instance;
 }
@@ -306,7 +308,7 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(this, descriptor, pluginFactory, sampleRate);
+            auto instance = new RemotePluginInstance(aapxs_registry.get(), descriptor, pluginFactory, sampleRate);
             instances.emplace_back(instance);
             instance->completeInstantiation();
             instance->scanParametersAndBuildList();
@@ -384,9 +386,9 @@ void PluginInstance::completeInstantiation()
 
 //----
 
-RemotePluginInstance::RemotePluginInstance(PluginClient *client, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+RemotePluginInstance::RemotePluginInstance(AAPXSRegistry* aapxsRegistry, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
-          client(client),
+          aapxs_registry(aapxsRegistry),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
 	shared_memory_store = new ClientPluginSharedMemoryStore();
@@ -489,9 +491,9 @@ void RemotePluginInstance::prepare(int frameCount) {
 
 //----
 
-LocalPluginInstance::LocalPluginInstance(PluginHost *service, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+LocalPluginInstance::LocalPluginInstance(AAPXSRegistry *aapxsRegistry, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
-          service(service),
+          aapxs_registry(aapxsRegistry),
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this) {
 	shared_memory_store = new ServicePluginSharedMemoryStore();

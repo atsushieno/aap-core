@@ -11,7 +11,7 @@
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
 #include "aap/core/host/audio-plugin-host.h"
-#include "../core/hosting/shared-memory-store.h"
+#include "aap/core/host/shared-memory-store.h"
 #include "../core/hosting/plugin-service-list.h"
 
 #define AAP_AIDL_SVC_LOG_TAG "AAP.aidl.svc"
