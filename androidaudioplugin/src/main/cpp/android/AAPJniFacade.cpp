@@ -296,8 +296,9 @@ namespace aap {
             auto direction = (aap_port_direction) (int) env->CallIntMethod(port,
                                                                            j_method_port_get_direction);
             auto nativePort = new aap::PortInformation(index, name, content, direction);
-            nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(
-                    env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes)));
+            auto minSize = env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes);
+            if (minSize != 0)
+                nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(minSize));
             aapPI->addDeclaredPort(nativePort);
             free((void *) name);
         }
