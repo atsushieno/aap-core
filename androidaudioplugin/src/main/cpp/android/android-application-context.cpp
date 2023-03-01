@@ -54,8 +54,8 @@ void start_non_rt_event_looper() {
 
 void stop_non_rt_event_looper() {
     auto looper = (ALooper*) non_rt_loop_runner->getLooper();
-	non_rt_loop_runner.reset(nullptr);
 	ALooper_release(looper);
+	non_rt_loop_runner.reset(nullptr);
 }
 
 AAssetManager *get_android_asset_manager(JNIEnv* env) {
