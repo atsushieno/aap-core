@@ -82,9 +82,9 @@ class AudioPluginInstance internal constructor(
         }
     }
 
-    fun process() {
+    fun process(frameCount: Int, timeoutInNanoseconds: Long = 0) {
         runCatchingRemoteException {
-            native.process(0)
+            native.process(frameCount, timeoutInNanoseconds)
         }
     }
 

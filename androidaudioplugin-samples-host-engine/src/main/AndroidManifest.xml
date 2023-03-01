@@ -3,7 +3,7 @@
 
     <queries>
         <intent>
-            <action android:name="org.androidaudioplugin.AudioPluginService.V2" />
+            <action android:name="org.androidaudioplugin.AudioPluginService.V3" />
         </intent>
     </queries>
 </manifest>

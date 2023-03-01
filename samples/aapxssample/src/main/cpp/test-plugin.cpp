@@ -7,7 +7,7 @@ void test_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {}
 
 void test_plugin_activate(AndroidAudioPlugin *plugin) {}
 
-void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, long timeoutInNanoiseconds) {}
+void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, int32_t frameCount, int64_t timeoutInNanoiseconds) {}
 
 void test_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 

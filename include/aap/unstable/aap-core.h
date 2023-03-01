@@ -77,7 +77,8 @@ typedef void (*aap_control_func_t) (struct AndroidAudioPlugin *plugin);
 typedef void (*aap_process_func_t) (
 	struct AndroidAudioPlugin *plugin,
 	aap_buffer_t* audioBuffer,
-	long timeoutInNanoseconds);
+	int32_t frameCount,
+	int64_t timeoutInNanoseconds);
 
 typedef void* (*aap_get_extension_func_t) (
 		struct AndroidAudioPlugin *plugin,

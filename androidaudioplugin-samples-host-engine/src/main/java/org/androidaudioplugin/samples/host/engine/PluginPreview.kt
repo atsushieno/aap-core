@@ -326,7 +326,7 @@ class PluginPreview(private val context: Context) {
                 instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
             }
 
-            instance.process()
+            instance.process(audioBufferFrameSize)
 
             if (midi2In >= 0)
                 midi2Bytes.clear()
@@ -469,6 +469,11 @@ class PluginPreview(private val context: Context) {
 
     fun playMidiNotes() {
         CoroutineScope(Dispatchers.Default).launch { doPlayMidiNotes() }
+    }
+
+    fun stopMidiService() {
+        midi_input?.close()
+        midi_input = null
     }
 
     private suspend fun openMidiDevice(): MidiInputPort = suspendCoroutine { continuation ->

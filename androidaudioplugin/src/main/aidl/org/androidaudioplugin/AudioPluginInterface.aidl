@@ -33,7 +33,7 @@ interface AudioPluginInterface {
 	void prepareMemory(int instanceID, int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
 	void endPrepare(int instanceID, int frameCount);
 	void activate(int instanceID);
-	void process(int instanceID, int timeoutInNanoseconds);
+	void process(int instanceID, int frameCount, int timeoutInNanoseconds);
 	void deactivate(int instanceID);
 	
 	void destroy(int instanceID);

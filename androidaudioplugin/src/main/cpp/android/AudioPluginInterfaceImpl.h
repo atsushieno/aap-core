@@ -169,11 +169,11 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override {
+    ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_frameCount, int32_t in_timeoutInNanoseconds) override {
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->process(in_timeoutInNanoseconds);
+        instance->process(in_frameCount, in_timeoutInNanoseconds);
         return ndk::ScopedAStatus::ok();
     }
 

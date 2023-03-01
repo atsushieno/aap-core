@@ -157,7 +157,8 @@ bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t*
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            aap_buffer_t *buffer,
-                           long timeoutInNanoseconds) {
+                           int32_t frameCount,
+                           int64_t timeoutInNanoseconds) {
 
     auto context = (AyumiHandle*) plugin->plugin_specific;
     if (!context->active)
@@ -304,6 +305,10 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     }
 
     auto numFrames = buffer->num_frames(*buffer);
+    if (frameCount > numFrames) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_APP_LOG_TAG, "frameCount passed at process() is bigger than aap_buffer_t num_frames().");
+        numFrames = frameCount;
+    }
     for (int32_t i = currentTicks; i < numFrames; i++) {
         ayumi_process(context->impl);
         ayumi_remove_dc(context->impl);

@@ -20,9 +20,9 @@ class AudioPluginHostHelper {
     }
 
     companion object {
-        const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V2"
-        const val AAP_METADATA_NAME_PLUGINS = "org.androidaudioplugin.AudioPluginService.V2#Plugins"
-        const val AAP_METADATA_NAME_EXTENSIONS = "org.androidaudioplugin.AudioPluginService.V2#Extensions"
+        const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V3"
+        const val AAP_METADATA_NAME_PLUGINS = "$AAP_ACTION_NAME#Plugins"
+        const val AAP_METADATA_NAME_EXTENSIONS = "$AAP_ACTION_NAME#Extensions"
         const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
         const val AAP_METADATA_EXT_PARAMETERS_NS = "urn://androidaudioplugin.org/extensions/parameters"
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"

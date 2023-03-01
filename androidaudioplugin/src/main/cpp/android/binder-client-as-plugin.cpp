@@ -124,7 +124,8 @@ void aap_client_as_plugin_activate(AndroidAudioPlugin *plugin)
 
 void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	aap_buffer_t* buffer,
-	long timeoutInNanoseconds)
+	int32_t frameCount,
+	int64_t timeoutInNanoseconds)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
@@ -138,7 +139,7 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 		memcpy(shmBuffer->get_buffer(*shmBuffer, i), buffer->get_buffer(*buffer, i), buffer->get_buffer_size(*buffer, i));
 	}
 
-	auto status = ctx->getProxy()->process(ctx->instance_id, timeoutInNanoseconds);
+	auto status = ctx->getProxy()->process(ctx->instance_id, frameCount, timeoutInNanoseconds);
 	if (!status.isOk()) {
 		aap_bcap_log_error_with_details("process() failed", status);
 		ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;

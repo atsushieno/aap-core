@@ -11,7 +11,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
                                  val client: NativePluginClient) {
     fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client.native, instanceId, frameCount, defaultControlBytesPerBlock)
     fun activate() = activate(client.native, instanceId)
-    fun process(timeoutInNanoseconds: Int) = process(client.native, instanceId, timeoutInNanoseconds)
+    fun process(frameCount: Int, timeoutInNanoseconds: Long) = process(client.native, instanceId, frameCount, timeoutInNanoseconds)
     fun deactivate() = deactivate(client.native, instanceId)
     fun destroy() {
         destroy(client.native, instanceId)
@@ -57,7 +57,7 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         @JvmStatic
         external fun activate(nativeClient: Long, instanceId: Int)
         @JvmStatic
-        external fun process(nativeClient: Long, instanceId: Int, timeoutInNanoseconds: Int)
+        external fun process(nativeClient: Long, instanceId: Int, frameCount: Int, timeoutInNanoseconds: Long)
         @JvmStatic
         external fun deactivate(nativeClient: Long, instanceId: Int)
         @JvmStatic

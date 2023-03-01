@@ -22,7 +22,7 @@ public:
   ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override;
   ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) override;
   ::ndk::ScopedAStatus activate(int32_t in_instanceID) override;
-  ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override;
+  ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_frameCount, int32_t in_timeoutInNanoseconds) override;
   ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override;
 };

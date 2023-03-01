@@ -152,6 +152,12 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }) {
                 Text("MIDI")
             }
+            Button(enabled = plugin.category?.contains("Instrument") == true,
+                onClick = {
+                    coroutineScope.launch { previewState.stopMidiService() }
+                }) {
+                Text("Stop MIDI")
+            }
             Button(onClick = {
                 coroutineScope.launch { previewState.playSound(pluginAppliedState) }
             }) {

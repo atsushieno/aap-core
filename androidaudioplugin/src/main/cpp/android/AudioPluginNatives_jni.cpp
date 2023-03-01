@@ -190,10 +190,11 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_process(JNIEnv *env, jclass clazz,
 																	   jlong nativeClient,
 																	   jint instanceId,
-																	   jint timeout_in_nanoseconds) {
+																	   jint frameCount,
+																	   jlong timeout_in_nanoseconds) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
-	instance->process(timeout_in_nanoseconds);
+	instance->process(frameCount, timeout_in_nanoseconds);
 }
 
 extern "C"

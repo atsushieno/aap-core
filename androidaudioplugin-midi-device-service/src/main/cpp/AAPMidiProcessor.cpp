@@ -263,7 +263,7 @@ namespace aapmidideviceservice {
         }
 
         auto instance = client->getInstanceById(data->instance_id);
-        instance->process(1000000000);
+        instance->process(aap_frame_size, 1000000000);
         // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
         if (data->instance_id == instrument_instance_id) {
             auto b = instance->getAudioPluginBuffer();

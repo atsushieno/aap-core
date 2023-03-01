@@ -52,7 +52,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             assert(instances.map { it.instanceId }.distinct().size == instances.size )
             (0 until p).forEach { instances[it].prepare(floatCount, controlBufferSize) }
             (0 until p).forEach { instances[it].activate() }
-            (0 until p).forEach { instances[it].process() }
+            (0 until p).forEach { instances[it].process(floatCount) }
             (0 until p).forEach { instances[it].deactivate() }
             (0 until p).forEach { instances[it].destroy() }
         }

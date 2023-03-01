@@ -1,16 +1,15 @@
 #pragma once
 
-#include <android/binder_interface_utils.h>
-
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+#include <android/binder_interface_utils.h>
+#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
-#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 
 namespace aidl {
 namespace org {
@@ -58,7 +57,7 @@ public:
   virtual ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) = 0;
   virtual ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) = 0;
   virtual ::ndk::ScopedAStatus activate(int32_t in_instanceID) = 0;
-  virtual ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) = 0;
+  virtual ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_frameCount, int32_t in_timeoutInNanoseconds) = 0;
   virtual ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus destroy(int32_t in_instanceID) = 0;
 private:
@@ -76,7 +75,7 @@ public:
   ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override;
   ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) override;
   ::ndk::ScopedAStatus activate(int32_t in_instanceID) override;
-  ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_timeoutInNanoseconds) override;
+  ::ndk::ScopedAStatus process(int32_t in_instanceID, int32_t in_frameCount, int32_t in_timeoutInNanoseconds) override;
   ::ndk::ScopedAStatus deactivate(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus destroy(int32_t in_instanceID) override;
   ::ndk::SpAIBinder asBinder() override;

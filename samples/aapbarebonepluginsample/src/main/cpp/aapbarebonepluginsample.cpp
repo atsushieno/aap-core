@@ -4,11 +4,14 @@
 #include <aap/ext/state.h>
 #include <aap/ext/midi.h>
 #include <aap/ext/parameters.h>
+#include <aap/unstable/logging.h>
 #include <cassert>
 #include <cstring>
 #include "cmidi2.h"
 
 extern "C" {
+
+#define AAP_APP_LOG_TAG "AAPBarebonePluginSample"
 
 #define PLUGIN_URI "urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter"
 
@@ -99,12 +102,17 @@ bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t*
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
                            aap_buffer_t *buffer,
-                           long timeoutInNanoseconds) {
+                           int32_t frameCount,
+                           int64_t timeoutInNanoseconds) {
     // apply super-simple delay processing with super-simple volume adjustment per channel.
 
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
 
     int size = buffer->num_frames(*buffer) * sizeof(float);
+    if (frameCount > size) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_APP_LOG_TAG, "frameCount passed at process() is bigger than aap_buffer_t num_frames().");
+        size = frameCount;
+    }
 
     auto fIL = (float *) buffer->get_buffer(*buffer, ctx->audioInPortL);
     auto fIR = (float *) buffer->get_buffer(*buffer, ctx->audioInPortR);

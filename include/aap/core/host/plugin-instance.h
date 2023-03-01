@@ -125,8 +125,8 @@ namespace aap {
 
         void dispose();
 
-        void process(int32_t timeoutInNanoseconds) {
-            plugin->process(plugin, getAudioPluginBuffer(), timeoutInNanoseconds);
+        void process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+            plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
         }
 
         virtual StandardExtensions &getStandardExtensions() = 0;
