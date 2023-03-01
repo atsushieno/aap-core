@@ -15,7 +15,7 @@ There is some complexity on how those files are packaged. At the "AAP package he
 
 ### Queryable service manifest for plugin lookup
 
-Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService.V2` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
+Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead, AAP hosts can query AAPs using PackageManager which can look for specific services by intent filter `org.androidaudioplugin.AudioPluginService.V3` and AAP "metadata". Here we follow what Android MIDI API does - AAP developers implement `org.androidaudioplugin.AudioPluginService` class and specify it as a `<service>` in `AndroidManifest.xml`. Here is an example:
 
 ```
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -26,10 +26,10 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
     <service android:name="org.androidaudioplugin.AudioPluginService"
        android:exported="true" android:label="AAPBareBoneSamplePlugin">
       <intent-filter>
-        <action android:name="org.androidaudioplugin.AudioPluginService.V2" />
+        <action android:name="org.androidaudioplugin.AudioPluginService.V3" />
       </intent-filter>
       <meta-data 
-	      android:name="org.androidaudioplugin.AudioPluginService.V2#Plugins"
+	      android:name="org.androidaudioplugin.AudioPluginService.V3#Plugins"
 	      android:resource="@xml/aap_metadata"
         />
     </service>
@@ -39,9 +39,9 @@ Unlike Apple Audio Units, AAP plugins are not managed by Android system. Instead
 
 The `<service>` element comes up with two `<meta-data>` elements.
 
-You can also specify "extensions" by a `meta-data`, whose `android:name` attribute specifies `org.androidaudioplugin.AudioPluginService.V2#Extensions` , and whose `android:value` indicates a ',' (comma)-separated list of "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument.
+You can also specify "extensions" by a `meta-data`, whose `android:name` attribute specifies `org.androidaudioplugin.AudioPluginService.V3#Extensions` , and whose `android:value` indicates a ',' (comma)-separated list of "extension" classes. They are loaded via `Class.forName()` and initialized at host startup time with an `android.content.Context` argument.
 
-The `meta-data` whose `android:name` is `org.androidaudioplugin.AudioPluginService.V2#Plugins` should specify `@xml/aap_metadata` in `android:resource` attribute, and there should be `res/xml/aap_metadata.xml` in the project. The file content looks like this:
+The `meta-data` whose `android:name` is `org.androidaudioplugin.AudioPluginService.V3#Plugins` should specify `@xml/aap_metadata` in `android:resource` attribute, and there should be `res/xml/aap_metadata.xml` in the project. The file content looks like this:
 
 ```
 <plugins xmlns="urn:org.androidaudioplugin.core"
@@ -210,7 +210,7 @@ Android 11 brought in a new restriction on querying information on other applica
 ```
     <queries>
         <intent>
-            <action android:name="org.androidaudioplugin.AudioPluginService.V2" />
+            <action android:name="org.androidaudioplugin.AudioPluginService.V3" />
         </intent>
     </queries>
 ```

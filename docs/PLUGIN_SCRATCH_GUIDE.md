@@ -54,10 +54,10 @@ A service needs to be described there:
             android:label="AAPBareBoneSamplePlugin">
             <intent-filter>
                 <action
-                    android:name="org.androidaudioplugin.AudioPluginService.V2" />
+                    android:name="org.androidaudioplugin.AudioPluginService.V3" />
             </intent-filter>
             <meta-data
-                android:name="org.androidaudioplugin.AudioPluginService.V2#Plugins"
+                android:name="org.androidaudioplugin.AudioPluginService.V3#Plugins"
                 android:resource="@xml/aap_metadata"
                 />
         </service>
