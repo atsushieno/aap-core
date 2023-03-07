@@ -373,9 +373,12 @@ aap_buffer_t* PluginInstance::getAudioPluginBuffer() {
 
 void PluginInstance::completeInstantiation()
 {
-    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL)
-        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "Unexpected call to completeInstantiation() at state: %d (instanceId: %d)", instantiation_state, instance_id);
-	assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL);
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG,
+                     "Unexpected call to completeInstantiation() at state: %d (instanceId: %d)",
+                     instantiation_state, instance_id);
+        return;
+    }
 
 	AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
 	plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
@@ -395,7 +398,12 @@ RemotePluginInstance::RemotePluginInstance(AAPXSRegistry* aapxsRegistry, const P
 }
 
 void RemotePluginInstance::configurePorts() {
-    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED);
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG,
+                     "Unexpected call to configurePorts() at state: %d (instanceId: %d)",
+                     instantiation_state, instance_id);
+        return;
+    }
 
 	startPortConfiguration();
 
@@ -476,7 +484,12 @@ void RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode)
 }
 
 void RemotePluginInstance::prepare(int frameCount) {
-    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED || instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG,
+                     "Unexpected call to prepare() at state: %d (instanceId: %d)",
+                     instantiation_state, instance_id);
+        return;
+    }
 
     auto numPorts = getNumPorts();
     auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
