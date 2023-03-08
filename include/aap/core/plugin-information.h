@@ -252,23 +252,6 @@ public:
         return strstr(getPrimaryCategory().c_str(), "Instrument") != nullptr;
     }
 
-    /* They are deleted. But if it we couldn't fix other parts (aap-lv2, aap-juce) it will be back.
-    bool hasMidi2Ports() const
-    {
-        for (auto port : ports)
-            if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2)
-                return true;
-        return false;
-    }
-
-    bool hasSharedContainer() const
-    {
-        // TODO: FUTURE It may be something AAP should support because
-        // context switching over outprocess plugins can be quite annoying...
-        return false;
-    }
-    */
-
     bool hasEditor() const
     {
         // TODO: FUTURE
