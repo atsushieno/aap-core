@@ -1,5 +1,9 @@
 <plugins xmlns="urn:org.androidaudioplugin.core">
-  <plugin name="Test Filter" category="Effect" developer="AAP Developers" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter" library="libaapbarebonepluginsample.so">
+  <plugin name="Test Filter" category="Effect" developer="AAP Developers"
+      unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/TestFilter"
+      library="libaapbarebonepluginsample.so"
+      gui:ui-view-factory="org.androidaudioplugin.ui.web.AudioPluginWebViewFactory"
+      xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
       <extension uri="urn://androidaudioplugin.org/extensions/parameters/v1" />

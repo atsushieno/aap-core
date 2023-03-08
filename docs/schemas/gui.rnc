@@ -1,0 +1,8 @@
+namespace gui = "urn://androidaudioplugin.org/extensions/gui"
+datatypes xs = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+// attributes on plugin element
+attribute gui:ui-view-factory { xs:string }
+attribute gui:ui-activity { xs:string }
+attribute gui:ui-web { xs:string }
+

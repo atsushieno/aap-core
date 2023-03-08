@@ -1,0 +1,14 @@
+default namespace "urn://androidaudioplugin.org/extensions/parameters"
+datatypes xs = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+// content of plugin element
+element parameters {
+  element parameter {
+    attribute id { xs:int }
+    attribute name { xs:string }
+    attribute default { xs:float }
+    attribute minimum { xs:float }
+    attribute maximum { xs:float }
+  }*
+}
+

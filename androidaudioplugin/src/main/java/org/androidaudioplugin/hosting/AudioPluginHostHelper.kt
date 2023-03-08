@@ -26,6 +26,7 @@ class AudioPluginHostHelper {
         const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
         const val AAP_METADATA_EXT_PARAMETERS_NS = "urn://androidaudioplugin.org/extensions/parameters"
         const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
+        const val AAP_METADATA_EXT_GUI_NS = "urn://androidaudioplugin.org/extensions/gui"
 
         private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : PluginServiceInformation {
             val aapServiceInfo = PluginServiceInformation(label, packageName, className)
@@ -48,9 +49,9 @@ class AudioPluginHostHelper {
                         val uniqueId = xp.getAttributeValue(null, "unique-id")
                         val sharedLibraryName = xp.getAttributeValue(null, "library")
                         val libraryEntryPoint = xp.getAttributeValue(null, "entrypoint")
-                        val uiViewFactory = xp.getAttributeValue(null, "ui-view-factory")
-                        val uiActivity = xp.getAttributeValue(null, "ui-activity")
-                        val uiWeb = xp.getAttributeValue(null, "ui-web")
+                        val uiViewFactory = xp.getAttributeValue(AAP_METADATA_EXT_GUI_NS, "ui-view-factory")
+                        val uiActivity = xp.getAttributeValue(AAP_METADATA_EXT_GUI_NS, "ui-activity")
+                        val uiWeb = xp.getAttributeValue(AAP_METADATA_EXT_GUI_NS, "ui-web")
                         currentPlugin = PluginInformation(
                             packageName,
                             className,

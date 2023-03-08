@@ -25,6 +25,15 @@ Both Extensions API (for plugin developers and host developers) and AAPXS API (f
 C is chosen for interoperability with other languages. Note that only languages like C++, Rust and Zig are feasible for audio development. And we haven't really examined interoperability with those languages (yet).
 
 
+## Extension definition
+
+AAP extension is defined in two areas so far:
+
+- code in extension API
+- XML elements and attributes on `aap_metadata.xml`
+
+XML extensibility should be defined in their own namespace URI. For standard extensions, schemas in RELAX NG compact syntax are placed at `docs/schemas`.
+
 ## Extension API design: Who needs to implement what
 
 For an extension, users are plugin developers and host developers. They want to implement simple API. They are not supposed to implement every complicated IPC bits that AAP extensions actually need under the hood. Thus, extension developers are supposed to offer not just the API definition, but also IPC implementation.

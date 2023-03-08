@@ -1,0 +1,8 @@
+namespace midi = "urn://androidaudioplugin.org/extensions/midi"
+datatypes xs = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+// attributes on plugin element
+
+// MIDNAM URI document, should be available via document provider.
+attribute midi:midnam { xs:string }
+

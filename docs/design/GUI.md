@@ -149,4 +149,4 @@ There are some proof-of-concept example use of the GUI extension API, implemente
 - in its `build.gradle.kts`, its `dependencies { ... }` adds `implementation project(":androidaudioplugin-ui-web")` which automatically adds a `<provider>` element for the Web UI archive. Therefore it support basic Web UI.
 - in its `aap_metadata.xml` -
   - it adds `<extension>` element for the GUI extension
-  - its `<plugin>` element comes with `ui-view-factory` attribute, which indicates `androidaudioplugin.ui.web.AudioPluginWebViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to reuse the WebView foundation as the in-plugin-process UI.
+  - its `<plugin>` element comes with `gui:ui-view-factory` attribute (where XMLNS `gui` is `urn://androidaudioplugin.org/extensions/gui`), which indicates `androidaudioplugin.ui.web.AudioPluginWebViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to reuse the WebView foundation as the in-plugin-process UI.
