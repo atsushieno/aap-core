@@ -61,12 +61,12 @@ typedef struct aap_parameters_extension_t {
     RT_SAFE parameters_extension_get_parameter_func_t get_parameter;
 } aap_parameters_extension_t;
 
-typedef void (*parameters_host_extension_on_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
+typedef void (*parameters_host_extension_notify_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
 
 typedef struct aap_host_parameters_extension_t {
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host (it will need to refresh the list anyways).
-    RT_SAFE parameters_host_extension_on_parameter_list_changed_func_t on_parameters_changed;
+    RT_SAFE parameters_host_extension_notify_parameter_list_changed_func_t notify_parameters_changed;
 } aap_host_parameters_extension_t;
 
 #ifdef __cplusplus

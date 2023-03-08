@@ -579,7 +579,7 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 	return ret;
 }
 
-void LocalPluginInstance::on_parameters_changed(AndroidAudioPluginHost *host,
+void LocalPluginInstance::notify_parameters_changed(AndroidAudioPluginHost *host,
                                                 AndroidAudioPlugin *plugin) {
     assert(false); // FIXME: implement
 }

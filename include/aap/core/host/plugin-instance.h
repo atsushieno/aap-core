@@ -163,7 +163,7 @@ namespace aap {
         static aap_plugin_info_t
         get_plugin_info(AndroidAudioPluginHost *host, const char *pluginId);
 
-        static void on_parameters_changed(AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
+        static void notify_parameters_changed(AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
 
         inline static void *
         internalGetExtensionData(AndroidAudioPluginHost *host, const char *uri) {
@@ -174,7 +174,7 @@ namespace aap {
             }
             if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
                 auto instance = (LocalPluginInstance *) host->context;
-                instance->host_parameters_extension.on_parameters_changed = on_parameters_changed;
+                instance->host_parameters_extension.notify_parameters_changed = notify_parameters_changed;
                 return &instance->host_parameters_extension;
             }
             return nullptr;
