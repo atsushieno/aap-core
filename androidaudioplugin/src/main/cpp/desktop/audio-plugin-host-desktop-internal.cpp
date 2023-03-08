@@ -7,16 +7,15 @@
 #if !ANDROID
 
 extern "C"
-int32_t getMidiSettingsFromLocalConfig(std::string pluginId) {
-	assert(false); // FIXME: implement
-}
-
-extern "C"
 int32_t createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) {
 	assert(false); // It is not implemented (not even suposed to be).
 }
 
 namespace aap {
+
+int32_t getMidiSettingsFromLocalConfig(std::string pluginId) {
+	assert(false); // FIXME: implement
+}
 
 PluginClientSystem* PluginClientSystem::getInstance() {
 	assert(false); // FIXME: implement

@@ -10,5 +10,6 @@ AndroidAudioPluginFactory *GetDesktopAudioPluginFactoryClientBridge(aap::PluginC
 #endif
 
 namespace aap {
+    int32_t getMidiSettingsFromLocalConfig(std::string pluginId);
 }
 #endif // AAP_CORE_AUDIO_PLUGIN_HOST_INTERNALS_H

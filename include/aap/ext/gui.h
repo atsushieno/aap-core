@@ -38,21 +38,21 @@ typedef struct aap_gui_extension_t {
     // Note that audioPluginView parameter is used only between AAPXS service and the plugin.
     // The plugin client process has no access to the View in the AudioPluginService process.
     // The actual instantiation could be asynchronously done.
-    gui_extension_create_func_t create;
+    RT_UNSAFE gui_extension_create_func_t create;
 
     // shows the view (using `WindowManager.addView()`).
     // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
-    gui_extension_show_func_t show;
+    RT_UNSAFE gui_extension_show_func_t show;
 
     // hides the view (using `WindowManager.removeView()`).
-    gui_extension_hide_func_t hide;
+    RT_UNSAFE gui_extension_hide_func_t hide;
 
     // resizes the View (by using `WindowManager.updateViewLayout()`.
     // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
-    gui_extension_resize_func_t resize;
+    RT_UNSAFE gui_extension_resize_func_t resize;
 
     // frees the view.
-    gui_extension_destroy_func_t destroy;
+    RT_UNSAFE gui_extension_destroy_func_t destroy;
 } aap_gui_extension_t;
 
 #ifdef __cplusplus

@@ -20,9 +20,9 @@ typedef void (*state_extension_get_state_t) (AndroidAudioPluginExtensionTarget t
 typedef void (*state_extension_set_state_t) (AndroidAudioPluginExtensionTarget target, aap_state_t* source);
 
 typedef struct aap_state_extension_t {
-    state_extension_get_state_size_t get_state_size;
-    state_extension_get_state_t get_state;
-    state_extension_set_state_t set_state;
+    RT_UNSAFE state_extension_get_state_size_t get_state_size;
+    RT_UNSAFE state_extension_get_state_t get_state;
+    RT_UNSAFE state_extension_set_state_t set_state;
 } aap_state_extension_t;
 
 #ifdef __cplusplus

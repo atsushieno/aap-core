@@ -154,7 +154,7 @@ typedef struct aap_midi_extension_t {
     // Returns the MIDI mapping policy flags that indicates the message types that the plugin may directly
     // consume and thus cannot be mapped to other purposes (parameter changes and preset changes).
     // The actual callee is most likely audio-plugin-host, not the plugin.
-    midi_extension_get_mapping_policy_func_t get_mapping_policy;
+    RT_UNSAFE midi_extension_get_mapping_policy_func_t get_mapping_policy;
 } aap_midi_extension_t;
 
 #ifdef __cplusplus

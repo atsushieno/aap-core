@@ -60,8 +60,10 @@ typedef void (*port_config_extension_get_options_t) (AndroidAudioPluginExtension
 typedef void (*port_config_extension_select_t) (AndroidAudioPluginExtensionTarget target, const char* configuration);
 
 typedef struct aap_port_config_extension_t {
-    port_config_extension_get_options_t get_options;
-    port_config_extension_select_t select;
+    // It is supposed to be stored/cached in memory
+    RT_SAFE port_config_extension_get_options_t get_options;
+    // It is supposed to be stored/cached in memory
+    RT_SAFE port_config_extension_select_t select;
 } aap_port_config_extension_t;
 
 #ifdef __cplusplus

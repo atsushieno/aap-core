@@ -26,11 +26,11 @@ typedef int32_t (*presets_extension_get_preset_index_func_t) (AndroidAudioPlugin
 typedef void (*presets_extension_set_preset_index_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
 
 typedef struct aap_presets_extension_t {
-    presets_extension_get_preset_count_func_t get_preset_count;
-    presets_extension_get_preset_data_size_func_t get_preset_data_size;
-    presets_extension_get_preset_func_t get_preset;
-    presets_extension_get_preset_index_func_t get_preset_index;
-    presets_extension_set_preset_index_func_t set_preset_index;
+    RT_UNSAFE presets_extension_get_preset_count_func_t get_preset_count;
+    RT_UNSAFE presets_extension_get_preset_data_size_func_t get_preset_data_size;
+    RT_UNSAFE presets_extension_get_preset_func_t get_preset;
+    RT_UNSAFE presets_extension_get_preset_index_func_t get_preset_index;
+    RT_UNSAFE presets_extension_set_preset_index_func_t set_preset_index;
 } aap_presets_extension_t;
 
 #ifdef __cplusplus

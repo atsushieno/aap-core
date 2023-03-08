@@ -55,10 +55,10 @@ typedef aap_parameter_info_t* (*parameters_extension_get_parameter_func_t) (Andr
 typedef struct aap_parameters_extension_t {
     // Returns the number of parameters.
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    parameters_extension_get_parameter_count_func_t get_parameter_count;
+    RT_SAFE parameters_extension_get_parameter_count_func_t get_parameter_count;
     // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    parameters_extension_get_parameter_func_t get_parameter;
+    RT_SAFE parameters_extension_get_parameter_func_t get_parameter;
 } aap_parameters_extension_t;
 
 typedef void (*parameters_host_extension_on_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
@@ -66,7 +66,7 @@ typedef void (*parameters_host_extension_on_parameter_list_changed_func_t) (Andr
 typedef struct aap_host_parameters_extension_t {
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host (it will need to refresh the list anyways).
-    parameters_host_extension_on_parameter_list_changed_func_t on_parameters_changed;
+    RT_SAFE parameters_host_extension_on_parameter_list_changed_func_t on_parameters_changed;
 } aap_host_parameters_extension_t;
 
 #ifdef __cplusplus

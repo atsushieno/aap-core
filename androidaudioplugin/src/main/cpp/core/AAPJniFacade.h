@@ -1,6 +1,8 @@
 #ifndef AAP_CORE_AAPJNIFACADE_H
 #define AAP_CORE_AAPJNIFACADE_H
 
+#if ANDROID
+
 #include "aap/core/plugin-information.h"
 #include "aap/core/host/plugin-connections.h"
 #include "jni.h"
@@ -64,4 +66,7 @@ namespace aap {
     };
 
 }
+
+#endif // ANDROID
+
 #endif //AAP_CORE_AAPJNIFACADE_H

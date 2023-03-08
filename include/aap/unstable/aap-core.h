@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define RT_SAFE [[clang::annotate("AAP_RT_SAFE")]]
+#define RT_UNSAFE [[clang::annotate("AAP_RT_UNSAFE")]]
+
 // FIXME: there should be some definition for this constant elsewhere
 #define DEFAULT_CONTROL_BUFFER_SIZE 8192
 
