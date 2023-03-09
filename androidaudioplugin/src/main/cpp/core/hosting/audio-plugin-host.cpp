@@ -363,17 +363,6 @@ void PluginInstance::dispose() {
 	delete shared_memory_store;
 }
 
-/*
-int32_t PluginInstance::allocateAudioPluginBuffer(size_t numPorts, size_t numFrames, size_t defaultControlBytesPerBlock) {
-	assert(!plugin_buffer);
-	assert(numPorts >= 0);
-	assert(numFrames > 0);
-	assert(defaultControlBytesPerBlock > 0);
-	plugin_buffer = std::make_unique<PluginBuffer>();
-	plugin_buffer->initialize(numPorts, numFrames);
-	return plugin_buffer->allocateBuffer(*this, defaultControlBytesPerBlock);
-}*/
-
 aap_buffer_t* PluginInstance::getAudioPluginBuffer() {
 	return shared_memory_store->getAudioPluginBuffer();
 }
@@ -438,7 +427,7 @@ void PluginInstance::setupPortConfigDefaults() {
     configured_ports->emplace_back(midi_out);
 
     // Populate audio in ports only if it is not an instrument.
-	// FIXM#: there may be better ways to guess whether audio in ports are required or not.
+	// FIXME: there may be better ways to guess whether audio in ports are required or not.
 	if (!pluginInfo->isInstrument()) {
 		PortInformation audio_in_l{nPort++, "Audio In L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
 		configured_ports->emplace_back(audio_in_l);
@@ -453,8 +442,6 @@ void PluginInstance::setupPortConfigDefaults() {
 
 void PluginInstance::scanParametersAndBuildList() {
 	assert(!cached_parameters);
-
-	// FIXME: it's better to populate ParameterInformation from PortInformation for softer migration.
 
 	auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
 	if (!ext)
@@ -502,7 +489,7 @@ void RemotePluginInstance::prepare(int frameCount) {
     auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
     auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, DEFAULT_CONTROL_BUFFER_SIZE);
     if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
-        aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
+        aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
     }
 
     plugin->prepare(plugin, getAudioPluginBuffer());

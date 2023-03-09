@@ -1,4 +1,5 @@
 #include <sys/mman.h>
+#include <mutex>
 #include "aap/unstable/logging.h"
 #include "aap/ext/midi.h"
 #include "AAPMidiProcessor.h"
@@ -23,7 +24,7 @@ namespace aapmidideviceservice {
         //
         //  Each plugin process is still expected to fit within a callback time slice,
         //  so we still call plugin process() within the callback.
-
+        // FIXME: we could simplify buffering using Oboe StabilizedCallback...
         if (zix_ring_read_space(aap_input_ring_buffer) < numFrames * sizeof(float)) {
             // observer performance. (start)
             struct timespec ts_start{}, ts_end{};
@@ -260,6 +261,20 @@ namespace aapmidideviceservice {
     int32_t failed_plugin_process_count;
     // Called by Oboe audio callback implementation. It calls process.
     void AAPMidiProcessor::callPluginProcess() {
+
+        auto dstBuffer = (AAPMidiBufferHeader*) getAAPMidiInputBuffer();
+        if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
+            auto srcBuffer = (AAPMidiBufferHeader*) midi_input_buffer;
+            if (srcBuffer->length)
+                memcpy(dstBuffer + 1, srcBuffer + 1, srcBuffer->length);
+            dstBuffer->length = srcBuffer->length;
+            srcBuffer->length = 0;
+        } else {
+            // failed to acquire lock; we do not send anything this time.
+            dstBuffer->length = 0;
+        }
+        dstBuffer->time_options = 0; // reserved in MIDI2 mode
+
         auto data = instance_data.get();
         if (!data) {
             // It's not ready to process audio yet.
@@ -270,18 +285,6 @@ namespace aapmidideviceservice {
 
         auto instance = client->getInstanceById(data->instance_id);
         instance->process(aap_frame_size, 1000000000);
-        // reset MIDI buffers after plugin process (otherwise it will send the same events in the next iteration).
-        if (data->instance_id == instrument_instance_id) {
-            auto b = instance->getAudioPluginBuffer();
-            if (data->midi1_in_port >= 0)
-                ((AAPMidiBufferHeader*) b->get_buffer(*b, data->midi1_in_port))->length = 0;
-            if (data->midi2_in_port >= 0)
-                ((AAPMidiBufferHeader*) b->get_buffer(*b, data->midi2_in_port))->length = 0;
-        } else {
-            if (failed_plugin_process_count++ < 10)
-                aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "callPluginProcess() is invoked while there is no instrument plugin instantiated.");
-            return;
-        }
     }
 
     int32_t failed_audio_output_count{0};
@@ -469,50 +472,32 @@ namespace aapmidideviceservice {
             actualTimestamp = (timestampInNanoseconds + diff) % nanosecondsPerCycle;
         }
 
-        // FIXME: rewrite this part to work fine along with realtime consumer.
-        //  Currently read (consumption) occurs while it is preparing for MIDI buffer and things become inconsistent.
-        auto dst8 = (uint8_t *) getAAPMidiInputBuffer();
-        auto dstMBH = (AAPMidiBufferHeader*) dst8;
-        if (dst8 != nullptr) {
-            uint32_t savedOffset = dstMBH->length;
-            uint32_t currentOffset = savedOffset;
-            if (getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+        {
+            const std::lock_guard<NanoSleepLock> lock{midi_buffer_mutex};
+
+            auto dst8 = (uint8_t *) midi_input_buffer;
+            auto dstMBH = (AAPMidiBufferHeader *) dst8;
+            if (dst8 != nullptr) {
+                uint32_t savedOffset = dstMBH->length;
+                uint32_t currentOffset = savedOffset;
                 int32_t tIter = 0;
+                auto headerSize = sizeof(AAPMidiBufferHeader);
                 for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
                      ticks > 0; ticks -= 31250, tIter++) {
-                    *(int32_t *) (dst8 + 32 + currentOffset + tIter * 4) =
+                    *(int32_t *) (dst8 + headerSize + currentOffset + tIter * 4) =
                             (int32_t) cmidi2_ump_jr_timestamp_direct(0,
                                                                      ticks > 31250 ? 31250 : ticks);
                 }
                 currentOffset += tIter * 4;
-                // process MIDI 2.0 data
-                memcpy(dst8 + 32 + currentOffset, bytes + offset, length);
+                memcpy(dst8 + headerSize + currentOffset, bytes + offset, length);
                 currentOffset += length;
-                // FIXME: use atomic compare-exchange or whatever
+
                 if (savedOffset != dstMBH->length) {
                     // updated
-                    memcpy(dst8 + 32, dst8 + 32 + savedOffset, length);
+                    memcpy(dst8 + headerSize, dst8 + headerSize + savedOffset, length);
                     dstMBH->length = currentOffset - savedOffset;
-                }
-                else
+                } else
                     dstMBH->length = currentOffset;
-                dstMBH->time_options = 0; // reserved in MIDI2 mode
-                for (int i = 2; i < 8; i++)
-                    dstMBH->reserved[i - 2] = 0; // reserved
-            } else {
-                // See if it is MIDI-CI Set New Protocol (must be a standalone message).
-                // If so, update protocol and return immediately.
-                int32_t maybeNewProtocol;
-                if (bytes[offset] == 0xF0 && bytes[length - 1] == 0xF7 &&
-                        (maybeNewProtocol = cmidi2_ci_try_parse_new_protocol(bytes + offset + 1, length - 2)) > 0)
-                    receiver_midi_protocol = maybeNewProtocol;
-                // Note that Set New Protocol has to be also sent to the recipient too.
-
-                dstMBH->time_options = -100;
-                uint32_t ticks = timestampInNanoseconds / (44100 / -dstMBH->time_options);
-                size_t lengthSize = cmidi2_midi1_write_7bit_encoded_int(dst8 + 8 + currentOffset, ticks);
-                memcpy(dst8 + 32 + currentOffset + lengthSize, bytes + offset, length);
-                dstMBH->length += length + lengthSize;
             }
         }
     }

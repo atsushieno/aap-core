@@ -95,6 +95,22 @@ namespace aapmidideviceservice {
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{};
 
+        // I don't think simple and stupid SpinLock is appropriate here. We do not want to dry up mobile battery.
+        class NanoSleepLock {
+            std::atomic_flag state = ATOMIC_FLAG_INIT;
+        public:
+            void lock() noexcept {
+                const auto delay = timespec{0, 1000}; // 1 microsecond
+                while(state.test_and_set())
+                    clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
+            }
+            void unlock() noexcept { state.clear(); }
+            bool try_lock() noexcept { return !state.test_and_set(); }
+        };
+        NanoSleepLock midi_buffer_mutex{};
+        uint8_t midi_input_buffer[4096];
+        std::atomic<int32_t> midi_input_buffer_size{0};
+
     protected:
         AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
         virtual AAPMidiProcessorPAL* pal() = 0;

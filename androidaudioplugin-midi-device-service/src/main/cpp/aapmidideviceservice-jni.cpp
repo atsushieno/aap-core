@@ -87,6 +87,10 @@ jbyte jni_midi_buffer[1024]{};
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_processMessage(
         JNIEnv *env, jobject midiReceiver, jbyteArray bytes, jint offset, jint length,
         jlong timestampInNanoseconds) {
+    if (length > 1024) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPMidiDeviceServiceJNI", "MIDI input too long, it should be within %d bytes, but % bytes were passed.", sizeof(jni_midi_buffer), length);
+        return;
+    }
     env->GetByteArrayRegion(bytes, offset, length, jni_midi_buffer);
     AAPMIDIDEVICE_INSTANCE->processMidiInput(
             reinterpret_cast<uint8_t *>(jni_midi_buffer), 0, length, timestampInNanoseconds);
