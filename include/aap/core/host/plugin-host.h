@@ -95,8 +95,12 @@ namespace aap {
         // It is probably better suited for Kotlin client to avoid complicated JNI interop.
         Result<int32_t> createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit);
 
+        void connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback);
+
+        void connectToPluginService(const std::string& packageName, const std::string& className, std::function<void(std::string&)> callback);
+
         // Asynchronous version that allows service connection on the fly.
-        [[deprecated("ensureServiceConnected for async connection establishment, and then createInstance instead of this function.")]]
+        [[deprecated("Use connectToPluginService() for async connection establishment and then createInstance(), instead of this function.")]]
         void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& callback);
     };
 

@@ -247,25 +247,32 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 	return instance;
 }
 
-void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& userCallback)
-{
+void PluginClient::connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback) {
 	const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
 	assert (descriptor != nullptr);
-    auto service = connections->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
-    if (service != nullptr) {
-        auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
-        userCallback(result.value, result.error);
-    } else {
-        std::function<void(std::string&)> cb = [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string& error) {
-            if (error.empty()) {
-                auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
-                userCallback(result.value, result.error);
-            }
-            else
-                userCallback(-1, error);
-        };
-        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, descriptor->getPluginPackageName(), cb);
-    }
+	connectToPluginService(descriptor->getPluginPackageName(), descriptor->getPluginLocalName(), callback);
+}
+void PluginClient::connectToPluginService(const std::string& packageName, const std::string& className, std::function<void(std::string&)> callback) {
+	auto service = connections->getServiceHandleForConnectedPlugin(packageName, className);
+	if (service != nullptr) {
+		std::string error{};
+		callback(error);
+	} else {
+		PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, packageName, callback);
+	}
+}
+
+void PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& userCallback)
+{
+	std::function<void(std::string&)> cb = [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string& error) {
+		if (error.empty()) {
+			auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
+			userCallback(result.value, result.error);
+		}
+		else
+			userCallback(-1, error);
+	};
+	connectToPluginService(identifier, cb);
 }
 
 PluginClient::Result<int32_t> PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
