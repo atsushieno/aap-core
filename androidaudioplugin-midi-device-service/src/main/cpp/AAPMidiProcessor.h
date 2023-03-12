@@ -67,7 +67,7 @@ namespace aapmidideviceservice {
         aap::PluginListSnapshot plugin_list{};
         std::unique_ptr<aap::PluginClient> client{nullptr};
         int32_t sample_rate{0};
-        int32_t aap_frame_size{4096};
+        int32_t aap_frame_size{1024};
         int32_t midi_buffer_size{4096};
         int32_t channel_count{2};
         std::unique_ptr<PluginInstanceData> instance_data;
@@ -109,7 +109,6 @@ namespace aapmidideviceservice {
         };
         NanoSleepLock midi_buffer_mutex{};
         uint8_t midi_input_buffer[4096];
-        std::atomic<int32_t> midi_input_buffer_size{0};
 
     protected:
         AAPMidiProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
@@ -135,6 +134,8 @@ namespace aapmidideviceservice {
         void terminate();
 
         int32_t onAudioReady(void *audioData, int32_t numFrames);
+
+        inline int32_t getAAPFrameSize() { return aap_frame_size; }
     };
 }
 

@@ -64,14 +64,16 @@ public:
     }
 };
 
-class AAPMidiProcessorOboePAL : public oboe::AudioStreamDataCallback, public AAPMidiProcessorAndroidPAL {
+class AAPMidiProcessorOboePAL : public oboe::AudioStreamCallback, public AAPMidiProcessorAndroidPAL {
     AAPMidiProcessor *owner;
     oboe::AudioStreamBuilder builder{};
-    std::unique_ptr<oboe::AudioStreamDataCallback> callback{};
+    std::unique_ptr<oboe::StabilizedCallback> callback{};
     std::shared_ptr<oboe::AudioStream> stream{};
 
 public:
-    AAPMidiProcessorOboePAL(AAPMidiProcessor *owner) : owner(owner) {}
+    AAPMidiProcessorOboePAL(AAPMidiProcessor *owner) : owner(owner) {
+        callback = std::make_unique<oboe::StabilizedCallback>(this);
+    }
 
     oboe::DataCallbackResult
     onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames) override;

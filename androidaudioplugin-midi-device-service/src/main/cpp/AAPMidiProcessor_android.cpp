@@ -17,8 +17,9 @@ int32_t AAPMidiProcessorOboePAL::setupStream() {
     // but need to figure out why it fails to generate valid outputs for the target device.
     builder.setChannelCount(1);// channel_count);
     builder.setChannelConversionAllowed(false);
+    builder.setFramesPerCallback(owner->getAAPFrameSize());
 
-    builder.setDataCallback(this);
+    builder.setCallback(callback.get());
 
     return 0;
 }
