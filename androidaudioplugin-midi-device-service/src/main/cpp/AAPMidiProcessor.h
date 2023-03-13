@@ -93,7 +93,7 @@ namespace aap::midi {
         // Outputs
         ZixRing *aap_input_ring_buffer{nullptr};
         float *interleave_buffer{nullptr};
-        struct timespec last_aap_process_time{};
+        struct timespec last_aap_process_time{0, 0};
 
         // I don't think simple and stupid SpinLock is appropriate here. We do not want to dry up mobile battery.
         class NanoSleepLock {

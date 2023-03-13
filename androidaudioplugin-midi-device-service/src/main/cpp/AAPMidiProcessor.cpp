@@ -80,6 +80,8 @@ namespace aap::midi {
 
         translation_buffer = (uint8_t*) calloc(1, midiBufferSize);
 
+        memset(midi_input_buffer, 0, sizeof(midi_input_buffer));
+
         // Oboe configuration
         pal()->setupStream();
     }
