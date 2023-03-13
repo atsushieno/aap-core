@@ -6,7 +6,7 @@
 
 #define LOG_TAG "AAPMidiProcessor"
 
-namespace aapmidideviceservice {
+namespace aap::midi {
     long last_delay_value = 0, worst_delay_value = 0;
     long success_count = 0, failure_count = 0;
 
@@ -28,7 +28,7 @@ namespace aapmidideviceservice {
 #if ANDROID
         struct timespec timeSpecBegin{}, timeSpecEnd{};
         if (ATrace_isEnabled()) {
-            ATrace_beginSection("AAP_MIDI_DEVICE_SERVICE_PROCESS");
+            ATrace_beginSection("aap::midi::AAPMidiProcessor_callPluginProcess");
             clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
         }
 #endif
@@ -41,7 +41,7 @@ namespace aapmidideviceservice {
 #if ANDROID
         if (ATrace_isEnabled()) {
             clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
-            ATrace_setCounter("AAP_MIDI_DEVICE_SERVICE_PROCESS",
+            ATrace_setCounter("aap::midi::AAPMidiProcessor_callPluginProcess",
                               (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
             ATrace_endSection();
 

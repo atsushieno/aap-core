@@ -9,7 +9,7 @@
 #include <aap/core/host/android/audio-plugin-host-android.h>
 #include <aap/unstable/logging.h>
 
-namespace aapmidideviceservice {
+namespace aap::midi {
 
 class AAPMidiProcessorAndroidPAL : public AAPMidiProcessorPAL {
 public:

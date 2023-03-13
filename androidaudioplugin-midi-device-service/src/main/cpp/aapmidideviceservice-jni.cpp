@@ -26,16 +26,16 @@ const char* dupFromJava(JNIEnv *env, jstring s) {
 
 extern "C" {
 
-aapmidideviceservice::AAPMidiProcessorAndroid *processor{nullptr};
+aap::midi::AAPMidiProcessorAndroid *processor{nullptr};
 
-aapmidideviceservice::AudioDriverType driver_type{
-    aapmidideviceservice::AudioDriverType::AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE};
+aap::midi::AudioDriverType driver_type{
+    aap::midi::AudioDriverType::AAP_MIDI_PROCESSOR_AUDIO_DRIVER_TYPE_OBOE};
 
 void startNewDeviceInstance() {
-    processor = new aapmidideviceservice::AAPMidiProcessorAndroid(driver_type);
+    processor = new aap::midi::AAPMidiProcessorAndroid(driver_type);
 }
 
-aapmidideviceservice::AAPMidiProcessorAndroid* getDeviceInstance() {
+aap::midi::AAPMidiProcessorAndroid* getDeviceInstance() {
     if (!processor)
         startNewDeviceInstance();
     return processor;

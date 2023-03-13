@@ -8,7 +8,7 @@
 #include <aap/core/host/audio-plugin-host.h>
 #include <aap/core/aapxs/extension-service.h>
 
-namespace aapmidideviceservice {
+namespace aap::midi {
     // keep it compatible with Oboe
     enum AudioCallbackResult : int32_t {
         Continue = 0,

@@ -1,7 +1,7 @@
 #include "AAPMidiProcessor_android.h"
 #include "aap/unstable/logging.h"
 
-namespace aapmidideviceservice {
+namespace aap::midi {
 oboe::DataCallbackResult AAPMidiProcessorOboePAL::onAudioReady(
         oboe::AudioStream *audioStream, void *audioData, int32_t oboeNumFrames) {
     return (oboe::DataCallbackResult) owner->onAudioReady(audioData, oboeNumFrames);
