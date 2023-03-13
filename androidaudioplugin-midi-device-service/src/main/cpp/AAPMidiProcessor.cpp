@@ -25,25 +25,35 @@ namespace aapmidideviceservice {
         //  Each plugin process is still expected to fit within a callback time slice,
         //  so we still call plugin process() within the callback.
 
-        // observer performance. (start)
-        // FIXME: use ATrace maybe https://github.com/atsushieno/aap-core/issues/148
-        struct timespec ts_start{}, ts_end{};
-        clock_gettime(CLOCK_REALTIME, &ts_start);
-
+#if ANDROID
+        struct timespec timeSpecBegin{}, timeSpecEnd{};
+        if (ATrace_isEnabled()) {
+            ATrace_beginSection("AAP_MIDI_DEVICE_SERVICE_PROCESS");
+            clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+        }
+#endif
         callPluginProcess();
 
         // recorded for later reference at MIDI message buffering.
         clock_gettime(CLOCK_REALTIME, &last_aap_process_time);
 
         // observer performance. (end)
-        clock_gettime(CLOCK_REALTIME, &ts_end);
-        long diff = (ts_end.tv_sec - ts_start.tv_sec) * 1000000000 + ts_end.tv_nsec - ts_start.tv_nsec;
-        if (diff > 1000000) { // you took 1msec!?
-            last_delay_value = diff;
-            if (diff > worst_delay_value)
-                worst_delay_value = diff;
-            failure_count++;
-        } else success_count++;
+#if ANDROID
+        if (ATrace_isEnabled()) {
+            clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+            ATrace_setCounter("AAP_MIDI_DEVICE_SERVICE_PROCESS",
+                              (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+            ATrace_endSection();
+
+            long diff = (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec;
+            if (diff > 1000000) { // you took 1msec!?
+                last_delay_value = diff;
+                if (diff > worst_delay_value)
+                    worst_delay_value = diff;
+                failure_count++;
+            } else success_count++;
+        }
+#endif
 
         fillAudioOutput();
 

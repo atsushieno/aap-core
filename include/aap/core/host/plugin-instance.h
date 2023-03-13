@@ -3,6 +3,9 @@
 //-------------------------------------------------------
 
 #include "aap/core/aapxs/standard-extensions.h"
+#if ANDROID
+#include <android/trace.h>
+#endif
 
 namespace aap {
 
@@ -125,8 +128,26 @@ namespace aap {
 
         void dispose();
 
+        const char* remote_trace_name = "AAP::RemotePluginInstance_process";
+        const char* local_trace_name = "AAP::LocalPluginInstance_process";
+
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+            struct timespec timeSpecBegin{}, timeSpecEnd{};
+#if ANDROID
+            if (ATrace_isEnabled()) {
+                ATrace_beginSection(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name);
+                clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+            }
+#endif
             plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+#if ANDROID
+            if (ATrace_isEnabled()) {
+                clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+                ATrace_setCounter(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name,
+                                  (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+                ATrace_endSection();
+            }
+#endif
         }
 
         virtual StandardExtensions &getStandardExtensions() = 0;
