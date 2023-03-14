@@ -332,3 +332,20 @@ To enable asan in this project, there are three things to do:
   - Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
 
 Note that the ASAN options are specified only for `libandroidaudioplugin.so` and the plugin e.g. `libaapbareboneplugin.so`. To enable ASAN in other projects and their dependencies, pass appropriate build arguments to them as well.
+
+### Profiling audio processing
+
+AAP offers simple profiling results using [ATrace](https://developer.android.com/ndk/reference/group/tracing) API.
+
+![AAP tracing results on Perfetto](./images/systrace.png)
+
+For general information on audio profiling, [read this blog post](https://medium.com/@donturner/debugging-audio-glitches-on-android-ed10782f9c64). Although note that it is an old article from 2018 that only mentions legacy profiler. The traces are much more readable if you record and export the trace results as `.trace` file on Android Studio and open it on [Perfetto](https://perfetto.dev).
+
+You can use Android Studio Profiler: launch your plugin or host application with "profile {yourapp} with complete data" (or maybe low overhead; we are measuring on realtime audio threads so it *should* not matter), select "CPU" and then "System Trace", then "Record" and continue on your app UI to perform audio processing.
+
+The traces record processing time in nanoseconds, for both plugin services (for the plugin's `process()`) and plugin client (for the roundtrip for the Binder's `process()`).
+
+There are couple of notes @atsushieno figured out:
+
+- You likely have to use devices; @atsushieno could not get Android emulators recording traces that happened on AAudio, which is what we want.
+- You will have to explicitly enable AAudio tracing. In your device "Settings" > "Developer options" > "System Tracing" > "Categories", enable "audio: Audio" as a trace target.
