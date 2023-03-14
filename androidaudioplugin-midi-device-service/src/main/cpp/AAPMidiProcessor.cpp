@@ -25,37 +25,43 @@ namespace aap::midi {
         //  Each plugin process is still expected to fit within a callback time slice,
         //  so we still call plugin process() within the callback.
 
+        // FIXME: I don't think we need this ring buffer anymore but removing this still resulted in audio glitches.
+        if (zix_ring_read_space(aap_input_ring_buffer) < numFrames * sizeof(float)) {
+
 #if ANDROID
-        struct timespec timeSpecBegin{}, timeSpecEnd{};
-        if (ATrace_isEnabled()) {
-            ATrace_beginSection("aap::midi::AAPMidiProcessor_callPluginProcess");
-            clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
-        }
+            struct timespec timeSpecBegin{}, timeSpecEnd{};
+            if (ATrace_isEnabled()) {
+                ATrace_beginSection("aap::midi::AAPMidiProcessor_callPluginProcess");
+                clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+            }
 #endif
-        callPluginProcess();
+            callPluginProcess();
 
-        // recorded for later reference at MIDI message buffering.
-        clock_gettime(CLOCK_REALTIME, &last_aap_process_time);
+            // recorded for later reference at MIDI message buffering.
+            clock_gettime(CLOCK_REALTIME, &last_aap_process_time);
 
-        // observer performance. (end)
+            // observer performance. (end)
 #if ANDROID
-        if (ATrace_isEnabled()) {
-            clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
-            ATrace_setCounter("aap::midi::AAPMidiProcessor_callPluginProcess",
-                              (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
-            ATrace_endSection();
+            if (ATrace_isEnabled()) {
+                clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+                ATrace_setCounter("aap::midi::AAPMidiProcessor_callPluginProcess",
+                                  (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 +
+                                  timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+                ATrace_endSection();
 
-            long diff = (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec;
-            if (diff > 1000000) { // you took 1msec!?
-                last_delay_value = diff;
-                if (diff > worst_delay_value)
-                    worst_delay_value = diff;
-                failure_count++;
-            } else success_count++;
-        }
+                long diff = (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 +
+                            timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec;
+                if (diff > 1000000) { // you took 1msec!?
+                    last_delay_value = diff;
+                    if (diff > worst_delay_value)
+                        worst_delay_value = diff;
+                    failure_count++;
+                } else success_count++;
+            }
 #endif
 
-        fillAudioOutput();
+            fillAudioOutput();
+        }
 
         zix_ring_read(aap_input_ring_buffer, audioData, numFrames * sizeof(float));
 
