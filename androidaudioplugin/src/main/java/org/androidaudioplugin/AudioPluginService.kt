@@ -88,9 +88,9 @@ open class AudioPluginService : Service()
         for(ext in extensions)
             ext.cleanup()
 
+        AudioPluginNatives.stopNativeLooper()
         if (eventProcessorLooper?.thread?.isAlive == true)
             eventProcessorLooper?.quitSafely()
-        AudioPluginNatives.stopNativeLooper()
         eventProcessorLooper = null
 
         val binder = nativeBinder
