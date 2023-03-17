@@ -1,9 +1,6 @@
 [submodule "external/cerbero"]
 	path = dependencies/cerbero-artifacts/cerbero
 	url = https://github.com/atsushieno/cerbero.git
-[submodule "external/oboe"]
-	path = external/oboe
-	url = https://github.com/google/oboe.git
 [submodule "external/cmidi2"]
 	path = external/cmidi2
 	url = https://github.com/atsushieno/cmidi2.git

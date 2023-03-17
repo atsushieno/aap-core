@@ -1,14 +1,8 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-project(aapmidideviceservice VERSION 0.6.2 LANGUAGES CXX)
+project(aapmidideviceservice LANGUAGES CXX)
 
 set (TOPDIR "../../../..")
-
-set (OBOE_DIR "${TOPDIR}/external/oboe")
-
-add_subdirectory(${OBOE_DIR} ./oboe)
-
-include_directories (${OBOE_DIR}/include)
 
 # List of sources. Android build has some additional sources.
 set (aapmidideviceservice_SOURCES
@@ -28,6 +22,7 @@ add_library ( # Specifies the name of the library.
 		${aapmidideviceservice_SOURCES}
 		)
 
+find_package(oboe REQUIRED CONFIG)
 find_package(androidaudioplugin REQUIRED CONFIG)
 
 set (aapmidideviceservice_INCLUDES
@@ -56,7 +51,7 @@ target_link_libraries (aapmidideviceservice
 		android
 		log
 		binder_ndk
-		oboe
+		oboe::oboe
 		androidaudioplugin::androidaudioplugin
 		)
 

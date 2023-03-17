@@ -24,7 +24,7 @@ android {
     }
     externalNativeBuild {
         cmake {
-            version = "3.18.1"
+            version = libs.versions.cmake.get()
             path ("src/main/cpp/CMakeLists.txt")
         }
     }

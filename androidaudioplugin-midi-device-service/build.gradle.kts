@@ -44,7 +44,7 @@ android {
     }
     externalNativeBuild {
         cmake {
-            version = "3.22.1"
+            version = libs.versions.cmake.get()
             path ("src/main/cpp/CMakeLists.txt")
         }
     }
@@ -67,6 +67,7 @@ dependencies {
     implementation (libs.androidx.core.ktx)
     implementation (libs.startup.runtime)
     implementation (libs.coroutines.core)
+    implementation (libs.oboe)
 
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
