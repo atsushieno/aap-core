@@ -19,20 +19,20 @@ public:
   IAudioPluginInterfaceCallback();
   virtual ~IAudioPluginInterfaceCallback();
 
-  static constexpr uint32_t TRANSACTION_notify = FIRST_CALL_TRANSACTION + 0;
+  static constexpr uint32_t TRANSACTION_requestProcess = FIRST_CALL_TRANSACTION + 0;
 
   static std::shared_ptr<IAudioPluginInterfaceCallback> fromBinder(const ::ndk::SpAIBinder& binder);
   static binder_status_t writeToParcel(AParcel* parcel, const std::shared_ptr<IAudioPluginInterfaceCallback>& instance);
   static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IAudioPluginInterfaceCallback>* instance);
   static bool setDefaultImpl(const std::shared_ptr<IAudioPluginInterfaceCallback>& impl);
   static const std::shared_ptr<IAudioPluginInterfaceCallback>& getDefaultImpl();
-  virtual ::ndk::ScopedAStatus notify(int32_t in_instanceId, int32_t in_portId, int32_t in_size) = 0;
+  virtual ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) = 0;
 private:
   static std::shared_ptr<IAudioPluginInterfaceCallback> default_impl;
 };
 class IAudioPluginInterfaceCallbackDefault : public IAudioPluginInterfaceCallback {
 public:
-  ::ndk::ScopedAStatus notify(int32_t in_instanceId, int32_t in_portId, int32_t in_size) override;
+  ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
   ::ndk::SpAIBinder asBinder() override;
   bool isRemote() override;
 };

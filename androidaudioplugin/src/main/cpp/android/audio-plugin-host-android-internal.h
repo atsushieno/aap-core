@@ -43,14 +43,32 @@ public:
 class AndroidPluginClientConnectionData {
     ndk::SpAIBinder spAIBinder;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
+    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback;
+    std::function<::ndk::ScopedAStatus(int32_t)> handle_request_process;
+
+    class AudioPluginCallback : public aidl::org::androidaudioplugin::IAudioPluginInterfaceCallbackDefault {
+        AndroidPluginClientConnectionData* owner;
+
+    public:
+        AudioPluginCallback(AndroidPluginClientConnectionData* owner) : owner(owner) {}
+        ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
+            return owner->handleRequestProcess(in_instanceId);
+        }
+    };
 
 public:
     AndroidPluginClientConnectionData(AIBinder* aiBinder) {
         spAIBinder.set(aiBinder);
         proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
+        callback = std::make_shared<AudioPluginCallback>(this);
+        proxy->setCallback(callback);
     }
 
     aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
+
+    ::ndk::ScopedAStatus handleRequestProcess(int32_t instanceId) {
+        return handle_request_process(instanceId);
+    }
 };
 
 } // namespace aap

@@ -15,6 +15,8 @@
 #include "../extensions/midi-service.h"
 #include "../extensions/port-config-service.h"
 #include "../extensions/gui-service.h"
+#include "aap/core/host/plugin-instance.h"
+
 
 #define AAP_HOST_TAG "AAP_HOST"
 
@@ -242,7 +244,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
-	auto instance = new LocalPluginInstance(aapxs_registry.get(), localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(this, aapxs_registry.get(), localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
 	instances.emplace_back(instance);
 	return instance;
 }
@@ -463,7 +465,7 @@ void PluginInstance::scanParametersAndBuildList() {
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension_data = nullptr; // we shouldn't need it.
+    plugin_host_facade.get_extension = nullptr; // we shouldn't need it.
     return &plugin_host_facade;
 }
 
@@ -498,8 +500,9 @@ void RemotePluginInstance::prepare(int frameCount) {
 
 //----
 
-LocalPluginInstance::LocalPluginInstance(AAPXSRegistry *aapxsRegistry, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+LocalPluginInstance::LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
+		  host(host),
           aapxs_registry(aapxsRegistry),
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this) {
@@ -509,7 +512,8 @@ LocalPluginInstance::LocalPluginInstance(AAPXSRegistry *aapxsRegistry, int32_t i
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension_data = internalGetExtensionData;
+    plugin_host_facade.get_extension = internalGetExtension;
+	plugin_host_facade.request_process = internalRequestProcess;
     return &plugin_host_facade;
 }
 
@@ -576,6 +580,10 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 void LocalPluginInstance::notify_parameters_changed(AndroidAudioPluginHost *host,
                                                 AndroidAudioPlugin *plugin) {
     assert(false); // FIXME: implement
+}
+
+void LocalPluginInstance::requestProcessToHost() {
+	((PluginService*) host)->requestProcessToHost(instance_id);
 }
 
 //----

@@ -51,7 +51,7 @@ void sample_plugin_delete(
 
 void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
-    auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension_data(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
     assert(ext);
     auto pluginInfo = ext->get(&ctx->host, PLUGIN_URI);
     auto numPorts = pluginInfo.get_port_count(&pluginInfo);

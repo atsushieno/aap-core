@@ -12,7 +12,7 @@ public:
   explicit BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder);
   virtual ~BpAudioPluginInterfaceCallback();
 
-  ::ndk::ScopedAStatus notify(int32_t in_instanceId, int32_t in_portId, int32_t in_size) override;
+  ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
 };
 }  // namespace androidaudioplugin
 }  // namespace org

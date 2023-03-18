@@ -10,6 +10,7 @@
 namespace aap {
 
     class PluginSharedMemoryStore;
+    class PluginHost;
 
 /**
  * The common basis for client RemotePluginInstance and service LocalPluginInstance.
@@ -174,6 +175,7 @@ namespace aap {
             AndroidAudioPlugin *getPlugin() override { return owner->getPlugin(); }
         };
 
+        PluginHost *host;
         AAPXSRegistry *aapxs_registry;
         AndroidAudioPluginHost plugin_host_facade{};
         AAPXSInstanceMap <AAPXSServiceInstance> aapxsServiceInstances;
@@ -187,7 +189,7 @@ namespace aap {
         static void notify_parameters_changed(AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
 
         inline static void *
-        internalGetExtensionData(AndroidAudioPluginHost *host, const char *uri) {
+        internalGetExtension(AndroidAudioPluginHost *host, const char *uri) {
             if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
                 auto instance = (LocalPluginInstance *) host->context;
                 instance->host_plugin_info.get = get_plugin_info;
@@ -201,11 +203,16 @@ namespace aap {
             return nullptr;
         }
 
+        inline static void internalRequestProcess(AndroidAudioPluginHost *host) {
+            auto instance = (LocalPluginInstance *) host->context;
+            instance->requestProcessToHost();
+        }
+
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
 
     public:
-        LocalPluginInstance(AAPXSRegistry *aapxsRegistry, int32_t instanceId,
+        LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId,
                             const PluginInformation *pluginInformation,
                             AndroidAudioPluginFactory *loadedPluginFactory, int sampleRate);
 
@@ -261,6 +268,8 @@ namespace aap {
             plugin->prepare(plugin, getAudioPluginBuffer());
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
+
+        void requestProcessToHost();
     };
 
     class RemotePluginInstance : public PluginInstance {

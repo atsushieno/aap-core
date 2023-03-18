@@ -55,7 +55,8 @@ struct AndroidAudioPlugin;
 
 struct AndroidAudioPluginHost;
 
-typedef void* (*aap_host_get_extension_data_t) (struct AndroidAudioPluginHost* host, const char *uri);
+typedef void* (*aap_host_get_extension_func_t) (struct AndroidAudioPluginHost* host, const char *uri);
+typedef void (*aap_host_request_process_func_t) (struct AndroidAudioPluginHost* host);
 
 /**
  * Represents a host from plugin's perspective.
@@ -65,8 +66,10 @@ typedef void* (*aap_host_get_extension_data_t) (struct AndroidAudioPluginHost* h
  */
 typedef struct AndroidAudioPluginHost {
     void *context;
-    /** returns the shared data space that the host provides. */
-    aap_host_get_extension_data_t get_extension_data;
+    /** returns the host extension that the host provides. */
+    aap_host_get_extension_func_t get_extension;
+    /** notify host that it should send process() request at inactive state. */
+    aap_host_request_process_func_t request_process;
 } AndroidAudioPluginHost;
 
 /* function types */

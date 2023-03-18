@@ -31,7 +31,10 @@ public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
-        svc.reset(new PluginService(&plugins));
+        svc.reset(new PluginService(&plugins, [&](int32_t instanceId) {
+            if (callback)
+                callback->requestProcess(instanceId);
+        }));
         aap::PluginServiceList::getInstance()->addBoundServiceInProcess(svc.get());
     }
 

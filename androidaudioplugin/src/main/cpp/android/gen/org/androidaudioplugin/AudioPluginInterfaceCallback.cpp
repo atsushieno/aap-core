@@ -13,21 +13,13 @@ static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterfaceCallback
   binder_status_t _aidl_ret_status = STATUS_UNKNOWN_TRANSACTION;
   std::shared_ptr<BnAudioPluginInterfaceCallback> _aidl_impl = std::static_pointer_cast<BnAudioPluginInterfaceCallback>(::ndk::ICInterface::asInterface(_aidl_binder));
   switch (_aidl_code) {
-    case (FIRST_CALL_TRANSACTION + 0 /*notify*/): {
+    case (FIRST_CALL_TRANSACTION + 0 /*requestProcess*/): {
       int32_t in_instanceId;
-      int32_t in_portId;
-      int32_t in_size;
 
       _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_instanceId);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_portId);
-      if (_aidl_ret_status != STATUS_OK) break;
-
-      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_size);
-      if (_aidl_ret_status != STATUS_OK) break;
-
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->notify(in_instanceId, in_portId, in_size);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->requestProcess(in_instanceId);
       _aidl_ret_status = STATUS_OK;
       break;
     }
@@ -40,7 +32,7 @@ static AIBinder_Class* _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallba
 BpAudioPluginInterfaceCallback::BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder) : BpCInterface(binder) {}
 BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
 
-::ndk::ScopedAStatus BpAudioPluginInterfaceCallback::notify(int32_t in_instanceId, int32_t in_portId, int32_t in_size) {
+::ndk::ScopedAStatus BpAudioPluginInterfaceCallback::requestProcess(int32_t in_instanceId) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -52,15 +44,9 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
   _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_instanceId);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_portId);
-  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
-
-  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_size);
-  if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
-
   _aidl_ret_status = AIBinder_transact(
     asBinder().get(),
-    (FIRST_CALL_TRANSACTION + 0 /*notify*/),
+    (FIRST_CALL_TRANSACTION + 0 /*requestProcess*/),
     _aidl_in.getR(),
     _aidl_out.getR(),
     FLAG_ONEWAY
@@ -69,7 +55,7 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
     #endif  // BINDER_STABILITY_SUPPORT
     );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterfaceCallback::getDefaultImpl()) {
-    _aidl_status = IAudioPluginInterfaceCallback::getDefaultImpl()->notify(in_instanceId, in_portId, in_size);
+    _aidl_status = IAudioPluginInterfaceCallback::getDefaultImpl()->requestProcess(in_instanceId);
     goto _aidl_status_return;
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
@@ -129,7 +115,7 @@ const std::shared_ptr<IAudioPluginInterfaceCallback>& IAudioPluginInterfaceCallb
   return IAudioPluginInterfaceCallback::default_impl;
 }
 std::shared_ptr<IAudioPluginInterfaceCallback> IAudioPluginInterfaceCallback::default_impl = nullptr;
-::ndk::ScopedAStatus IAudioPluginInterfaceCallbackDefault::notify(int32_t /*in_instanceId*/, int32_t /*in_portId*/, int32_t /*in_size*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceCallbackDefault::requestProcess(int32_t /*in_instanceId*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;

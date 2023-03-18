@@ -454,7 +454,7 @@ AndroidAudioPlugin *sample_plugin_new(
     handle->midi_protocol = 2; // this is for testing MIDI2 in port.
 #endif
 
-    auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host->get_extension_data(host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host->get_extension(host, AAP_PLUGIN_INFO_EXTENSION_URI);
     if (pluginInfoExt != nullptr) {
         auto info = pluginInfoExt->get(host, pluginUniqueId);
         aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));

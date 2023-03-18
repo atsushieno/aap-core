@@ -27,8 +27,8 @@ public:
   explicit IAudioPluginInterfaceCallbackDelegator(const std::shared_ptr<IAudioPluginInterfaceCallback> &impl) : _impl(impl) {
   }
 
-  ::ndk::ScopedAStatus notify(int32_t in_instanceId, int32_t in_portId, int32_t in_size) override {
-    return _impl->notify(in_instanceId, in_portId, in_size);
+  ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
+    return _impl->requestProcess(in_instanceId);
   }
 protected:
 private:

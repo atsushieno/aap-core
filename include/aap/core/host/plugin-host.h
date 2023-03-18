@@ -37,6 +37,7 @@ namespace aap {
     {
     protected:
         PluginListSnapshot* plugin_list{nullptr};
+
         std::vector<PluginInstance*> instances{};
         PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
 
@@ -59,9 +60,10 @@ namespace aap {
 
 
     class PluginService : public PluginHost {
+        std::function<void(int32_t)> plugin_callback;
     public:
-        PluginService(PluginListSnapshot* contextPluginList)
-                : PluginHost(contextPluginList)
+        PluginService(PluginListSnapshot* contextPluginList, std::function<void(int32_t)> pluginCallback)
+                : PluginHost(contextPluginList), plugin_callback(pluginCallback)
         {
         }
 
@@ -69,6 +71,10 @@ namespace aap {
 
         inline LocalPluginInstance* getLocalInstance(int32_t instanceId) {
             return (LocalPluginInstance*) getInstanceById(instanceId);
+        }
+
+        void requestProcessToHost(int32_t instanceId) {
+            plugin_callback(instanceId);
         }
     };
 
