@@ -32,6 +32,7 @@ class AudioPluginHostHelper {
             val aapServiceInfo = PluginServiceInformation(label, packageName, className)
 
             var currentPlugin: PluginInformation? = null
+            val safeDouble: (Double) -> Double = { v -> if (v.isFinite()) v else 0.0 }
             while (true) {
                 val eventType = xp.next()
                 if (eventType == XmlPullParser.END_DOCUMENT)
@@ -78,23 +79,20 @@ class AudioPluginHostHelper {
                     } else if (xp.name == "parameter" && (xp.namespace == "" || xp.namespace == AAP_METADATA_EXT_PARAMETERS_NS)) {
                         if (currentPlugin != null) {
                             // Android Bug: XmlPullParser.getAttributeValue() returns null, whereas Kotlinized API claims that it returns non-null!
-                            val id: String? = xp.getAttributeValue(null, "id")
-                            if (id == null)
-                                throw AAPMetadataException("Mandatory attribute \"id\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
+                            val id: String = xp.getAttributeValue(null, "id")
+                                ?: throw AAPMetadataException("Mandatory attribute \"id\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                             if (id.toIntOrNull() == null)
                                 throw AAPMetadataException("The \"id\" attribute on a <port> element must be a valid integer. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                             // Android Bug: XmlPullParser.getAttributeValue() returns null, whereas Kotlinized API claims that it returns non-null!
-                            val name: String? = xp.getAttributeValue(null, "name")
-                            if (name == null)
-                                throw AAPMetadataException("Mandatory attribute \"name\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
+                            val name: String = xp.getAttributeValue(null, "name")
+                                ?: throw AAPMetadataException("Mandatory attribute \"name\" is missing on <port> element. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                             val default = xp.getAttributeValue(null, "default")
                             val minimum = xp.getAttributeValue(null, "minimum")
                             val maximum = xp.getAttributeValue(null, "maximum")
-                            // FIXME: handle parse errors gracefully
                             val para = ParameterInformation(id.toInt(), name,
-                                minimum?.toDouble() ?: 0.0,
-                                maximum?.toDouble() ?: 1.0,
-                                default?.toDouble() ?: 0.0
+                                safeDouble(minimum?.toDouble() ?: 0.0),
+                                safeDouble(maximum?.toDouble() ?: 1.0),
+                                safeDouble(default?.toDouble() ?: 0.0)
                             )
                             currentPlugin.parameters.add(para)
                         }
@@ -121,7 +119,8 @@ class AudioPluginHostHelper {
                                 contentInt
                             )
                             if (minimumSize != null)
-                                port.minimumSizeInBytes = minimumSize.toInt()
+                                port.minimumSizeInBytes = minimumSize.toIntOrNull()
+                                    ?: throw AAPMetadataException("The \"minimumSize\" attribute on a <port> element must be a valid integer. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                             currentPlugin.ports.add(port)
                         }
                     }
