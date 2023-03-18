@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#include "../unstable/aap-core.h"
+#include "../android-audio-plugin.h"
 #include "stdint.h"
 
 #define AAP_PLUGIN_INFO_EXTENSION_URI "urn://androidaudioplugin.org/extensions/plugin-info/v1"

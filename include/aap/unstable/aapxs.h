@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 #include <stdint.h>
-#include "aap-core.h"
+#include "../android-audio-plugin.h"
 
 struct AAPXSFeature;
 struct AAPXSClientInstance;

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "../unstable/aap-core.h"
+#include "../android-audio-plugin.h"
 #include <stdint.h>
 
 #define AAP_PORT_CONFIG_EXTENSION_URI "urn://androidaudioplugin.org/extensions/port-config/v1"
