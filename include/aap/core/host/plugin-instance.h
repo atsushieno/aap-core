@@ -127,8 +127,6 @@ namespace aap {
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
 
-        void dispose();
-
         const char* remote_trace_name = "AAP::RemotePluginInstance_process";
         const char* local_trace_name = "AAP::LocalPluginInstance_process";
 

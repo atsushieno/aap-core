@@ -355,9 +355,7 @@ PluginInstance::PluginInstance(const PluginInformation* pluginInformation, Andro
 	assert(loadedPluginFactory);
 }
 
-PluginInstance::~PluginInstance() { dispose(); }
-
-void PluginInstance::dispose() {
+PluginInstance::~PluginInstance() {
 	instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
 	if (plugin != nullptr)
 		plugin_factory->release(plugin_factory, plugin);

@@ -100,7 +100,7 @@ namespace aap::midi {
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "instance of instance_id %d was not found",
                                  instance_data->instance_id);
                 else
-                    instance->dispose();
+                    client->destroyInstance(instance);
             }
             else
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "detected unexpected instance_id: %d",
