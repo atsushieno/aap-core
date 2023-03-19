@@ -583,6 +583,9 @@ void LocalPluginInstance::notify_parameters_changed(AndroidAudioPluginHost *host
 }
 
 void LocalPluginInstance::requestProcessToHost() {
+	if (process_requested)
+		return;
+	process_requested = true;
 	((PluginService*) host)->requestProcessToHost(instance_id);
 }
 

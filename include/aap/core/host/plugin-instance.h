@@ -132,7 +132,7 @@ namespace aap {
         const char* remote_trace_name = "AAP::RemotePluginInstance_process";
         const char* local_trace_name = "AAP::LocalPluginInstance_process";
 
-        void process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+        virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) {
             struct timespec timeSpecBegin{}, timeSpecEnd{};
 #if ANDROID
             if (ATrace_isEnabled()) {
@@ -182,6 +182,7 @@ namespace aap {
         LocalPluginInstanceStandardExtensionsImpl standards;
         aap_host_plugin_info_extension_t host_plugin_info{};
         aap_host_parameters_extension_t host_parameters_extension{};
+        bool process_requested{false};
 
         static aap_plugin_info_t
         get_plugin_info(AndroidAudioPluginHost *host, const char *pluginId);
@@ -261,12 +262,17 @@ namespace aap {
             feature->on_invoked(feature, getPlugin(), aapxsInstance, opcode);
         }
 
-        void prepare(int maximumExpectedSamplesPerBlock) override {
+        void prepare(int32_t maximumExpectedSamplesPerBlock) override {
             assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED ||
                    instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
 
             plugin->prepare(plugin, getAudioPluginBuffer());
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+        }
+
+        void process(int32_t frameCount, int32_t timeoutInNanoseconds) override {
+            process_requested = false;
+            PluginInstance::process(frameCount, timeoutInNanoseconds);
         }
 
         void requestProcessToHost();
