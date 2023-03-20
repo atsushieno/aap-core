@@ -5,11 +5,22 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.DraggableState
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,8 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -41,6 +54,7 @@ import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.ui.web.WebUIHostHelper
+import kotlin.math.roundToInt
 
 private val headerModifier = Modifier.width(120.dp)
 
@@ -337,11 +351,31 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
 
 @Composable
 fun PluginWebUI(instance: AudioPluginInstance) {
-    Column {
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    Column(
+        Modifier
+            .padding(40.dp)
+            .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
+
+    ) {
+        Box(Modifier
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    offsetX += dragAmount.x
+                    offsetY += dragAmount.y
+                }
+            }
+            .fillMaxWidth()
+            .background(Color.DarkGray.copy(alpha = 0.3f))
+            .border(1.dp, Color.Black)) {
+            Text("Web UI")
+        }
         AndroidView(
             modifier = Modifier
-                .padding(40.dp)
-                .border(2.dp, Color.Black),
+                .border(1.dp, Color.Black),
             factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, instance) }
         )
     }
