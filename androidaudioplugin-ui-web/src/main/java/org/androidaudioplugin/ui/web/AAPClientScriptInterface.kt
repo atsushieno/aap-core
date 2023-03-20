@@ -19,12 +19,8 @@ import java.nio.ByteBuffer
  */
 @Suppress("unused")
 class AAPClientScriptInterface(private val instance: AudioPluginInstance) : AAPScriptInterface() {
-    override fun sendMidi1(data: ByteArray, offset: Int, length: Int) {
-        TODO("Not yet implemented")
-    }
-
-    override fun setParameter(parameterId: Int, value: Double) {
-        TODO("Not yet implemented")
+    override fun addEventUmpInput(data: ByteBuffer, size: Int) {
+        instance.addEventUmpInput(data, size)
     }
 
     override fun getPortBuffer(port: Int, data: ByteArray, length: Int) =

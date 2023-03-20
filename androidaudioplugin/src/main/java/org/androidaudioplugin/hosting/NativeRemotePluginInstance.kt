@@ -39,6 +39,8 @@ internal class NativeRemotePluginInstance(val pluginId: String,
     fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = resizeGui(client.native, instanceId, guiInstanceId, width, height)
     fun destroyGui(guiInstanceId: Int) = destroyGui(client.native, instanceId, guiInstanceId)
 
+    fun addEventUmpInput(data: ByteBuffer, length: Int) = addEventUmpInput(client.native, instanceId, data, length)
+
     // plugin instance (dynamic) information retrieval
     fun getParameterCount() = getParameterCount(client.native, instanceId)
     fun getParameter(index: Int) = getParameter(client.native, instanceId, index)
@@ -115,5 +117,8 @@ internal class NativeRemotePluginInstance(val pluginId: String,
         external fun resizeGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int, width: Int, height: Int) : Int
         @JvmStatic
         external fun destroyGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+
+        @JvmStatic
+        external fun addEventUmpInput(nativeClient: Long, instanceId: Int, data: ByteBuffer, length: Int)
     }
 }

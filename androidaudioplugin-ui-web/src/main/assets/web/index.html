@@ -26,7 +26,7 @@ webaudio-knob { padding: 5px; }
     AAPInterop.onInitialize();
 
     for (el of document.getElementsByTagName('webaudio-knob')) {
-      el.addEventListener('input', function(e) {
+      el.addEventListener('change', function(e) {
         sendInput(e.target.getAttribute('id_'), e.target.value);
       });
     }
@@ -58,7 +58,7 @@ webaudio-knob { padding: 5px; }
       knob.setAttribute('max', para.getMaxValue());
       knob.setAttribute('value', para.getDefaultValue());
       knob.setAttribute('src', 'bright_life.png');
-      knob.addEventListener("input", (ev) => {
+      knob.addEventListener("change", (ev) => {
         AAPInterop.setParameter(ev.target.aapParameterIndex, ev.target.value);
       });
       td.appendChild(knob);
@@ -70,7 +70,8 @@ webaudio-knob { padding: 5px; }
   }
 
   function sendNote(state, note) {
-    AAPInterop.writeMidi(state ? [0x90 + midiChannel, note, noteVelocity] : [0x80 + midiChannel, note, 0]);
+    var arr = Uint8Array.from(state ? [0x90 + midiChannel, note, noteVelocity] : [0x80 + midiChannel, note, 0]);
+    AAPInterop.sendMidi1(arr, 0, arr.length);
   }
 //--></script>
     <script type='text/javascript' src='webcoomponents-lite.js'></script>

@@ -131,4 +131,6 @@ class AudioPluginInstance internal constructor(
     fun hideGui(guiInstanceId: Int) = native.hideGui(guiInstanceId)
     fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = native.resizeGui(guiInstanceId, width, height)
     fun destroyGui(guiInstanceId: Int) = native.destroyGui(guiInstanceId)
+
+    fun addEventUmpInput(data: ByteBuffer, size: Int) = native.addEventUmpInput(data, size)
 }

@@ -384,6 +384,20 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroyGui(JNIEnv
 }
 
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_addEventUmpInput(JNIEnv *env,
+																			jclass clazz,
+																			jlong nativeClient,
+																			jint instanceId,
+																			jobject data,
+																			jint length) {
+	auto client = (aap::PluginClient *) (void *) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	auto buf = env->GetDirectBufferAddress(data);
+    instance->addEventUmpInput(buf, length);
+}
+
 // plugin instance (dynamic) information retrieval
 
 jint implPluginHostGetParameterCount(jlong nativeHost,
@@ -445,6 +459,17 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getPort(JNIEnv *env,
                                                               jint instanceId,
                                                               jint index) {
 	return aap::AAPJniFacade::getInstance()->getPluginInstancePort(nativeService, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_addEventUmpInput(JNIEnv *env, jclass clazz,
+                                                                       jlong nativeService,
+                                                                       jint instanceId,
+                                                                       jobject data, jint size) {
+    auto host = (aap::PluginService *) (void *) nativeService;
+    auto instance = host->getInstanceById(instanceId);
+    instance->addEventUmpInput(env->GetDirectBufferAddress(data), size);
 }
 
 extern "C"

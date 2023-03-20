@@ -40,6 +40,7 @@ namespace aap {
 
         std::vector<PluginInstance*> instances{};
         PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
+        int32_t event_midi2_input_buffer_size{4096};
 
     public:
         PluginHost(PluginListSnapshot* contextPluginList);

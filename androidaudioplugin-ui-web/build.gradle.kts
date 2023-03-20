@@ -27,6 +27,7 @@ dependencies {
     implementation (libs.kotlin.stdlib.jdk7)
     implementation (libs.androidx.appcompat)
     implementation (libs.webkit)
+    implementation (libs.ktmidi)
 
     androidTestImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)

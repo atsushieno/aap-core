@@ -9,6 +9,7 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
+#include "utility.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/parameters-service.h"
 #include "../extensions/presets-service.h"
@@ -244,7 +245,8 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
-	auto instance = new LocalPluginInstance(this, aapxs_registry.get(), localInstanceIdSerial++, descriptor, pluginFactory, sampleRate);
+	auto instance = new LocalPluginInstance(this, aapxs_registry.get(), localInstanceIdSerial++,
+											descriptor, pluginFactory, sampleRate, event_midi2_input_buffer_size);
 	instances.emplace_back(instance);
 	return instance;
 }
@@ -317,7 +319,8 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(aapxs_registry.get(), descriptor, pluginFactory, sampleRate);
+            auto instance = new RemotePluginInstance(aapxs_registry.get(), descriptor, pluginFactory,
+													 sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
             instance->completeInstantiation();
             instance->scanParametersAndBuildList();
@@ -345,14 +348,21 @@ int32_t PluginService::createInstance(std::string identifier, int sampleRate)  {
 
 //-----------------------------------
 
-PluginInstance::PluginInstance(const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
+PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
+							   AndroidAudioPluginFactory* loadedPluginFactory,
+							   int32_t sampleRate,
+							   int32_t eventMidi2InputBufferSize)
 		: sample_rate(sampleRate),
 		  plugin_factory(loadedPluginFactory),
 		  instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
 		  plugin(nullptr),
-		  pluginInfo(pluginInformation) {
+		  pluginInfo(pluginInformation),
+          event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
 	assert(pluginInformation);
 	assert(loadedPluginFactory);
+	assert(event_midi2_input_buffer_size > 0);
+	event_midi2_input_buffer = calloc(1, event_midi2_input_buffer_size);
+    event_midi2_input_buffer_merged = calloc(1, event_midi2_input_buffer_size);
 }
 
 PluginInstance::~PluginInstance() {
@@ -361,6 +371,10 @@ PluginInstance::~PluginInstance() {
 		plugin_factory->release(plugin_factory, plugin);
 	plugin = nullptr;
 	delete shared_memory_store;
+	if (event_midi2_input_buffer)
+		free(event_midi2_input_buffer);
+	if (event_midi2_input_buffer_merged)
+		free(event_midi2_input_buffer_merged);
 }
 
 aap_buffer_t* PluginInstance::getAudioPluginBuffer() {
@@ -385,8 +399,12 @@ void PluginInstance::completeInstantiation()
 
 //----
 
-RemotePluginInstance::RemotePluginInstance(AAPXSRegistry* aapxsRegistry, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
+RemotePluginInstance::RemotePluginInstance(AAPXSRegistry* aapxsRegistry,
+										   const PluginInformation* pluginInformation,
+										   AndroidAudioPluginFactory* loadedPluginFactory,
+										   int32_t sampleRate,
+										   int32_t eventMidi2InputBufferSize)
+        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           aapxs_registry(aapxsRegistry),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
@@ -461,6 +479,42 @@ void PluginInstance::scanParametersAndBuildList() {
 	}
 }
 
+void PluginInstance::addEventUmpInput(void *input, int32_t size) {
+	const std::lock_guard<NanoSleepLock> lock{event_input_buffer_mutex};
+	if (event_midi2_input_buffer_offset + size > event_midi2_input_buffer_size)
+		return;
+	memcpy((uint8_t *) event_midi2_input_buffer + event_midi2_input_buffer_offset,
+		   input, size);
+	event_midi2_input_buffer_offset += size;
+}
+
+void PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  {
+	struct timespec timeSpecBegin{}, timeSpecEnd{};
+#if ANDROID
+	if (ATrace_isEnabled()) {
+		ATrace_beginSection(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name);
+		clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+	}
+#endif
+
+	if (std::unique_lock<NanoSleepLock> tryLock(event_input_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
+		merge_event_inputs(event_midi2_input_buffer_merged,
+						   event_midi2_input_buffer, event_midi2_input_buffer_offset,
+						   getAudioPluginBuffer(), this);
+		event_midi2_input_buffer_offset = 0;
+	}
+	plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+
+#if ANDROID
+	if (ATrace_isEnabled()) {
+		clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+		ATrace_setCounter(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name,
+						  (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+		ATrace_endSection();
+	}
+#endif
+}
+
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
     plugin_host_facade.get_extension = nullptr; // we shouldn't need it.
@@ -498,8 +552,14 @@ void RemotePluginInstance::prepare(int frameCount) {
 
 //----
 
-LocalPluginInstance::LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId, const PluginInformation* pluginInformation, AndroidAudioPluginFactory* loadedPluginFactory, int sampleRate)
-        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate),
+LocalPluginInstance::LocalPluginInstance(PluginHost *host,
+										 AAPXSRegistry *aapxsRegistry,
+										 int32_t instanceId,
+										 const PluginInformation* pluginInformation,
+										 AndroidAudioPluginFactory* loadedPluginFactory,
+										 int32_t sampleRate,
+										 int32_t eventMidi2InputBufferSize)
+        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
 		  host(host),
           aapxs_registry(aapxsRegistry),
           aapxsServiceInstances([&]() { return getPlugin(); }),

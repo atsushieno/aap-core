@@ -2,9 +2,19 @@ package org.androidaudioplugin.ui.web
 
 import android.util.Log
 import android.webkit.JavascriptInterface
+import dev.atsushieno.ktmidi.Midi1ToUmpTranslatorContext
+import dev.atsushieno.ktmidi.Midi2Music
+import dev.atsushieno.ktmidi.Midi2Track
+import dev.atsushieno.ktmidi.Ump
+import dev.atsushieno.ktmidi.UmpRetriever
+import dev.atsushieno.ktmidi.UmpTranslator
+import dev.atsushieno.ktmidi.toPlatformBytes
+import dev.atsushieno.ktmidi.toPlatformNativeBytes
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * `AAPScriptInterface` is the basis for a reference implementation for the Web UI.
@@ -47,13 +57,33 @@ abstract class AAPScriptInterface {
     fun listen(port: Int) {
     }
 
-    @JavascriptInterface
-    abstract fun sendMidi1(data: ByteArray, offset: Int, length: Int)
+    private val tmpBuffer: ByteBuffer = ByteBuffer.allocateDirect(16)
 
     @JavascriptInterface
-    abstract fun setParameter(parameterId: Int, value: Double)
+    open fun sendMidi1(data: ByteArray, offset: Int, length: Int) {
+        val ctx = Midi1ToUmpTranslatorContext(data.toList(), group = 0)
+        UmpTranslator.translateMidi1BytesToUmp(ctx)
+        tmpBuffer.position(0)
+        var size = 0
+        ctx.output.map { it.toPlatformNativeBytes() }.forEach {
+            tmpBuffer.put(it)
+            size += it.size
+        }
+        addEventUmpInput(tmpBuffer, size)
+    }
 
-    private val tmpBuffer: ByteBuffer = ByteBuffer.allocate(4)
+    @JavascriptInterface
+    open fun setParameter(parameterId: Int, value: Double) {
+        val s8 = UmpHelper.aapUmpSysex8Parameter(parameterId.toUInt(), value.toFloat())
+        tmpBuffer.position(0)
+        tmpBuffer.order(ByteOrder.nativeOrder())
+        tmpBuffer.asIntBuffer().put(s8.toIntArray())
+        addEventUmpInput(tmpBuffer, s8.size * Int.SIZE_BYTES)
+    }
+
+    // Passes the UMP inputs to the bound plugin instance.
+    // Note that the input UMP must be in *native* order.
+    abstract fun addEventUmpInput(data: ByteBuffer, size: Int)
 
     @JavascriptInterface
     abstract fun getPortBuffer(port: Int, data: ByteArray, length: Int)

@@ -2,6 +2,7 @@
 #define AAP_CORE_AUDIO_PLUGIN_INSTANCE_H
 //-------------------------------------------------------
 
+#include <mutex>
 #include "aap/core/aapxs/standard-extensions.h"
 #if ANDROID
 #include <android/trace.h>
@@ -22,6 +23,20 @@ namespace aap {
 
         AndroidAudioPluginFactory *plugin_factory;
 
+        // FIXME: unify code with androidaudioplugin-midi-device-service
+        class NanoSleepLock {
+            std::atomic_flag state = ATOMIC_FLAG_INIT;
+        public:
+            void lock() noexcept {
+                const auto delay = timespec{0, 1000}; // 1 microsecond
+                while(state.test_and_set())
+                    clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
+            }
+            void unlock() noexcept { state.clear(); }
+            bool try_lock() noexcept { return !state.test_and_set(); }
+        };
+        NanoSleepLock event_input_buffer_mutex{};
+
     protected:
         int instance_id{-1};
         PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
@@ -31,9 +46,15 @@ namespace aap {
         const PluginInformation *pluginInfo;
         std::unique_ptr <std::vector<PortInformation>> configured_ports{nullptr};
         std::unique_ptr <std::vector<ParameterInformation>> cached_parameters{nullptr};
+        void* event_midi2_input_buffer{nullptr};
+        void* event_midi2_input_buffer_merged{nullptr};
+        int32_t event_midi2_input_buffer_size{0};
+        int32_t event_midi2_input_buffer_offset{0};
 
         PluginInstance(const PluginInformation *pluginInformation,
-                       AndroidAudioPluginFactory *loadedPluginFactory, int sampleRate);
+                       AndroidAudioPluginFactory *loadedPluginFactory,
+                       int32_t sampleRate,
+                       int32_t eventMidi2InputBufferSize);
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
 
@@ -130,24 +151,7 @@ namespace aap {
         const char* remote_trace_name = "AAP::RemotePluginInstance_process";
         const char* local_trace_name = "AAP::LocalPluginInstance_process";
 
-        virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) {
-            struct timespec timeSpecBegin{}, timeSpecEnd{};
-#if ANDROID
-            if (ATrace_isEnabled()) {
-                ATrace_beginSection(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name);
-                clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
-            }
-#endif
-            plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
-#if ANDROID
-            if (ATrace_isEnabled()) {
-                clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
-                ATrace_setCounter(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name,
-                                  (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
-                ATrace_endSection();
-            }
-#endif
-        }
+        virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds);
 
         virtual StandardExtensions &getStandardExtensions() = 0;
 
@@ -155,6 +159,9 @@ namespace aap {
             // TODO: FUTURE - most likely just a matter of plugin property
             return 0;
         }
+
+        // Event controller (GUI) support
+        void addEventUmpInput(void* input, int32_t size);
     };
 
 /**
@@ -213,7 +220,8 @@ namespace aap {
     public:
         LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId,
                             const PluginInformation *pluginInformation,
-                            AndroidAudioPluginFactory *loadedPluginFactory, int sampleRate);
+                            AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
+                            int32_t eventMidi2InputBufferSize);
 
         int32_t getInstanceId() override { return instance_id; }
 
@@ -306,7 +314,8 @@ namespace aap {
         // (binder-client-as-plugin does so, and desktop implementation should do so too.)
         RemotePluginInstance(AAPXSRegistry *aapxsRegistry,
                              const PluginInformation *pluginInformation,
-                             AndroidAudioPluginFactory *loadedPluginFactory, int sampleRate);
+                             AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
+                             int32_t eventMidi2InputBufferSize);
 
         int32_t getInstanceId() override {
             // Make sure that we never try to retrieve it before being initialized at completeInstantiation() (at client)

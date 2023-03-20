@@ -101,6 +101,7 @@ namespace aap::midi {
         struct timespec last_aap_process_time{0, 0};
 
         // I don't think simple and stupid SpinLock is appropriate here. We do not want to dry up mobile battery.
+        // FIXME: unify code with androidaudioplugin
         class NanoSleepLock {
             std::atomic_flag state = ATOMIC_FLAG_INIT;
         public:
