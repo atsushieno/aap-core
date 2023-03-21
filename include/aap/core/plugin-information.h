@@ -184,6 +184,21 @@ public:
         return primary_category;
     }
 
+    const std::string& getUiWeb() const
+    {
+        return ui_web;
+    }
+
+    const std::string& getUiViewFactory() const
+    {
+        return ui_view_factory;
+    }
+
+    const std::string& getUiActivity() const
+    {
+        return ui_activity;
+    }
+
     int getNumDeclaredPorts() const
     {
         return (int) declared_ports.size();
