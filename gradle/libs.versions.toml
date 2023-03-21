@@ -1,6 +1,7 @@
 [versions]
 
 aap-core = "0.7.6-pre"
+aap-lv2 = "0.2.6-pre"
 
 agp = "7.4.2"
 kotlin = "1.8.10"
@@ -14,6 +15,13 @@ androidx-test = "1.5.0"
 coroutines = "1.6.4"
 
 [libraries]
+
+aap-core = { module = "org.androidaudioplugin:androidaudioplugin", version.ref = "aap-core" }
+aap-midi-device-service = { module = "org.androidaudioplugin:androidaudioplugin-midi-device-service", version.ref = "aap-core" }
+aap-ui-compose = { module = "org.androidaudioplugin:androidaudioplugin-ui-compose", version.ref = "aap-core" }
+aap-testing = { module = "org.androidaudioplugin:androidaudioplugin-testing", version.ref = "aap-core" }
+
+aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.ref = "aap-lv2" }
 
 tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
