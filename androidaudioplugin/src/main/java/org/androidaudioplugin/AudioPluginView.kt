@@ -11,7 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.TextView
+import androidx.appcompat.widget.AppCompatTextView
 
 // FIXME: it should register any activity lifecycle callback events to hide the overlay plugin GUI
 //  if it is shown. Otherwise it will stay on top forever!
@@ -22,7 +22,7 @@ class AudioPluginView(context: Context) : ViewGroup(context) {
     private var dragStartedX: Float = 0f
     private var dragStartedY: Float = 0f
 
-    class TitleBar(context: Context) : TextView(context) {
+    class TitleBar(context: Context) : AppCompatTextView(context) {
         @SuppressLint("ClickableViewAccessibility") // it matters only for visual position, TalkBack would not matter.
         override fun onTouchEvent(event: MotionEvent?): Boolean {
             if (event == null)
