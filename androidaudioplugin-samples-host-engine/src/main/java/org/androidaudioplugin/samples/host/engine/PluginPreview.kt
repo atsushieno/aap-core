@@ -472,8 +472,10 @@ class PluginPreview(private val context: Context) {
     }
 
     fun stopMidiService() {
-        midi_input?.close()
-        midi_input = null
+        synchronized(this) {
+            midi_input?.close()
+            midi_input = null
+        }
     }
 
     private suspend fun openMidiDevice(): MidiInputPort = suspendCoroutine { continuation ->
@@ -491,21 +493,22 @@ class PluginPreview(private val context: Context) {
                 it.type == PortInfo.TYPE_INPUT
             }
             val portNumber = port?.portNumber ?: return@openDevice
-            continuation.resume(device.openInputPort(portNumber))
+            synchronized(this) {
+                continuation.resume(device.openInputPort(portNumber))
+            }
         }, null)
     }
 
     private suspend fun doPlayMidiNotes() {
         if (midi_input == null)
             midi_input = openMidiDevice()
-        val input = midi_input!!
-        input.send(byteArrayOf(
+        midi_input?.send(byteArrayOf(
             0x90.toByte(), 0x40, 0x78,
             0x91.toByte(), 0x44, 0x78,
             0x92.toByte(), 0x47, 0x78,
         ), 0, 9)
         delay(1000)
-        input.send(byteArrayOf(
+        midi_input?.send(byteArrayOf(
             0x80.toByte(), 0x40, 0,
             0x81.toByte(), 0x44, 0,
             0x82.toByte(), 0x47, 0,
