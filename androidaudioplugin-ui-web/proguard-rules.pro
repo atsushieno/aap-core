@@ -20,4 +20,5 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--keep class org.androidaudioplugin.web.AudioPluginWebViewFactory
+-keep class org.androidaudioplugin.ui.web.AudioPluginWebViewFactory
+-keep class org.androidaudioplugin.ui.web.WebUIHostHelper
