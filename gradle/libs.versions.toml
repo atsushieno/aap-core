@@ -19,6 +19,7 @@ coroutines = "1.6.4"
 aap-core = { module = "org.androidaudioplugin:androidaudioplugin", version.ref = "aap-core" }
 aap-midi-device-service = { module = "org.androidaudioplugin:androidaudioplugin-midi-device-service", version.ref = "aap-core" }
 aap-ui-compose = { module = "org.androidaudioplugin:androidaudioplugin-ui-compose", version.ref = "aap-core" }
+aap-ui-web = { module = "org.androidaudioplugin:androidaudioplugin-ui-web", version.ref = "aap-core" }
 aap-testing = { module = "org.androidaudioplugin:androidaudioplugin-testing", version.ref = "aap-core" }
 
 aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.ref = "aap-lv2" }
