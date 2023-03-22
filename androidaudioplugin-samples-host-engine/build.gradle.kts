@@ -26,7 +26,7 @@ dependencies {
     implementation (project(":androidaudioplugin-midi-device-service"))
 
     implementation (libs.androidx.core.ktx)
-    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)

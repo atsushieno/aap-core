@@ -73,12 +73,14 @@ apply { from ("../publish-pom.gradle") }
 
 dependencies {
     implementation (libs.androidx.core.ktx)
-    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.preference.ktx) {
         exclude(group = "androidx.lifecycle", module = "lifecycle-viewmodel")
         exclude(group = "androidx.lifecycle", module = "lifecycle-viewmodel-ktx")
     }
-    implementation(libs.coroutines.core)
+    implementation(libs.coroutines.core) {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
+    }
     implementation (libs.startup.runtime)
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.core)

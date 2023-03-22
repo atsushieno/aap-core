@@ -24,7 +24,7 @@ apply { from ("../publish-pom.gradle") }
 dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (libs.androidx.core.ktx)
-    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
     implementation (libs.webkit)
     implementation (libs.ktmidi)

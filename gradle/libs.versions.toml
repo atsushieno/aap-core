@@ -31,7 +31,7 @@ dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", vers
 compose-bom = { module = "androidx.compose:compose-bom", version = "2023.01.00" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.5.3" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.9.0"}
-kotlin-stdlib-jdk7 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk7", version.ref = "kotlin" }
+kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.6.1" }
 startup-runtime = { module = "androidx.startup:startup-runtime", version = "1.1.1" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }

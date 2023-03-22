@@ -32,7 +32,7 @@ dependencies {
     implementation (project(":androidaudioplugin-samples-host-engine"))
     implementation (project(":androidaudioplugin-ui-web"))
     implementation (libs.androidx.core.ktx)
-    implementation (libs.kotlin.stdlib.jdk7)
+    implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
 
     implementation (libs.compose.ui)
