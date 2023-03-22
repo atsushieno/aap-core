@@ -137,12 +137,20 @@ aap::PluginListSnapshot cached_plugin_list{};
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_hosting_NativePluginClient_newInstance(JNIEnv *env, jclass clazz,
-																   jint connectorInstanceId) {
-	auto connections = aap::AAPJniFacade::getInstance()->getPluginConnectionListFromJni(connectorInstanceId, true);
+																   jint serviceConnectionId) {
+	auto connections = aap::AAPJniFacade::getInstance()->getPluginConnectionListFromJni(serviceConnectionId, true);
 	assert(connections);
 	if (cached_plugin_list.getNumPluginInformation() == 0)
 		cached_plugin_list = aap::PluginListSnapshot::queryServices();
 	return (jlong) (void*) new aap::PluginClient(connections, &cached_plugin_list);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativePluginClient_destroyInstance(JNIEnv *env, jclass clazz,
+																	   jlong native) {
+	auto client = (aap::PluginClient*) native;
+	delete client;
 }
 
 extern "C"

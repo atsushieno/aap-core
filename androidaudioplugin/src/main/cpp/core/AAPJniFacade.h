@@ -5,6 +5,8 @@
 
 #include "aap/core/plugin-information.h"
 #include "aap/core/host/plugin-connections.h"
+#include "aap/core/host/plugin-host.h"
+#include "aap/core/host/plugin-instance.h"
 #include "jni.h"
 
 namespace aap {
@@ -57,6 +59,8 @@ namespace aap {
         void showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
         void hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
         void destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
+
+        void* getWebView(PluginClient* client, RemotePluginInstance* instance);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 

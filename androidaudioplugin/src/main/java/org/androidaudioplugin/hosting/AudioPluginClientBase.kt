@@ -9,6 +9,8 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     // Service connection
     val serviceConnector = AudioPluginServiceConnector(applicationContext)
 
+    private var native : NativePluginClient? = null
+
     val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
@@ -16,6 +18,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun dispose() {
         instantiatedPlugins.forEach { it.destroy() }
         serviceConnector.connectedServices.forEach { disconnectPluginService(it.serviceInfo.packageName) }
+        native?.dispose()
     }
 
     suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
@@ -37,7 +40,9 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        val instance = AudioPluginInstance(serviceConnector, conn!!,
+        if (native == null)
+            native = NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId)
+        val instance = AudioPluginInstance.create(serviceConnector, conn!!, native!!,
             {i ->
                 instantiatedPlugins.remove(i)
                 onInstanceDestroyed(i)

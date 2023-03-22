@@ -10,11 +10,23 @@ import java.nio.ByteBuffer
   AudioPluginInstance implementation that is based on native `RemotePluginInstance`.
  */
 class AudioPluginInstance internal constructor(
-    serviceConnector: AudioPluginServiceConnector,
-    conn: PluginServiceConnection,
+    val native : NativeRemotePluginInstance,
     private val onDestroy: (instance: AudioPluginInstance) -> Unit,
-    val pluginInfo: PluginInformation,
-    sampleRate: Int) {
+    val pluginInfo: PluginInformation) {
+
+    companion object {
+        fun create(serviceConnector: AudioPluginServiceConnector,
+                   conn: PluginServiceConnection,
+                   client: NativePluginClient,
+                   onDestroy: (instance: AudioPluginInstance) -> Unit,
+                   pluginInfo: PluginInformation,
+                   sampleRate: Int) : AudioPluginInstance {
+            if (!serviceConnector.connectedServices.contains(conn))
+                serviceConnector.connectedServices.add(conn)
+            val native = client.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
+            return AudioPluginInstance(native, onDestroy, pluginInfo)
+        }
+    }
 
     enum class InstanceState {
         UNPREPARED,
@@ -24,21 +36,12 @@ class AudioPluginInstance internal constructor(
         ERROR
     }
 
-    private val client = NativePluginClient(sampleRate, serviceConnector)
     var state = InstanceState.UNPREPARED
-
-    private val native : NativeRemotePluginInstance
 
     var proxyError: Exception? = null
 
     val instanceId: Int
         get() = native.instanceId
-
-    init {
-        if (!client.serviceConnector.connectedServices.contains(conn))
-            client.serviceConnector.connectedServices.add(conn)
-        native = client.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
-    }
 
     private fun runCatchingRemoteException(func: () -> Unit) {
         runCatchingRemoteExceptionFor(Unit) {

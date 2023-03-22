@@ -6,50 +6,54 @@ import java.nio.ByteBuffer
 
 
 /* maps to aap::RemotePluginInstance */
-internal class NativeRemotePluginInstance(val pluginId: String,
-                                 sampleRate: Int,
-                                 val client: NativePluginClient) {
-    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client.native, instanceId, frameCount, defaultControlBytesPerBlock)
-    fun activate() = activate(client.native, instanceId)
-    fun process(frameCount: Int, timeoutInNanoseconds: Long) = process(client.native, instanceId, frameCount, timeoutInNanoseconds)
-    fun deactivate() = deactivate(client.native, instanceId)
-    fun destroy() {
-        destroy(client.native, instanceId)
-    }
+class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstance*
+                                 private val client: Long) {
 
-    // aap::RemotePluginInstance*
-    val instanceId: Int = createRemotePluginInstance(pluginId, sampleRate, client.native)
+    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client, instanceId, frameCount, defaultControlBytesPerBlock)
+    fun activate() = activate(client, instanceId)
+    fun process(frameCount: Int, timeoutInNanoseconds: Long) = process(client, instanceId, frameCount, timeoutInNanoseconds)
+    fun deactivate() = deactivate(client, instanceId)
+    fun destroy() {
+        destroy(client, instanceId)
+    }
 
     // standard extensions
     // state
-    fun getStateSize() : Int = getStateSize(client.native, instanceId)
-    fun getState(data: ByteArray) = getState(client.native, instanceId, data)
-    fun setState(data: ByteArray) = setState(client.native, instanceId, data)
+    fun getStateSize() : Int = getStateSize(client, instanceId)
+    fun getState(data: ByteArray) = getState(client, instanceId, data)
+    fun setState(data: ByteArray) = setState(client, instanceId, data)
     // presets
-    fun getPresetCount() = getPresetCount(client.native, instanceId)
-    fun getCurrentPresetIndex() = getCurrentPresetIndex(client.native, instanceId)
-    fun setCurrentPresetIndex(index: Int) = setCurrentPresetIndex(client.native, instanceId, index)
-    fun getPresetName(index: Int) = getPresetName(client.native, instanceId, index)
+    fun getPresetCount() = getPresetCount(client, instanceId)
+    fun getCurrentPresetIndex() = getCurrentPresetIndex(client, instanceId)
+    fun setCurrentPresetIndex(index: Int) = setCurrentPresetIndex(client, instanceId, index)
+    fun getPresetName(index: Int) = getPresetName(client, instanceId, index)
     // midi
-    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client.native, instanceId)
+    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client, instanceId)
     // gui
-    fun createGui() = createGui(client.native, instanceId)
-    fun showGui(guiInstanceId: Int) = showGui(client.native, instanceId, guiInstanceId)
-    fun hideGui(guiInstanceId: Int) = hideGui(client.native, instanceId, guiInstanceId)
-    fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = resizeGui(client.native, instanceId, guiInstanceId, width, height)
-    fun destroyGui(guiInstanceId: Int) = destroyGui(client.native, instanceId, guiInstanceId)
+    fun createGui() = createGui(client, instanceId)
+    fun showGui(guiInstanceId: Int) = showGui(client, instanceId, guiInstanceId)
+    fun hideGui(guiInstanceId: Int) = hideGui(client, instanceId, guiInstanceId)
+    fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = resizeGui(client, instanceId, guiInstanceId, width, height)
+    fun destroyGui(guiInstanceId: Int) = destroyGui(client, instanceId, guiInstanceId)
 
-    fun addEventUmpInput(data: ByteBuffer, length: Int) = addEventUmpInput(client.native, instanceId, data, length)
+    fun addEventUmpInput(data: ByteBuffer, length: Int) = addEventUmpInput(client, instanceId, data, length)
 
     // plugin instance (dynamic) information retrieval
-    fun getParameterCount() = getParameterCount(client.native, instanceId)
-    fun getParameter(index: Int) = getParameter(client.native, instanceId, index)
-    fun getPortCount() = getPortCount(client.native, instanceId)
-    fun getPort(index: Int) = getPort(client.native, instanceId, index)
-    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client.native, instanceId, portIndex, buffer, size)
-    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client.native, instanceId, portIndex, buffer, size)
+    fun getParameterCount() = getParameterCount(client, instanceId)
+    fun getParameter(index: Int) = getParameter(client, instanceId, index)
+    fun getPortCount() = getPortCount(client, instanceId)
+    fun getPort(index: Int) = getPort(client, instanceId, index)
+    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client, instanceId, portIndex, buffer, size)
+    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client, instanceId, portIndex, buffer, size)
 
     companion object {
+        fun create(pluginId: String, sampleRate: Int, nativeClient: Long) =
+            NativeRemotePluginInstance(createRemotePluginInstance(pluginId, sampleRate, nativeClient), nativeClient)
+
+        // invoked from AAPJniFacade
+        @JvmStatic
+        fun fromNative(instanceId: Int, nativeClient: Long) = NativeRemotePluginInstance(instanceId, nativeClient)
+
         // Note that it returns an instanceId within the client, not the pointer to the instance.
         // Therefore it returns Int, not Long.
         @JvmStatic

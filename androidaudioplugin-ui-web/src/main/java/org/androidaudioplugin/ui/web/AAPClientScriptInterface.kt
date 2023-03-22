@@ -1,9 +1,7 @@
 package org.androidaudioplugin.ui.web
 
 import android.webkit.JavascriptInterface
-import org.androidaudioplugin.ParameterInformation
-import org.androidaudioplugin.PortInformation
-import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import java.nio.ByteBuffer
 
 /**
@@ -18,7 +16,7 @@ import java.nio.ByteBuffer
  * The AudioPluginInstance is responsible to store those event inputs and deal with above.
  */
 @Suppress("unused")
-class AAPClientScriptInterface(private val instance: AudioPluginInstance) : AAPScriptInterface() {
+class AAPClientScriptInterface(private val instance: NativeRemotePluginInstance) : AAPScriptInterface() {
     override fun addEventUmpInput(data: ByteBuffer, size: Int) {
         instance.addEventUmpInput(data, size)
     }

@@ -5,11 +5,13 @@ import android.content.Context
 import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import java.io.FileInputStream
 import java.util.concurrent.Semaphore
 
@@ -38,13 +40,18 @@ object WebUIHostHelper {
         }
     }
 
+    fun getWebView(ctx: Context, instance: AudioPluginInstance, supportInProcessAssets: Boolean = false)
+        = getWebView(ctx, instance.pluginInfo.pluginId!!, instance.pluginInfo.packageName, instance.native, supportInProcessAssets)
+
     @SuppressLint("SetJavaScriptEnabled")
+    @JvmStatic
     fun getWebView(
         ctx: Context,
-        instance: AudioPluginInstance,
+        pluginId: String,
+        packageName: String,
+        native: NativeRemotePluginInstance,
         supportInProcessAssets: Boolean = false
     ): WebView {
-
         return WebView(ctx).also { webView ->
             val builder = WebViewAssetLoader.Builder()
             if (supportInProcessAssets)
@@ -53,7 +60,7 @@ object WebUIHostHelper {
             val assetLoader =
                 // it is used for the remote zip archive. It is then asynchronously loaded.
                 builder.addPathHandler("/zip/", LazyZipArchivePathHandler(
-                    ctx, instance.pluginInfo.pluginId!!, instance.pluginInfo.packageName))
+                    ctx, pluginId, packageName))
                     .build()
             webView.webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -64,7 +71,9 @@ object WebUIHostHelper {
                 }
             }
             webView.settings.javaScriptEnabled = true
-            webView.addJavascriptInterface(AAPClientScriptInterface(instance), "AAPInterop")
+            webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            webView.clearCache(true)
+            webView.addJavascriptInterface(AAPClientScriptInterface(native), "AAPInterop")
 
             webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
         }

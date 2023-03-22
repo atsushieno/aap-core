@@ -4,6 +4,8 @@
 
 #include <mutex>
 #include "aap/core/aapxs/standard-extensions.h"
+#include "plugin-host.h"
+
 #if ANDROID
 #include <android/trace.h>
 #endif
@@ -12,6 +14,7 @@ namespace aap {
 
     class PluginSharedMemoryStore;
     class PluginHost;
+    class PluginClient;
 
 /**
  * The common basis for client RemotePluginInstance and service LocalPluginInstance.
@@ -299,6 +302,7 @@ namespace aap {
             AAPXSClientInstanceManager* getAAPXSManager() override { return owner->getAAPXSManager(); }
         };
 
+        PluginClient *client;
         AAPXSRegistry *aapxs_registry;
         AndroidAudioPluginHost plugin_host_facade{};
         RemotePluginInstanceStandardExtensionsImpl standards;
@@ -312,7 +316,8 @@ namespace aap {
     public:
         // The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
         // (binder-client-as-plugin does so, and desktop implementation should do so too.)
-        RemotePluginInstance(AAPXSRegistry *aapxsRegistry,
+        RemotePluginInstance(PluginClient* client,
+                             AAPXSRegistry *aapxsRegistry,
                              const PluginInformation *pluginInformation,
                              AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
                              int32_t eventMidi2InputBufferSize);
@@ -340,6 +345,8 @@ namespace aap {
         StandardExtensions &getStandardExtensions() override { return standards; }
 
         void prepare(int frameCount) override;
+
+        void* getWebView();
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance

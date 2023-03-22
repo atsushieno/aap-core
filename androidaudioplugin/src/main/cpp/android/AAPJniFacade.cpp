@@ -9,7 +9,8 @@ namespace aap {
             *java_extension_information_class_name = "org/androidaudioplugin/ExtensionInformation",
             *java_parameter_information_class_name = "org/androidaudioplugin/ParameterInformation",
             *java_port_information_class_name = "org/androidaudioplugin/PortInformation",
-            *java_audio_plugin_service_class_name = "org/androidaudioplugin/AudioPluginServiceHelper";
+            *java_audio_plugin_service_class_name = "org/androidaudioplugin/AudioPluginServiceHelper",
+            *java_native_remote_plugin_instance_class_name = "org/androidaudioplugin/hosting/NativeRemotePluginInstance";
 
     static jmethodID
             j_method_is_out_process,
@@ -48,7 +49,8 @@ namespace aap {
             j_method_create_gui,
             j_method_show_gui,
             j_method_hide_gui,
-            j_method_destroy_gui;
+            j_method_destroy_gui,
+            j_method_remote_plugin_instance_create_from_native;
 
     void AAPJniFacade::initializeJNIMetadata() {
         JNIEnv *env;
@@ -59,12 +61,14 @@ namespace aap {
 
         jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
                 java_extension_information_class = env->FindClass(
-                java_extension_information_class_name),
+                    java_extension_information_class_name),
                 java_parameter_information_class = env->FindClass(
-                java_parameter_information_class_name),
+                    java_parameter_information_class_name),
                 java_port_information_class = env->FindClass(java_port_information_class_name),
                 java_audio_plugin_service_helper_class = env->FindClass(
-                java_audio_plugin_service_class_name);
+                    java_audio_plugin_service_class_name),
+                java_native_remote_plugin_instance_class = env->FindClass(
+                    java_native_remote_plugin_instance_class_name);
 
         j_method_is_out_process = env->GetMethodID(java_plugin_information_class,
                                                    "isOutProcess", "()Z");
@@ -163,6 +167,9 @@ namespace aap {
         j_method_destroy_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
                                                    "destroyGui",
                                                    "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+        j_method_remote_plugin_instance_create_from_native = env->GetStaticMethodID(java_native_remote_plugin_instance_class,
+                                                                                    "fromNative",
+                                                                                    "(IJ)Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;");
     }
 
 // FIXME: at some stage we should reorganize this JNI part so that "audio-plugin-host" part and
@@ -479,6 +486,27 @@ namespace aap {
     void AAPJniFacade::destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback) {
         processGuiWithViewMessage(GUI_OPCODE_DESTROY, guiInstance, callback);
     }
+
+    void* AAPJniFacade::getWebView(PluginClient* client, RemotePluginInstance* instance) {
+        return usingJNIEnv<jobject>([client,instance](JNIEnv* env) {
+            auto clzInstance = env->FindClass(java_native_remote_plugin_instance_class_name);
+            auto jniNativePeer = env->CallStaticObjectMethod(clzInstance, j_method_remote_plugin_instance_create_from_native, instance->getInstanceId(), (jlong) client);
+            auto clzHelper = env->FindClass("org/androidaudioplugin/ui/web/WebUIHostHelper");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto getWebView = env->GetStaticMethodID(clzHelper, "getWebView", "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;Z)Landroid/webkit/WebView;");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto jPluginId = env->NewStringUTF(instance->getPluginInformation()->getPluginID().c_str());
+            auto jPackageName = env->NewStringUTF(instance->getPluginInformation()->getPluginPackageName().c_str());
+            return env->CallStaticObjectMethod(clzHelper, getWebView, aap::get_android_application_context(), jPluginId, jPackageName, jniNativePeer, false);
+        });
+    }
+
 // --------------------------------------------------
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }

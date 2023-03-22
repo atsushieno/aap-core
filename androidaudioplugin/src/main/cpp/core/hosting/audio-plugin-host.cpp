@@ -319,7 +319,7 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(aapxs_registry.get(), descriptor, pluginFactory,
+            auto instance = new RemotePluginInstance(this, aapxs_registry.get(), descriptor, pluginFactory,
 													 sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
             instance->completeInstantiation();
@@ -399,12 +399,14 @@ void PluginInstance::completeInstantiation()
 
 //----
 
-RemotePluginInstance::RemotePluginInstance(AAPXSRegistry* aapxsRegistry,
+RemotePluginInstance::RemotePluginInstance(PluginClient* client,
+                                           AAPXSRegistry* aapxsRegistry,
 										   const PluginInformation* pluginInformation,
 										   AndroidAudioPluginFactory* loadedPluginFactory,
 										   int32_t sampleRate,
 										   int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
+          client(client),
           aapxs_registry(aapxsRegistry),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
@@ -549,6 +551,14 @@ void RemotePluginInstance::prepare(int frameCount) {
     plugin->prepare(plugin, getAudioPluginBuffer());
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
+
+    void* RemotePluginInstance::getWebView()  {
+#if ANDROID
+		return AAPJniFacade::getInstance()->getWebView(client, this);
+#else
+		return nullptr;
+#endif
+	}
 
 //----
 
