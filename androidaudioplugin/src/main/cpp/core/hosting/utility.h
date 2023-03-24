@@ -10,14 +10,14 @@
 
 
 namespace aap {
-    static inline void merge_event_inputs(void *mergeTmp, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance) {
+    static inline void merge_event_inputs(void *mergeTmp, int32_t mergeBufSize, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance) {
         if (eventInputsSize == 0)
             return;
         for (int i = 0; i < instance->getNumPorts(); i++) {
             auto port = instance->getPort(i);
             if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
                 auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
-                size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, eventInputsSize,
+                size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeBufSize,
                                                             (cmidi2_ump*) eventInputs, (size_t) eventInputsSize,
                                                             (cmidi2_ump*) mbh + 1, (size_t) mbh->length);
                 mbh->length = newSize;

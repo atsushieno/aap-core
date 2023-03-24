@@ -500,7 +500,7 @@ void PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  
 #endif
 
 	if (std::unique_lock<NanoSleepLock> tryLock(event_input_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
-		merge_event_inputs(event_midi2_input_buffer_merged,
+		merge_event_inputs(event_midi2_input_buffer_merged, event_midi2_input_buffer_size,
 						   event_midi2_input_buffer, event_midi2_input_buffer_offset,
 						   getAudioPluginBuffer(), this);
 		event_midi2_input_buffer_offset = 0;
