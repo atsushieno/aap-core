@@ -1,6 +1,7 @@
 
 #include <aap/android-audio-plugin.h>
 #include <cstring>
+#include <string>
 #include <math.h>
 #include <aap/unstable/logging.h>
 #include <aap/ext/presets.h>
@@ -28,7 +29,7 @@ extern "C" {
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_L 0x12
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE 0x13
 
-typedef struct {
+typedef struct AyumiHandle {
     struct ayumi* impl;
     int mixer[3];
     int32_t envelope;
@@ -38,6 +39,8 @@ typedef struct {
     bool note_on_state[3];
     int32_t midi_protocol;
     int32_t preset_index{-1};
+    AndroidAudioPluginHost host;
+    std::string plugin_id;
 } AyumiHandle;
 
 
@@ -52,6 +55,22 @@ void sample_plugin_delete(
 
 void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     /* do something */
+    auto context = (AyumiHandle*) plugin->plugin_specific;
+    auto host = context->host;
+
+    auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host.get_extension(&host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    if (pluginInfoExt != nullptr) {
+        auto info = pluginInfoExt->get(&host, context->plugin_id.c_str());
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
+        for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
+            auto port = info.get_port(&info, i);
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "  plugin-info test: port %d: %s %s %s",
+                         port.index(&port),
+                         port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
+                         port.direction(&port) == AAP_PORT_DIRECTION_INPUT ? "IN" : "OUT",
+                         port.name(&port));
+        }
+    }
 }
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {
@@ -428,6 +447,8 @@ AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginHost *host) {
 
     auto handle = new AyumiHandle();
+    handle->host = *host;
+    handle->plugin_id = pluginUniqueId;
     handle->active = false;
     handle->impl = (struct ayumi*) calloc(sizeof(struct ayumi), 1);
     handle->sample_rate = sampleRate;
@@ -453,20 +474,6 @@ AndroidAudioPlugin *sample_plugin_new(
 #else
     handle->midi_protocol = 2; // this is for testing MIDI2 in port.
 #endif
-
-    auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host->get_extension(host, AAP_PLUGIN_INFO_EXTENSION_URI);
-    if (pluginInfoExt != nullptr) {
-        auto info = pluginInfoExt->get(host, pluginUniqueId);
-        aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
-        for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
-            auto port = info.get_port(&info, i);
-            aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "  plugin-info test: port %d: %s %s %s",
-                         port.index(&port),
-                         port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
-                         port.direction(&port) == AAP_PORT_DIRECTION_INPUT ? "IN" : "OUT",
-                         port.name(&port));
-        }
-    }
 
     return new AndroidAudioPlugin{
             handle,
