@@ -113,7 +113,7 @@ static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterface_onTrans
     case (FIRST_CALL_TRANSACTION + 5 /*extension*/): {
       int32_t in_instanceID;
       std::string in_uri;
-      int32_t in_size;
+      int32_t in_opcode;
 
       _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_instanceID);
       if (_aidl_ret_status != STATUS_OK) break;
@@ -121,10 +121,10 @@ static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterface_onTrans
       _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_uri);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_size);
+      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_opcode);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->extension(in_instanceID, in_uri, in_size);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->extension(in_instanceID, in_uri, in_opcode);
       _aidl_ret_status = AParcel_writeStatusHeader(_aidl_out, _aidl_status.get());
       if (_aidl_ret_status != STATUS_OK) break;
 
@@ -462,7 +462,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_status_return:
   return _aidl_status;
 }
-::ndk::ScopedAStatus BpAudioPluginInterface::extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) {
+::ndk::ScopedAStatus BpAudioPluginInterface::extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -477,7 +477,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
   _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_uri);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_size);
+  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_opcode);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AIBinder_transact(
@@ -491,7 +491,7 @@ BpAudioPluginInterface::~BpAudioPluginInterface() {}
     #endif  // BINDER_STABILITY_SUPPORT
     );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterface::getDefaultImpl()) {
-    _aidl_status = IAudioPluginInterface::getDefaultImpl()->extension(in_instanceID, in_uri, in_size);
+    _aidl_status = IAudioPluginInterface::getDefaultImpl()->extension(in_instanceID, in_uri, in_opcode);
     goto _aidl_status_return;
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
@@ -854,7 +854,7 @@ std::shared_ptr<IAudioPluginInterface> IAudioPluginInterface::default_impl = nul
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;
 }
-::ndk::ScopedAStatus IAudioPluginInterfaceDefault::extension(int32_t /*in_instanceID*/, const std::string& /*in_uri*/, int32_t /*in_size*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceDefault::extension(int32_t /*in_instanceID*/, const std::string& /*in_uri*/, int32_t /*in_opcode*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;

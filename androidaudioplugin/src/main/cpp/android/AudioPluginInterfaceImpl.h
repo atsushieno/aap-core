@@ -188,11 +188,11 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_size) override {
+    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override {
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->controlExtension(in_uri, in_size);
+        instance->controlExtension(in_uri, in_opcode);
         return ndk::ScopedAStatus::ok();
     }
 

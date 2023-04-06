@@ -24,7 +24,7 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive(int instanceID);
 
-	void extension(int instanceID, String uri, int size);
+	void extension(int instanceID, String uri, int opcode);
 
 	// Indicates thaat it begins "prepare" step, to plugin.
 	// When received, plugin finishes port configuration.
