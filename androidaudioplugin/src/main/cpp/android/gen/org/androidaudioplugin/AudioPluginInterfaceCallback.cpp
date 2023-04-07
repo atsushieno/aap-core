@@ -16,7 +16,7 @@ static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterfaceCallback
     case (FIRST_CALL_TRANSACTION + 0 /*hostExtension*/): {
       int32_t in_instanceId;
       std::string in_uri;
-      int32_t in_size;
+      int32_t in_opcode;
 
       _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_instanceId);
       if (_aidl_ret_status != STATUS_OK) break;
@@ -24,10 +24,10 @@ static binder_status_t _aidl_org_androidaudioplugin_AudioPluginInterfaceCallback
       _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_uri);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_size);
+      _aidl_ret_status = ::ndk::AParcel_readData(_aidl_in, &in_opcode);
       if (_aidl_ret_status != STATUS_OK) break;
 
-      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->hostExtension(in_instanceId, in_uri, in_size);
+      ::ndk::ScopedAStatus _aidl_status = _aidl_impl->hostExtension(in_instanceId, in_uri, in_opcode);
       _aidl_ret_status = STATUS_OK;
       break;
     }
@@ -50,7 +50,7 @@ static AIBinder_Class* _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallba
 BpAudioPluginInterfaceCallback::BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder) : BpCInterface(binder) {}
 BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
 
-::ndk::ScopedAStatus BpAudioPluginInterfaceCallback::hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_size) {
+::ndk::ScopedAStatus BpAudioPluginInterfaceCallback::hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) {
   binder_status_t _aidl_ret_status = STATUS_OK;
   ::ndk::ScopedAStatus _aidl_status;
   ::ndk::ScopedAParcel _aidl_in;
@@ -65,7 +65,7 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
   _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_uri);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
-  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_size);
+  _aidl_ret_status = ::ndk::AParcel_writeData(_aidl_in.get(), in_opcode);
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
 
   _aidl_ret_status = AIBinder_transact(
@@ -79,7 +79,7 @@ BpAudioPluginInterfaceCallback::~BpAudioPluginInterfaceCallback() {}
     #endif  // BINDER_STABILITY_SUPPORT
     );
   if (_aidl_ret_status == STATUS_UNKNOWN_TRANSACTION && IAudioPluginInterfaceCallback::getDefaultImpl()) {
-    _aidl_status = IAudioPluginInterfaceCallback::getDefaultImpl()->hostExtension(in_instanceId, in_uri, in_size);
+    _aidl_status = IAudioPluginInterfaceCallback::getDefaultImpl()->hostExtension(in_instanceId, in_uri, in_opcode);
     goto _aidl_status_return;
   }
   if (_aidl_ret_status != STATUS_OK) goto _aidl_error;
@@ -172,7 +172,7 @@ const std::shared_ptr<IAudioPluginInterfaceCallback>& IAudioPluginInterfaceCallb
   return IAudioPluginInterfaceCallback::default_impl;
 }
 std::shared_ptr<IAudioPluginInterfaceCallback> IAudioPluginInterfaceCallback::default_impl = nullptr;
-::ndk::ScopedAStatus IAudioPluginInterfaceCallbackDefault::hostExtension(int32_t /*in_instanceId*/, const std::string& /*in_uri*/, int32_t /*in_size*/) {
+::ndk::ScopedAStatus IAudioPluginInterfaceCallbackDefault::hostExtension(int32_t /*in_instanceId*/, const std::string& /*in_uri*/, int32_t /*in_opcode*/) {
   ::ndk::ScopedAStatus _aidl_status;
   _aidl_status.set(AStatus_fromStatus(STATUS_UNKNOWN_TRANSACTION));
   return _aidl_status;

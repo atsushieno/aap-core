@@ -27,14 +27,14 @@ public:
   static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IAudioPluginInterfaceCallback>* instance);
   static bool setDefaultImpl(const std::shared_ptr<IAudioPluginInterfaceCallback>& impl);
   static const std::shared_ptr<IAudioPluginInterfaceCallback>& getDefaultImpl();
-  virtual ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_size) = 0;
+  virtual ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) = 0;
   virtual ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) = 0;
 private:
   static std::shared_ptr<IAudioPluginInterfaceCallback> default_impl;
 };
 class IAudioPluginInterfaceCallbackDefault : public IAudioPluginInterfaceCallback {
 public:
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_size) override;
+  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override;
   ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
   ::ndk::SpAIBinder asBinder() override;
   bool isRemote() override;

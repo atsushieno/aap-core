@@ -1,6 +1,6 @@
 package org.androidaudioplugin;
 
 oneway interface AudioPluginInterfaceCallback {
-    void hostExtension(int instanceId, String uri, int size);
+    void hostExtension(int instanceId, String uri, int opcode);
     void requestProcess(int instanceId);
 }
