@@ -7,6 +7,7 @@ import android.media.AudioTrack
 import android.media.midi.MidiDeviceInfo.PortInfo
 import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
+import android.util.Log
 import dev.atsushieno.ktmidi.*
 import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
@@ -21,6 +22,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class PluginPreview(private val context: Context) {
+    private val LOG_TAG = "AAPPluginPreview"
 
     companion object {
         const val FRAMES_PER_TICK = 100
@@ -464,18 +466,27 @@ class PluginPreview(private val context: Context) {
         midi_play_busy = true
         if (midi_input == null)
             midi_input = openMidiDevice()
-        midi_input?.send(byteArrayOf(
-            0x90.toByte(), noteNumber(oct, 0x30), 0x78,
-            0x91.toByte(), noteNumber(oct, 0x34), 0x78,
-            0x92.toByte(), noteNumber(oct, 0x37), 0x78,
-        ), 0, 9)
-        delay(1000)
-        midi_input?.send(byteArrayOf(
-            0x80.toByte(), noteNumber(oct, 0x30), 0,
-            0x81.toByte(), noteNumber(oct, 0x34), 0,
-            0x82.toByte(), noteNumber(oct, 0x37), 0,
-        ), 0, 9)
-        midi_play_count++
+        try {
+            midi_input?.send(
+                byteArrayOf(
+                    0x90.toByte(), noteNumber(oct, 0x30), 0x78,
+                    0x91.toByte(), noteNumber(oct, 0x34), 0x78,
+                    0x92.toByte(), noteNumber(oct, 0x37), 0x78,
+                ), 0, 9
+            )
+            delay(1000)
+            midi_input?.send(
+                byteArrayOf(
+                    0x80.toByte(), noteNumber(oct, 0x30), 0,
+                    0x81.toByte(), noteNumber(oct, 0x34), 0,
+                    0x82.toByte(), noteNumber(oct, 0x37), 0,
+                ), 0, 9
+            )
+            midi_play_count++
+        } catch (ex: Exception) {
+            Log.e(LOG_TAG, "AAPMidiDeviceService client caught an error: " + ex.stackTraceToString())
+            lastError = ex
+        }
         midi_play_busy = false
     }
 
