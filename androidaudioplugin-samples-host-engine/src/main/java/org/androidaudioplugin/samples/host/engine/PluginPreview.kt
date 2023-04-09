@@ -136,7 +136,6 @@ class PluginPreview(private val context: Context) {
         var audioInR = -1
         var audioOutL = -1
         var audioOutR = -1
-        var midiIn = -1
         var midi2In = -1
         (0 until instance.getPortCount()).forEach { i ->
             val p = instance.getPort(i)
@@ -152,9 +151,6 @@ class PluginPreview(private val context: Context) {
                     else
                         audioOutR = i
                 }
-            } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI) {
-                if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
-                    midiIn = i
             } else if (p.content == PortInformation.PORT_CONTENT_TYPE_MIDI2) {
                 if (p.direction == PortInformation.PORT_DIRECTION_INPUT)
                     midi2In = i
@@ -216,19 +212,12 @@ class PluginPreview(private val context: Context) {
             }
         }
 
-        val midiSequence = MidiHelper.getMidiSequence()
-        val midi1Events = MidiHelper.splitMidi1Events(midiSequence.toUByteArray())
-        val midi1EventsGroups = MidiHelper.groupMidi1EventsByTiming(midi1Events).toList()
-
         instance.activate()
 
         var currentFrame = 0
-        val midi1EventsGroupsIterator = midi1EventsGroups.iterator()
-        var nextMidi1Group = if (midi1EventsGroupsIterator.hasNext()) midi1EventsGroupsIterator.next() else listOf()
-        val nextMidi1EventDeltaTime = if (nextMidi1Group.isNotEmpty()) MidiHelper.getFirstMidi1EventDuration(nextMidi1Group.first()) else 0
-        var nextMidi1EventFrame = MidiHelper.expandSMPTE(FRAMES_PER_TICK, host.sampleRate, nextMidi1EventDeltaTime)
-
         var cycle = 0
+        var noteStateOn1 = false
+        var noteStateOn2 = false
 
         // We process audio and MIDI buffers in this loop, until currentFrame reaches the end of
         // the input sample data. Note that it does not involve any real tiem processing.
@@ -249,70 +238,35 @@ class PluginPreview(private val context: Context) {
                     instance.setPortBuffer(audioInR, localBufferR, audioProcessingBufferSizesInBytes[audioInR])
                 }
             }
-            if (midiIn >= 0) {
-                // see aap-midi2.h for the header format (which should cover MIDI1 too).
-                // MIDI buffer is complicated. The AAP input MIDI buffer is formed as follows:
-                // - i32 length unit specifier: positive frames, or negative frames per beat in the
-                //   context tempo.
-                // - i32 MIDI buffer size
-                // - 6 reserved i32 values
-                // - MIDI buffer contents in SMF-compatible format (but split in audio buffer)
-
-                val midiBuffer = audioProcessingBuffers[midiIn].order(ByteOrder.LITTLE_ENDIAN)
-                midiBuffer.clear()
-                midiBuffer.position(resetMidiBuffer(midiBuffer))
-                var midiDataLengthInLoop = 0
-
-                while (nextMidi1EventFrame < currentFrame + controlBufferFrameSize) {
-                    val timedEvent = nextMidi1Group.first()
-                    var deltaTimeTmp = MidiHelper.getFirstMidi1EventDuration(timedEvent)
-                    var deltaTimeBytes = 1
-                    while (deltaTimeTmp > 0x80) {
-                        deltaTimeBytes++
-                        deltaTimeTmp /= 0x80
-                    }
-                    val diffFrame = nextMidi1EventFrame % controlBufferFrameSize
-                    val diffMTC = MidiHelper.toMidiTimeCode(FRAMES_PER_TICK, host.sampleRate, diffFrame)
-                    val b0 = 0.toUByte()
-                    val diffMTCLength = if (diffMTC[3] != b0) 4 else if (diffMTC[2] != b0) 3 else if (diffMTC[1] != b0) 2 else 1
-                    val updatedFirstEvent = diffMTC.take(diffMTCLength).plus(timedEvent.drop(deltaTimeBytes))
-                    val nextMidiEvents = updatedFirstEvent.plus(nextMidi1Group.drop(1).flatten()).map { u -> u.toByte() }.toByteArray()
-                    midiDataLengthInLoop += nextMidiEvents.size
-                    midiBuffer.put(nextMidiEvents)
-                    if (!midi1EventsGroupsIterator.hasNext())
-                        break
-                    nextMidi1Group = midi1EventsGroupsIterator.next()
-                    nextMidi1EventFrame += MidiHelper.expandSMPTE(FRAMES_PER_TICK, host.sampleRate, MidiHelper.getFirstMidi1EventDuration(nextMidi1Group.first()))
-                }
-                midiBuffer.position(4)
-                midiBuffer.putInt(midiDataLengthInLoop)
-                midiBuffer.position(0) // do we need this??
-                instance.setPortBuffer(midiIn, midiBuffer, audioProcessingBufferSizesInBytes[midiIn])
-            }
             if (midi2In >= 0) {
                 // Insert note events to the MIDI2 buffer (which may or may not contain parameter NRPNs)
                 //
                 // On MIDI2 channel, it plays n64 notes on channel #0, for 24 cycles long, per 32 cycles,
-                // and after 4 of them it also plays n70, on channel #1, for 40 cycles long, per 48 cycles.
-                if (cycle % 32 == 4) {
+                // and after 3 of them it also plays n70, on channel #1, for 40 cycles long, per 48 cycles.
+                // Both are required to finish at note off state (thus asserts at last)
+                if (cycle % 32 == 4 && cycle < 32 * 6) {
                     val noteOn = Ump(UmpFactory.midi2NoteOn(
                         0, 0, 64, 0, 0xF800, 0))
                     midi2Bytes.addAll(noteOn.toPlatformNativeBytes().toTypedArray())
+                    noteStateOn1 = true
                 }
-                if (cycle % 32 == 28) {
+                if (cycle % 32 == 28 && cycle <= 32 * 6) {
                     val noteOff = Ump(UmpFactory.midi2NoteOff(
                         0, 0, 64, 0, 0, 0))
                     midi2Bytes.addAll(noteOff.toPlatformNativeBytes().toTypedArray())
+                    noteStateOn1 = false
                 }
-                if (cycle > 32 * 4 && cycle % 48 == 4) {
+                if (cycle > 32 * 3 && cycle % 48 == 4 && cycle < 32 * 3 + 48 * 2) {
                     val noteOn = Ump(UmpFactory.midi2NoteOn(
                         0, 1, 70, 0, 0xF800, 0))
                     midi2Bytes.addAll(noteOn.toPlatformNativeBytes().toTypedArray())
+                    noteStateOn2 = true
                 }
-                if (cycle > 32 * 4 && cycle % 48 == 44) {
+                if (cycle > 32 * 3 && cycle % 48 == 44 && cycle <= 32 * 3 + 48 * 2) {
                     val noteOff = Ump(UmpFactory.midi2NoteOff(
                         0, 1, 70, 0, 0, 0))
                     midi2Bytes.addAll(noteOff.toPlatformNativeBytes().toTypedArray())
+                    noteStateOn2 = false
                 }
                 cycle++
 
@@ -341,6 +295,12 @@ class PluginPreview(private val context: Context) {
                     instance.getPortBuffer(audioOutR, localBufferR, audioProcessingBufferSizesInBytes[audioOutR])
                     localBufferR.position(0)
                     localBufferR.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
+                    if (currentFrame == 0) {
+                        android.util.Log.i("!!!! kotlin1", (0 until 20).map { localBufferL[it] }.joinToString { it.toString(16) })
+                        android.util.Log.i("!!!! kotlin2", (0 until 20).map { localBufferR[it] }.joinToString { it.toString(16) })
+                        android.util.Log.i("!!!! kotlin3", (0 until 20).map { host.audioOutputs[0][it] }.joinToString { it.toString(16) })
+                        android.util.Log.i("!!!! kotlin4", (0 until 20).map { host.audioOutputs[1][it] }.joinToString { it.toString(16) })
+                    }
                 } else {
                     // mono output - copy plugin L output to host R output.
                     localBufferL.position(0)
@@ -356,16 +316,9 @@ class PluginPreview(private val context: Context) {
         instance.deactivate()
 
         processAudioCompleted()
-    }
 
-    private fun resetMidiBuffer(mb: ByteBuffer) : Int
-    {
-        val mbi = mb.asIntBuffer()
-        val ticksPerFrame : Short = (-1 * FRAMES_PER_TICK).toShort()
-        mbi.put(ticksPerFrame.toInt()) // 1 frame = 10 milliseconds
-        mbi.put(0)
-
-        return 32
+        assert(!noteStateOn1)
+        assert(!noteStateOn2)
     }
 
     var processAudioCompleted : () -> Unit = {}
@@ -499,20 +452,31 @@ class PluginPreview(private val context: Context) {
         }, null)
     }
 
+    private var midi_play_count : Byte = 0
+    private var midi_play_busy = false
+
+    private fun noteNumber(oct: Int, n: Byte) = (oct * 12 + n).toByte()
+
     private suspend fun doPlayMidiNotes() {
+        val oct = midi_play_count % 4
+        if (midi_play_busy)
+            return
+        midi_play_busy = true
         if (midi_input == null)
             midi_input = openMidiDevice()
         midi_input?.send(byteArrayOf(
-            0x90.toByte(), 0x40, 0x78,
-            0x91.toByte(), 0x44, 0x78,
-            0x92.toByte(), 0x47, 0x78,
+            0x90.toByte(), noteNumber(oct, 0x30), 0x78,
+            0x91.toByte(), noteNumber(oct, 0x34), 0x78,
+            0x92.toByte(), noteNumber(oct, 0x37), 0x78,
         ), 0, 9)
         delay(1000)
         midi_input?.send(byteArrayOf(
-            0x80.toByte(), 0x40, 0,
-            0x81.toByte(), 0x44, 0,
-            0x82.toByte(), 0x47, 0,
+            0x80.toByte(), noteNumber(oct, 0x30), 0,
+            0x81.toByte(), noteNumber(oct, 0x34), 0,
+            0x82.toByte(), noteNumber(oct, 0x37), 0,
         ), 0, 9)
+        midi_play_count++
+        midi_play_busy = false
     }
 
     fun showGui() {
