@@ -18,10 +18,6 @@ extern "C" {
 
 #define AAP_APP_LOG_TAG "AAPInstrumentSample"
 
-#define AYUMI_AAP_MIDI2_IN_PORT 0
-#define AYUMI_AAP_MIDI2_OUT_PORT 1
-#define AYUMI_AAP_AUDIO_OUT_LEFT 2
-#define AYUMI_AAP_AUDIO_OUT_RIGHT 3
 #define AYUMI_AAP_PARAM_ENVELOPE 0x0F
 // Plugin Parameter index is MIDI_CC, including below.
 #define AYUMI_AAP_MIDI_CC_ENVELOPE_H 0x10
@@ -41,6 +37,10 @@ typedef struct AyumiHandle {
     int32_t preset_index{-1};
     AndroidAudioPluginHost host;
     std::string plugin_id;
+    int32_t midi2_in_port{-1};
+    int32_t midi2_out_port{-1};
+    int32_t audio_out_l_port{-1};
+    int32_t audio_out_r_port{-1};
 } AyumiHandle;
 
 
@@ -64,6 +64,19 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
         aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
         for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
             auto port = info.get_port(&info, i);
+            if (port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2) {
+                if (port.direction(&port) == AAP_PORT_DIRECTION_INPUT)
+                    context->midi2_in_port = i;
+                else
+                    context->midi2_out_port = i;
+            } else if (port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO) {
+                if (port.direction(&port) != AAP_PORT_DIRECTION_OUTPUT)
+                    continue;
+                if (context->audio_out_l_port < 0)
+                    context->audio_out_l_port = i;
+                else if (context->audio_out_r_port < 0)
+                    context->audio_out_r_port = i;
+            }
             aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "  plugin-info test: port %d: %s %s %s",
                          port.index(&port),
                          port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
@@ -183,129 +196,24 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     if (!context->active)
         return;
 
-    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, AYUMI_AAP_MIDI2_IN_PORT);
-    int32_t lengthUnit = aapmb->time_options;
+    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, context->midi2_in_port);
 
     uint32_t currentTicks = 0;
 
-    auto outL = (float*) buffer->get_buffer(*buffer, AYUMI_AAP_AUDIO_OUT_LEFT);
-    auto outR = (float*) buffer->get_buffer(*buffer, AYUMI_AAP_AUDIO_OUT_RIGHT);
+    auto outL = (float*) buffer->get_buffer(*buffer, context->audio_out_l_port);
+    auto outR = (float*) buffer->get_buffer(*buffer, context->audio_out_r_port);
 
-    if (context->midi_protocol == AAP_PROTOCOL_MIDI2_0) {
-        auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
-        CMIDI2_UMP_SEQUENCE_FOREACH(midi2ptr, aapmb->length, ev) {
-            auto ump = (cmidi2_ump *) ev;
-            uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
-            uint16_t paramIndex;
-            float paramValue;
-            uint32_t intValue;
-            bool relative{false};
-            if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
-                cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
-                uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
-                auto numFrames = buffer->num_frames(*buffer);
-                max = max < numFrames ? max : numFrames;
-                for (uint32_t i = currentTicks; i < max; i++) {
-                    ayumi_process(context->impl);
-                    ayumi_remove_dc(context->impl);
-                    outL[i] = (float) context->impl->left;
-                    outR[i] = (float) context->impl->right;
-                }
-                currentTicks = max;
-                continue;
-            } else if (readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra, &paramIndex, &paramValue, ump)) {
-                intValue = (int32_t) *(float*) &paramValue;
-            } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL) {
-                switch (cmidi2_ump_get_status_code(ump)) {
-                    // enable this if it supports per-note parameters.
-                    case CMIDI2_STATUS_PER_NOTE_ACC:
-                        paramKey = cmidi2_ump_get_midi2_pnacc_note(ump); // FIXME: implement it maybe?
-                        break;
-                    case CMIDI2_STATUS_RELATIVE_NRPN:
-                        relative = true; // FIXME: implement it maybe?
-                        break;
-                    case CMIDI2_STATUS_NRPN:
-                        break;
-                    default:
-                        // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
-                        uint8_t midi1Bytes[16];
-                        if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
-                            ayumi_aap_process_midi_event(context, midi1Bytes);
-                        continue;
-                }
-                paramGroup = cmidi2_ump_get_group(ump);
-                paramChannel = cmidi2_ump_get_channel(ump);
-                paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
-                intValue = cmidi2_ump_get_midi2_nrpn_data(ump);
-                paramValue = *(float*) &intValue;
-            } else {
-                // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
-                uint8_t midi1Bytes[16];
-                if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
-                    ayumi_aap_process_midi_event(context, midi1Bytes);
-                continue;
-            }
-
-            // process parameter changes
-            switch (paramIndex & 0xFF) {
-                case CMIDI2_CC_BANK_SELECT: {
-                    auto mixer = intValue & 0xFF;
-                    auto tone_switch = mixer & 1;
-                    auto noise_switch = (mixer >> 1) & 1;
-                    auto env_switch = (mixer >> 2) & 1;
-                    context->mixer[paramChannel] = mixer << 5;
-                    ayumi_set_mixer(context->impl, paramChannel, tone_switch, noise_switch,
-                                    env_switch);
-                    break;
-                }
-                case CMIDI2_CC_PAN: {
-                    float pan = *(float*) &paramValue; // 0.0..1.0
-                    ayumi_set_pan(context->impl, paramChannel, pan, 0);
-                    break;
-                }
-                case CMIDI2_CC_VOLUME: {
-                    auto volume = (int32_t) *(float*) &paramValue; // there is no valur range mapping for this parameter.
-                    ayumi_set_volume(context->impl, paramChannel, volume);
-                    break;
-                }
-                case AYUMI_AAP_PARAM_ENVELOPE: {
-                    auto env = ((int32_t) *(float *) &paramValue) & 0xFFFF;
-                    context->envelope = env;
-                    ayumi_set_envelope(context->impl, context->envelope);
-                    break;
-                }
-                case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
-                    auto shape = (int32_t) *(float*) &paramValue;
-                    ayumi_set_envelope_shape(context->impl, shape);
-                    break;
-            }
-        }
-    } else {
-        auto midi1ptr = ((uint8_t*) (void*) aapmb) + sizeof(AAPMidiBufferHeader);
-        auto midi1end = midi1ptr + aapmb->length;
-        while (midi1ptr < midi1end) {
-            // get delta time
-            uint32_t deltaTime = cmidi2_midi1_get_7bit_encoded_int(midi1ptr, midi1end - midi1ptr);
-            midi1ptr += cmidi2_midi1_get_7bit_encoded_int_length(deltaTime);
-
-            // Check if the message is Set New Protocol and promote Protocol.
-            if (midi1end - midi1ptr >= 19 && *midi1ptr == 0xF0) {
-                int32_t protocol = cmidi2_ci_try_parse_new_protocol(midi1ptr + 1, 19);
-                if (protocol != 0) {
-                    context->midi_protocol = protocol;
-                    // At this state, we discard any remaining buffer as Set New Protocol should be
-                    // sent only by itself.
-                    // MIDI-CI specification explicitly tells that there should be some intervals (100msec).
-                    aap::aprintf("MIDI-CI Set New Protocol received: %d", protocol);
-                    break;
-                }
-            }
-
-            // process audio until current time (max)
-            uint32_t deltaTicks = lengthUnit < 0 ?
-                    (uint32_t) ((context->sample_rate / -lengthUnit) * (deltaTime % 0x100)) + (uint32_t) (context->sample_rate * (deltaTime / 0x100 % 60)) :  // assuming values beyond minute in SMPTE don't matter.
-                    (uint32_t) (1.0 * deltaTime / 240); // LAMESPEC: we should deprecate ticks specification.
-            uint32_t max = currentTicks + deltaTicks;
+    auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
+    CMIDI2_UMP_SEQUENCE_FOREACH(midi2ptr, aapmb->length, ev) {
+        auto ump = (cmidi2_ump *) ev;
+        uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
+        uint16_t paramIndex;
+        float paramValue;
+        uint32_t intValue;
+        bool relative{false};
+        if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
+            cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
+            uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
             auto numFrames = buffer->num_frames(*buffer);
             max = max < numFrames ? max : numFrames;
             for (uint32_t i = currentTicks; i < max; i++) {
@@ -315,11 +223,72 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                 outR[i] = (float) context->impl->right;
             }
             currentTicks = max;
+            continue;
+        } else if (readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra, &paramIndex, &paramValue, ump)) {
+            intValue = (int32_t) *(float*) &paramValue;
+        } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL) {
+            switch (cmidi2_ump_get_status_code(ump)) {
+                // enable this if it supports per-note parameters.
+                case CMIDI2_STATUS_PER_NOTE_ACC:
+                    paramKey = cmidi2_ump_get_midi2_pnacc_note(ump); // FIXME: implement it maybe?
+                    break;
+                case CMIDI2_STATUS_RELATIVE_NRPN:
+                    relative = true; // FIXME: implement it maybe?
+                    break;
+                case CMIDI2_STATUS_NRPN:
+                    break;
+                default:
+                    // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
+                    uint8_t midi1Bytes[16];
+                    if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
+                        ayumi_aap_process_midi_event(context, midi1Bytes);
+                    continue;
+            }
+            paramGroup = cmidi2_ump_get_group(ump);
+            paramChannel = cmidi2_ump_get_channel(ump);
+            paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
+            intValue = cmidi2_ump_get_midi2_nrpn_data(ump);
+            paramValue = *(float*) &intValue;
+        } else {
+            // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
+            uint8_t midi1Bytes[16];
+            if (cmidi2_convert_single_ump_to_midi1(midi1Bytes, 16, ump) > 0)
+                ayumi_aap_process_midi_event(context, midi1Bytes);
+            continue;
+        }
 
-            // process next MIDI event
-            ayumi_aap_process_midi_event(context, midi1ptr);
-            // progress midi1ptr
-            midi1ptr += cmidi2_midi1_get_message_size(midi1ptr, midi1end - midi1ptr);
+        // process parameter changes
+        switch (paramIndex & 0xFF) {
+            case CMIDI2_CC_BANK_SELECT: {
+                auto mixer = intValue & 0xFF;
+                auto tone_switch = mixer & 1;
+                auto noise_switch = (mixer >> 1) & 1;
+                auto env_switch = (mixer >> 2) & 1;
+                context->mixer[paramChannel] = mixer << 5;
+                ayumi_set_mixer(context->impl, paramChannel, tone_switch, noise_switch,
+                                env_switch);
+                break;
+            }
+            case CMIDI2_CC_PAN: {
+                float pan = *(float*) &paramValue; // 0.0..1.0
+                ayumi_set_pan(context->impl, paramChannel, pan, 0);
+                break;
+            }
+            case CMIDI2_CC_VOLUME: {
+                auto volume = (int32_t) *(float*) &paramValue; // there is no valur range mapping for this parameter.
+                ayumi_set_volume(context->impl, paramChannel, volume);
+                break;
+            }
+            case AYUMI_AAP_PARAM_ENVELOPE: {
+                auto env = ((int32_t) *(float *) &paramValue) & 0xFFFF;
+                context->envelope = env;
+                ayumi_set_envelope(context->impl, context->envelope);
+                break;
+            }
+            case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
+                auto shape = (int32_t) *(float*) &paramValue;
+                ayumi_set_envelope_shape(context->impl, shape);
+                break;
         }
     }
 
@@ -465,15 +434,7 @@ AndroidAudioPlugin *sample_plugin_new(
         ayumi_set_volume(handle->impl, i, 14); // FIXME: max = 14?? 15 doesn't work
     }
 
-#if false // FIXME: remove this. It will become useless
-    // see if the host supports MIDI CI extension data.
-    // Note that it is querying host capability, not the plugin extension.
-    auto data = (aap_midi2_extension_t*) host->get_extension_data(host, AAP_MIDI2_EXTENSION_URI);
-    if (data)
-        handle->midi_protocol = data->protocol == 2 ? AAP_PROTOCOL_MIDI2_0 : AAP_PROTOCOL_MIDI1_0;
-#else
     handle->midi_protocol = 2; // this is for testing MIDI2 in port.
-#endif
 
     return new AndroidAudioPlugin{
             handle,
