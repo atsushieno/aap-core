@@ -134,10 +134,10 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 	auto instance = (aap::RemotePluginInstance*) ctx->host.context;
 	auto shmBuffer = instance->getAudioPluginBuffer();
 
-	// FIXME: copy only input ports
-	for (int32_t i = 0; i < buffer->num_ports(*buffer); i++) {
-		memcpy(shmBuffer->get_buffer(*shmBuffer, i), buffer->get_buffer(*buffer, i), buffer->get_buffer_size(*buffer, i));
-	}
+	if (shmBuffer != buffer)
+		// FIXME: copy only input ports
+		for (int32_t i = 0; i < buffer->num_ports(*buffer); i++)
+			memcpy(shmBuffer->get_buffer(*shmBuffer, i), buffer->get_buffer(*buffer, i), buffer->get_buffer_size(*buffer, i));
 
 	auto status = ctx->getProxy()->process(ctx->instance_id, frameCount, timeoutInNanoseconds);
 	if (!status.isOk()) {
@@ -145,10 +145,10 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 		ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
 	}
 
-	// FIXME: copy only output ports
-	for (int32_t i = 0; i < buffer->num_ports(*buffer); i++) {
-		memcpy(buffer->get_buffer(*buffer, i), shmBuffer->get_buffer(*shmBuffer, i), shmBuffer->get_buffer_size(*shmBuffer, i));
-	}
+	if (shmBuffer != buffer)
+		// FIXME: copy only output ports
+		for (int32_t i = 0; i < buffer->num_ports(*buffer); i++)
+			memcpy(buffer->get_buffer(*buffer, i), shmBuffer->get_buffer(*shmBuffer, i), shmBuffer->get_buffer_size(*shmBuffer, i));
 }
 
 void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
