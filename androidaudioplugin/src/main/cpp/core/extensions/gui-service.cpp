@@ -34,11 +34,10 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             AAPJniFacade::getInstance()->createGuiViaJni(gi, [pluginId, instanceId, gi, this, plugin]() {
                 if (!gi->lastError.empty())
                     return;
-                withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
-                                                         AndroidAudioPluginExtensionTarget target) {
+                withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext, AndroidAudioPlugin* plugin) {
                     if (ext && ext->create) {
                         volatile void* v = gi->view;
-                        gi->internalGuiInstanceId = ext->create(target, pluginId, instanceId, (void*) v);
+                        gi->internalGuiInstanceId = ext->create(ext, plugin, pluginId, instanceId, (void*) v);
                     }
                     else
                         aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP", "`gui` extension or `create` member does not exist. Skipping `create()`.");
@@ -63,10 +62,9 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
                     AAPJniFacade::getInstance()->showGuiViaJni(gi, [gi, plugin, this]() {
                         if (!gi->lastError.empty())
                             return;
-                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
-                                                                 AndroidAudioPluginExtensionTarget target) {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext, AndroidAudioPlugin* plugin) {
                             if (ext && ext->show)
-                                ext->show(target, gi->internalGuiInstanceId);
+                                ext->show(ext, plugin, gi->internalGuiInstanceId);
                             else
                                 aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
                                              "`gui` extension or `show` member does not exist. Skipping `show()`.");
@@ -77,10 +75,9 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
                     AAPJniFacade::getInstance()->hideGuiViaJni(gi, [gi, plugin, this]() {
                         if (!gi->lastError.empty())
                             return;
-                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
-                                                                 AndroidAudioPluginExtensionTarget target) {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext, AndroidAudioPlugin* plugin) {
                             if (ext && ext->hide)
-                                ext->hide(target, gi->internalGuiInstanceId);
+                                ext->hide(ext, plugin, gi->internalGuiInstanceId);
                             else
                                 aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
                                              "`gui` extension or `hide` member does not exist. Skipping `hide()`.");
@@ -91,10 +88,9 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
                     AAPJniFacade::getInstance()->destroyGuiViaJni(gi, [gi, plugin, this]() {
                         if (!gi->lastError.empty())
                             return;
-                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext,
-                                                                 AndroidAudioPluginExtensionTarget target) {
+                        withGuiExtension<int32_t>(plugin, 0, [&](aap_gui_extension_t *ext, AndroidAudioPlugin* plugin) {
                             if (ext && ext->destroy)
-                                ext->destroy(target, gi->internalGuiInstanceId);
+                                ext->destroy(ext, plugin, gi->internalGuiInstanceId);
                             else
                                 aap::a_log_f(AAP_LOG_LEVEL_INFO, "AAP",
                                              "`gui` extension or `destroy` member does not exist. Skipping `destroy()`.");
@@ -109,9 +105,8 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
             auto guiInstanceId = *(int32_t *) extensionInstance->data;
             auto width = *((int32_t *) extensionInstance->data + 1);
             auto height = *((int32_t *) extensionInstance->data + 1);
-            withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext,
-                                                     AndroidAudioPluginExtensionTarget target) {
-                auto result = ext->resize(target, guiInstanceId, width, height);
+            withGuiExtension<int32_t>(plugin, 0, [=](aap_gui_extension_t *ext, AndroidAudioPlugin* plugin) {
+                auto result = ext->resize(ext, plugin, guiInstanceId, width, height);
                 *(int32_t *) extensionInstance->data = result;
             });
         }

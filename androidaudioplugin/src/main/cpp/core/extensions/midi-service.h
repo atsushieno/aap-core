@@ -27,8 +27,8 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
         MidiPluginClientExtension *owner;
         AAPXSClientInstance* aapxsInstance;
 
-        static enum aap_midi_mapping_policy internalGetMappingPolicy(AndroidAudioPluginExtensionTarget target, const char* pluginId) {
-            return ((Instance *) target.aapxs_context)->getMappingPolicy(pluginId);
+        static enum aap_midi_mapping_policy internalGetMappingPolicy(aap_midi_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId) {
+            return ((Instance *) ext->aapxs_context)->getMappingPolicy(pluginId);
         }
 
     public:
@@ -52,6 +52,7 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         AAPXSProxyContext asProxy() {
+            proxy.aapxs_context = this;
             proxy.get_mapping_policy = internalGetMappingPolicy;
             return AAPXSProxyContext{aapxsInstance, this, &proxy};
         }

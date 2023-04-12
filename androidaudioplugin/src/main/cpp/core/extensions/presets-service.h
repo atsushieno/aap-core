@@ -29,26 +29,26 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
 
         aap_presets_extension_t proxy{};
 
-        static int32_t internalGetPresetCount(AndroidAudioPluginExtensionTarget target) {
-            return ((Instance *) target.aapxs_context)->getPresetCount();
+        static int32_t internalGetPresetCount(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
+            return ((Instance *) ext->aapxs_context)->getPresetCount();
         }
 
-        static int32_t internalGetPresetDataSize(AndroidAudioPluginExtensionTarget target, int32_t index) {
-            return ((Instance *) target.aapxs_context)->getPresetDataSize(index);
+        static int32_t internalGetPresetDataSize(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
+            return ((Instance *) ext->aapxs_context)->getPresetDataSize(index);
         }
 
-        static void internalGetPreset(AndroidAudioPluginExtensionTarget target, int32_t index, bool skipBinary,
+        static void internalGetPreset(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, bool skipBinary,
                                       aap_preset_t *preset) {
-            ((Instance *) target.aapxs_context)->getPreset(index, skipBinary,
-                                                                           preset);
+            ((Instance *) ext->aapxs_context)->getPreset(index, skipBinary,
+                                                         preset);
         }
 
-        static int32_t internalGetPresetIndex(AndroidAudioPluginExtensionTarget target) {
-            return ((Instance *) target.aapxs_context)->getPresetIndex();
+        static int32_t internalGetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
+            return ((Instance *) ext->aapxs_context)->getPresetIndex();
         }
 
-        static void internalSetPresetIndex(AndroidAudioPluginExtensionTarget target, int32_t index) {
-            return ((Instance *) target.aapxs_context)->setPresetIndex(index);
+        static void internalSetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
+            return ((Instance *) ext->aapxs_context)->setPresetIndex(index);
         }
 
         PresetsPluginClientExtension *owner;
@@ -108,6 +108,7 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         AAPXSProxyContext asProxy() {
+            proxy.aapxs_context = this;
             proxy.get_preset_count = internalGetPresetCount;
             proxy.get_preset_data_size = internalGetPresetDataSize;
             proxy.get_preset = internalGetPreset;
@@ -150,7 +151,7 @@ class PresetsPluginServiceExtension : public PluginServiceExtensionImplBase {
     template<typename T>
     void withPresetExtension(AndroidAudioPlugin* plugin, T defaultValue,
                              std::function<void(aap_presets_extension_t *,
-                                                AndroidAudioPluginExtensionTarget)> func);
+                                                AndroidAudioPlugin*)> func);
 
 public:
     PresetsPluginServiceExtension()

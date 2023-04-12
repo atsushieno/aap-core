@@ -11,9 +11,9 @@ void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, int32
 
 void test_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-int32_t test_foo (struct example_test_extension_t* context, int32_t input) { return 0; }
+int32_t test_foo (struct example_test_extension_t* context, AndroidAudioPlugin* plugin, int32_t input) { return 0; }
 
-void test_bar (struct example_test_extension_t* context, char* msg) {}
+void test_bar (struct example_test_extension_t* context, AndroidAudioPlugin* plugin, char* msg) {}
 
 example_test_extension_t test_ext{nullptr, test_foo, test_bar};
 

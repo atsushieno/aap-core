@@ -131,23 +131,6 @@ typedef struct AndroidAudioPlugin {
     aap_get_extension_func_t get_extension;
 } AndroidAudioPlugin;
 
-/**
- * It is used by the Standard Extensions that need the target AndroidAudioPlugin.
- */
-typedef struct AndroidAudioPluginExtensionTarget {
-    /** The target plugin. An extension implementation usually need the target plugin to process.
-     * Extensions also have to come up with their Extension Service i.e. AAPXS, which works as a
-     * bridge between the host and the plugin, and AAPXS needs its host context to process.
-     * Those Standard Extensions that need plugin information take a pointer to this struct as their first
-     */
-    AndroidAudioPlugin *plugin;
-    /**
-     * AAPXS-specific data. It will be Instance in presets extension and state extension.
-     * It is only for remote clients. For local plugin processing, it is set to nullptr.
-     */
-    void *aapxs_context;
-} AndroidAudioPluginExtensionTarget;
-
 typedef struct AndroidAudioPluginFactory {
     aap_instantiate_func_t instantiate;
     aap_release_func_t release;

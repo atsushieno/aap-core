@@ -25,12 +25,12 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
 
         aap_port_config_extension_t proxy{};
 
-        static void internalGetOptions(AndroidAudioPluginExtensionTarget target, aap_port_config_t *destination) {
-            ((Instance *) target.aapxs_context)->getOptions(destination);
+        static void internalGetOptions(aap_port_config_extension_t* ext, AndroidAudioPlugin* plugin, aap_port_config_t *destination) {
+            ((Instance *) ext->aapxs_context)->getOptions(destination);
         }
 
-        static void internalSelect(AndroidAudioPluginExtensionTarget target, const char* configuration) {
-            ((Instance *) target.aapxs_context)->select(configuration);
+        static void internalSelect(aap_port_config_extension_t* ext, AndroidAudioPlugin* plugin, const char* configuration) {
+            ((Instance *) ext->aapxs_context)->select(configuration);
         }
 
         PortConfigPluginClientExtension *owner;
@@ -61,6 +61,7 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         AAPXSProxyContext asProxy() {
+            proxy.aapxs_context = this;
             proxy.get_options = internalGetOptions;
             proxy.select = internalSelect;
             return AAPXSProxyContext{aapxsInstance, this, &proxy};
@@ -102,7 +103,7 @@ class PortConfigPluginServiceExtension : public PluginServiceExtensionImplBase {
     template<typename T>
     void withPortConfigExtension(AndroidAudioPlugin* plugin, T defaultValue,
                             std::function<void(aap_port_config_extension_t *,
-                                               AndroidAudioPluginExtensionTarget)> func);
+                                               AndroidAudioPlugin*)> func);
 
 public:
     PortConfigPluginServiceExtension()

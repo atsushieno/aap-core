@@ -8,7 +8,7 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include <stdint.h>
 
-#define AAP_PORT_CONFIG_EXTENSION_URI "urn://androidaudioplugin.org/extensions/port-config/v1"
+#define AAP_PORT_CONFIG_EXTENSION_URI "urn://androidaudioplugin.org/extensions/port-config/v2"
 
 #define AAP_PORT_CONFIG_DEFAULT_INSTRUMENT "urn://androidaudioplugin.org/port-config/default/instrument/v1"
 #define AAP_PORT_CONFIG_DEFAULT_EFFECT "urn://androidaudioplugin.org/port-config/default/effect/v1"
@@ -56,14 +56,12 @@ typedef struct aap_port_config {
     int32_t extra_data_size;
 } aap_port_config_t;
 
-typedef void (*port_config_extension_get_options_t) (AndroidAudioPluginExtensionTarget target, aap_port_config_t* destination);
-typedef void (*port_config_extension_select_t) (AndroidAudioPluginExtensionTarget target, const char* configuration);
-
 typedef struct aap_port_config_extension_t {
+    void* aapxs_context;
     // It is supposed to be stored/cached in memory
-    RT_SAFE port_config_extension_get_options_t get_options;
+    RT_SAFE void (*get_options) (aap_port_config_extension_t* ext, AndroidAudioPlugin* plugin, aap_port_config_t* destination);
     // It is supposed to be stored/cached in memory
-    RT_SAFE port_config_extension_select_t select;
+    RT_SAFE void (*select) (aap_port_config_extension_t* ext, AndroidAudioPlugin* plugin, const char* configuration);
 } aap_port_config_extension_t;
 
 #ifdef __cplusplus

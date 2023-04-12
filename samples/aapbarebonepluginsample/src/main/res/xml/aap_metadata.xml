@@ -5,10 +5,10 @@
       gui:ui-view-factory="org.androidaudioplugin.ui.web.AudioPluginWebViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
     <extensions>
-      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v1" />
-      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v1" />
-      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v1" />
-      <extension uri="urn://androidaudioplugin.org/extensions/gui/v1" />
+      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v2" />
+      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v2" />
+      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v2" />
+      <extension uri="urn://androidaudioplugin.org/extensions/gui/v2" />
     </extensions>
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
       <parameter id="0" name="Output Volume L" default="0.5" minimum="0" maximum="1" />

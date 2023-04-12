@@ -34,6 +34,7 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         AAPXSProxyContext asProxy() {
+            proxy.aapxs_context = this;
             return AAPXSProxyContext{aapxsInstance, this, &proxy};
         }
     };

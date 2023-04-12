@@ -29,24 +29,24 @@ namespace aap {
             GuiPluginClientExtension *owner;
             AAPXSClientInstance* aapxsInstance;
 
-            static aap_gui_instance_id internalCreate(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId, void* audioPluginView) {
-                return ((Instance *) target.aapxs_context)->create(pluginId, instanceId, audioPluginView);
+            static aap_gui_instance_id internalCreate(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId, int32_t instanceId, void* audioPluginView) {
+                return ((Instance *) ext->aapxs_context)->create(pluginId, instanceId, audioPluginView);
             }
 
-            static int32_t internalShow(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
-                return ((Instance *) target.aapxs_context)->show(guiInstanceId);
+            static int32_t internalShow(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId) {
+                return ((Instance *) ext->aapxs_context)->show(guiInstanceId);
             }
 
-            static void internalHide(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
-                return ((Instance *) target.aapxs_context)->hide(guiInstanceId);
+            static void internalHide(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId) {
+                return ((Instance *) ext->aapxs_context)->hide(guiInstanceId);
             }
 
-            static int32_t internalResize(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
-                return ((Instance *) target.aapxs_context)->resize(guiInstanceId, width, height);
+            static int32_t internalResize(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
+                return ((Instance *) ext->aapxs_context)->resize(guiInstanceId, width, height);
             }
 
-            static void internalDestroy(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId) {
-                ((Instance *) target.aapxs_context)->destroy(guiInstanceId);
+            static void internalDestroy(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId) {
+                ((Instance *) ext->aapxs_context)->destroy(guiInstanceId);
             }
 
         public:
@@ -94,6 +94,7 @@ namespace aap {
             }
 
             AAPXSProxyContext asProxy() {
+                proxy.aapxs_context = this;
                 proxy.create = internalCreate;
                 proxy.show = internalShow;
                 proxy.hide = internalHide;
@@ -135,14 +136,14 @@ namespace aap {
 
         template<typename T>
         void withGuiExtension(AndroidAudioPlugin* plugin,
-                                                             T defaultValue,
-                                                             std::function<void(aap_gui_extension_t *, AndroidAudioPluginExtensionTarget)> func) {
+                              T defaultValue,
+                              std::function<void(aap_gui_extension_t *, AndroidAudioPlugin*)> func) {
             // This instance->getExtension() should return an extension from the loaded plugin.
             assert(plugin);
             auto guiExtension = (aap_gui_extension_t *) plugin->get_extension(plugin, AAP_GUI_EXTENSION_URI);
             if (guiExtension)
                 // We don't need context for service side.
-                func(guiExtension, AndroidAudioPluginExtensionTarget{plugin, nullptr});
+                func(guiExtension, plugin);
         }
 
     public:

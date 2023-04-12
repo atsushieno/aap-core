@@ -60,7 +60,7 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
 
     auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host.get_extension(&host, AAP_PLUGIN_INFO_EXTENSION_URI);
     if (pluginInfoExt != nullptr) {
-        auto info = pluginInfoExt->get(&host, context->plugin_id.c_str());
+        auto info = pluginInfoExt->get(pluginInfoExt, &host, context->plugin_id.c_str());
         aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
         for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
             auto port = info.get_port(&info, i);
@@ -310,22 +310,23 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {
     context->active = false;
 }
 
-size_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
+size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
     // FIXME: implement
     return 0;
 }
 
-void sample_plugin_get_state(AndroidAudioPluginExtensionTarget target, aap_state_t* state) {
+void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPluginExtensionTarget target, aap_state_t* input) {
+void sample_plugin_set_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* input) {
     // FIXME: implement
 }
 
-aap_state_extension_t state_extension{sample_plugin_get_state_size,
-                                          sample_plugin_get_state,
-                                          sample_plugin_set_state,
+aap_state_extension_t state_extension{nullptr,
+                                      sample_plugin_get_state_size,
+                                      sample_plugin_get_state,
+                                      sample_plugin_set_state,
 };
 
 // Preset support
@@ -337,15 +338,15 @@ aap_preset_t presets[3] {
     {2, "preset3", preset_data[2], sizeof(preset_data[2])}
 };
 
-int32_t sample_plugin_get_preset_count(AndroidAudioPluginExtensionTarget /*target*/) {
+int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/) {
     return sizeof(presets) / sizeof(aap_preset_t);
 }
 
-int32_t sample_plugin_get_preset_data_size(AndroidAudioPluginExtensionTarget /*target*/, int32_t index) {
+int32_t sample_plugin_get_preset_data_size(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index) {
     return presets[index].data_size; // just for testing, no actual content.
 }
 
-void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, bool skipContent, aap_preset_t* preset) {
     preset->index = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
     preset->data_size = presets[index].data_size;
@@ -353,47 +354,49 @@ void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int3
         memcpy(preset->data, presets[index].data, preset->data_size);
 }
 
-int32_t sample_plugin_get_preset_index(AndroidAudioPluginExtensionTarget target) {
-    auto handle = (AyumiHandle*) target.plugin->plugin_specific;
+int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
+    auto handle = (AyumiHandle*) plugin->plugin_specific;
     return handle->preset_index;
 }
 
-void sample_plugin_set_preset_index(AndroidAudioPluginExtensionTarget target, int32_t index) {
-    auto handle = (AyumiHandle*) target.plugin->plugin_specific;
+void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
+    auto handle = (AyumiHandle*) plugin->plugin_specific;
     aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "Preset changed to %d", index);
     handle->preset_index = index;
 }
 
-aap_presets_extension_t presets_extension{sample_plugin_get_preset_count,
+aap_presets_extension_t presets_extension{nullptr,
+                                          sample_plugin_get_preset_count,
                                           sample_plugin_get_preset_data_size,
                                           sample_plugin_get_preset,
                                           sample_plugin_get_preset_index,
                                           sample_plugin_set_preset_index};
 
-int32_t sample_plugin_gui_create(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t instanceId, void* audioPluginView) {
+int32_t sample_plugin_gui_create(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId, int32_t instanceId, void* audioPluginView) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI CREATE !!!");
     return 1;
 }
 
-int32_t sample_plugin_gui_show(AndroidAudioPluginExtensionTarget target, int32_t guiInstanceId) {
+int32_t sample_plugin_gui_show(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, int32_t guiInstanceId) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI SHOW !!!");
     return AAP_GUI_RESULT_OK;
 }
 
-void sample_plugin_gui_hide(AndroidAudioPluginExtensionTarget target, int32_t guiInstanceId) {
+void sample_plugin_gui_hide(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, int32_t guiInstanceId) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI HIDE !!!");
 }
 
-int32_t sample_plugin_gui_resize(AndroidAudioPluginExtensionTarget target, int32_t guiInstanceId, int32_t width, int32_t height) {
+int32_t sample_plugin_gui_resize(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, int32_t guiInstanceId, int32_t width, int32_t height) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI RESIZE !!!");
     return AAP_GUI_RESULT_OK;
 }
 
-void sample_plugin_gui_destroy(AndroidAudioPluginExtensionTarget target, int32_t guiInstanceId) {
+void sample_plugin_gui_destroy(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, int32_t guiInstanceId) {
     aap::a_log(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "!!!!! GUI DESTROY !!!");
 }
 
-aap_gui_extension_t gui_extension{sample_plugin_gui_create,
+aap_gui_extension_t gui_extension{nullptr,
+                                  sample_plugin_gui_create,
                                   sample_plugin_gui_show,
                                   sample_plugin_gui_hide,
                                   sample_plugin_gui_resize,

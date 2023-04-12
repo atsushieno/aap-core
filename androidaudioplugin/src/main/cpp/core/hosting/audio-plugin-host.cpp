@@ -471,11 +471,8 @@ void PluginInstance::scanParametersAndBuildList() {
 	// (The empty list means no parameters in metadata either.)
 	cached_parameters = std::make_unique<std::vector<ParameterInformation>>();
 
-	// FIXME: pass appropriate context
-	auto target = AndroidAudioPluginExtensionTarget{plugin, nullptr};
-
-	for (auto i = 0, n = ext->get_parameter_count(target); i < n; i++) {
-		auto para = ext->get_parameter(target, i);
+	for (auto i = 0, n = ext->get_parameter_count(ext, plugin); i < n; i++) {
+		auto para = ext->get_parameter(ext, plugin, i);
 		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};
 		cached_parameters->emplace_back(p);
 	}
@@ -627,7 +624,7 @@ static aap_plugin_info_parameter_t plugin_info_get_parameter(aap_plugin_info_t* 
 									   plugin_info_parameter_get_default_value};
 }
 
-aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* host, const char* pluginId) {
+aap_plugin_info_t LocalPluginInstance::get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char* pluginId) {
 	auto instance = (LocalPluginInstance*) host->context;
 	aap_plugin_info_t ret{(void*) instance,
 						  plugin_info_get_plugin_package_name,
@@ -645,7 +642,7 @@ aap_plugin_info_t LocalPluginInstance::get_plugin_info(AndroidAudioPluginHost* h
 	return ret;
 }
 
-void LocalPluginInstance::notify_parameters_changed(AndroidAudioPluginHost *host,
+void LocalPluginInstance::notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host,
                                                 AndroidAudioPlugin *plugin) {
     assert(false); // FIXME: implement
 }

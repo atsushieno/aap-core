@@ -53,7 +53,7 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
     auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
     assert(ext);
-    auto pluginInfo = ext->get(&ctx->host, PLUGIN_URI);
+    auto pluginInfo = ext->get(ext, &ctx->host, PLUGIN_URI);
     auto numPorts = pluginInfo.get_port_count(&pluginInfo);
     assert(buffer->num_ports(*buffer) >= numPorts);
     for (int32_t i = 0, n = numPorts; i < n; i++) {
@@ -222,19 +222,20 @@ process_acc:
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
-size_t sample_plugin_get_state_size(AndroidAudioPluginExtensionTarget target) {
+size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
     return 0;
 }
 
-void sample_plugin_get_state(AndroidAudioPluginExtensionTarget target, aap_state_t* state) {
+void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* state) {
     // FIXME: implement
 }
 
-void sample_plugin_set_state(AndroidAudioPluginExtensionTarget target, aap_state_t* input) {
+void sample_plugin_set_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* input) {
     // FIXME: implement
 }
 
-aap_state_extension_t state_extension{sample_plugin_get_state_size,
+aap_state_extension_t state_extension{nullptr,
+                                      sample_plugin_get_state_size,
                                       sample_plugin_get_state,
                                       sample_plugin_set_state};
 

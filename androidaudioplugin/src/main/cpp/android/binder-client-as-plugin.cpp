@@ -25,10 +25,7 @@ public:
 	const char *unique_id{nullptr};
 	int32_t instance_id{-1};
 	aap::AndroidPluginClientConnectionData* connection_data{nullptr};
-	aap_state_extension_t state_ext;
-	aap_state_t state{};
     aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
-	int state_ashmem_fd{0};
 	AndroidAudioPluginHost host;
 
     ~AAPClientContext();
@@ -36,18 +33,9 @@ public:
 	aidl::org::androidaudioplugin::IAudioPluginInterface* getProxy() { return connection_data->getProxy(); }
 };
 
-void releaseStateBuffer(AAPClientContext *ctx)
-{
-	if (ctx->state.data)
-		munmap((void*) ctx->state.data, (size_t) ctx->state.data_size);
-	if (ctx->state_ashmem_fd)
-		close(ctx->state_ashmem_fd);
-}
-
 
 AAPClientContext::~AAPClientContext() {
 	if (instance_id >= 0) {
-		releaseStateBuffer(this);
 		getProxy()->destroy(instance_id);
         instance_id = -1;
 	}

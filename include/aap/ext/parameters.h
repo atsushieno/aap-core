@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v1"
+#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v2"
 #define AAP_PARAMETERS_XMLNS_URI "urn://androidaudioplugin.org/extensions/parameters"
 
 #define AAP_MAX_PARAMETER_NAME_CHARS 256
@@ -49,24 +49,22 @@ typedef struct aap_parameter_info_t {
     bool per_note_enabled;
 } aap_parameter_info_t;
 
-typedef int32_t (*parameters_extension_get_parameter_count_func_t) (AndroidAudioPluginExtensionTarget target);
-typedef aap_parameter_info_t* (*parameters_extension_get_parameter_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
-
 typedef struct aap_parameters_extension_t {
+    void* aapxs_context;
     // Returns the number of parameters.
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    RT_SAFE parameters_extension_get_parameter_count_func_t get_parameter_count;
+    RT_SAFE int32_t (*get_parameter_count) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin);
     // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    RT_SAFE parameters_extension_get_parameter_func_t get_parameter;
+    RT_SAFE aap_parameter_info_t* (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
 } aap_parameters_extension_t;
-
-typedef void (*parameters_host_extension_notify_parameter_list_changed_func_t) (AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
 
 typedef struct aap_host_parameters_extension_t {
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host (it will need to refresh the list anyways).
-    RT_SAFE parameters_host_extension_notify_parameter_list_changed_func_t notify_parameters_changed;
+    // FIXME: the `host` argument could be replaced with ext->plugin_context
+    // FIXME: the `plugin` argument could be represented by something else e.g. instanceID.
+    RT_SAFE void (*notify_parameters_changed) (aap_host_parameters_extension_t* ext, AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
 } aap_host_parameters_extension_t;
 
 #ifdef __cplusplus

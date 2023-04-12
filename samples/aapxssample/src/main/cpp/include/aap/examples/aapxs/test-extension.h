@@ -10,11 +10,11 @@ struct example_test_extension_t;
 
 // Extension function #1: takes an integer input and do something, return an integer value.
 //  Context may be required in the applied plugins (depends on each plugin developer).
-typedef int32_t (*fooFunc) (struct example_test_extension_t* context, int32_t input);
+typedef int32_t (*fooFunc) (struct example_test_extension_t* context, AndroidAudioPlugin* plugin, int32_t input);
 
 // Extension function #2: takes a string input and do something. Nothing to return.
 //  Context may be required in the applied plugins (depends on each plugin developer).
-typedef void (*barFunc) (struct example_test_extension_t* context, char *msg);
+typedef void (*barFunc) (struct example_test_extension_t* context, AndroidAudioPlugin* plugin, char *msg);
 
 // The extension structure
 typedef struct example_test_extension_t {

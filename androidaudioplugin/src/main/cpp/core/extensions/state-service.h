@@ -26,16 +26,16 @@ class StatePluginClientExtension : public PluginClientExtensionImplBase {
 
         aap_state_extension_t proxy{};
 
-        static size_t internalGetStateSize(AndroidAudioPluginExtensionTarget target) {
-            return ((Instance *) target.aapxs_context)->getStateSize();
+        static size_t internalGetStateSize(aap_state_extension_t *ext, AndroidAudioPlugin* plugin) {
+            return ((Instance *) ext->aapxs_context)->getStateSize();
         }
 
-        static void internalGetState(AndroidAudioPluginExtensionTarget target, aap_state_t *state) {
-            return ((Instance *) target.aapxs_context)->getState(state);
+        static void internalGetState(aap_state_extension_t *ext, AndroidAudioPlugin* plugin, aap_state_t *state) {
+            return ((Instance *) ext->aapxs_context)->getState(state);
         }
 
-        static void internalSetState(AndroidAudioPluginExtensionTarget target, aap_state_t *state) {
-            return ((Instance *) target.aapxs_context)->setState(state);
+        static void internalSetState(aap_state_extension_t *ext, AndroidAudioPlugin* plugin, aap_state_t *state) {
+            return ((Instance *) ext->aapxs_context)->setState(state);
         }
 
         StatePluginClientExtension *owner;
@@ -70,6 +70,7 @@ class StatePluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         AAPXSProxyContext asProxy() {
+            proxy.aapxs_context = this;
             proxy.get_state_size = internalGetStateSize;
             proxy.get_state = internalGetState;
             proxy.set_state = internalSetState;
@@ -110,8 +111,7 @@ class StatePluginServiceExtension : public PluginServiceExtensionImplBase {
 
     template<typename T>
     void withStateExtension(AndroidAudioPlugin* plugin, T defaultValue,
-                             std::function<void(aap_state_extension_t *,
-                                                AndroidAudioPluginExtensionTarget)> func);
+                            std::function<void(aap_state_extension_t *, AndroidAudioPlugin*)> func);
 
 public:
     StatePluginServiceExtension()

@@ -28,14 +28,14 @@ void test_extension_feature_on_invoked(
     switch (opcode) {
     case AAPXS_EXAMPLE_TEST_OPCODE_FOO: {
         int32_t input = *(int32_t *) extension->data;
-        int32_t ret = ext->foo(nullptr, input);
+        int32_t ret = ext->foo(nullptr, plugin, input);
         *(int32_t *) extension->data = ret;
         }
         break;
     case AAPXS_EXAMPLE_TEST_OPCODE_BAR: {
         int32_t size = *(int32_t*) extension->data;
         strncpy(instance_message_buffer, const_cast<char*>((char*)extension->data + sizeof(int32_t)), size);
-        ext->bar(nullptr, instance_message_buffer);
+        ext->bar(nullptr, plugin, instance_message_buffer);
         }
         break;
     }
@@ -45,7 +45,7 @@ void test_extension_feature_on_invoked(
 
 example_test_extension_t proxy{};
 
-int32_t proxy_foo (example_test_extension_t* test, int32_t input) {
+int32_t proxy_foo (example_test_extension_t* test, AndroidAudioPlugin* plugin, int32_t input) {
     // The context is assigned by `test_extension_feature_as_proxy()`.
     auto aapxs = (AAPXSClientInstance*) test->context;
     // set `input` at the very beginning of the shared data pointer.
@@ -56,7 +56,7 @@ int32_t proxy_foo (example_test_extension_t* test, int32_t input) {
     return *(int32_t*) aapxs->data;
 }
 
-void proxy_bar (example_test_extension_t* test, char *msg) {
+void proxy_bar (example_test_extension_t* test, AndroidAudioPlugin* plugin, char *msg) {
     // The context is assigned by `test_extension_feature_as_proxy()`.
     auto aapxs = (AAPXSClientInstance*) test->context;
     // length-prefixed string: set length at the very beginning of the shared data pointer.

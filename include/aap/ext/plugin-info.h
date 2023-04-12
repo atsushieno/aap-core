@@ -1,10 +1,12 @@
 #ifndef ANDROIDAUDIOPLUGIN_PLUGIN_INFO_EXTENSION_H_INCLUDED
 #define ANDROIDAUDIOPLUGIN_PLUGIN_INFO_EXTENSION_H_INCLUDED
 
-// plugin-info extension is used primarily by a plugin to retrieve its metadata, ports, and
+// plugin-info extension is used primarily by a plugin to retrieve its own metadata, ports, and
 // parameters from the host that had parsed `aap_metadata.xml` and configured ports etc.
-// There is no AAPXS so far, as it is implemented at LocalPluginInstance (but if we want
-// to implement anything other than aap::PluginHost, it will be needed).
+// Those information items are not obviously known to plugin wrappers, including our own local host.
+//
+// IPC is not involved, as it is implemented at LocalPluginInstance. A local plugin host should be
+// able to resolve all the plugin information items.
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,7 +15,7 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include "stdint.h"
 
-#define AAP_PLUGIN_INFO_EXTENSION_URI "urn://androidaudioplugin.org/extensions/plugin-info/v1"
+#define AAP_PLUGIN_INFO_EXTENSION_URI "urn://androidaudioplugin.org/extensions/plugin-info/v2"
 
 enum aap_content_type {
     AAP_CONTENT_TYPE_UNDEFINED = 0,
@@ -83,17 +85,12 @@ struct aap_plugin_info_t {
     RT_SAFE get_plugin_info_get_parameter_func get_parameter;
 };
 
-typedef void (*aap_notify_plugin_info_update_func_t)(AndroidAudioPluginExtensionTarget target);
-
-typedef aap_plugin_info_t (*aap_host_get_plugin_info_func_t)(
-        AndroidAudioPluginHost* host, const char *pluginId);
-
 typedef struct aap_plugin_info_extension_t {
-    RT_SAFE aap_notify_plugin_info_update_func_t notify_plugin_info_update;
+    RT_SAFE void (*notify_plugin_info_update) (aap_plugin_info_extension_t* ext);
 } aap_plugin_info_extension_t;
 
 typedef struct aap_host_plugin_info_extension_t {
-    RT_UNSAFE aap_host_get_plugin_info_func_t get;
+    RT_UNSAFE aap_plugin_info_t (*get) (aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
 } aap_host_plugin_info_extension_t;
 
 #ifdef __cplusplus

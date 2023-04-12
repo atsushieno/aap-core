@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define AAP_MIDI_EXTENSION_URI "urn://androidaudioplugin.org/extensions/midi2/v1"
+#define AAP_MIDI_EXTENSION_URI "urn://androidaudioplugin.org/extensions/midi2/v2"
 
 #define AAP_PROTOCOL_MIDI1_0 1
 #define AAP_PROTOCOL_MIDI2_0 2
@@ -140,11 +140,10 @@ static inline bool aapReadMidi2ParameterSysex8(uint8_t* group, uint8_t* channel,
     return (src1 >> 24) == 0x50 + *group && (src1 & 0xFF) == 0x7E && src2 == 0x7F000000 + *channel;
 }
 
-typedef enum aap_midi_mapping_policy (*midi_extension_get_mapping_policy_func_t) (AndroidAudioPluginExtensionTarget target, const char* pluginId);
-
 // The MIDI extension
 
 typedef struct aap_midi_extension_t {
+    void* aapxs_context;
     // indicates which UMP protocol it expects for the inputs: 0: Unspecified (MIDI2) / 1: MIDI1 / 2: MIDI2
     // Currently unused.
     int32_t protocol{0};
@@ -154,7 +153,7 @@ typedef struct aap_midi_extension_t {
     // Returns the MIDI mapping policy flags that indicates the message types that the plugin may directly
     // consume and thus cannot be mapped to other purposes (parameter changes and preset changes).
     // The actual callee is most likely audio-plugin-host, not the plugin.
-    RT_UNSAFE midi_extension_get_mapping_policy_func_t get_mapping_policy;
+    RT_UNSAFE enum aap_midi_mapping_policy (*get_mapping_policy) (aap_midi_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId);
 } aap_midi_extension_t;
 
 #ifdef __cplusplus

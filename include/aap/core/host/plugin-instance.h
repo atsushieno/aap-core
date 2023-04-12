@@ -193,9 +193,9 @@ namespace aap {
         bool process_requested{false};
 
         static aap_plugin_info_t
-        get_plugin_info(AndroidAudioPluginHost *host, const char *pluginId);
+        get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
 
-        static void notify_parameters_changed(AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
+        static void notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
 
         inline static void *
         internalGetExtension(AndroidAudioPluginHost *host, const char *uri) {
