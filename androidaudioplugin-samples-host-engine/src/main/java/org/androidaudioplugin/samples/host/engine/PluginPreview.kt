@@ -297,12 +297,6 @@ class PluginPreview(private val context: Context) {
                     instance.getPortBuffer(audioOutR, localBufferR, audioProcessingBufferSizesInBytes[audioOutR])
                     localBufferR.position(0)
                     localBufferR.get(host.audioOutputs[1], 0, audioBufferFrameSize * 4)
-                    if (currentFrame == 0) {
-                        android.util.Log.i("!!!! kotlin1", (0 until 20).map { localBufferL[it] }.joinToString { it.toString(16) })
-                        android.util.Log.i("!!!! kotlin2", (0 until 20).map { localBufferR[it] }.joinToString { it.toString(16) })
-                        android.util.Log.i("!!!! kotlin3", (0 until 20).map { host.audioOutputs[0][it] }.joinToString { it.toString(16) })
-                        android.util.Log.i("!!!! kotlin4", (0 until 20).map { host.audioOutputs[1][it] }.joinToString { it.toString(16) })
-                    }
                 } else {
                     // mono output - copy plugin L output to host R output.
                     localBufferL.position(0)
