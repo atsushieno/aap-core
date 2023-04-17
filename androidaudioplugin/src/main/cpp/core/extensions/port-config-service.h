@@ -57,6 +57,7 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
             size_t size = strlen(configuration);
             *((int32_t *) aapxsInstance->data) = size;
             strncpy((char*) aapxsInstance->data + sizeof(int32_t), configuration, size);
+            ((char*) aapxsInstance->data)[size] = 0;
             clientInvokePluginExtension(OPCODE_PORT_CONFIG_SELECT);
         }
 

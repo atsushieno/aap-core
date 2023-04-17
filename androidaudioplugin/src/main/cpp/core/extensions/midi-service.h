@@ -43,6 +43,7 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
             assert(len < AAP_MAX_PLUGIN_ID_SIZE);
             *((int32_t*) aapxsInstance->data) = len;
             strcpy((char*) ((int32_t*) aapxsInstance->data + 1), pluginId);
+            ((char *)aapxsInstance->data) [sizeof(int32_t) + len] = 0;
             clientInvokePluginExtension(OPCODE_GET_MAPPING_POLICY);
             return *((enum aap_midi_mapping_policy *) aapxsInstance->data);
         }
@@ -100,7 +101,7 @@ public:
             case OPCODE_GET_MAPPING_POLICY:
                 auto len = *(int32_t*) extensionInstance->data;
                 assert(len < AAP_MAX_PLUGIN_ID_SIZE);
-                char* pluginId = (char*) calloc(len, 1);
+                char* pluginId = (char*) calloc(len + 1, 1);
                 strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
                 *((int32_t*) extensionInstance->data) = getMidiSettingsFromLocalConfig(pluginId);
                 return;

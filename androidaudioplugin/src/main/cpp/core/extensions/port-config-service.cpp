@@ -28,8 +28,9 @@ void aap::PortConfigPluginServiceExtension::onInvoked(AndroidAudioPlugin *plugin
             withPortConfigExtension<int32_t>(plugin, 0, [=](aap_port_config_extension_t *ext,
                                                             AndroidAudioPlugin* plugin) {
                 int32_t size = *((int32_t *) extensionInstance->data);
-                char config[size];
+                char config[size + 1];
                 strncpy(config, (char*) extensionInstance->data + sizeof(int32_t), size);
+                config[size] = 0;
                 ext->select(ext, plugin, config);
                 return 0;
             });

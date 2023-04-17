@@ -49,8 +49,10 @@ void PresetsPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSS
             // - 4..259 : name (fixed length char buffer)
             // - 260..* : data (if requested)
             *((int32_t*) extensionInstance->data) = preset.data_size;
+            size_t len = strlen(preset.name);
             strncpy((char *) extensionInstance->data + sizeof(int32_t),
-                    const_cast<char *const>(preset.name), AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
+                    const_cast<char *const>(preset.name), len);
+            ((char *) extensionInstance->data)[len + sizeof(int32_t)] = 0;
             // preset.data is already assigned to the shm buffer, so no need to memcpy.
         });
         break;

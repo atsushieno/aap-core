@@ -11,7 +11,7 @@ void GuiPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSServi
         case OPCODE_CREATE: {
             auto len = *(int32_t *) extensionInstance->data;
             assert(len < AAP_MAX_PLUGIN_ID_SIZE);
-            char *pluginId = (char *) calloc(len, 1);
+            char *pluginId = (char *) calloc(len + 1, 1);
             strncpy(pluginId, (const char *) ((int32_t *) extensionInstance->data + 1),
                     len);
             auto instanceId = *((int32_t *) extensionInstance->data + 1 + len);
