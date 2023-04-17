@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.7.6-pre"
-aap-lv2 = "0.2.6-pre"
+aap-core = "0.7.6"
+aap-lv2 = "0.2.6"
 
 agp = "7.4.2"
 kotlin = "1.8.10"
