@@ -58,26 +58,20 @@ Thus it looks like:
 ```C++
 #define AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH 256
 
-typedef struct {
-	int32_t index{0};
-	char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
-	void *data;
-	int32_t data_size;
+typedef struct aap_preset_t {
+    int32_t index{0};
+    char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
+    void *data;
+    int32_t data_size;
 } aap_preset_t;
 
-typedef int32_t (*presets_extension_get_preset_count_func_t) (AndroidAudioPluginExtensionTarget target);
-typedef int32_t (*presets_extension_get_preset_data_size_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
-typedef void (*presets_extension_get_preset_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index, bool skipBinary, aap_preset_t *preset);
-typedef int32_t (*presets_extension_get_preset_index_func_t) (AndroidAudioPluginExtensionTarget target);
-typedef void (*presets_extension_set_preset_index_func_t) (AndroidAudioPluginExtensionTarget target, int32_t index);
-
 typedef struct aap_presets_extension_t {
-    void *context;
-    presets_extension_get_preset_count_func_t get_preset_count;
-    presets_extension_get_preset_data_size_func_t get_preset_data_size;
-    presets_extension_get_preset_func_t get_preset;
-    presets_extension_get_preset_index_func_t get_preset_index;
-    presets_extension_set_preset_index_func_t set_preset_index;
+    void* aapxs_context;
+    RT_UNSAFE int32_t (*get_preset_count) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
+    RT_UNSAFE int32_t (*get_preset_data_size) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
+    RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, bool skipBinary, aap_preset_t *preset);
+    RT_UNSAFE int32_t (*get_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
+    RT_UNSAFE void (*set_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
 } aap_presets_extension_t;
 ```
 
@@ -94,15 +88,15 @@ aap_preset_t presets[3] {
     {2, "preset3", preset_data[2], sizeof(preset_data[2])}
 };
 
-int32_t sample_plugin_get_preset_count(AndroidAudioPluginExtensionTarget /*target*/) {
+int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
     return sizeof(presets) / sizeof(aap_preset_t);
 }
 
-int32_t sample_plugin_get_preset_data_size(AndroidAudioPluginExtensionTarget /*target*/, int32_t index) {
+int32_t sample_plugin_get_preset_data_size(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
     return presets[index].data_size; // just for testing, no actual content.
 }
 
-void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int32_t index, bool skipContent, aap_preset_t* preset) {
+void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, bool skipContent, aap_preset_t* preset) {
     preset->index = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
     preset->data_size = presets[index].data_size;
@@ -110,12 +104,12 @@ void sample_plugin_get_preset(AndroidAudioPluginExtensionTarget /*target*/, int3
         memcpy(preset->data, presets[index].data, preset->data_size);
 }
 
-int32_t sample_plugin_get_preset_index(AndroidAudioPluginExtensionTarget target) {
-    return (int32_t) (int64_t) target->aapxs_context;
+int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
+    return (int32_t) (int64_t) ext->aapxs_context; // it should be actually per `plugin` in practice...
 }
 
-void sample_plugin_set_preset_index(AndroidAudioPluginExtensionTarget target, int32_t index) {
-    target->aa@xs_context = (void*) index;
+void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
+    ext->aapxs_context = (void*) index; // it should be actually per `plugin` in practice...
 }
 
 // AAP Presets extension (instance) that this Foo plugin implements
@@ -307,6 +301,4 @@ At this moment, the scope of extension services is limited to non-realtime reque
 
 We may have to revisit messaging implementation and replace it with MIDI 2.0 based messaging. For details, see https://github.com/atsushieno/aap-core/issues/104#issuecomment-1100858628
 
-Hopefully can be upgraded only about internals without changing the public AAPXS API surface.
-
-At this state we haven't worked on this known issue because that would depend on fundamental [port design changes](NEW_PORTS.md).
+Hopefully it would be only about internals without changing the public AAPXS API surface.
