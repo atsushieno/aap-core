@@ -18,6 +18,21 @@
 
 namespace aap {
 
+class AndroidAudioPluginServiceCallback : public AudioPluginServiceCallback {
+public:
+    AndroidAudioPluginServiceCallback() {}
+    virtual ~AndroidAudioPluginServiceCallback() {}
+
+    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback_proxy{nullptr};
+
+    void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
+        callback_proxy->hostExtension(in_instanceId, in_uri, in_opcode);
+    }
+    void requestProcess(int32_t in_instanceId) override {
+        callback_proxy->requestProcess(in_instanceId);
+    }
+};
+
 // This is a service class that is instantiated by a local Kotlin AudioPluginService instance.
 // It is instantiated for one plugin per client.
 // One client can instantiate multiple plugins.
@@ -25,16 +40,14 @@ class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPl
     PluginListSnapshot plugins;
     std::unique_ptr<PluginService> svc;
     std::vector<aap_buffer_t> buffers{};
-    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback{nullptr};
+    std::unique_ptr<AndroidAudioPluginServiceCallback> plugin_service_callback{nullptr};
 
 public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
-        svc.reset(new PluginService(&plugins, [&](int32_t instanceId) {
-            if (callback)
-                callback->requestProcess(instanceId);
-        }));
+        plugin_service_callback = std::make_unique<AndroidAudioPluginServiceCallback>();
+        svc.reset(new PluginService(&plugins, plugin_service_callback.get()));
         aap::PluginServiceList::getInstance()->addBoundServiceInProcess(svc.get());
     }
 
@@ -43,11 +56,11 @@ public:
     }
 
     ::ndk::ScopedAStatus setCallback(const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override {
-        if (callback.get()) {
+        if (plugin_service_callback->callback_proxy.get()) {
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_CALLBACK_ALREADY_SET, "failed to create AAP service instance.");
+                    AAP_BINDER_ERROR_CALLBACK_ALREADY_SET, "failed to create AAP service instance: callback already exists.");
         }
-        callback.reset(in_callback.get());
+        plugin_service_callback->callback_proxy.reset(in_callback.get());
 
         return ndk::ScopedAStatus::ok();
     }

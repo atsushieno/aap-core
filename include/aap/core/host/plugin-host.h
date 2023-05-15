@@ -26,6 +26,14 @@
 
 namespace aap {
 
+    class AudioPluginServiceCallback {
+    public:
+        virtual ~AudioPluginServiceCallback() {}
+
+        virtual void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) = 0;
+        virtual void requestProcess(int32_t in_instanceId) = 0;
+    };
+
 /* Common foundation for both Plugin service and Plugin client to provide common features:
  *
  * - retrieve AAPXSFeature*
@@ -61,10 +69,10 @@ namespace aap {
 
 
     class PluginService : public PluginHost {
-        std::function<void(int32_t)> plugin_callback;
+        AudioPluginServiceCallback* plugin_service_callback;
     public:
-        PluginService(PluginListSnapshot* contextPluginList, std::function<void(int32_t)> pluginCallback)
-                : PluginHost(contextPluginList), plugin_callback(pluginCallback)
+        PluginService(PluginListSnapshot* contextPluginList, AudioPluginServiceCallback* callback)
+                : PluginHost(contextPluginList), plugin_service_callback(callback)
         {
         }
 
@@ -75,7 +83,7 @@ namespace aap {
         }
 
         void requestProcessToHost(int32_t instanceId) {
-            plugin_callback(instanceId);
+            plugin_service_callback->requestProcess(instanceId);
         }
     };
 

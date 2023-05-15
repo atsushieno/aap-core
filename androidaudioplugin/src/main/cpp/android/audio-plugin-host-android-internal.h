@@ -44,15 +44,19 @@ class AndroidPluginClientConnectionData {
     ndk::SpAIBinder spAIBinder;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback;
-    std::function<::ndk::ScopedAStatus(int32_t)> handle_request_process;
 
     class AudioPluginCallback : public aidl::org::androidaudioplugin::IAudioPluginInterfaceCallbackDefault {
         AndroidPluginClientConnectionData* owner;
 
     public:
         AudioPluginCallback(AndroidPluginClientConnectionData* owner) : owner(owner) {}
+
         ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
             return owner->handleRequestProcess(in_instanceId);
+        }
+
+        ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
+            return owner->handleHostExtension(in_instanceId, in_uri, in_opcode);
         }
     };
 
@@ -64,10 +68,20 @@ public:
         proxy->setCallback(callback);
     }
 
+    std::function<::ndk::ScopedAStatus(int32_t instanceId)> request_process;
+    std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode)> host_extension;
+    std::function<::ndk::ScopedAStatus(::ndk::ScopedAParcel message)> handleMiscellaneousMessage;
+
     aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
 
     ::ndk::ScopedAStatus handleRequestProcess(int32_t instanceId) {
-        return handle_request_process(instanceId);
+        assert(request_process);
+        return request_process(instanceId);
+    }
+
+    ::ndk::ScopedAStatus handleHostExtension(int32_t instanceId, const std::string& uri, int32_t opcode) {
+        assert(host_extension);
+        return host_extension(instanceId, uri, opcode);
     }
 };
 
