@@ -15,7 +15,7 @@ extern "C" {
 #define RT_SAFE [[clang::annotate("AAP_RT_SAFE")]]
 #define RT_UNSAFE [[clang::annotate("AAP_RT_UNSAFE")]]
 #else
-#define RT_SAFE [annotate("AAP_RT_SAFE")]]
+#define RT_SAFE [[annotate("AAP_RT_SAFE")]]
 #define RT_UNSAFE [[annotate("AAP_RT_UNSAFE")]]
 #endif
 
