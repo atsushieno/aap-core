@@ -25,7 +25,7 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 
     // It is designed to be open overridable.
     open val plugins: List<PluginInformation>
-        get() = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins
+        get() = AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext).plugins
             .filter { p -> isInstrument(p) }
 
     private fun isInstrument(info: PluginInformation) : Boolean {

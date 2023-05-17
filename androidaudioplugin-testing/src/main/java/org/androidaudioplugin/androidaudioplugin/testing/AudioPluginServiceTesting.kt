@@ -3,6 +3,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 import android.content.Context
 import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.runBlocking
+import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
@@ -15,7 +16,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     fun getPluginServiceInfo() = testPluginServiceInformation {}
 
     fun testPluginServiceInformation(serviceInfoTest: (serviceInfo: PluginServiceInformation) -> Unit = {}) {
-        val audioPluginServiceInfo = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext)
+        val audioPluginServiceInfo = AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext)
         assertEquals ("packageName", applicationContext.packageName, audioPluginServiceInfo.packageName)
         serviceInfoTest(audioPluginServiceInfo)
     }
@@ -28,7 +29,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     }
 
     fun basicServiceOperationsForAllPlugins() {
-        for (pluginInfo in AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins)
+        for (pluginInfo in AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext).plugins)
             testInstancingAndProcessing(pluginInfo)
     }
 

@@ -201,6 +201,8 @@ object AudioPluginHostHelper {
         context.startActivity(intent, bundle)
     }
 
+    @Deprecated("Use AudioPluginServiceHelper.getLocalAudioPluginService()",
+        ReplaceWith("AudioPluginServiceHelper.getLocalAudioPluginService(context)", "org.androidaudioplugin"))
     @JvmStatic
     fun getLocalAudioPluginService(context: Context) : PluginServiceInformation {
         val componentName = ComponentName(context.packageName, AudioPluginService::class.java.name)

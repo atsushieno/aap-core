@@ -3,6 +3,7 @@ package org.androidaudioplugin.aapinstrumentsample
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.rule.ServiceTestRule
+import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.androidaudioplugin.testing.AudioPluginServiceTesting
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.junit.Assert
@@ -32,7 +33,7 @@ class PluginTest {
 
     @Test
     fun repeatDirectServiceOperations() {
-        val pluginInfo = AudioPluginHostHelper.getLocalAudioPluginService(applicationContext).plugins.first()
+        val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext).plugins.first()
 
         for (i in 0 until 5)
             testing.testInstancingAndProcessing(pluginInfo)
