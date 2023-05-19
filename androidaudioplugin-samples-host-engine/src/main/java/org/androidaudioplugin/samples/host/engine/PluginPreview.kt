@@ -510,7 +510,7 @@ class PluginPreview(private val context: Context) {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun createSurfaceControl(width: Int, height: Int) {
+    fun connectSurfaceControlUI(width: Int, height: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             surfaceControl.apply {
                 GlobalScope.launch {

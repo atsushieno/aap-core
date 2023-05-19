@@ -83,7 +83,6 @@ dependencies {
     }
     implementation (libs.lifecycle.service)
     implementation (libs.startup.runtime)
-    //implementation (libs.androidx.lifecycle.viewmodel.ktx)
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.core)
     androidTestImplementation (libs.test.rules)

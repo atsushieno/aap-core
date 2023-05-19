@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.util.Log
 import android.view.SurfaceControlViewHost
 import androidx.annotation.RequiresApi
 import androidx.core.os.bundleOf
@@ -26,6 +27,8 @@ import java.lang.IllegalArgumentException
  */
 class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     companion object {
+        const val LOG_TAG = "AudioPluginViewService"
+
         const val OPCODE_CONNECT = 0
         const val OPCODE_DISCONNECT = 1
 
@@ -90,8 +93,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
 
         val controller = Controller(this, pluginId, instanceId)
-        if (controllers[instanceId] != null)
-            throw IllegalArgumentException("Another GUI controller for $pluginId / instanceId:$instanceId is alive")
+        if (controllers[instanceId] != null) {
+            Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId was alive. Terminating it.")
+            controllers[instanceId]?.close()
+        }
         controllers[instanceId] = controller
         controller.initialize(messenger, hostToken, displayId, width, height)
     }

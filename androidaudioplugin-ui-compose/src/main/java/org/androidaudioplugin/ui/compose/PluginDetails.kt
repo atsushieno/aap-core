@@ -185,14 +185,14 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             }) { Text(if (showWebUIState) "Hide Web UI" else "Show Web UI") }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Button(onClick = {
-                    if (!surfaceUICreatedState) {
-                        // FIXME: calculate width and height based on the parent size
-                        previewState.createSurfaceControl(1000, 750)
-                        surfaceUICreatedState = true
-                    }
                     showSurfaceUIState = !showSurfaceUIState
-                    if (showSurfaceUIState)
+                    if (showSurfaceUIState) {
+                        if (!surfaceUICreatedState || AudioPluginSurfaceControlClient.alwaysReconnectSurfaceControl) {
+                            previewState.connectSurfaceControlUI(1000, 750)
+                            surfaceUICreatedState = true
+                        }
                         previewState.showSurfaceGui()
+                    }
                     else
                         previewState.hideSurfaceGui()
                 }) { Text(if (showSurfaceUIState) "Hide Native UI" else "Show Native UI") }
