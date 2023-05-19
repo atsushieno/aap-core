@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.*
 import org.xmlpull.v1.XmlPullParser
@@ -236,5 +238,8 @@ object AudioPluginHostHelper {
             )
         }
     }
+
+    @JvmStatic
+    fun createSurfaceControl(context: Context) = AudioPluginSurfaceControlClient(context)
 }
 

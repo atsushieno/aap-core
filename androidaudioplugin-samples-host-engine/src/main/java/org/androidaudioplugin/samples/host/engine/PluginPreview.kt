@@ -7,14 +7,19 @@ import android.media.AudioTrack
 import android.media.midi.MidiDeviceInfo.PortInfo
 import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
+import android.os.Build
 import android.util.Log
+import android.view.View
+import androidx.annotation.RequiresApi
 import dev.atsushieno.ktmidi.*
 import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
+import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -56,6 +61,13 @@ class PluginPreview(private val context: Context) {
     private val audioProcessingBuffers = mutableListOf<ByteBuffer>()
     private val audioProcessingBufferSizesInBytes = mutableListOf<Int>()
 
+    private var surfaceControlCached: AudioPluginSurfaceControlClient? = null
+    val surfaceControl: AudioPluginSurfaceControlClient
+        get() {
+            if (surfaceControlCached == null)
+                surfaceControlCached = AudioPluginHostHelper.createSurfaceControl(context)
+            return surfaceControlCached!!
+        }
 
     fun dispose() {
         host.dispose()
@@ -495,6 +507,25 @@ class PluginPreview(private val context: Context) {
             instance?.destroyGui(guiInstanceId!!)
             guiInstanceId = null
         }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun createSurfaceControl(width: Int, height: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            surfaceControl.apply {
+                GlobalScope.launch {
+                    connectUI(instance!!, width, height)
+                }
+            }
+        }
+    }
+
+    fun showSurfaceGui() {
+        surfaceControl.surfaceView.visibility = View.VISIBLE
+    }
+
+    fun hideSurfaceGui() {
+        surfaceControl.surfaceView.visibility = View.GONE
     }
 
     init {

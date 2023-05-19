@@ -17,7 +17,7 @@
             </intent-filter>
         </activity>
         <service android:name="org.androidaudioplugin.AudioPluginService" android:exported="true"
-            android:label="AAPBareBoneSamplePlugin">
+            android:label="AAPInstrumentSample">
             <intent-filter>
                 <action
                     android:name="org.androidaudioplugin.AudioPluginService.V3" />
@@ -26,6 +26,9 @@
                 android:name="org.androidaudioplugin.AudioPluginService.V3#Plugins"
                 android:resource="@xml/aap_metadata"
                 />
+        </service>
+        <service android:name="org.androidaudioplugin.AudioPluginViewService" android:exported="true"
+            android:label="AAPInstrumentSample">
         </service>
         <service android:name="org.androidaudioplugin.midideviceservice.StandaloneAudioPluginMidiDeviceService"
             android:permission="android.permission.BIND_MIDI_DEVICE_SERVICE"

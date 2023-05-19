@@ -1,11 +1,11 @@
 package org.androidaudioplugin
 
 import android.content.Context
+import android.view.View
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
-import kotlin.coroutines.coroutineContext
 
 // It is used only by AudioPluginService and some plugin extensions (such as AudioPluginLv2ServiceExtension) to process client (plugin host) requests.
 object AudioPluginServiceHelper {
@@ -16,21 +16,27 @@ object AudioPluginServiceHelper {
     @JvmStatic
     external fun getServiceInstance(pluginId: String): Long
 
-    @OptIn(DelicateCoroutinesApi::class)
+    // It is used by AudioPluginViewService (which makes use of SurfaceControlViewHost).
     @JvmStatic
-    fun createGui(context: Context, pluginId: String, instanceId: Int) : AudioPluginView {
+    fun createNativeView(context: Context, pluginId: String, instanceId: Int): View {
         val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
             ?: throw AudioPluginException("Specified plugin '$pluginId' was not found")
         val factoryClassName = pluginInfo.uiViewFactory
             ?: throw AudioPluginException("'ui-view-factory' attribute is not specified in aap_metadata.xml")
         val cls = Class.forName(factoryClassName)
-        val audioPluginView = AudioPluginView(context)
+        if (!AudioPluginViewFactory::class.java.isAssignableFrom(cls))
+            throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
+        val factory = cls.newInstance() as AudioPluginViewFactory
+        return factory.createView(context, pluginId, instanceId)
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    @JvmStatic
+    fun createSystemAlertView(context: Context, pluginId: String, instanceId: Int) : AudioPluginSystemAlertView {
+        val audioPluginView = AudioPluginSystemAlertView(context)
         // content is asynchronously filled
         Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
-            if (!AudioPluginViewFactory::class.java.isAssignableFrom(cls))
-                throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
-            val factory = cls.newInstance() as AudioPluginViewFactory
-            val view = factory.createView(context, pluginId, instanceId)
+            val view = createNativeView(context, pluginId, instanceId)
             audioPluginView.addView(view)
         }
         return audioPluginView
@@ -38,7 +44,7 @@ object AudioPluginServiceHelper {
 
     @OptIn(DelicateCoroutinesApi::class)
     @JvmStatic
-    fun showGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+    fun showGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
         Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
             view.showOverlay()
         }
@@ -46,13 +52,13 @@ object AudioPluginServiceHelper {
 
     @OptIn(DelicateCoroutinesApi::class)
     @JvmStatic
-    fun hideGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+    fun hideGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
         Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
             view.hideOverlay(false)
         }
     }
 
     @JvmStatic
-    fun destroyGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginView) {
+    fun destroyGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
     }
 }

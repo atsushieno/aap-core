@@ -4,20 +4,16 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.DraggableState
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -48,13 +44,16 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
+import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
+import org.androidaudioplugin.samples.host.engine.PluginPreview
 import org.androidaudioplugin.ui.web.WebUIHostHelper
-import kotlin.math.roundToInt
 
 private val headerModifier = Modifier.width(120.dp)
 
@@ -87,8 +86,10 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     var waveState by remember { mutableStateOf(waveViewSource) }
     var pluginErrorState by remember { viewModel.errorMessage }
 
-    var showNativeUIState by remember { mutableStateOf(false) }
+    var showAlertWindowUIState by remember { mutableStateOf(false) }
     var showWebUIState by remember { mutableStateOf(false) }
+    var surfaceUICreatedState by remember { mutableStateOf(false) }
+    var showSurfaceUIState by remember { mutableStateOf(false) }
 
     if (pluginErrorState != "") {
         AlertDialog(onDismissRequest = {},
@@ -182,13 +183,29 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
             Button(onClick = {
                 showWebUIState = !showWebUIState
             }) { Text(if (showWebUIState) "Hide Web UI" else "Show Web UI") }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Button(onClick = {
+                    if (!surfaceUICreatedState) {
+                        // FIXME: calculate width and height based on the parent size
+                        previewState.createSurfaceControl(1000, 750)
+                        surfaceUICreatedState = true
+                    }
+                    showSurfaceUIState = !showSurfaceUIState
+                    if (showSurfaceUIState)
+                        previewState.showSurfaceGui()
+                    else
+                        previewState.hideSurfaceGui()
+                }) { Text(if (showSurfaceUIState) "Hide Native UI" else "Show Native UI") }
+            }
+        }
+        Row {
             Button(onClick = {
-                showNativeUIState = !showNativeUIState
-                if (showNativeUIState)
+                showAlertWindowUIState = !showAlertWindowUIState
+                if (showAlertWindowUIState)
                     previewState.showGui()
                 else
                     previewState.hideGui()
-            }) { Text(if (showNativeUIState) "Hide Native UI" else "Show Native UI") }
+            }) { Text(if (showAlertWindowUIState) "Hide AlertWindow UI" else "Show AlertWindow UI") }
         }
         Row {
             val context = LocalContext.current
@@ -347,6 +364,44 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     val instance = previewState.instance
     if (showWebUIState && instance != null)
         PluginWebUI(instance)
+    if (showSurfaceUIState && instance != null)
+        PluginSurfaceControlUI(previewState)
+}
+
+@Composable
+fun PluginSurfaceControlUI(preview: PluginPreview) {
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    val surfaceControlClient by remember {
+        mutableStateOf<AudioPluginSurfaceControlClient?>(preview.surfaceControl)
+    }
+
+    Column(
+        Modifier
+            .padding(40.dp)
+            .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
+
+    ) {
+        Box(Modifier
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    offsetX += dragAmount.x
+                    offsetY += dragAmount.y
+                }
+            }
+            .fillMaxWidth()
+            .background(Color.DarkGray.copy(alpha = 0.3f))
+            .border(1.dp, Color.Black)) {
+            Text("Native UI")
+        }
+        val client = surfaceControlClient
+        if (client != null)
+            AndroidView(modifier = Modifier.border(1.dp, Color.Black),
+                factory = { client.surfaceView }
+            )
+    }
 }
 
 @Composable

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ANDROID_HOME=~/Android/sdk
+ANDROID_HOME=~/Library/Android/sdk
 BUILD_TOOLS_VERSION=33.0.2
 THIS_DIR=`dirname $(readlink -f $0)`
 AIDL_DIR=$THIS_DIR

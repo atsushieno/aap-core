@@ -156,17 +156,17 @@ namespace aap {
                                                                    "getMinimumSizeInBytes",
                                                                    "()I");
         j_method_create_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
-                                                     "createGui",
-                                                     "(Landroid/content/Context;Ljava/lang/String;I)Lorg/androidaudioplugin/AudioPluginView;");
+                                                     "createSystemAlertView",
+                                                     "(Landroid/content/Context;Ljava/lang/String;I)Lorg/androidaudioplugin/AudioPluginSystemAlertView;");
         j_method_show_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
                                                      "showGui",
-                                                     "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
         j_method_hide_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
                                                    "hideGui",
-                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
         j_method_destroy_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
                                                    "destroyGui",
-                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginView;)V");
+                                                      "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
         j_method_remote_plugin_instance_create_from_native = env->GetStaticMethodID(java_native_remote_plugin_instance_class,
                                                                                     "fromNative",
                                                                                     "(IJ)Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;");

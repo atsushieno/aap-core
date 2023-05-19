@@ -15,7 +15,7 @@ import androidx.appcompat.widget.AppCompatTextView
 
 // FIXME: it should register any activity lifecycle callback events to hide the overlay plugin GUI
 //  if it is shown. Otherwise it will stay on top forever!
-class AudioPluginView(context: Context) : ViewGroup(context) {
+class AudioPluginSystemAlertView(context: Context) : ViewGroup(context) {
 
     private var xBeforeDrag = 0
     private var yBeforeDrag = 0
@@ -27,7 +27,7 @@ class AudioPluginView(context: Context) : ViewGroup(context) {
         override fun onTouchEvent(event: MotionEvent?): Boolean {
             if (event == null)
                 return super.onTouchEvent(null)
-            val owner = (parent as AudioPluginView?)
+            val owner = (parent as AudioPluginSystemAlertView?)
                 ?: return super.onTouchEvent(event)
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
