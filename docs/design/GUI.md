@@ -7,11 +7,12 @@ Compared to other audio plugin formats, AAP has simplifying aspects and complica
 
 Though, we would like to be able to present the plugin UI on multiple methods:
 
-- in host process, using WebView and per-plugin Web UI. It is the best recommended usage scenario.
-- in plugin process View, by showing overlay window using [WindowManager](https://developer.android.com/reference/android/view/WindowManager). It requires special permission (`SYSTEM_ALERT_WINDOW`).
+- in host process, using WebView and per-plugin Web UI. It is the best recommended usage scenario for wide range of target devices.
+- in plugin process View, using SurfaceView and [SurfaceControlViewHost](https://developer.android.com/reference/android/view/SurfaceControlViewHost). It is the best recommended approach by us, but requires Android 11+.
+- in plugin process View, by showing overlay window using [WindowManager](https://developer.android.com/reference/android/view/WindowManager). It requires special permission (`SYSTEM_ALERT_WINDOW`). It will be most likely deprecated.
 - in plugin process Activity, either by [Activity Embedding](https://developer.android.com/guide/topics/large-screens/activity-embedding) for tablets and foldables (which could run with the host side by side), or in the worst case, switching to it (then OS may kill the host process at any time!)
 
-We have to provide entry points to GUI on both Kotlin/Java and native. The native part is most likely done by JNI invocation, but native UI toolkits (like `juce_gui_basics`) could make it complicated.
+We have to provide entry points to GUI on both Kotlin/Java and native. The native part is most likely done by JNI invocation, but native UI toolkits (like `juce_gui_basics`) could make it complicated (note that JUCE GUI will not work unless JUCE drastically improves the Android UI layer that currently does not implement the entire UI layer as `android.view.View`).
 
 GUI instantiation is supposed to be asynchronous (the actual implementation is synchronous so far).
 
@@ -28,6 +29,8 @@ A *cross process ready* GUI interoperates with the plugin via the ports that are
 ### In-plugin-process UI: no specification
 
 Protocol wise, in-plugin-process UI has no limitation on interaction between the UI and the rest (DSP, file access, etc.). AAP does not impose particular constraints on in-plugin-process UI (just like CLAP does not impose anything either).
+
+Though any restriction on the underlying layer (SurfaceControlViewHost or System Alert Window) applies. We have no control over them.
 
 ### Event queueing
 
@@ -109,15 +112,15 @@ The host will create a hosting `View` that attaches the plugin's `AudioPluginVie
 
 Unlike Web UI protocol, we don't need DSP controllers as it is basically a matter of the plugin application itself (there is no interaction between host and process).
 
-### Instancing controller from native API
+### System Window Alert: controller from native API
 
 The host will instantiate the plugin's View via GUI extension: `aap_gui_extension_t` because it is the only known channel between the host and the client so far. It contains the function members below:
 
-- `aap_gui_instance_id create(AndroidAudioPluginExtensionTarget target, const char* pluginId, int32_t pluginInstanceId, void* audioPluginView)` - returns > 0 for a new GUI instance ID or <0 for error code e.g. already instantiated or no GUI found. The actual instantiation is asynchronous.
-- `void show(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId)` - shows the view (by using `WindowManager.addView()`)
-- `void hide(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId)` - hides the view (by `WindowManager.removeView()`)
-- `void resize(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height)` - resizes the View (by using `WindowManager.updateViewLayout()`. `MATCH_PARENT` and `WRAP_CONTENT` could be used as well.
-- `int32_t destroy(AndroidAudioPluginExtensionTarget target, aap_gui_instance_id guiInstanceId)`
+- `aap_gui_instance_id create(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId, int32_t pluginInstanceId, void* audioPluginView)` - returns > 0 for a new GUI instance ID or <0 for error code e.g. already instantiated or no GUI found. The actual instantiation is asynchronous.
+- `void show(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId)` - shows the view (by using `WindowManager.addView()`)
+- `void hide(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId)` - hides the view (by `WindowManager.removeView()`)
+- `void resize(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height)` - resizes the View (by using `WindowManager.updateViewLayout()`. `MATCH_PARENT` and `WRAP_CONTENT` could be used as well.
+- `int32_t destroy(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId)`
 
 These extension functions are however not necessarily implemented by the plugin. The plugin, or the GUI AAPXS will behave totally differently:
 
@@ -129,7 +132,7 @@ Since it involves Android View, it will come back to JavaVM side through JNI cod
 
 A typical GUI extension `create()` implementation would instantiate the View via some JNI call.
 
-### processing In-plugn-process GUI requests: implementation details
+### System Alart Window GUI implementation details
 
 ![In-plugin-process GUI processing workflow](../images/aap-gui-inproc-flow.drawio.svg)
 
@@ -140,6 +143,32 @@ In native code there is `NonRealtimeLoopRunner` class that manages message dispa
 As of Feb. 2022 `gui-service.cpp` implements the service AAPXS (`GuiPluginServiceExtension`). Its `onInvoked()` dispatches those requests to each JNI mediator `AAPJniFacade` to call into Dalvik VM, such as `AAPJniFacade.createGuiViaJni()` or `AAPJniFacade.showGuiViaJni()`.  Each operation is represented as a  derived class from `ALooperMessage`. They can be "created" via `NonRealtimeLoopRunner.create()` which avoids allocation in *potentially* realtime binder thread. The pre-allocated buffer works like LV2 `Atom_Forge`. The messages are then `post()`-ed to the `NonRealtimeLoopRunner`, and its non-RT processing thread picks up the posted message.
 
 (By using `ALooper` especially `ALooper_addFd()` means, the posting and handling part still involves `write()` and `read()` which are system calls. It may sounds problematic as those functions are regarded as non-RT safe, but `write()` on pipes are atomic if it is small enough below `PIPE_BUF` size. IIRC stagefright also makes use of it so maybe this concern is kind of technical...)
+
+### SurfaceControlViewHost: controller from Kotlin API
+
+The host will instantiate the plugin's View by sending an independent Message to an independent GUI controller (i.e. not `AudioPluginService`, not in the .aidl). It is due to current limitation on AIDL that cannot handle Message/Parcelables in .aidl that are being used in both Java and NDK.
+
+It is done in Kotlin land, as it requires couple of Java/Kotlin classes e.g. `Service`, `SurfaceView` and `SurfaceControlViewHost.SurfacePackage` instances. Here is these internal steps to use it:
+
+- Client creates `SurfaceView` (can be later).
+- Client binds `AudioPluginViewService`. Once `ServiceConnection` is established, it sends "connect" request, with the following arguments:
+  - MESSAGE_KEY_OPCODE = "opcode"
+  - MESSAGE_KEY_HOST_TOKEN = "hostToken"
+  - MESSAGE_KEY_DISPLAY_ID = "displayId"
+  - MESSAGE_KEY_PLUGIN_ID = "pluginId"
+  - MESSAGE_KEY_INSTANCE_ID = "instanceId"
+  - MESSAGE_KEY_WIDTH = "width"
+  - MESSAGE_KEY_HEIGHT = "height"
+- `AudioPluginViewService` receives the request and instantiates `AudioPluginGuiController`. It internally constructs `SurfaceControlViewHost`, creates the `AudioPluginView` per plugin, sets it to the view host, and (asynchronously) sends `SurfacePackage` and `guiInstanceId` back to the `Messenger` specified at `replyTo` of the input `Message`.
+  - The `guiInstanceId` is so far equivalent to `instanceId` but that may change in the future.
+- The client handler receives the `Message`, extracts the `SurfacePackage`, and set it to the `SurfaceView` via `setChildSurfacePackage()`.
+
+They are mapped to GUI extension API as follows:
+
+- client calls `create()` : client AAPXS starts binding `AudioPluginViewService`. `bindService()` is an asynchronous call so it will have to wait the following process, to finally acquire its return value (`guiInstanceId`).
+  - Once the services's `IBinder` is returned at `ServiceConnection.onServiceConnected()`, then it sends "connect" request (described above).
+    - it waits until its handler receives the response `Message` with the `guiInstanceId` and `SurfacePackage`.
+- The internal workflow inside `AudioPluginGuiFactory` is following the same workflow as System Alert Window, while the overall API looks similar to Web UI factory so far. We would have to polish everything (at least by the time we deprecate System Alert Window).
 
 
 ## aapinstrumentsample example
