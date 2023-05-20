@@ -3,11 +3,13 @@
 
 ![](https://github.com/atsushieno/aap-core/workflows/build%20dist/badge.svg)
 
-[![aap-juce-helio in action](https://github.com/atsushieno/aap-juce-helio/raw/main/Screenshots/helio-android-plugins.png)](https://imgur.com/a/Hh91JAI "aap-juce-helio in action 2023.01")
+[![aap-juce-helio in action 2023.5](https://img.youtube.com/vi/OlaihZJq8hU/0.jpg)](https://www.youtube.com/watch?v=OlaihZJq8hU "aap-juce-helio + aap-lv2 MDA Piano")
 
 [![AAP demo 20200708](http://img.youtube.com/vi/gKCpHvYzupU/0.jpg)](http://www.youtube.com/watch?v=gKCpHvYzupU  "AAP demo 20200708")
 
-![AAP Instruments on Kmmk virtual MIDI keyboard](./docs/images/aap-instruments-on-kmmk.png) ![AAPHostSample](./docs/images/aaphostsample.png)
+![AAP Instruments on Kmmk virtual MIDI keyboard](./docs/images/aap-instruments-on-kmmk.png)
+
+![AAPHostSample](./docs/images/aaphostsample.png)
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
@@ -17,7 +19,7 @@ Android lacks commonly used audio plugin format. On Windows and other desktops, 
 
 There is no such thing in Android. Audio Plugins For Android (AAP) is to fill this gap.
 
-What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on. They don't work on Android, so we need another one like [AudioUnit v3 on iOS](https://developer.apple.com/documentation/audiotoolbox/audio_unit_v3_plug-ins).
+What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on, as long as their features are supported in AAP. They are not designed to work on Android, so we need another one like [AudioUnit v3 on iOS](https://developer.apple.com/documentation/audiotoolbox/audio_unit_v3_plug-ins).
 
 On the other hand, it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
 
@@ -31,13 +33,15 @@ We have some hacky ["AAP APK Installer"](https://github.com/atsushieno/aap-ci-pa
 
 **Android is supported, and it is the first citizen** : no other audio plugin frameworks achieve that (except for [AudioRoute SDK](https://github.com/AudioRoute/AudioRoute-SDK), as far as @atsushieno knows). Hosts and plugins are distributed as different apps and therefore live in different process spaces.
 
-**out-process model, between host activities and plugin services** : AAP is designed to work for Android platform, which has strict separation on each application process space. Namely, hosts cannot load arbitrary shared libraries from plugins that reside in other applications. Thus AAP DAWs (plugin hosts) and AAPs (plugins) have to communicate through IPC mechanism. AAP uses Binder IPC through NdkBinder API which was introduced at Android 10. Also, the framework makes full use of Android shared memory (ashmem) throughout the audio/MIDI buffer processing.
+**Out-process model, between host activities and plugin services** : AAP is designed to work for Android platform, which has strict separation on each application process space. Namely, hosts cannot load arbitrary shared libraries from plugins that reside in other applications. Thus AAP DAWs (plugin hosts) and AAPs (plugins) have to communicate through IPC mechanism. AAP uses Binder IPC through NdkBinder API which was introduced at Android 10. Also, the framework makes full use of Android shared memory (ashmem) throughout the audio/MIDI buffer processing.
 
 ![AAP process model](docs/images/aap-process-model.png)
 
+**Plugin GUI in DAW** : AAP is going to support GUI implemented by each plugin, either in native View (Android 11+) or Web view (complicated data access required). AAP DAWs can launch plugin UI within its own process, without switching DAW Activity and plugin Activity. See [GUI design doc](docs/design/GUI.md) for more details.
+
 **Extensibility** : AAP provides extensibility foundation as well as some Standard Extensions such as state and presets (not quite enough to name yet), that are queried by URI. But unlike desktop audio plugin frameworks, a host has to interact with a plugin through Binder messaging (as they live in separate processes by Android platform nature), and therefore an extension has to also provide the messaging implementation called AAPXS (AAP extensibility service) apart from the API itself. We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
 
-**Basically declarative parameter meta data** : like LV2, unlike VST, AU or CLAP, we expect plugin metadata, `res/xml/aap_metadata.xml`, describes its ports. Parameters can be dynamically populated (since AAP 0.7.4), but declarative parameters would make it more "findable".
+**Basically declarative parameter meta data** : like LV2 or VST >= 3.7 (unlike VST < 3.6, AU or CLAP) we expect plugin metadata, `res/xml/aap_metadata.xml`, describes its ports, which is essential to faster plugin scanning. Parameters can be dynamically populated (since AAP 0.7.4), but declarative parameters would make it more "findable".
 
 **Permissive license** : It is released under the MIT license. Same as CLAP, similar to LV2 (ISC), unlike VST3 or JUCE (GPLv3).
 
@@ -83,13 +87,19 @@ For more details, see [DEVELOPERS.md](./docs/DEVELPOPERS.md) and [HACKING.md](./
 
 ## Further documentation
 
-[DEVELOPERS.md](docs/DEVELOPERS.md) contains more on plugin and host development.
+### wiki pages
 
-[PLUGIN_SCRATCH_GUIDE.md](docs/PLUGIN_SCRATCH_GUIDE.md) contains how to get started with plugin development using our own (unstable!) API.
+- [Are We Audio Plugin Format Yet?](https://github.com/atsushieno/aap-core/wiki/Are-We-Audio-Plugin-Format-Yet%3F)
+- [List of AAP Plugins and Hosts]((https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts))
+- [FAQ](https://github.com/atsushieno/aap-core/wiki/FAQ)
+- [Participating](https://github.com/atsushieno/aap-core/wiki/Participating)
 
-[HACKING.md](docs/HACKING.md) contains how to build and hack this framework itself.
+### static docs
 
-[design/OVERVIEW.md](docs/design/OVERVIEW.md) contains some technical background and design decisions that we have made in this framework.
+- [DEVELOPERS.md](docs/DEVELOPERS.md) contains more on plugin and host development.
+- [PLUGIN_SCRATCH_GUIDE.md](docs/PLUGIN_SCRATCH_GUIDE.md) contains how to get started with plugin development using our own (unstable!) API.
+- [HACKING.md](docs/HACKING.md) contains how to build and hack this framework itself.
+- [design/OVERVIEW.md](docs/design/OVERVIEW.md) contains some technical background and design decisions that we have made in this framework.
 
 
 ## Licenses
