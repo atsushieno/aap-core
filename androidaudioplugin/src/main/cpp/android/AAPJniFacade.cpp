@@ -507,6 +507,23 @@ namespace aap {
         });
     }
 
+    void* AAPJniFacade::getNativeView(PluginClient* client, RemotePluginInstance* instance) {
+        return usingJNIEnv<jobject>([instance](JNIEnv* env) {
+            auto clzHelper = env->FindClass("org/androidaudioplugin/AudioPluginServiceHelper");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto createNativeView = env->GetStaticMethodID(clzHelper, "createNativeView", "(Landroid/content/Context;Ljava/lang/String;I)Landroid/view/View;");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto jPluginId = env->NewStringUTF(instance->getPluginInformation()->getPluginID().c_str());
+            return env->CallStaticObjectMethod(clzHelper, createNativeView, aap::get_android_application_context(), jPluginId, instance->getInstanceId());
+        });
+    }
+
 // --------------------------------------------------
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }

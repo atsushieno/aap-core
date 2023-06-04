@@ -2,7 +2,7 @@
   <plugin name="Instrument Sample" category="Instrument" developer="AAP Developers"
       unique-id="urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample"
       library="libaapinstrumentsample.so"
-      gui:ui-view-factory="org.androidaudioplugin.ui.web.AudioPluginWebViewFactory"
+      gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v2" />

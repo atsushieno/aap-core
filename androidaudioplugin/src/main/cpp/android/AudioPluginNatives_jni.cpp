@@ -422,6 +422,13 @@ jint implPluginHostGetPortCount(jlong nativeHost,
     return instance->getNumPorts();
 }
 
+const std::string& implPluginHostGetPluginId(jlong nativeHost,
+                                      jint instanceId) {
+    auto host = (aap::PluginHost*) (void*) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    return instance->getPluginInformation()->getPluginID();
+}
+
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstance(JNIEnv* env,
@@ -448,6 +455,15 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameter(JNIEnv *, jcl
                                                                             jint instanceId,
                                                                             jint index) {
 	return aap::AAPJniFacade::getInstance()->getPluginInstanceParameter(nativeClient, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getPluginId(JNIEnv* env,
+                                                                   jclass ,
+                                                                   jlong nativeService,
+                                                                   jint instanceId) {
+    return env->NewStringUTF(implPluginHostGetPluginId(nativeService, instanceId).c_str());
 }
 
 extern "C"
