@@ -406,11 +406,12 @@ fun PluginSurfaceControlUI(preview: PluginPreview) {
 
     Column(
         Modifier
-            .padding(40.dp)
+            .padding(10.dp)
             .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
 
     ) {
         Box(Modifier
+            .padding(0.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -419,9 +420,9 @@ fun PluginSurfaceControlUI(preview: PluginPreview) {
                 }
             }
             .fillMaxWidth()
-            .background(Color.DarkGray.copy(alpha = 0.3f))
+            .background(Color.DarkGray.copy(alpha = 0.5f))
             .border(1.dp, Color.Black)) {
-            Text("Native UI")
+            Text(preview.pluginInfo!!.displayName)
         }
         val client = surfaceControlClient
         if (client != null)

@@ -1,22 +1,31 @@
 package org.androidaudioplugin.ui.compose
 
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +35,7 @@ import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.NativeLocalPluginInstance
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
+import org.androidaudioplugin.composeaudiocontrols.DefaultKnobTooltip
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
 
 interface PluginViewScope {
@@ -95,52 +105,33 @@ internal class PluginViewScopePortImpl(private val plugin: PluginViewScopeImpl, 
         get() = info.content
 }
 
-@Composable
-fun ScrollingList() {
-    val scrollState = rememberScrollState()
-    Column(Modifier.verticalScroll(scrollState)) {
-        (0 until 50).forEach {
-            Text("Item $it")
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginViewScope.PluginView(
     modifier: Modifier = Modifier,
-    pluginNameLabel: @Composable (String) -> Unit = { Text(it, fontWeight = FontWeight.Bold) },
     getParameterValue: (Int) -> Float,
     onParameterChange: (Int, Float) -> Unit) {
 
-    pluginNameLabel(pluginName)
-
-    Text("FIXME: LazyColumn scroll does not work sufficiently")
-
-    LazyColumn {
+    LazyVerticalGrid(columns = GridCells.Fixed(2)) {
         items(parameterCount) { index ->
             val para = getParameter(index)
-            Row(Modifier.requiredHeight(60.dp)) {
-                Text(
-                    para.id.toString(),
-                    fontSize = 14.sp,
-                    modifier = Modifier.width(60.dp)
-                )
-                Text(para.name, Modifier.width(120.dp), fontWeight = FontWeight.Bold)
-                Text(
-                    getParameterValue(index).toString().take(5),
-                    fontSize = 14.sp,
-                    modifier = Modifier.width(60.dp)
-                )
+            Row {
+                // Here I use Badge. It is useful when we have to show lengthy parameter name.
+                Badge(Modifier.width(100.dp).padding(5.dp, 0.dp)) {
+                    Text("${para.id}: ${para.name}")
+                }
                 ImageStripKnob(
                     drawableResId = R.drawable.bright_life,
                     value = getParameterValue(index),
                     valueRange = para.valueRange.start.toFloat()..para.valueRange.endInclusive.toFloat(),
+                    tooltip = { DefaultKnobTooltip(showTooltip = true, value = knobValue )},
                     onValueChange = { onParameterChange(index, it) }
                 )
             }
         }
     }
-    LazyColumn {
+    /* FIXME: we'd like to show them too, but the space is too limited.
+    LazyColumn(modifier.height(100.dp)) {
         items(portCount) { index ->
             val port = getPort(index)
             Row {
@@ -157,5 +148,5 @@ fun PluginViewScope.PluginView(
                 })
             }
         }
-    }
+    }*/
 }

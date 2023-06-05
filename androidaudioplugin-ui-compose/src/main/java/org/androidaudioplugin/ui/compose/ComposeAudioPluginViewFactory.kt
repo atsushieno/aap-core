@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +42,8 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
 
         composeView.setContent {
             MaterialTheme {
-                Column(Modifier.background(MaterialTheme.colorScheme.background)) {
+                Column(Modifier.background(MaterialTheme.colorScheme.background)
+                    .fillMaxSize(1f)) {
                     scope.PluginView(
                         getParameterValue = { index -> parameters[index].toFloat() },
                         onParameterChange = { index, value ->
