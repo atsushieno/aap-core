@@ -40,6 +40,12 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
         layoutParams = ViewGroup.LayoutParams(width, height)
         addView(composeView)
 
+        val onMidi2 = { status: Int, note: Int, _: Long ->
+            paramChangeBuffer.clear()
+            paramChangeBuffer.put(byteArrayOf(0x40, (status + note).toByte(), 0, 0, 0xF8.toByte(), 0, 0, 0))
+            instance.addEventUmpInput(paramChangeBuffer, 8)
+        }
+
         composeView.setContent {
             MaterialTheme {
                 Column(Modifier.background(MaterialTheme.colorScheme.background)
@@ -48,10 +54,13 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                         getParameterValue = { index -> parameters[index].toFloat() },
                         onParameterChange = { index, value ->
                             val ump = UmpHelper.aapUmpSysex8Parameter(instance.getParameter(index).id.toUInt(), value)
+                            paramChangeBuffer.clear()
                             paramChangeBuffer.asIntBuffer().put(ump.toIntArray())
                             instance.addEventUmpInput(paramChangeBuffer, ump.size * 4)
                             parameters[index] = value.toDouble()
-                        }
+                        },
+                        onNoteOn = { note, details -> onMidi2(0x90, note, details) },
+                        onNoteOff = { note, details -> onMidi2(0x80, note, details) }
                     )
                 }
             }

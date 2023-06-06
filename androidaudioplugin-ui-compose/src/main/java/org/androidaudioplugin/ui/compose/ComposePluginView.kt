@@ -36,6 +36,7 @@ import org.androidaudioplugin.NativeLocalPluginInstance
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.composeaudiocontrols.DefaultKnobTooltip
+import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboard
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
 
 interface PluginViewScope {
@@ -110,14 +111,32 @@ internal class PluginViewScopePortImpl(private val plugin: PluginViewScopeImpl, 
 fun PluginViewScope.PluginView(
     modifier: Modifier = Modifier,
     getParameterValue: (Int) -> Float,
-    onParameterChange: (Int, Float) -> Unit) {
+    onParameterChange: (Int, Float) -> Unit,
+    onNoteOn: (Int, Long) -> Unit,
+    onNoteOff: (Int, Long) -> Unit) {
 
+    // FIXME: there will be breaking change in DiatonicKeyboard: it will take List<Long>, not List<Int>.
+    val noteOnStates = remember { List(128) { 0 }.toMutableStateList() }
+    DiatonicKeyboard(noteOnStates.toList(),
+        // you will also insert actual musical operations within these lambdas
+        onNoteOn = { note, _ ->
+            noteOnStates[note] = 1
+            onNoteOn(note, 0)
+        },
+        onNoteOff = { note, _ ->
+            noteOnStates[note] = 0
+            onNoteOff(note, 0)
+        }
+    )
     LazyVerticalGrid(columns = GridCells.Fixed(2)) {
         items(parameterCount) { index ->
             val para = getParameter(index)
             Row {
                 // Here I use Badge. It is useful when we have to show lengthy parameter name.
-                Badge(Modifier.width(100.dp).padding(5.dp, 0.dp)) {
+                Badge(
+                    Modifier
+                        .width(100.dp)
+                        .padding(5.dp, 0.dp)) {
                     Text("${para.id}: ${para.name}")
                 }
                 ImageStripKnob(
