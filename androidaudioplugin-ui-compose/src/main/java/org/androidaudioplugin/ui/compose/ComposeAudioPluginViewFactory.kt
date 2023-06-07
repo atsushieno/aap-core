@@ -21,6 +21,7 @@ import org.androidaudioplugin.AudioPluginViewFactory
 import org.androidaudioplugin.NativePluginService
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class ComposeAudioPluginViewFactory : AudioPluginViewFactory() {
     override fun createView(context: Context, pluginId: String, instanceId: Int) = ComposeAudioPluginView(context, pluginId, instanceId) as View
@@ -34,15 +35,15 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
         .map { instance.getParameter(it).defaultValue }
         .toMutableStateList()
     private val scope = PluginViewScopeImpl(context, instance, parameters.toList())
-    private val paramChangeBuffer = ByteBuffer.allocateDirect(32) // 16 should be fine as of V3 protocol
+    private val paramChangeBuffer = ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder()) // 16 should be fine as of V3 protocol
 
     init {
         layoutParams = ViewGroup.LayoutParams(width, height)
         addView(composeView)
 
-        val onMidi2 = { status: Int, note: Int, _: Long ->
+        val onMidi2Note = { status: Int, note: Int, _: Long ->
             paramChangeBuffer.clear()
-            paramChangeBuffer.put(byteArrayOf(0x40, (status + note).toByte(), 0, 0, 0xF8.toByte(), 0, 0, 0))
+            paramChangeBuffer.asIntBuffer().put((0x40 shl 24) + (status shl 16) + (note shl 8)).put(0xf8 shl 24)
             instance.addEventUmpInput(paramChangeBuffer, 8)
         }
 
@@ -59,8 +60,8 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                             instance.addEventUmpInput(paramChangeBuffer, ump.size * 4)
                             parameters[index] = value.toDouble()
                         },
-                        onNoteOn = { note, details -> onMidi2(0x90, note, details) },
-                        onNoteOff = { note, details -> onMidi2(0x80, note, details) }
+                        onNoteOn = { note, details -> onMidi2Note(0x90, note, details) },
+                        onNoteOff = { note, details -> onMidi2Note(0x80, note, details) }
                     )
                 }
             }
