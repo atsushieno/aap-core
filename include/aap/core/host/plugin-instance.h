@@ -302,11 +302,25 @@ namespace aap {
             AAPXSClientInstanceManager* getAAPXSManager() override { return owner->getAAPXSManager(); }
         };
 
+        // holds AudioPluginSurfaceControlClient for plugin instance lifetime.
+        class RemotePluginNativeUIController {
+            void* handle;
+        public:
+            RemotePluginNativeUIController(RemotePluginInstance* owner);
+            virtual ~RemotePluginNativeUIController();
+
+            void* getHandle() { return handle; }
+            void* getView();
+            void show();
+            void hide();
+        };
+
         PluginClient *client;
         AAPXSRegistry *aapxs_registry;
         AndroidAudioPluginHost plugin_host_facade{};
         RemotePluginInstanceStandardExtensionsImpl standards;
-        std::unique_ptr <AAPXSClientInstanceManager> aapxs_manager;
+        std::unique_ptr<AAPXSClientInstanceManager> aapxs_manager;
+        std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
 
         friend class RemoteAAPXSManager;
 
@@ -346,7 +360,22 @@ namespace aap {
 
         void prepare(int frameCount) override;
 
-        void* getWebView();
+        [[deprecated("use getRemoteWebView()")]]
+        void* getWebView() { return getRemoteWebView(); }
+
+        RemotePluginNativeUIController* getNativeUIController() { return native_ui_controller.get(); }
+
+        void* getRemoteWebView();
+
+        // Client has to make sure to instantiate SurfaceView, which is done at this call.
+        void prepareSurfaceControlForRemoteNativeUI();
+        // Client will have to call this to just return the SurfaceView, to attach to current window (either directly or indirectly).
+        // (And this will have to be provided independently of initialization anyways, so it is a separate function).
+        void* getRemoteNativeView();
+        // Then lastly, client connects to the SurfaceControlViewHost using binder.
+        // Note that the SurfaceView needs to have a valid display ID by the time.
+        // These steps will have to be done separately, because each of them will involve UI loop.
+        void connectRemoteNativeView(int32_t width, int32_t height);
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance

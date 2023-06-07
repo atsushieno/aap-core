@@ -487,7 +487,7 @@ namespace aap {
         processGuiWithViewMessage(GUI_OPCODE_DESTROY, guiInstance, callback);
     }
 
-    void* AAPJniFacade::getWebView(PluginClient* client, RemotePluginInstance* instance) {
+    void* AAPJniFacade::getRemoteWebView(PluginClient* client, RemotePluginInstance* instance) {
         return usingJNIEnv<jobject>([client,instance](JNIEnv* env) {
             auto clzInstance = env->FindClass(java_native_remote_plugin_instance_class_name);
             auto jniNativePeer = env->CallStaticObjectMethod(clzInstance, j_method_remote_plugin_instance_create_from_native, instance->getInstanceId(), (jlong) client);
@@ -507,20 +507,87 @@ namespace aap {
         });
     }
 
-    void* AAPJniFacade::getNativeView(PluginClient* client, RemotePluginInstance* instance) {
-        return usingJNIEnv<jobject>([instance](JNIEnv* env) {
-            auto clzHelper = env->FindClass("org/androidaudioplugin/AudioPluginServiceHelper");
+    void* AAPJniFacade::createSurfaceControl() {
+        return usingJNIEnv<jobject>([](JNIEnv* env) {
+            auto clzHelper = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return (jobject) nullptr;
             }
-            auto createNativeView = env->GetStaticMethodID(clzHelper, "createNativeView", "(Landroid/content/Context;Ljava/lang/String;I)Landroid/view/View;");
+            auto createSurfaceControl = env->GetStaticMethodID(clzHelper, "createSurfaceControl", "(Landroid/content/Context;)Lorg/androidaudioplugin/hosting/AudioPluginSurfaceControlClient;");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return (jobject) nullptr;
+            }
+            auto controlHost = env->CallStaticObjectMethod(clzHelper, createSurfaceControl, aap::get_android_application_context());
+            return env->NewGlobalRef(controlHost);
+        });
+    }
+
+    void AAPJniFacade::disposeSurfaceControl(void* handle) {
+    }
+
+    void AAPJniFacade::showSurfaceControlView(void* handle) {
+    }
+
+    void AAPJniFacade::hideSurfaceControlView(void* handle) {
+    }
+
+
+    void* AAPJniFacade::getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance) {
+
+        return usingJNIEnv<jobject>([instance](JNIEnv* env) {
+            auto clzControl = env->FindClass("org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto getSurfaceView = env->GetMethodID(clzControl, "getSurfaceView", "()Landroid/view/View;");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return (jobject) nullptr;
+            }
+            auto uiController = instance->getNativeUIController();
+            if (!uiController) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "createSurfaceControl() was not invoked yet.");
+                return (jobject) nullptr;
+            }
+            auto controlClient = (jobject) uiController->getHandle();
+            if (!controlClient) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "Native UI controller does not exist. Maybe the UI factory is not configured properly?");
+                return (jobject) nullptr;
+            }
+            return env->CallObjectMethod((jobject) controlClient, getSurfaceView);
+        });
+    }
+
+    void AAPJniFacade::connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height) {
+
+        usingJNIEnv<int32_t>([instance, width, height](JNIEnv* env) {
+            auto clzControl = env->FindClass("org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return 0;
+            }
+            auto connectUIAsync = env->GetMethodID(clzControl, "connectUIAsync", "(Ljava/lang/String;Ljava/lang/String;III)V");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return 0;
+            }
+            auto uiController = instance->getNativeUIController();
+            if (!uiController) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "createSurfaceControl() was not invoked yet.");
+                return 0;
+            }
+            auto controlClient = (jobject) uiController->getHandle();
+            if (!controlClient) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "Native UI controller does not exist. Maybe the UI factory is not configured properly?");
+                return 0;
             }
             auto jPluginId = env->NewStringUTF(instance->getPluginInformation()->getPluginID().c_str());
-            return env->CallStaticObjectMethod(clzHelper, createNativeView, aap::get_android_application_context(), jPluginId, instance->getInstanceId());
+            auto jPackageName = env->NewStringUTF(instance->getPluginInformation()->getPluginPackageName().c_str());
+            env->CallVoidMethod((jobject) controlClient, connectUIAsync, jPackageName, jPluginId, instance->getInstanceId(), width, height);
+            return 0;
         });
     }
 

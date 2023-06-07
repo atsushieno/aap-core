@@ -26,7 +26,7 @@ import java.nio.ByteOrder
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class PluginPreview(private val context: Context) {
+class PluginPreview(private val context: Context) : AutoCloseable {
     private val LOG_TAG = "AAPPluginPreview"
 
     companion object {
@@ -69,7 +69,9 @@ class PluginPreview(private val context: Context) {
             return surfaceControlCached!!
         }
 
-    fun dispose() {
+    override fun close() {
+        surfaceControlCached?.close()
+        surfaceControlCached = null
         host.dispose()
     }
 

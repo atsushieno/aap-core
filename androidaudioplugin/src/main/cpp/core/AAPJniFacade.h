@@ -60,8 +60,13 @@ namespace aap {
         void hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
         void destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
 
-        void* getWebView(PluginClient* client, RemotePluginInstance* instance);
-        void* getNativeView(PluginClient* client, RemotePluginInstance* instance);
+        void* getRemoteWebView(PluginClient* client, RemotePluginInstance* instance);
+        void* createSurfaceControl();
+        void disposeSurfaceControl(void* handle);
+        void showSurfaceControlView(void* handle);
+        void hideSurfaceControlView(void* handle);
+        void* getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance);
+        void connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 

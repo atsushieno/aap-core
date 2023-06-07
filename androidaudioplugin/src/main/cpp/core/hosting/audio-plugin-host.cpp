@@ -549,13 +549,60 @@ void RemotePluginInstance::prepare(int frameCount) {
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 
-    void* RemotePluginInstance::getWebView()  {
+void* RemotePluginInstance::getRemoteWebView()  {
 #if ANDROID
-		return AAPJniFacade::getInstance()->getWebView(client, this);
+	return AAPJniFacade::getInstance()->getRemoteWebView(client, this);
 #else
-		return nullptr;
+	// cannot do anything
+	return nullptr;
 #endif
-	}
+}
+
+void RemotePluginInstance::prepareSurfaceControlForRemoteNativeUI() {
+#if ANDROID
+	if (!native_ui_controller)
+		native_ui_controller = std::make_unique<RemotePluginNativeUIController>(this);
+#else
+	// cannot do anything
+#endif
+}
+
+void* RemotePluginInstance::getRemoteNativeView()  {
+#if ANDROID
+	assert(native_ui_controller);
+	return AAPJniFacade::getInstance()->getRemoteNativeView(client, this);
+#else
+	// cannot do anything
+	return nullptr;
+#endif
+}
+
+void RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t height)  {
+#if ANDROID
+	assert(native_ui_controller);
+	AAPJniFacade::getInstance()->connectRemoteNativeView(client, this, width, height);
+#else
+	// cannot do anything
+#endif
+}
+
+//----
+
+RemotePluginInstance::RemotePluginNativeUIController::RemotePluginNativeUIController(RemotePluginInstance* owner) {
+	handle = AAPJniFacade::getInstance()->createSurfaceControl();
+}
+
+RemotePluginInstance::RemotePluginNativeUIController::~RemotePluginNativeUIController() {
+	AAPJniFacade::getInstance()->disposeSurfaceControl(handle);
+}
+
+void RemotePluginInstance::RemotePluginNativeUIController::show() {
+	AAPJniFacade::getInstance()->showSurfaceControlView(handle);
+}
+
+void RemotePluginInstance::RemotePluginNativeUIController::hide() {
+	AAPJniFacade::getInstance()->hideSurfaceControlView(handle);
+}
 
 //----
 
