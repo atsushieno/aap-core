@@ -74,10 +74,11 @@ class ParameterInformation : public PropertyContainer {
     double min_value;
     double max_value;
     double default_value;
+    double priority;
 
 public:
-    ParameterInformation(int32_t id, std::string name, double minValue, double maxValue, double defaultValue)
-            : id(id), name(name), min_value(minValue), max_value(maxValue), default_value(defaultValue)
+    ParameterInformation(int32_t id, std::string name, double minValue, double maxValue, double defaultValue, double priority = 0)
+            : id(id), name(name), min_value(minValue), max_value(maxValue), default_value(defaultValue), priority(priority)
     {
     }
 
@@ -86,6 +87,7 @@ public:
     double getMinimumValue() const { return min_value; }
     double getMaximumValue() const { return max_value; }
     double getDefaultValue() const { return default_value; }
+    double getPriority() const { return priority; }
 };
 
 class PluginExtensionInformation

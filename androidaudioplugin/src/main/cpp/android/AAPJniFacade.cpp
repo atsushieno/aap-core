@@ -127,7 +127,7 @@ namespace aap {
                                                       "(I)Lorg/androidaudioplugin/PortInformation;");
 
         j_method_parameter_ctor = env->GetMethodID(java_parameter_information_class, "<init>",
-                                                   "(ILjava/lang/String;DDD)V");
+                                                   "(ILjava/lang/String;DDDD)V");
         j_method_parameter_get_id = env->GetMethodID(java_parameter_information_class, "getId",
                                                      "()I");
         j_method_parameter_get_name = env->GetMethodID(java_parameter_information_class, "getName",
@@ -681,7 +681,7 @@ namespace aap {
             assert(klass);
             return env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(),
                                   env->NewStringUTF(para->getName()), para->getMinimumValue(),
-                                  para->getMaximumValue(), para->getDefaultValue());
+                                  para->getMaximumValue(), para->getDefaultValue(), para->getPriority());
         });
     }
 

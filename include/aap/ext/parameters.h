@@ -47,6 +47,9 @@ typedef struct aap_parameter_info_t {
     double max_value;
     double default_value;
     bool per_note_enabled;
+    // It helps to determine which parameters should be displayed on generic compact views.
+    // It does not imply anything other than priority (e.g. "-1 means never show up"; it is up to host)
+    double priority;
 } aap_parameter_info_t;
 
 typedef struct aap_parameters_extension_t {
