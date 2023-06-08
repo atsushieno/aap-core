@@ -5,26 +5,18 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
-import android.os.Looper
 import android.provider.Settings
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -36,7 +28,6 @@ import androidx.compose.material.Checkbox
 import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,33 +35,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.times
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
-import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
 import org.androidaudioplugin.samples.host.engine.PluginPreview
 import org.androidaudioplugin.ui.web.WebUIHostHelper
-import java.util.concurrent.Executor
 
 private val headerModifier = Modifier.width(120.dp)
 
@@ -318,45 +300,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         Text(text = "Parameters", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
         Column {
             for (para in viewModel.preview.value.instanceParameters) {
-                Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
-                    Column {
-                        Text(
-                            fontSize = 14.sp,
-                            text = "${para.id}",
-                            modifier = Modifier.width(60.dp)
-                        )
-                    }
-                    ColumnHeader(para.name)
-                    var sliderPosition by remember { mutableStateOf(para.defaultValue) }
-                    Text(
-                        fontSize = 10.sp,
-                        text = sliderPosition.toString(),
-                        modifier = Modifier
-                            .width(40.dp)
-                            .align(Alignment.CenterVertically)
-                    )
-                    ImageStripKnob(drawableResId = R.drawable.bright_life,
-                        value = sliderPosition.toFloat(),
-                        valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
-                        onValueChange = {
-                        val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
-                        if (pi < 0)
-                            return@ImageStripKnob
-                        parameters[pi] = it
-                        sliderPosition = it.toDouble()
-                    })
-                    Slider(
-                        value = sliderPosition.toFloat(),
-                        valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
-                        steps = 10,
-                        onValueChange = {
-                            val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
-                            if (pi < 0)
-                                return@Slider
-                            parameters[pi] = it
-                            sliderPosition = it.toDouble()
-                        })
-                }
+                PluginParameterListItem(parameters, plugin, para)
             }
         }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
@@ -393,6 +337,56 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         PluginWebUI(instance)
     if (showSurfaceUIState && instance != null)
         PluginSurfaceControlUI(previewState)
+}
+
+@Composable
+fun PluginParameterListItem(parameters: FloatArray, plugin: PluginInformation, para: ParameterInformation) {
+    Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+        Column {
+            Text(
+                fontSize = 14.sp,
+                text = "${para.id}",
+                modifier = Modifier.width(60.dp)
+            )
+        }
+        ColumnHeader(para.name)
+        val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
+        if (pi < 0)
+            return
+
+        if (para.enumerations.any()) {
+            var enumState by remember { mutableStateOf(parameters[pi]) }
+            PluginParameterEnumSelector(value = enumState, enumerations = para.enumerations,
+                onValueChange = {
+                    parameters[pi] = it.toFloat()
+                    enumState = it.toFloat()
+                })
+        } else {
+            var sliderPosition by remember { mutableStateOf(para.defaultValue) }
+            Text(fontSize = 10.sp, text = sliderPosition.toString(),
+                modifier = Modifier
+                    .width(40.dp)
+                    .align(Alignment.CenterVertically))
+            ImageStripKnob(drawableResId = R.drawable.bright_life,
+                value = sliderPosition.toFloat(),
+                valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
+                onValueChange = {
+                    parameters[pi] = it
+                    sliderPosition = it.toDouble()
+                })
+            Slider(
+                value = sliderPosition.toFloat(),
+                valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
+                steps = 10,
+                onValueChange = {
+                    val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
+                    if (pi < 0)
+                        return@Slider
+                    parameters[pi] = it
+                    sliderPosition = it.toDouble()
+                })
+        }
+    }
 }
 
 @Composable

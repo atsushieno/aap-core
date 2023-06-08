@@ -5,12 +5,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.annotation.RequiresApi
 import kotlinx.coroutines.runBlocking
-import org.androidaudioplugin.*
+import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.AudioPluginService
+import org.androidaudioplugin.ExtensionInformation
+import org.androidaudioplugin.ParameterInformation
+import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PluginServiceInformation
+import org.androidaudioplugin.PortInformation
 import org.xmlpull.v1.XmlPullParser
 
 object AudioPluginHostHelper {
@@ -23,12 +27,18 @@ object AudioPluginHostHelper {
     const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
     const val AAP_METADATA_EXT_GUI_NS = "urn://androidaudioplugin.org/extensions/gui"
 
-    private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser) : PluginServiceInformation {
+    private fun logMetadataError(error: AAPMetadataException) {
+        Log.w("AudioPluginHostHelper", error.toString())
+    }
+
+    private fun parseAapMetadata(isOutProcess: Boolean, label: String, packageName: String, className: String, xp: XmlPullParser, onError: (AAPMetadataException) -> Unit = { logMetadataError(it) }) : PluginServiceInformation {
         val aapServiceInfo = PluginServiceInformation(label, packageName, className)
 
         var currentPlugin: PluginInformation? = null
+        var currentParameter: ParameterInformation? = null
         val safeDouble: (Double) -> Double = { v -> if (v.isFinite()) v else 0.0 }
         while (true) {
+        try {
             val eventType = xp.next()
             if (eventType == XmlPullParser.END_DOCUMENT)
                 break
@@ -84,12 +94,12 @@ object AudioPluginHostHelper {
                         val default = xp.getAttributeValue(null, "default")
                         val minimum = xp.getAttributeValue(null, "minimum")
                         val maximum = xp.getAttributeValue(null, "maximum")
-                        val para = ParameterInformation(id.toInt(), name,
+                        currentParameter = ParameterInformation(id.toInt(), name,
                             safeDouble(minimum?.toDouble() ?: 0.0),
                             safeDouble(maximum?.toDouble() ?: 1.0),
                             safeDouble(default?.toDouble() ?: 0.0)
                         )
-                        currentPlugin.parameters.add(para)
+                        currentPlugin.parameters.add(currentParameter)
                     }
                 } else if (xp.name == "port" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                     if (currentPlugin != null) {
@@ -118,12 +128,31 @@ object AudioPluginHostHelper {
                                 ?: throw AAPMetadataException("The \"minimumSize\" attribute on a <port> element must be a valid integer. (line ${xp.lineNumber}, column ${xp.columnNumber})")
                         currentPlugin.ports.add(port)
                     }
+                } else if (xp.name == "enumeration" && xp.namespace == AAP_METADATA_EXT_PARAMETERS_NS) {
+                    if (currentParameter != null) {
+                        val value = xp.getAttributeValue(null, "value")?.toDoubleOrNull() ?: throw AAPMetadataException("A mandatory attribute `value` is missing or invalid double value for an `enumeration` element (line ${xp.lineNumber}, column ${xp.columnNumber})\"")
+                        val name = xp.getAttributeValue(null, "name")
+                        if (name == null || name.isEmpty())
+                            Log.w("AudioPluginHostHelper", "A mandatory attribute `name` is missing or empty on an `enumeration` element (line ${xp.lineNumber}, column ${xp.columnNumber})\"")
+                        else
+                            currentParameter.enumerations.add(ParameterInformation.EnumerationInformation(currentParameter.enumerations.size, value, name))
+                    }
                 }
             }
             if (eventType == XmlPullParser.END_TAG) {
                 if (xp.name == "plugin" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS))
                     currentPlugin = null
+                if (xp.name == "parameter" && (xp.namespace == "" || xp.namespace == AAP_METADATA_EXT_PARAMETERS_NS))
+                    currentParameter = null
             }
+        } catch (error: AAPMetadataException) {
+            onError(error)
+            // invalidate contexts
+            if (currentParameter != null)
+                currentParameter = null
+            else if (currentPlugin != null)
+                currentPlugin = null
+        }
         }
         return aapServiceInfo
     }

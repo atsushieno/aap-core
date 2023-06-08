@@ -2,9 +2,11 @@ package org.androidaudioplugin.ui.compose
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +24,8 @@ class ComposeAudioPluginViewFactory : AudioPluginViewFactory() {
     override fun createView(context: Context, pluginId: String, instanceId: Int) = ComposeAudioPluginView(context, pluginId, instanceId) as View
 }
 
-@SuppressLint("ViewConstructor")
+@RequiresApi(Build.VERSION_CODES.R)
+@SuppressLint("ViewConstructor", "UnusedMaterial3ScaffoldPaddingParameter")
 internal class ComposeAudioPluginView(context: Context, pluginId: String, instanceId: Int) : LinearLayout(context) {
     private val composeView = ComposeView(context)
     private val instance = NativePluginService(pluginId).getInstance(instanceId)

@@ -8,6 +8,7 @@ namespace aap {
     const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
             *java_extension_information_class_name = "org/androidaudioplugin/ExtensionInformation",
             *java_parameter_information_class_name = "org/androidaudioplugin/ParameterInformation",
+            *java_enumeration_information_class_name = "org/androidaudioplugin/ParameterInformation$EnumerationInformation",
             *java_port_information_class_name = "org/androidaudioplugin/PortInformation",
             *java_audio_plugin_service_class_name = "org/androidaudioplugin/AudioPluginServiceHelper",
             *java_native_remote_plugin_instance_class_name = "org/androidaudioplugin/hosting/NativeRemotePluginInstance";
@@ -40,6 +41,11 @@ namespace aap {
             j_method_parameter_get_default_value,
             j_method_parameter_get_minimum_value,
             j_method_parameter_get_maximum_value,
+            j_method_parameter_add_enum,
+            j_method_parameter_get_enumeration_count,
+            j_method_parameter_get_enumeration,
+            j_method_enumeration_get_value,
+            j_method_enumeration_get_name,
             j_method_port_ctor,
             j_method_port_get_index,
             j_method_port_get_name,
@@ -64,6 +70,8 @@ namespace aap {
                     java_extension_information_class_name),
                 java_parameter_information_class = env->FindClass(
                     java_parameter_information_class_name),
+                java_enumeration_information_class = env->FindClass(
+                    java_enumeration_information_class_name),
                 java_port_information_class = env->FindClass(java_port_information_class_name),
                 java_audio_plugin_service_helper_class = env->FindClass(
                     java_audio_plugin_service_class_name),
@@ -127,7 +135,7 @@ namespace aap {
                                                       "(I)Lorg/androidaudioplugin/PortInformation;");
 
         j_method_parameter_ctor = env->GetMethodID(java_parameter_information_class, "<init>",
-                                                   "(ILjava/lang/String;DDDD)V");
+                                                   "(ILjava/lang/String;DDD)V");
         j_method_parameter_get_id = env->GetMethodID(java_parameter_information_class, "getId",
                                                      "()I");
         j_method_parameter_get_name = env->GetMethodID(java_parameter_information_class, "getName",
@@ -141,6 +149,15 @@ namespace aap {
         j_method_parameter_get_maximum_value = env->GetMethodID(java_parameter_information_class,
                                                                 "getMaximumValue",
                                                                 "()D");
+        j_method_parameter_add_enum = env->GetMethodID(java_parameter_information_class,
+                                                       "addEnum",
+                                                       "(IDLjava/lang/String;)V");
+        j_method_parameter_get_enumeration_count = env->GetMethodID(java_parameter_information_class, "getEnumCount", "()I");
+        j_method_parameter_get_enumeration = env->GetMethodID(java_parameter_information_class, "getEnum",
+                                                              "(I)Lorg/androidaudioplugin/ParameterInformation$EnumerationInformation;");
+        j_method_enumeration_get_value = env->GetMethodID(java_enumeration_information_class, "getValue", "()D");
+
+        j_method_enumeration_get_name = env->GetMethodID(java_enumeration_information_class, "getName", "()Ljava/lang/String;");
 
         j_method_port_ctor = env->GetMethodID(java_port_information_class, "<init>",
                                               "(ILjava/lang/String;II)V");
@@ -287,7 +304,19 @@ namespace aap {
             auto def = env->CallDoubleMethod(para, j_method_parameter_get_default_value);
             auto min = env->CallDoubleMethod(para, j_method_parameter_get_minimum_value);
             auto max = env->CallDoubleMethod(para, j_method_parameter_get_maximum_value);
+
             auto nativePara = new aap::ParameterInformation(id, name, min, max, def);
+
+            int32_t nEnums = env->CallIntMethod(para, j_method_parameter_get_enumeration_count);
+            for (int e = 0; e < nEnums; e++) {
+                auto eObj = env->CallObjectMethod(para, j_method_parameter_get_enumeration, e);
+                auto eValue = env->CallDoubleMethod(eObj, j_method_enumeration_get_value);
+                auto eName = strdup_fromJava(env, (jstring) env->CallObjectMethod(eObj,
+                                                                                 j_method_enumeration_get_name));
+                ParameterInformation::Enumeration nativeEnum{e, eValue, eName};
+                nativePara->addEnumeration(nativeEnum);
+            }
+
             aapPI->addDeclaredParameter(nativePara);
             free((void *) name);
         }
@@ -679,9 +708,15 @@ namespace aap {
             auto para = instance->getParameter(index);
             auto klass = env->FindClass(java_parameter_information_class_name);
             assert(klass);
-            return env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(),
+            auto ret = env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(),
                                   env->NewStringUTF(para->getName()), para->getMinimumValue(),
-                                  para->getMaximumValue(), para->getDefaultValue(), para->getPriority());
+                                  para->getMaximumValue(), para->getDefaultValue());
+            for (int32_t i = 0, n = para->getEnumCount(); i < n; i++) {
+                auto en = para->getEnumeration(i);
+                env->CallVoidMethod(ret, j_method_parameter_add_enum,
+                                    en.getIndex(), en.getValue(), env->NewStringUTF(en.getName().c_str()));
+            }
+            return ret;
         });
     }
 

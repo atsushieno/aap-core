@@ -9,6 +9,10 @@ element parameters {
     attribute default { xs:float }
     attribute minimum { xs:float }
     attribute maximum { xs:float }
+    element enumeration {
+      attribute value { xs:float }
+      attribute name { xs:string }
+    }
   }*
 }
 

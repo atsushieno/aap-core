@@ -69,16 +69,33 @@ public:
 };
 
 class ParameterInformation : public PropertyContainer {
+public:
+    class Enumeration {
+        int32_t index{0};
+        double value{0};
+        std::string name{};
+    public:
+        Enumeration(int32_t index, double value, std::string name)
+                : index(index), value(value), name(name) {
+        }
+
+        int32_t getIndex() { return index; }
+        double getValue() { return value; }
+        std::string getName() { return name; };
+    };
+
+private:
     int32_t id{0};
     std::string name{};
     double min_value;
     double max_value;
     double default_value;
-    double priority;
+    std::map<int32_t, Enumeration> enums{};
 
 public:
-    ParameterInformation(int32_t id, std::string name, double minValue, double maxValue, double defaultValue, double priority = 0)
-            : id(id), name(name), min_value(minValue), max_value(maxValue), default_value(defaultValue), priority(priority)
+
+    ParameterInformation(int32_t id, std::string name, double minValue, double maxValue, double defaultValue)
+            : id(id), name(name), min_value(minValue), max_value(maxValue), default_value(defaultValue)
     {
     }
 
@@ -87,7 +104,13 @@ public:
     double getMinimumValue() const { return min_value; }
     double getMaximumValue() const { return max_value; }
     double getDefaultValue() const { return default_value; }
-    double getPriority() const { return priority; }
+
+    // copy of argument is stored
+    void addEnumeration(Enumeration& e) { enums.emplace(e.getIndex(), e); }
+    // returns the number of enumerations.
+    int32_t getEnumCount() const { return enums.size(); }
+    // returns reference to internal copy
+    const Enumeration& getEnumeration(int32_t index) const { return enums.at(index); }
 };
 
 class PluginExtensionInformation

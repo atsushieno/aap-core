@@ -16,11 +16,21 @@
 
     <!-- parameters extension. Note that they work only with MIDI2 port. -->
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
-      <parameter id="0" name="Mixer" default="2" minimum="0" maximum="4" />
+      <parameter id="0" name="Mixer" default="2" minimum="0" maximum="4">
+        <enumeration value="0" name="None" />
+        <enumeration value="1" name="Noise" />
+        <enumeration value="2" name="Tone" />
+        <enumeration value="4" name="Noise+Tone" />
+      </parameter>
       <parameter id="7" name="Volume" default="14" minimum="0" maximum="14" />
       <parameter id="10" name="Pan" default="0.5" minimum="0" maximum="1.0" />
       <parameter id="15" name="Envelope" default="64" minimum="0" maximum="65535" />
       <parameter id="19" name="Envelope Shape" default="14" minimum="0" maximum="15" />
+      <parameter id="20" name="Extra Enums" default="0" minimum="0" maximum="4" >
+        <enumeration value="0" name="V1" />
+        <enumeration value="2" name="V2" />
+        <enumeration value="4" name="V4" />
+      </parameter>
     </parameters>
   </plugin>
 </plugins>

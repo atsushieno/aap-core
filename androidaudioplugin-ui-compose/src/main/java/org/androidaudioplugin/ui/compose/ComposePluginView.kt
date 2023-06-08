@@ -47,6 +47,7 @@ import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboard
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardMoveAction
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardWithControllers
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
+import kotlin.math.abs
 
 interface PluginViewScope {
     val pluginName: String
@@ -67,6 +68,14 @@ interface PluginViewScopeParameter {
     val name: String
     val value: Double
     val valueRange: ClosedFloatingPointRange<Double>
+    fun getEnumerationCount(): Int
+    fun getEnumeration(index: Int): PluginViewScopeEnumeration
+}
+
+interface PluginViewScopeEnumeration {
+    val index: Int
+    val value: Double
+    val name: String
 }
 
 internal class PluginViewScopeImpl(
@@ -102,7 +111,20 @@ internal class PluginViewScopeParameterImpl(private val plugin: PluginViewScopeI
         get() = parameterValue
     override val valueRange: ClosedFloatingPointRange<Double>
         get() = info.minimumValue.rangeTo(info.maximumValue)
+
+    override fun getEnumerationCount() = info.enumerations.size
+
+    override fun getEnumeration(index: Int): PluginViewScopeEnumeration {
+        val e = info.enumerations[index]
+        return PluginViewScopeEnumerationImpl(e.index, e.value, e.name)
+    }
 }
+
+data class PluginViewScopeEnumerationImpl(
+    override val index: Int,
+    override val value: Double,
+    override val name: String)
+    : PluginViewScopeEnumeration
 
 internal class PluginViewScopePortImpl(private val plugin: PluginViewScopeImpl, index: Int) : PluginViewScopePort {
     private val info = plugin.instance.getPort(index)
@@ -168,13 +190,36 @@ fun PluginViewScope.PluginView(
                         .padding(5.dp, 0.dp)) {
                     Text("${para.id}: ${para.name}")
                 }
-                ImageStripKnob(
-                    drawableResId = R.drawable.bright_life,
-                    value = getParameterValue(index),
-                    valueRange = para.valueRange.start.toFloat()..para.valueRange.endInclusive.toFloat(),
-                    tooltip = { DefaultKnobTooltip(showTooltip = true, value = knobValue )},
-                    onValueChange = { onParameterChange(index, it) }
-                )
+                if (para.getEnumerationCount() > 0) {
+                    val enums = (0 until para.getEnumerationCount()).map { para.getEnumeration(it) }
+                    val minValue = enums.minBy { it.value }.value
+                    val maxValue = enums.maxBy { it.value }.value
+                    // a dirty hack to show the matching enum value from current value.
+                    // (cannot be "the nearest enum" as we round it.)
+                    // FIXME: we would need semantic definition for matching.
+                    val getMatchedEnum = { f:Float -> enums.last { it.value <= f } }
+                    val v = getParameterValue(index)
+                    ImageStripKnob(
+                        drawableResId = R.drawable.bright_life,
+                        value = v,
+                        valueRange = minValue.toFloat() .. maxValue.toFloat(),
+                        tooltip = {
+                            val en = getMatchedEnum(v)
+                            Text(if (en.name.length > 9) en.name.take(8) + ".." else en.name,
+                                fontSize = 12.sp,
+                                color = Color.Gray)
+                        },
+                        onValueChange = { onParameterChange(index, it) }
+                    )
+                } else {
+                    ImageStripKnob(
+                        drawableResId = R.drawable.bright_life,
+                        value = getParameterValue(index),
+                        valueRange = para.valueRange.start.toFloat()..para.valueRange.endInclusive.toFloat(),
+                        tooltip = { DefaultKnobTooltip(showTooltip = true, value = knobValue) },
+                        onValueChange = { onParameterChange(index, it) }
+                    )
+                }
             }
         }
     }

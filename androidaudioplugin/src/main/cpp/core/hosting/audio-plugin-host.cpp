@@ -474,6 +474,13 @@ void PluginInstance::scanParametersAndBuildList() {
 	for (auto i = 0, n = ext->get_parameter_count(ext, plugin); i < n; i++) {
 		auto para = ext->get_parameter(ext, plugin, i);
 		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};
+		if (ext->get_enumeration_count && ext->get_enumeration) {
+			for (auto e = 0, en = ext->get_enumeration_count(ext, plugin, i); e < en; e++) {
+				auto pe = ext->get_enumeration(ext, plugin, i, e);
+				ParameterInformation::Enumeration eDef{e, pe->value, pe->name};
+				p.addEnumeration(eDef);
+			}
+		}
 		cached_parameters->emplace_back(p);
 	}
 }

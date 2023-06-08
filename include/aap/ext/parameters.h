@@ -13,6 +13,23 @@ extern "C" {
 
 #define AAP_MAX_PARAMETER_NAME_CHARS 256
 #define AAP_MAX_PARAMETER_PATH_CHARS 256
+#define AAP_MAX_PARAMETER_ENUM_NAME 80
+
+#define AAP_PARAMETER_QUANTIZED_TYPE_BOOLEAN 2
+#define AAP_PARAMETER_QUANTIZED_TYPE_INTEGER 3
+
+// These might not be returned as a property. These constants are used in Kotlin though.
+#define AAP_PARAMETER_PROPERTY_MIN_VALUE 1
+#define AAP_PARAMETER_PROPERTY_MAX_VALUE 2
+#define AAP_PARAMETER_PROPERTY_DEFAULT_VALUE 3
+// It helps to determine which parameters should be displayed on generic compact views.
+// It does not imply anything other than priority (e.g. "-1 means never show up"; it is up to host)
+#define AAP_PARAMETER_PROPERTY_PRIORITY 11
+// It indicates that the returned value may be still valid if it is not one of the enumerated values.
+#define AAP_PARAMETER_PROPERTY_IS_DISCRETE 12
+// An optional type identifier e.g. `AAP_PARAMETER_QUANTIZED_TYPE_BOOLEAN` or `AAP_PARAMETER_QUANTIZED_TYPE_INTEGER`
+// Host UI may change the input control types depending on this.
+#define AAP_PARAMETER_PROPERTY_QUANTIZED_TYPE 13
 
 typedef struct aap_parameter_info_t {
     // Parameter ID.
@@ -47,10 +64,12 @@ typedef struct aap_parameter_info_t {
     double max_value;
     double default_value;
     bool per_note_enabled;
-    // It helps to determine which parameters should be displayed on generic compact views.
-    // It does not imply anything other than priority (e.g. "-1 means never show up"; it is up to host)
-    double priority;
 } aap_parameter_info_t;
+
+typedef struct aap_parameter_enum_t {
+    char name[AAP_MAX_PARAMETER_ENUM_NAME];
+    double value;
+} aap_parameter_enum_t;
 
 typedef struct aap_parameters_extension_t {
     void* aapxs_context;
@@ -60,6 +79,17 @@ typedef struct aap_parameters_extension_t {
     // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
     RT_SAFE aap_parameter_info_t* (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
+
+    // Returns the parameter property in a double (64-bit) value, by parameter ID and property ID.
+    // It should return `0` if the requested property does not exist.
+    RT_SAFE double (*get_parameter_property) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t propertyId);
+
+    // Returns the number of enumerated values for a parameter, by parameter ID.
+    // It should return `0` if it is not an enumerated parameter.
+    RT_UNSAFE int32_t (*get_enumeration_count) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId);
+    // Returns the value of an enumeration for a parameter, by parameter ID and enum index.
+    // It should return NULL if it is not an enumerated parameter.
+    RT_UNSAFE aap_parameter_enum_t* (*get_enumeration) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t enumIndex);
 } aap_parameters_extension_t;
 
 typedef struct aap_host_parameters_extension_t {
