@@ -41,7 +41,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         val alwaysReconnectSurfaceControl = Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
     }
 
-    class AudioPluginSurfaceView(context: Context) : SurfaceView(context) {
+    internal class AudioPluginSurfaceView(context: Context) : SurfaceView(context) {
         var connection: HostConnection? = null
 
         override fun onDetachedFromWindow() {
@@ -140,7 +140,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         context.mainLooper.queue.addIdleHandler (messageSender)
     }
 
-    class HostConnection(private val onConnected: (HostConnection) -> Unit,
+    internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {
         lateinit var outgoingMessenger: Messenger
 
@@ -156,7 +156,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
     }
 
-    class ClientReplyHandler(looper: Looper, private val onSurfacePackageReceived: (SurfaceControlViewHost.SurfacePackage) -> Unit) : Handler(looper) {
+    internal class ClientReplyHandler(looper: Looper, private val onSurfacePackageReceived: (SurfaceControlViewHost.SurfacePackage) -> Unit) : Handler(looper) {
         override fun handleMessage(msg: Message) {
             val pkg = msg.data.getParcelable("surfacePackage") as SurfaceControlViewHost.SurfacePackage?
             pkg?.let { onSurfacePackageReceived(it) }
