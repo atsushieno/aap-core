@@ -179,7 +179,7 @@ fun PluginViewScope.PluginView(
     )
 
     // parameter list
-    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(300.dp)) {
+    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(180.dp)) {
         items(parameterCount) { index ->
             val para = getParameter(index)
             Row {
@@ -191,7 +191,7 @@ fun PluginViewScope.PluginView(
                     Text("${para.id}: ${para.name}")
                 }
                 if (para.getEnumerationCount() > 0) {
-                    val enums = (0 until para.getEnumerationCount()).map { para.getEnumeration(it) }
+                    val enums = (0 until para.getEnumerationCount()).map { para.getEnumeration(it) }.sortedBy { it.value }
                     val minValue = enums.minBy { it.value }.value
                     val maxValue = enums.maxBy { it.value }.value
                     // a dirty hack to show the matching enum value from current value.
