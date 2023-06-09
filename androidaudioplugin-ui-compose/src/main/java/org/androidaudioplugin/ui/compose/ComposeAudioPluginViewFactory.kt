@@ -21,6 +21,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class ComposeAudioPluginViewFactory : AudioPluginViewFactory() {
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun createView(context: Context, pluginId: String, instanceId: Int) = ComposeAudioPluginView(context, pluginId, instanceId) as View
 }
 
