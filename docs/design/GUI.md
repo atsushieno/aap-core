@@ -7,14 +7,50 @@ Compared to other audio plugin formats, AAP has simplifying aspects and complica
 
 Though, we would like to be able to present the plugin UI on multiple methods:
 
-- in host process, using WebView and per-plugin Web UI. It is the best recommended usage scenario for wide range of target devices.
-- in plugin process View, using SurfaceView and [SurfaceControlViewHost](https://developer.android.com/reference/android/view/SurfaceControlViewHost). It is the best recommended approach by us, but requires Android 11+.
-- in plugin process View, by showing overlay window using [WindowManager](https://developer.android.com/reference/android/view/WindowManager). It requires special permission (`SYSTEM_ALERT_WINDOW`). It will be most likely deprecated.
-- in plugin process Activity, either by [Activity Embedding](https://developer.android.com/guide/topics/large-screens/activity-embedding) for tablets and foldables (which could run with the host side by side), or in the worst case, switching to it (then OS may kill the host process at any time!)
+- **Native View**: runs in plugin process View, using [SurfaceControlViewHost](https://developer.android.com/reference/android/view/SurfaceControlViewHost). Plugin developers can implement arbitrary native UI, as long as it runs on a `View` (our host implementation uses `SurfaceView` but AAP hosts are supposed to use our API to retrieve it as a `View`). It is the best recommended approach by us, but requires Android 11 or later (minSdk 30).
+- **WebView**: runs in host process, using `WebView` and per-plugin Web UI. It is the widest range of target devices. There is however a various restrictions on how Web UI could interact with the rest of the plugin (DSP etc.), for example direct access from plugin UI to the files in the plugin is not possible (because WebView runs on the DAW process).
+- (Deprecated) System Alert Window: runs in plugin process View, by showing overlay window using [WindowManager](https://developer.android.com/reference/android/view/WindowManager). It requires special permission (`SYSTEM_ALERT_WINDOW`). **It is deprecated**: implementation code still remains, but will disappear.
+- **Activity**: runs in plugin process. It is either by [Activity Embedding](https://developer.android.com/guide/topics/large-screens/activity-embedding) for tablets and foldables (which could run with the host side by side), or in the worst case, by just switching to it (then OS may kill the host process at any time!). It should be possible and easy, but not really investigated yet.
 
-We have to provide entry points to GUI on both Kotlin/Java and native. The native part is most likely done by JNI invocation, but native UI toolkits (like `juce_gui_basics`) could make it complicated (note that JUCE GUI will not work unless JUCE drastically improves the Android UI layer that currently does not implement the entire UI layer as `android.view.View`).
+Currently send-only (non-listening) default GUI is implemented for Native View (using Jetpack Compose) and WebView (HTML+JS), respectively.
 
-GUI instantiation is supposed to be asynchronous (the actual implementation is synchronous so far).
+We provide entry points to GUI on both Kotlin/Java and native. The native part is done by JNI invocation.
+
+GUI instantiation is asynchronous, even though some part of our API looks synchronous.
+
+Note that there are GUI toolkits that is capable of running itself solely on a `android.view.View`: Jetpack Compose is designed well so that it meets this requirement. JUCE GUI will not work unless JUCE drastically improves the Android UI layer that currently does not implement the entire UI layer on top of `View`.
+
+## Using GUI support API
+
+### Kotlin
+
+Using GUI in Kotlin API is relatively easy (as it is implemented in Kotlin).
+
+- Hosting native UI: In `androidaudioplugin.aar`, there is `createSurfaceControl()` function in `org.androidaudioplugin.hosting.AudioPluginHostHelper` class. It returns an instance of `AudioPluginSurfaceControlClient` class. The class has `surfaceView` property which can be used as an Android `View` in the host. It needs to be "connected" to the service to render the UI by `connectUI()` function. It handles all what `SurfaceControlViewHost` needs.
+- Plugin native UI: you will have to provide a few things
+  - Implement your own `org.androidaudioplugin.AudioPluginViewFactory` class and register the class as `gui:ui-view-factory`  attribute in your `<plugin>` element in your `aap_metadata.xml` (see the example below for the actual XML namespace URI).
+  - Then you will also have to provide `<service android:name="org.androidaudioplugin.AudioPluginViewService" ... />` element in `AndroidManifest.xml` to get plugin UI working as a service (required for SurfaceControlViewHost) for the host.
+  - There is a default (and reference) implementation `ComposeAudioPluginViewFactory` in `androidaudioplugin-ui-compose.aar`.
+  - There is also a reference implementation `AudioPluginWebViewFactory` that offers Web UI `WebView` as a native UI (but instantiated as a local plugin UI).
+- Hosting Web UI: In `androidaudioplugin-ui-web.aar`, there is `getWebView()` function in `org.androidaudioplugin.ui.web.WebUIHostHelper` class. It returns `WebView` with special assets path handlers.
+- Plugin Web UI: you will have to prepare your Web UI content, package as `web-ui.zip` (by default) and put it into `assets` directory in your plugin app. Then add `implementation` reference to `androidaudioplugin-ui-web.aar` (most likely as a Maven Artifact) in your `build.gradle(.kts)`, which adds the required content provider for hosts.
+
+Plugin `aap_metadata.xml` example snippet:
+
+```
+  <plugin name="Instrument Sample" category="Instrument" developer="AAP Developers"
+      unique-id="urn:org.androidaudioplugin/samples/aapinstrumentsample/InstrumentSample"
+      library="libaapinstrumentsample.so"
+      gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
+      xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
+```
+
+Plugin `AndroidManifest.xml` example snippet:
+
+```
+  <service android:name="org.androidaudioplugin.AudioPluginViewService" android:exported="true" android:label="AAPInstrumentSample">
+  </service>
+```
 
 ## Interaction between GUI and the rest of the plugin
 
