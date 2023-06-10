@@ -300,7 +300,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
         Text(text = "Parameters", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
         Column {
             for (para in viewModel.preview.value.instanceParameters) {
-                PluginParameterListItem(parameters, plugin, para)
+                PluginParameterListItem(parameters, viewModel.preview.value.instanceParameters, para)
             }
         }
         Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
@@ -340,7 +340,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
 }
 
 @Composable
-fun PluginParameterListItem(parameters: FloatArray, plugin: PluginInformation, para: ParameterInformation) {
+fun PluginParameterListItem(parameters: FloatArray, instanceParameters: List<ParameterInformation>, para: ParameterInformation) {
     Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
         Column {
             Text(
@@ -350,7 +350,7 @@ fun PluginParameterListItem(parameters: FloatArray, plugin: PluginInformation, p
             )
         }
         ColumnHeader(para.name)
-        val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
+        val pi = instanceParameters.indexOfFirst { p -> para.id == p.id }
         if (pi < 0)
             return
 
@@ -379,9 +379,6 @@ fun PluginParameterListItem(parameters: FloatArray, plugin: PluginInformation, p
                 valueRange = if (para.minimumValue < para.maximumValue) para.minimumValue.toFloat()..para.maximumValue.toFloat() else 0.0f..1.0f,
                 steps = 10,
                 onValueChange = {
-                    val pi = plugin.parameters.indexOfFirst { p -> para.id == p.id }
-                    if (pi < 0)
-                        return@Slider
                     parameters[pi] = it
                     sliderPosition = it.toDouble()
                 })
