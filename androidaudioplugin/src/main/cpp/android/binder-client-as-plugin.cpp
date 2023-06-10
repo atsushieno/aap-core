@@ -156,7 +156,8 @@ void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
 
 void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
 {
-	return nullptr;
+	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+	return ctx->host.get_extension(&ctx->host, uri);
 }
 
 AndroidAudioPlugin* aap_client_as_plugin_new(

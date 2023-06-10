@@ -324,6 +324,10 @@ namespace aap {
 
         friend class RemoteAAPXSManager;
 
+        static void* staticGetExtension(AndroidAudioPluginHost* host, const char* uri) {
+            return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
+        }
+
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
 

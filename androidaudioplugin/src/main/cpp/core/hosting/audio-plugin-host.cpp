@@ -533,7 +533,7 @@ void PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension = nullptr; // we shouldn't need it.
+    plugin_host_facade.get_extension = RemotePluginInstance::staticGetExtension;
     return &plugin_host_facade;
 }
 
