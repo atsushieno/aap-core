@@ -222,6 +222,8 @@ process_acc:
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
+// state extension
+
 size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
     return 0;
 }
@@ -239,7 +241,37 @@ aap_state_extension_t state_extension{nullptr,
                                       sample_plugin_get_state,
                                       sample_plugin_set_state};
 
+// parameters extension
+
+int32_t sample_plugin_get_parameter_count(aap_parameters_extension_t* ext, AndroidAudioPlugin* plugin) {
+    return 8;
+}
+
+aap_parameter_info_t parameter_infos[] {
+        {0, "Output Volume L", "", 0.0, 1.0, 0.5},
+        {1, "Output Volume R", "", 0.0, 1.0, 0.5},
+        {2, "Delay L", "", 0, 2048, 0},
+        {3, "Delay R", "", 0, 2048, 256},
+        {11, "Stub Parameter 4", "", 0, 1,0 },
+        {12, "Stub Parameter 5", "", 0, 1,0 },
+        {13, "Stub Parameter 6", "", 0, 1,0 },
+        {14, "Stub Parameter 7", "", 0, 1,0 },
+};
+
+aap_parameter_info_t sample_plugin_get_parameter(aap_parameters_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
+    return parameter_infos[index];
+}
+
+aap_parameters_extension_t parameters_extension{nullptr,
+                                                sample_plugin_get_parameter_count,
+                                                sample_plugin_get_parameter,
+                                                nullptr,
+                                                nullptr,
+                                                nullptr};
+
 void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
+    if (!strcmp(uri, AAP_PARAMETERS_EXTENSION_URI))
+        return &parameters_extension;
     if (!strcmp(uri, AAP_STATE_EXTENSION_URI))
         return &state_extension;
     return nullptr;

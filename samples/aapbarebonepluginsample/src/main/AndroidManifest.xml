@@ -25,5 +25,6 @@
                 android:resource="@xml/aap_metadata"
                 />
         </service>
+        <service android:name="org.androidaudioplugin.AudioPluginViewService" android:exported="true" />
     </application>
 </manifest>

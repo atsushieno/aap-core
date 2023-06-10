@@ -7,7 +7,7 @@
     <extensions>
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v2" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v2" />
-      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v2" />
+      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v2.1" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v2" />
       <extension uri="urn://androidaudioplugin.org/extensions/gui/v2" />
     </extensions>

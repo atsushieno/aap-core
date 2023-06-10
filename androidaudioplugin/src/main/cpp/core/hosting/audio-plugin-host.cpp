@@ -474,20 +474,24 @@ void PluginInstance::scanParametersAndBuildList() {
 	assert(!cached_parameters);
 
 	auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
-	if (!ext)
+	if (!ext || !ext->get_parameter_count || !ext->get_parameter)
+		return;
+
+	auto parameterCount = ext->get_parameter_count(ext, plugin);
+	if (parameterCount == -1) // explicitly indicates that the code is not going to return the parameter list.
 		return;
 
 	// if parameters extension does not exist, do not populate cached parameters list.
 	// (The empty list means no parameters in metadata either.)
 	cached_parameters = std::make_unique<std::vector<ParameterInformation>>();
 
-	for (auto i = 0, n = ext->get_parameter_count(ext, plugin); i < n; i++) {
+	for (auto i = 0; i < parameterCount; i++) {
 		auto para = ext->get_parameter(ext, plugin, i);
-		ParameterInformation p{para->stable_id, para->display_name, para->min_value, para->max_value, para->default_value};
+		ParameterInformation p{para.stable_id, para.display_name, para.min_value, para.max_value, para.default_value};
 		if (ext->get_enumeration_count && ext->get_enumeration) {
 			for (auto e = 0, en = ext->get_enumeration_count(ext, plugin, i); e < en; e++) {
 				auto pe = ext->get_enumeration(ext, plugin, i, e);
-				ParameterInformation::Enumeration eDef{e, pe->value, pe->name};
+				ParameterInformation::Enumeration eDef{e, pe.value, pe.name};
 				p.addEnumeration(eDef);
 			}
 		}

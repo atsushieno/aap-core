@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v2"
+#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v2.1"
 #define AAP_PARAMETERS_XMLNS_URI "urn://androidaudioplugin.org/extensions/parameters"
 
 #define AAP_MAX_PARAMETER_NAME_CHARS 256
@@ -75,10 +75,11 @@ typedef struct aap_parameters_extension_t {
     void* aapxs_context;
     // Returns the number of parameters.
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
+    // On the other hand, if the code wants to tell that the code is not going to provide the parameter list, it can return -1 (explicitly).
     RT_SAFE int32_t (*get_parameter_count) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin);
     // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    RT_SAFE aap_parameter_info_t* (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
+    RT_SAFE aap_parameter_info_t (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
 
     // Returns the parameter property in a double (64-bit) value, by parameter ID and property ID.
     // It should return `0` if the requested property does not exist.
@@ -89,7 +90,7 @@ typedef struct aap_parameters_extension_t {
     RT_UNSAFE int32_t (*get_enumeration_count) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId);
     // Returns the value of an enumeration for a parameter, by parameter ID and enum index.
     // It should return NULL if it is not an enumerated parameter.
-    RT_UNSAFE aap_parameter_enum_t* (*get_enumeration) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t enumIndex);
+    RT_UNSAFE aap_parameter_enum_t (*get_enumeration) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t enumIndex);
 } aap_parameters_extension_t;
 
 typedef struct aap_host_parameters_extension_t {
