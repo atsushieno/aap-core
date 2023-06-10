@@ -44,6 +44,7 @@ namespace aap {
     class PluginHost
     {
     protected:
+        AAPXSRegistry* aapxs_registry{nullptr};
         PluginListSnapshot* plugin_list{nullptr};
 
         std::vector<PluginInstance*> instances{};
@@ -51,7 +52,7 @@ namespace aap {
         int32_t event_midi2_input_buffer_size{4096};
 
     public:
-        PluginHost(PluginListSnapshot* contextPluginList);
+        PluginHost(PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry = nullptr);
 
         virtual ~PluginHost() {}
 
@@ -71,8 +72,8 @@ namespace aap {
     class PluginService : public PluginHost {
         AudioPluginServiceCallback* plugin_service_callback;
     public:
-        PluginService(PluginListSnapshot* contextPluginList, AudioPluginServiceCallback* callback)
-                : PluginHost(contextPluginList), plugin_service_callback(callback)
+        PluginService(PluginListSnapshot* contextPluginList, AudioPluginServiceCallback* callback, AAPXSRegistry* aapxsRegistry = nullptr)
+                : PluginHost(contextPluginList, aapxsRegistry), plugin_service_callback(callback)
         {
         }
 
@@ -99,8 +100,8 @@ namespace aap {
         Result<int32_t> instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
     public:
-        PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList)
-                : PluginHost(contextPluginList), connections(pluginConnections)
+        PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry = nullptr)
+                : PluginHost(contextPluginList, aapxsRegistry), connections(pluginConnections)
         {
         }
 

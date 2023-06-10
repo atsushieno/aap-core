@@ -81,9 +81,15 @@ public:
 class AAPXSRegistry {
     std::vector<std::unique_ptr<const char>> stringpool{};
     AAPXSFeatureMap<AAPXSFeature> extension_services{};
+    bool readonly{false};
 
 public:
+    inline void freeze() { readonly = true; }
+
     inline void add(AAPXSFeature* extensionService) {
+        assert(!readonly);
+        if (readonly)
+            return;
         auto e = std::make_unique<AAPXSFeature>();
         auto f = extensionService;
         e->context = f->context;

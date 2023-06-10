@@ -155,39 +155,49 @@ std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
 std::unique_ptr<MidiExtensionFeature> aapxs_midi2{nullptr};
 std::unique_ptr<ParametersExtensionFeature> aapxs_parameters{nullptr};
 std::unique_ptr<GuiExtensionFeature> aapxs_gui{nullptr};
-std::unique_ptr<AAPXSRegistry> aapxs_registry{nullptr};
+std::unique_ptr<AAPXSRegistry> standard_aapxs_registry{nullptr};
 
-PluginHost::PluginHost(PluginListSnapshot* contextPluginList)
+void initializeStandardAAPXSRegistry() {
+    auto aapxs_registry = std::make_unique<AAPXSRegistry>();
+
+    // state
+    if (aapxs_state == nullptr)
+        aapxs_state = std::make_unique<StateExtensionFeature>();
+    aapxs_registry->add(aapxs_state->asPublicApi());
+    // presets
+    if (aapxs_presets == nullptr)
+        aapxs_presets = std::make_unique<PresetsExtensionFeature>();
+    aapxs_registry->add(aapxs_presets->asPublicApi());
+    // port_config
+    if (aapxs_port_config == nullptr)
+        aapxs_port_config = std::make_unique<PortConfigExtensionFeature>();
+    aapxs_registry->add(aapxs_state->asPublicApi());
+    // midi2
+    if (aapxs_midi2 == nullptr)
+        aapxs_midi2 = std::make_unique<MidiExtensionFeature>();
+    aapxs_registry->add(aapxs_midi2->asPublicApi());
+    // parameters
+    if (aapxs_parameters == nullptr)
+        aapxs_parameters = std::make_unique<ParametersExtensionFeature>();
+    aapxs_registry->add(aapxs_parameters->asPublicApi());
+    // gui
+    if (aapxs_gui == nullptr)
+        aapxs_gui = std::make_unique<GuiExtensionFeature>();
+    aapxs_registry->add(aapxs_gui->asPublicApi());
+
+    aapxs_registry->freeze();
+
+    standard_aapxs_registry = std::move(aapxs_registry);
+}
+
+PluginHost::PluginHost(PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry)
 	: plugin_list(contextPluginList)
 {
 	assert(contextPluginList);
 
-	if (aapxs_registry == nullptr)
-		aapxs_registry = std::make_unique<AAPXSRegistry>();
-
-	// state
-	if (aapxs_state == nullptr)
-		aapxs_state = std::make_unique<StateExtensionFeature>();
-	aapxs_registry->add(aapxs_state->asPublicApi());
-	// presets
-	if (aapxs_presets == nullptr)
-		aapxs_presets = std::make_unique<PresetsExtensionFeature>();
-	aapxs_registry->add(aapxs_presets->asPublicApi());
-	// port_config
-	if (aapxs_port_config == nullptr)
-		aapxs_port_config = std::make_unique<PortConfigExtensionFeature>();
-	aapxs_registry->add(aapxs_state->asPublicApi());
-	// midi2
-	if (aapxs_midi2 == nullptr)
-		aapxs_midi2 = std::make_unique<MidiExtensionFeature>();
-	aapxs_registry->add(aapxs_midi2->asPublicApi());
-	// parameters
-	if (aapxs_parameters == nullptr)
-		aapxs_parameters = std::make_unique<ParametersExtensionFeature>();
-	// gui
-	if (aapxs_gui == nullptr)
-		aapxs_gui = std::make_unique<GuiExtensionFeature>();
-	aapxs_registry->add(aapxs_gui->asPublicApi());
+	if (standard_aapxs_registry == nullptr)
+        initializeStandardAAPXSRegistry();
+    aapxs_registry = aapxsRegistry ? aapxsRegistry : standard_aapxs_registry.get();
 }
 
 AAPXSFeature* PluginHost::getExtensionFeature(const char* uri) {
@@ -245,7 +255,7 @@ PluginInstance* PluginHost::instantiateLocalPlugin(const PluginInformation *desc
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_HOST_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
 		return nullptr;
 	}
-	auto instance = new LocalPluginInstance(this, aapxs_registry.get(), localInstanceIdSerial++,
+	auto instance = new LocalPluginInstance(this, aapxs_registry, localInstanceIdSerial++,
 											descriptor, pluginFactory, sampleRate, event_midi2_input_buffer_size);
 	instances.emplace_back(instance);
 	return instance;
@@ -311,7 +321,7 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
     // We first ensure to bind the remote plugin service, and then create a plugin instance.
     //  Since binding the plugin service must be asynchronous while instancing does not have to be,
     //  we call ensureServiceConnected() first and pass the rest as its callback.
-    auto internalCallback = [=](std::string error) {
+    auto internalCallback = [this,descriptor,sampleRate](std::string error) {
         if (error.empty()) {
 #if ANDROID
             auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
@@ -319,7 +329,7 @@ PluginClient::Result<int32_t> PluginClient::instantiateRemotePlugin(const Plugin
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(this, aapxs_registry.get(), descriptor, pluginFactory,
+            auto instance = new RemotePluginInstance(this, aapxs_registry, descriptor, pluginFactory,
 													 sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
             instance->completeInstantiation();
