@@ -437,9 +437,34 @@ namespace aap::midi {
         return translatedIndex;
     }
 
+    int32_t detectEndpointConfigurationMessage(uint8_t* bytes, size_t offset, size_t length) {
+        // treat bytes as UMP native endian stream
+        if (length < 16)
+            return 0;
+        if (bytes[offset] != 0xF0 || bytes[offset + 1] != 5 || (bytes[offset + 3] & 0xC) != 0)
+            return 0;
+        // all those reserved bytes must be 0 (which would effectively eliminate possible conflicts with MIDI1 bytes)
+        for (int i = 0; i < 12; i++)
+            if (bytes[offset + i] != 0)
+                return 0;
+        return bytes[offset + 2]; // 1 or 2. All other values are reserved.
+    }
+
     size_t AAPMidiProcessor::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
         if (length == 0)
             return 0;
+        // FIXME: We will use this hacky MIDI 2.0 Endpoint switcher implementation
+        //  until proper MIDI-CI implementation lands in Android MIDI API:
+        //  https://issuetracker.google.com/issues/227690391
+        auto protocol = detectEndpointConfigurationMessage(bytes, offset, length);
+        if (protocol != 0) {
+            receiver_midi_protocol = protocol;
+            // Do not process the rest, it should contain only the Stream Configuration message
+            //  (Not an official standard requirement, but the legacy Set New Protocol message was
+            //  defined that there must be some rational wait time until the next messages.)
+            return 0;
+        }
+
         if (receiver_midi_protocol != CMIDI2_PROTOCOL_TYPE_MIDI2) {
             // It receives MIDI1 bytestream. We translate to MIDI2 UMPs.
             cmidi2_midi_conversion_context context;
