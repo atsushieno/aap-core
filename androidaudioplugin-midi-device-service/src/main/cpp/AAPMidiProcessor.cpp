@@ -441,13 +441,14 @@ namespace aap::midi {
         // treat bytes as UMP native endian stream
         if (length < 16)
             return 0;
-        if (bytes[offset] != 0xF0 || bytes[offset + 1] != 5 || (bytes[offset + 3] & 0xC) != 0)
+        auto int1 = ((int32_t*) bytes)[0];
+        if ((int1 & 0xF0050000) != 0xF0050000)
             return 0;
         // all those reserved bytes must be 0 (which would effectively eliminate possible conflicts with MIDI1 bytes)
-        for (int i = 0; i < 12; i++)
+        for (int i = 4; i < 16; i++)
             if (bytes[offset + i] != 0)
                 return 0;
-        return bytes[offset + 2]; // 1 or 2. All other values are reserved.
+        return (int1 >> 8) & 0x3; // 1 or 2. All other values are reserved.
     }
 
     size_t AAPMidiProcessor::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
