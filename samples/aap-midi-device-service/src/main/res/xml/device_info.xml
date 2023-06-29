@@ -1,6 +1,0 @@
-<devices>
-    <device name="AAPMidiDemo" manufacturer="androidaudioplugin.org" product="AAPMidiDeviceServiceDemo">
-        <input-port name="input" />
-    </device>
-</devices>
-

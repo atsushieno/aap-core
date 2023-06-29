@@ -106,7 +106,7 @@ For more details, see [DEVELOPERS.md](./docs/DEVELPOPERS.md) and [HACKING.md](./
 
 Audio Plugins For Android is released under the MIT License.
 
-In aap-midi-device-service, there are some sources copied from [jalv](https://gitlab.com/drobilla/jalv) project included in aap-midi-device-service module, namely those files under `zix` directory, and they are distributed under the ISC license.
+In `androidaudioplugin-midi-device-service` module, there are some sources copied from [jalv](https://gitlab.com/drobilla/jalv) project, namely those files under `zix` directory, and they are distributed under the ISC license.
 
 aapinstrumentsample also imports [true-grue/ayumi](https://github.com/true-grue/ayumi) which is distributed under the MIT License.
 

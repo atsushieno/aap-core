@@ -4,7 +4,7 @@ AAP Instrument plugin can be used as a MIDI device service if it is set up to be
 
 It internally instantiates `AudioPluginMidiReceiver` as its MIDI output port `MidiReceiver` (Note: In Android MIDI Device Service API, "output" is implemented as `MidiReceiver`. Everything is flipped, just like `javax.sound.midi` API).
 
-It is usually packaged within the same instrument service app, but it can also be externally done outside the plugin application itself (the MidiDeviceService instantiates the plugin in the same manner regardless of whether it is in-app plugin or out of app plugin). An example is demonstrated as `aap-midi-device-service` application module.
+It is usually packaged within the same instrument service app, but it can also be externally done outside the plugin application itself (the MidiDeviceService instantiates the plugin in the same manner regardless of whether it is in-app plugin or out of app plugin).
 
 AAP Effect plugins do not work with this feature (there is no point of making them so). In theory it is possible to chain effect plugins after another instrument plugin, but that is out of scope so far (you can build your own MidiDeviceService as such).
 
@@ -94,6 +94,11 @@ Ideally it would consume some MIDI CI Protocol messages to switch those message 
 
 ### MIDI 1.0 or 2.0 between app and MidiDeviceService
 
-FIXME: this is not reliably up-to-date. I (@atsushieno) don't care much about this example app much for a while (as it's hardly useful).
+The MidiDeviceService can switch protocol between MIDI 1.0 bytestream and MIDI 2.0 UMPs (protocol *within* UMP is fixed to MIDI2 so far). To switch the protocol, you have to send UMP Stream Configuration Request (F0 05 xx yy ...) in platform native order. See [issue #161](https://github.com/atsushieno/aap-core/issues/161) for details.
 
-`aap-midi-device-service` app has a checkbox that says "Use MIDI 2.0 Protocol". Its scope is limited to determine whether it sends UMP messages or traditional MIDI 1.0 bytes, not to control whether the MidiDeviceService should use MIDI 2.0 Protocols or not for its internal interaction with AAP instrument. For the reason explained above, a MIDI client has no control over which MIDI protocol `AudioPluginMidiDeviceService` uses.
+Like MIDI-CI Set New Protocol message, our implementation expects that UMP Stream Configuration Request message sent without being attached to any other UMPs, so that the packets do not get mis-interpreted in the former protocol.
+
+As of writing this, there is no notification sent back to the "initiator" as (currently) MidiDeviceService is not designed to be bi-directional and thus there is no input port ("output port" in Android MIDI API wording).
+
+Note that this does not affect AAP MIDI processing which is *always* done in UMPs. It is only about users' MIDI client app to this MidiDeviceService.
+

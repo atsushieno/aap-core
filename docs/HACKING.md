@@ -10,13 +10,11 @@ Basically `./gradlew build` is the all-in-one command that handles everything. O
 
 This library provides AudioPluginService which is mandatory for every AAP (plugin), as well as some hosting functionality.
 
-### androidaudioplugin-midi-device-service and aap-midi-device-service
+### androidaudioplugin-midi-device-service
 
-AAP instrument plugins can be extended to work as a virtual MIDI device service (software MIDI device).
+AAP instrument plugins can be extended to work as a virtual MIDI device service (software MIDI device). It turns any instrument plugin into a virtual MidiDeviceService.
 
-`aap-midi-device-service` is an example application that turns any instrument plugins into MIDI device services (since it is simply possible).
-
-At this state the audio generation feature not in usable quality at all.
+There used to be `aap-midi-device-service` sample application ([#149](https://github.com/atsushieno/aap-core/issues/149)).
 
 ### androidaudioplugin-ui-compose
 
@@ -55,8 +53,6 @@ Experimental Web UI bits that may or may not be used in the future. To be docume
   - `aaphostsample` - sample host app - follows the same AGP-modules structure
   - `aapbarebonepluginsample` - sample plugin project, which can be used as a template. Audio processing part is no-op.
   - `aapinstrumentsample` - sample plugin project, which works as a reference implementation for instrument. It makes use of [true-grue/ayumi](https://github.com/true-grue/ayumi).
-  - ` aap-midi-device-service` - sample MidiDeviceService project that lists all instruments.
- 
 
 ## When Introducing Breaking Changes in the Core API.
 
