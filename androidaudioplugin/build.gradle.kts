@@ -46,6 +46,7 @@ android {
 
     buildFeatures {
         prefabPublishing = true
+        aidl = true
     }
     externalNativeBuild {
         cmake {

@@ -37,7 +37,7 @@ afterEvaluate {
                 from components.release
             }
 
-            all {
+            configureEach {
                 artifact(javadocJar)
                 artifact(sourceJar)
 
