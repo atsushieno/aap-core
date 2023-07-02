@@ -79,11 +79,11 @@ typedef struct aap_parameters_extension_t {
     RT_SAFE int32_t (*get_parameter_count) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin);
     // Returns the parameter information by parameter index (NOT by ID).
     // If the plugin does not provide the parameter list on aap_metadata, it is supposed to provide them here.
-    RT_SAFE aap_parameter_info_t (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
+    RT_UNSAFE aap_parameter_info_t (*get_parameter) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t index);
 
     // Returns the parameter property in a double (64-bit) value, by parameter ID and property ID.
     // It should return `0` if the requested property does not exist.
-    RT_SAFE double (*get_parameter_property) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t propertyId);
+    RT_UNSAFE double (*get_parameter_property) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t propertyId);
 
     // Returns the number of enumerated values for a parameter, by parameter ID.
     // It should return `0` if it is not an enumerated parameter.
