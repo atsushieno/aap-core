@@ -30,6 +30,7 @@ open class PluginListActivity : ComponentActivity() {
         setContent {
             PluginListApp(viewModel)
         }
+        /*
         if (!Settings.canDrawOverlays(this)) {
             val info = packageManager.getPackageInfo(this.packageName, PackageManager.GET_PERMISSIONS)
             if (info.requestedPermissions != null && info.requestedPermissions.contains(Manifest.permission.SYSTEM_ALERT_WINDOW)) {
@@ -38,6 +39,7 @@ open class PluginListActivity : ComponentActivity() {
                     .show()
             }
         }
+        */
     }
 
     init {

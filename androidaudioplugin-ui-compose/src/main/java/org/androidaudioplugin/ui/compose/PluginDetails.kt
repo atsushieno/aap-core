@@ -85,7 +85,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     var waveState by remember { mutableStateOf(waveViewSource) }
     var pluginErrorState by remember { viewModel.errorMessage }
 
-    var showAlertWindowUIState by remember { mutableStateOf(false) }
+    //var showAlertWindowUIState by remember { mutableStateOf(false) }
     var showWebUIState by remember { mutableStateOf(false) }
     var surfaceUICreatedState by remember { mutableStateOf(false) }
     var showSurfaceUIState by remember { mutableStateOf(false) }
@@ -197,6 +197,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                 }) { Text(if (showSurfaceUIState) "Hide Native UI" else "Show Native UI") }
             }
         }
+        /*
         Row {
             Button(onClick = {
                 showAlertWindowUIState = !showAlertWindowUIState
@@ -215,6 +216,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                     context.startActivityForResult(intent, 2)
             }) { Text("Grant or revoke native UI overlay permission") }
         }
+        */
 
         Text(text = (if (midiSettingsExpanded) "[-]" else "[+]") + " Parameter MIDI mapping policy", fontSize = 20.sp, modifier = Modifier
             .padding(vertical = 12.dp)
