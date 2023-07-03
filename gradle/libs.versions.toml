@@ -24,7 +24,7 @@ aap-testing = { module = "org.androidaudioplugin:androidaudioplugin-testing", ve
 
 aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.ref = "aap-lv2" }
 
-compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version = "0.1.2" }
+compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version = "0.1.3" }
 
 tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
