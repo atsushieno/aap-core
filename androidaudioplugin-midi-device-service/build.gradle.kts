@@ -54,7 +54,7 @@ android {
         }
     }
     // https://github.com/google/prefab/issues/127
-    packagingOptions {
+    packaging {
         jniLibs.excludes.add("**/libc++_shared.so")
         jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }

@@ -39,7 +39,7 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    packagingOptions {
+    packaging {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }

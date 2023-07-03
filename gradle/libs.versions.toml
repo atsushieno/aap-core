@@ -12,7 +12,7 @@ dokka = "1.8.10"
 compose = "1.4.3"
 kotlin-compose-compiler-extension = "1.4.3"
 androidx-test = "1.5.0"
-coroutines = "1.6.4"
+coroutines = "1.7.0"
 
 [libraries]
 
@@ -30,8 +30,8 @@ tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = 
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 
-compose-bom = { module = "androidx.compose:compose-bom", version = "2023.05.01" }
-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.5.3" }
+compose-bom = { module = "androidx.compose:compose-bom", version = "2023.06.01" }
+navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.6.0" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.10.1" }
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.6.1" }
@@ -45,8 +45,8 @@ material = { module = "com.google.android.material:material", version = "1.9.0" 
 
 lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version = "2.6.1" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.6.1" }
-activity-compose = { module = "androidx.activity:activity-compose", version = "1.7.1" }
-webkit = { module = "androidx.webkit:webkit", version = "1.6.1" }
+activity-compose = { module = "androidx.activity:activity-compose", version = "1.7.2" }
+webkit = { module = "androidx.webkit:webkit", version = "1.7.0" }
 
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose" }
@@ -60,8 +60,8 @@ test-runner = { module = "androidx.test:runner", version = "1.5.2" }
 test-ext-junit = { module = "androidx.test.ext:junit", version = "1.1.5" }
 test-espresso-core = { module = "androidx.test.espresso:espresso-core", version = "3.5.1" }
 
-ktmidi = { module = "dev.atsushieno:ktmidi", version = "0.4.1" }
-mugene = { module = "dev.atsushieno:mugene", version = "0.3.0" }
+ktmidi = { module = "dev.atsushieno:ktmidi", version = "0.5.0" }
+mugene = { module = "dev.atsushieno:mugene", version = "0.4.0" }
 
 oboe = { module = "com.google.oboe:oboe", version = "1.7.0" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version = "2.6.1" }
