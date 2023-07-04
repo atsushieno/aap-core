@@ -11,9 +11,9 @@ extern "C" {
 #define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v2.1"
 #define AAP_PARAMETERS_XMLNS_URI "urn://androidaudioplugin.org/extensions/parameters"
 
-#define AAP_MAX_PARAMETER_NAME_CHARS 256
-#define AAP_MAX_PARAMETER_PATH_CHARS 256
-#define AAP_MAX_PARAMETER_ENUM_NAME 80
+#define AAP_MAX_PARAMETER_NAME_CHARS 64
+#define AAP_MAX_PARAMETER_PATH_CHARS 80
+#define AAP_MAX_PARAMETER_ENUM_NAME 64
 
 #define AAP_PARAMETER_QUANTIZED_TYPE_BOOLEAN 2
 #define AAP_PARAMETER_QUANTIZED_TYPE_INTEGER 3
