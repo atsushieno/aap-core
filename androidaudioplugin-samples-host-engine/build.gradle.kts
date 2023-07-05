@@ -30,7 +30,6 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.ktmidi)
-    implementation(libs.mugene)
 
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)

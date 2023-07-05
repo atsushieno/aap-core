@@ -61,7 +61,6 @@ test-ext-junit = { module = "androidx.test.ext:junit", version = "1.1.5" }
 test-espresso-core = { module = "androidx.test.espresso:espresso-core", version = "3.5.1" }
 
 ktmidi = { module = "dev.atsushieno:ktmidi", version = "0.5.0" }
-mugene = { module = "dev.atsushieno:mugene", version = "0.4.0" }
 
 oboe = { module = "com.google.oboe:oboe", version = "1.7.0" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version = "2.6.1" }
