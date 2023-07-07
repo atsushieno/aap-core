@@ -82,7 +82,7 @@ We basically recommend (2) or (3) as our API is not quite stabilized yet. So if 
 
 You can open this directory in Android Studio (Dolphin 2021.3.1 is required) as the top-level project directory and build it. Or run `./gradlew` there from your terminal.
 
-For more details, see [DEVELOPERS.md](./docs/DEVELPOPERS.md) and [HACKING.md](./docs/HACKING.md).
+For more details, see [DEVELOPERS.md](./docs/DEVELOPERS.md) and [HACKING.md](./docs/HACKING.md).
 
 
 ## Further documentation
