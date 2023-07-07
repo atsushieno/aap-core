@@ -29,6 +29,10 @@ jobs:
         WORKSPACE: ${{ github.workspace }}
         GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
         SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
+    - name: rewrite build.gradle.kts to require signing
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        sed -i "s/signing {}/signing { sign(publishing.publications) }/" publish-pom.gradle
     - name: cache AVD
       uses: actions/cache@v3
       env:
