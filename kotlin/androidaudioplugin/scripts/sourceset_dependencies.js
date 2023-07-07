@@ -1,1 +1,0 @@
-sourceset_dependencies='{":androidaudioplugin:dokkaHtml/androidTestRelease":[],":androidaudioplugin:dokkaHtml/debug":[],":androidaudioplugin:dokkaHtml/main":[],":androidaudioplugin:dokkaHtml/release":[]}'
