@@ -1,7 +1,10 @@
 package org.androidaudioplugin.ui.compose
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
@@ -11,6 +14,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavType
@@ -20,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 @Composable
 fun PluginListApp(viewModel: PluginListViewModel) {
@@ -47,7 +52,6 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
                 Scaffold(
                     topBar = { TopAppBar(title = { Text(text = viewModel.topAppBarText.value) }) },
                     content = {
-                        viewModel.atTopLevel.value = true // it feels ugly. There should be some better way...
                         Column {
                             if (errorMessage != "")
                                 Text(errorMessage, modifier = Modifier.padding(14.dp))
@@ -77,12 +81,28 @@ fun PluginListAppContent(viewModel: PluginListViewModel) {
 
             composable("plugin_details/{pluginId}",
                 arguments = listOf(navArgument("pluginId") { type = NavType.StringType })) {
-                viewModel.atTopLevel.value = false // it feels ugly. There should be some better way...
                 if (preview.pluginInfo != null)
                     Scaffold(
                         topBar = { TopAppBar(title = { Text(text = preview.pluginInfo!!.displayName) }) },
                         content = { PluginDetails(preview.pluginInfo!!, viewModel) })
             }
+        }
+
+        // BackHandler support
+        var lastBackPressed by remember { mutableStateOf(System.currentTimeMillis()) }
+        val activity = LocalContext.current as Activity?
+        BackHandler {
+            if (activity != null && navController.currentBackStackEntry?.destination?.route == "plugin_list") {
+                if (System.currentTimeMillis() - lastBackPressed < 2000) {
+                    activity.finish()
+                    exitProcess(0)
+                }
+                else
+                    Toast.makeText(activity, "Tap once more to quit", Toast.LENGTH_SHORT).show()
+                lastBackPressed = System.currentTimeMillis()
+            }
+            else
+                navController.popBackStack()
         }
     }
 }

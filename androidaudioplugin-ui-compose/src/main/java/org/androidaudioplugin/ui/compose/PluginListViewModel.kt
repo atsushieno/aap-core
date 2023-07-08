@@ -14,8 +14,6 @@ class PluginListViewModel(model: PluginListModel) {
     val preview = mutableStateOf(model.preview)
     var errorMessage = mutableStateOf(model.errorMessage)
 
-    var atTopLevel = mutableStateOf(true)
-
     fun getPluginInfo(pluginId: String) = availablePluginServices.flatMap { s -> s.plugins }
         .firstOrNull { p -> p.pluginId == pluginId }
 
