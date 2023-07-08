@@ -21,7 +21,7 @@ jobs:
       with:
         java-version: 17
         distribution: temurin
-    # Only for release tags
+    # ONLY FOR NEW RELEASE TAGS
     - name: setup gpg necessities
       if: startsWith(github.ref, 'refs/tags/')
       run: sudo bash -c "echo '$GPG_KEY_CONTENTS' | base64 -d > $WORKSPACE/'$SIGNING_SECRET_KEY_RING_FILE'"
@@ -29,7 +29,8 @@ jobs:
         WORKSPACE: ${{ github.workspace }}
         GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
         SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
-    - name: rewrite build.gradle.kts to require signing
+    # ONLY FOR NEW RELEASE TAGS
+    - name: rewrite publish-pom.gradle to require signing
       if: startsWith(github.ref, 'refs/tags/')
       run: |
         sed -i "s/signing {}/signing { sign(publishing.publications) }/" publish-pom.gradle
@@ -50,14 +51,15 @@ jobs:
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
-    - name: build (ONLY FOR NON-RELEASES)
+    # ONLY FOR NON-RELEASES
+    - name: build
       if: ${{ !startsWith(github.ref, 'refs/tags/') }}
       run: ./gradlew build dokkaHtml publishToMavenLocal
-    - name: publish (ONLY FOR NEW RELEASE TAGS)
+    # ONLY FOR NEW RELEASE TAGS
+    - name: publish
       if: startsWith(github.ref, 'refs/tags/')
       run: ./gradlew --warning-mode all publish dokkaHtml
       env:
-        GITHUB_TOKEN: ${{ secrets.MAVEN_PAT }}
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
