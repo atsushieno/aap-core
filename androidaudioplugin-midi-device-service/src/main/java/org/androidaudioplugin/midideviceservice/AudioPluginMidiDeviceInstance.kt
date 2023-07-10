@@ -22,7 +22,7 @@ class AudioPluginMidiDeviceInstance private constructor(
 
             // FIXME: adjust audioOutChannelCount and appFrameSize somewhere?
 
-            ret.initializeMidiProcessor(client.serviceConnector.serviceConnectionId,
+            ret.initializeMidiProcessor(client.serviceConnectionId,
                 sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize, ret.midiBufferSize)
 
             val pluginInfo = ownerService.plugins.first { p -> p.pluginId == pluginId }

@@ -100,7 +100,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
                 instance.deactivate()
             instance.destroy()
 
-            host.serviceConnector.unbindAudioPluginService(instance.pluginInfo.packageName)
+            host.disconnectPluginService(instance.pluginInfo.packageName)
             pluginInfo = null
             this.instance = null
         }

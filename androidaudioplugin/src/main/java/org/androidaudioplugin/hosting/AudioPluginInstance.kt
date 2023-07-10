@@ -21,8 +21,7 @@ class AudioPluginInstance internal constructor(
                    onDestroy: (instance: AudioPluginInstance) -> Unit,
                    pluginInfo: PluginInformation,
                    sampleRate: Int) : AudioPluginInstance {
-            if (!serviceConnector.connectedServices.contains(conn))
-                serviceConnector.connectedServices.add(conn)
+            assert(serviceConnector.connectedServices.contains(conn))
             val native = client.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
             return AudioPluginInstance(native, onDestroy, pluginInfo)
         }

@@ -7,13 +7,18 @@ import org.androidaudioplugin.PluginInformation
 
 open class AudioPluginClientBase(private val applicationContext: Context) {
     // Service connection
-    val serviceConnector = AudioPluginServiceConnector(applicationContext)
+    private val serviceConnector = AudioPluginServiceConnector(applicationContext)
+
+    val serviceConnectionId = serviceConnector.serviceConnectionId
 
     private var native : NativePluginClient? = null
 
     val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
 
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
+
+    val onConnectedListeners = serviceConnector.onConnectedListeners
+    val onDisconnectingListeners = serviceConnector.onDisconnectingListeners
 
     fun dispose() {
         instantiatedPlugins.forEach { it.destroy() }

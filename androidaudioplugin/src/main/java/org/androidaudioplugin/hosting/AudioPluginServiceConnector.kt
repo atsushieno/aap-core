@@ -53,6 +53,9 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
     val connectedServices = mutableListOf<PluginServiceConnection>()
 
+    val onConnectedListeners = mutableListOf<(PluginServiceConnection) -> Unit>()
+    val onDisconnectingListeners = mutableListOf<(PluginServiceConnection) -> Unit>()
+
     private var isClosed = false
 
     suspend fun bindAudioPluginService(service: PluginServiceInformation) = suspendCoroutine { continuation ->
@@ -89,6 +92,9 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
         connectedServices.add(conn)
 
         nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
+
+        onConnectedListeners.forEach { it(conn) }
+
         return conn
     }
 
@@ -99,6 +105,9 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
     fun unbindAudioPluginService(packageName: String) {
         val conn = findExistingServiceConnection(packageName) ?: return
+
+        onDisconnectingListeners.forEach { it(conn) }
+
         connectedServices.remove(conn)
         AudioPluginNatives.removeBinderForClient(
             serviceConnectionId,
