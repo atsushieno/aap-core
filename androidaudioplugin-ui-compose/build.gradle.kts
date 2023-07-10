@@ -36,6 +36,8 @@ dependencies {
     implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
 
+    implementation (libs.accompanist.drawablepainter)
+
     implementation (libs.compose.ui)
     implementation (libs.compose.material)
     implementation (libs.compose.ui.tooling)
