@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.NativeLocalPluginInstance
+import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.composeaudiocontrols.DefaultKnobTooltip
@@ -92,17 +93,15 @@ internal class PluginViewScopeImpl(
     override val parameterCount: Int
         get() = instance.getParameterCount()
 
-    override fun getParameter(index: Int): PluginViewScopeParameter = PluginViewScopeParameterImpl(this, index, parameters[index])
+    override fun getParameter(index: Int): PluginViewScopeParameter = PluginViewScopeParameterImpl(instance.getParameter(index), parameters[index])
 
     override val portCount: Int
         get() = instance.getPortCount()
 
-    override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(this, index)
+    override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
 }
 
-internal class PluginViewScopeParameterImpl(private val plugin: PluginViewScopeImpl, index: Int, private val parameterValue: Double) : PluginViewScopeParameter {
-    private val info = plugin.instance.getParameter(index)
-
+internal class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
     override val id: Int
         get() = info.id
     override val name: String
@@ -126,9 +125,7 @@ data class PluginViewScopeEnumerationImpl(
     override val name: String)
     : PluginViewScopeEnumeration
 
-internal class PluginViewScopePortImpl(private val plugin: PluginViewScopeImpl, index: Int) : PluginViewScopePort {
-    private val info = plugin.instance.getPort(index)
-
+internal class PluginViewScopePortImpl(private val info: PortInformation) : PluginViewScopePort {
     override val name: String
         get() = info.name
     override val direction: Int
