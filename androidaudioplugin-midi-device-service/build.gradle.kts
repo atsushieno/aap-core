@@ -24,9 +24,7 @@ android {
 
     buildTypes {
         debug {
-            packagingOptions {
-                jniLibs.keepDebugSymbols.add ("**/*.so")
-            }
+            packaging.jniLibs.keepDebugSymbols.add ("**/*.so")
             externalNativeBuild {
                 cmake {
                     // we cannot error out cmidi2.h as we don't compile cmidi2_test.h
@@ -40,6 +38,7 @@ android {
         }
     }
     buildFeatures {
+        prefab = true
         prefabPublishing = true
     }
     externalNativeBuild {
@@ -77,6 +76,8 @@ dependencies {
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
 // This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
 gradle.projectsEvaluated {
-    tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabDebugPackage"])
-    tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
+    tasks.findByPath(":androidaudioplugin-midi-device-service:buildCMakeDebug")!!.dependsOn(":androidaudioplugin:prefabDebugPackage")
+    tasks.findByPath(":androidaudioplugin-midi-device-service:buildCMakeRelWithDebInfo")!!.dependsOn(":androidaudioplugin:prefabReleasePackage")
+    //tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabDebugPackage"])
+    //tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
 }

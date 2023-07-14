@@ -2,6 +2,7 @@
 #define AAP_CORE_STANDARD_EXTENSIONS_H
 
 #include "extension-service.h"
+#include "aap/ext/parameters.h"
 #include "aap/ext/midi.h"
 #include "aap/ext/state.h"
 #include "aap/ext/presets.h"

@@ -29,6 +29,7 @@ apply { from ("../publish-pom.gradle") }
 
 dependencies {
     implementation (project(":androidaudioplugin"))
+    implementation (project(":androidaudioplugin-manager"))
     implementation (project(":androidaudioplugin-samples-host-engine"))
     implementation (project(":androidaudioplugin-ui-web"))
     implementation (libs.compose.audio.controls)

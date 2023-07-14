@@ -26,6 +26,9 @@
 
 namespace aap {
 
+    class PluginInstance;
+    class LocalPluginInstance;
+
     class AudioPluginServiceCallback {
     public:
         virtual ~AudioPluginServiceCallback() {}
