@@ -176,7 +176,7 @@ fun PluginViewScope.PluginView(
     )
 
     // parameter list
-    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(180.dp)) {
+    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {
         items(parameterCount) { index ->
             val para = getParameter(index)
             Row {

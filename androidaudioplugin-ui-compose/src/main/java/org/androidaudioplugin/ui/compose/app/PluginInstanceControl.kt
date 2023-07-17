@@ -6,17 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
-import org.androidaudioplugin.AudioPluginServiceHelper
-import org.androidaudioplugin.NativeLocalPluginInstance
-import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.ui.compose.PluginView
 import org.androidaudioplugin.ui.compose.PluginViewScope
-import org.androidaudioplugin.ui.compose.PluginViewScopeEnumeration
-import org.androidaudioplugin.ui.compose.PluginViewScopeImpl
 import org.androidaudioplugin.ui.compose.PluginViewScopeParameter
 import org.androidaudioplugin.ui.compose.PluginViewScopeParameterImpl
 import org.androidaudioplugin.ui.compose.PluginViewScopePort

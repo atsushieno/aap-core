@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.Text
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -55,17 +55,17 @@ fun PluginList(context: PluginManagerContext,
                 DropdownMenuItem(onClick = {
                     selectedPackage = ""
                     expanded = !expanded
-                }) {
+                }, text = {
                     Text(deselectedLabel)
-                }
+                })
                 pluginServices.forEach {
                     DropdownMenuItem(onClick = {
                         if (expanded)
                             selectedPackage = it.packageName
                         expanded = !expanded
-                    }) {
+                    }, text = {
                         Text(it.label)
-                    }
+                    })
                 }
             }
         }

@@ -6,11 +6,13 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +35,7 @@ import kotlin.system.exitProcess
 @Preview
 @Composable
 fun GenericPluginHostPreview() {
-    MaterialTheme {
+    PluginManagerTheme {
         Surface {
             SystemPluginManagerMain()
         }
@@ -65,6 +67,7 @@ fun LocalPluginManagerMain() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenericPluginManagerMain(context: PluginManagerContext, listTitleBarText: String) {
     var lastBackPressed by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -91,7 +94,10 @@ fun GenericPluginManagerMain(context: PluginManagerContext, listTitleBarText: St
             Scaffold(
                 topBar = { TopAppBar(title = { Text(text = "Plugins") }) },
                 content = {
-                    Column(Modifier.padding(it)) {
+                    Column(
+                        Modifier
+                            .padding(it)
+                            .verticalScroll(rememberScrollState())) {
                         val pluginId = Uri.decode(entry.arguments!!.getString("pluginId"))
                         val pluginInfo = context.pluginServices.flatMap { it.plugins }.first { it.pluginId == pluginId }
                         PluginDetails(context, pluginInfo)

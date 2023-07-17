@@ -70,7 +70,6 @@ dependencies {
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
-    implementation (libs.material)
 
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.rules)

@@ -23,6 +23,23 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.kotlin.compose.compiler.extension.get()
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+    defaultConfig {
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
 
 apply { from ("../publish-pom.gradle") }
@@ -44,8 +61,16 @@ dependencies {
     implementation (libs.compose.ui.tooling)
 
     implementation (libs.navigation.compose)
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.activity.compose)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.ui.graphics)
+    implementation(libs.ui.tooling.preview)
 
     androidTestImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit)
+    debugImplementation(libs.ui.test.manifest)
 }
