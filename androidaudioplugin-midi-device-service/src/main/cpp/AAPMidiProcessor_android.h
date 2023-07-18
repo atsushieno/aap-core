@@ -28,7 +28,7 @@ class AAPMidiProcessorAndroidStubPAL : public AAPMidiProcessorAndroidPAL {
     void runStreamingLoop() {
         while (alive) {
             sleep(1);
-            owner->onAudioReady(audioData, 1024);
+            owner->processAudioIO(audioData, 1024);
         }
     }
 

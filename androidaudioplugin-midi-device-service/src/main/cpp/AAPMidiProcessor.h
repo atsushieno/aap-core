@@ -139,7 +139,7 @@ namespace aap::midi {
 
         void terminate();
 
-        int32_t onAudioReady(void *audioData, int32_t numFrames);
+        int32_t processAudioIO(void *audioData, int32_t numFrames);
 
         inline int32_t getAAPFrameSize() { return aap_frame_size; }
     };
