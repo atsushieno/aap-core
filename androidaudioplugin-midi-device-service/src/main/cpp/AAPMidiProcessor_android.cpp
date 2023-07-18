@@ -4,7 +4,7 @@
 namespace aap::midi {
 oboe::DataCallbackResult AAPMidiProcessorOboePAL::onAudioReady(
         oboe::AudioStream *audioStream, void *audioData, int32_t oboeNumFrames) {
-    return (oboe::DataCallbackResult) owner->onAudioReady(audioData, oboeNumFrames);
+    return (oboe::DataCallbackResult) owner->processAudioIO(audioData, oboeNumFrames);
 }
 
 int32_t AAPMidiProcessorOboePAL::setupStream() {

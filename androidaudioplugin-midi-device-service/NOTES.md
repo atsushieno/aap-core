@@ -19,9 +19,9 @@ MIDI message dispatching, at native side:
   - it internally translates it to UMP (`translateMidiBufferIfNeeded()`), then
   - resolves MIDI mapping to replace some messages (such as CCs) to parameter change sysex (`runThroughMidi2UmpForMidiMapping()`).
 - the resulting UMP packets are stored in a temporary queue (buffer) that will be then copied to the actual MIDI port buffer when the plugin's `process()` is being kicked from within the Oboe audio callback.
-- The Oboe callback is actually `oboe::StabilizedCallback` which forwards to platform-agnostic `AAPMidiProcessor::onAudioReady`. We also have "stub" implementation which sometimes helps debugging without depending on realtime audio.
-- The audio callback (`onAudioReady()`) invokes the plugin instance's `process()` function and get audio outputs in non-interleaved form.
+- The Oboe callback is actually `oboe::StabilizedCallback` which forwards to platform-agnostic `AAPMidiProcessor::processAudioIO`. We also have "stub" implementation which sometimes helps debugging without depending on realtime audio.
+- The audio callback (oboe `onAudioReady()` -> `AAPMidiProcessor::processAudioIO`) invokes the plugin instance's `process()` function and get audio outputs in non-interleaved form.
 - Oboe audio callback needs to receive audio data as interleaved format, so interleave the `process()` output.
-- Currently we put the audio processing results onto a `zix_ring_buffer` and let `onAudioReady()` consume it. (It should be unnecessarily though, but my attempt to remove it failed hard to trigger audio glitches. It is mostly harmless so I leave it so far.)
+- Currently we put the audio processing results onto a `zix_ring_buffer` and let `processAudioIO()` consume it. (It should be unnecessarily though, but my attempt to remove it failed hard to trigger audio glitches. It is mostly harmless so I leave it so far.)
 
 

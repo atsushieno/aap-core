@@ -10,7 +10,7 @@ namespace aap::midi {
     long last_delay_value = 0, worst_delay_value = 0;
     long success_count = 0, failure_count = 0;
 
-    int32_t AAPMidiProcessor::onAudioReady(void *audioData, int32_t numFrames) {
+    int32_t AAPMidiProcessor::processAudioIO(void *audioData, int32_t numFrames) {
         if (state != AAP_MIDI_PROCESSOR_STATE_ACTIVE)
             // it is not supposed to process audio at this state.
             // It is still possible that it gets called between Oboe requestStart()
@@ -307,7 +307,7 @@ namespace aap::midi {
 
     int32_t failed_audio_output_count{0};
 
-    // Called by Oboe audio callback (`onAudioReady()`) implementation. It is called after AAP processing, and
+    // Called by Oboe audio callback (`processAudioIO()`) implementation. It is called after AAP processing, and
     //  fill the audio outputs into an intermediate buffer, interleaving the results,
     //  then copied into the ring buffer.
     void AAPMidiProcessor::fillAudioOutput() {
