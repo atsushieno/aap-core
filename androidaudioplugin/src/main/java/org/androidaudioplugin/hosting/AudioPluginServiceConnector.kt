@@ -83,12 +83,15 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
         val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder)
+        // A Java IBinder object created by Service framework is converted to NdkBinder object here.
+        // It must happen somewhere within `ServiceConnection.onServiceConnected()`.
         AudioPluginNatives.addBinderForClient(
             serviceConnectionId,
             conn.serviceInfo.packageName,
             conn.serviceInfo.className,
-            conn.binder!!
+            conn.binder
         )
+
         connectedServices.add(conn)
 
         nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)

@@ -516,7 +516,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             surfaceControl.apply {
                 GlobalScope.launch {
-                    connectUI(instance!!, width, height)
+                    connectUI(instance!!.pluginInfo.packageName, instance!!.pluginInfo.pluginId!!, instance!!.instanceId, width, height)
                 }
             }
         }

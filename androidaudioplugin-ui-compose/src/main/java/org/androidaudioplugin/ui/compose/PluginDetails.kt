@@ -452,7 +452,7 @@ fun PluginWebUI(instance: AudioPluginInstance) {
         AndroidView(
             modifier = Modifier
                 .border(1.dp, Color.Black),
-            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, instance) }
+            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, instance.pluginInfo.pluginId!!, instance.pluginInfo.packageName, instance.native) }
         )
     }
 }

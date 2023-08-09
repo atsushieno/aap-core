@@ -83,11 +83,6 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     @WorkerThread
     @RequiresApi(Build.VERSION_CODES.R)
-    suspend fun connectUI(instance: AudioPluginInstance, width: Int, height: Int) {
-        connectUI(instance.pluginInfo.packageName, instance.pluginInfo.pluginId!!, instance.instanceId, width, height)
-    }
-    @WorkerThread
-    @RequiresApi(Build.VERSION_CODES.R)
     suspend fun connectUI(pluginPackageName: String, pluginId: String, instanceId: Int, width: Int, height: Int) {
         surface.apply {
             var handler: (() -> Boolean)? = null

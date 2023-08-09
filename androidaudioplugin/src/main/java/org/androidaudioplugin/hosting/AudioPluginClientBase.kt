@@ -7,23 +7,22 @@ import org.androidaudioplugin.PluginInformation
 
 open class AudioPluginClientBase(private val applicationContext: Context) {
     // Service connection
-    private val serviceConnector = AudioPluginServiceConnector(applicationContext)
+    private val serviceConnector by lazy { AudioPluginServiceConnector(applicationContext) }
+    private val native by lazy { NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId) }
 
-    val serviceConnectionId = serviceConnector.serviceConnectionId
+    val serviceConnectionId by lazy { serviceConnector.serviceConnectionId }
 
-    private var native : NativePluginClient? = null
-
-    val instantiatedPlugins = mutableListOf<AudioPluginInstance>()
+    val instantiatedPlugins by lazy { mutableListOf<AudioPluginInstance>() }
 
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
 
-    val onConnectedListeners = serviceConnector.onConnectedListeners
-    val onDisconnectingListeners = serviceConnector.onDisconnectingListeners
+    val onConnectedListeners by lazy { serviceConnector.onConnectedListeners }
+    val onDisconnectingListeners by lazy { serviceConnector.onDisconnectingListeners }
 
     fun dispose() {
         instantiatedPlugins.forEach { it.destroy() }
         serviceConnector.connectedServices.forEach { disconnectPluginService(it.serviceInfo.packageName) }
-        native?.dispose()
+        native.dispose()
     }
 
     suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
@@ -45,9 +44,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        if (native == null)
-            native = NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId)
-        val instance = AudioPluginInstance.create(serviceConnector, conn!!, native!!,
+        val instance = AudioPluginInstance.create(native,
             {i ->
                 instantiatedPlugins.remove(i)
                 onInstanceDestroyed(i)
