@@ -10,16 +10,16 @@ import android.media.midi.MidiManager
 import android.os.Build
 import android.util.Log
 import android.view.View
-import androidx.annotation.RequiresApi
 import dev.atsushieno.ktmidi.*
 import kotlinx.coroutines.*
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
-import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
+import org.androidaudioplugin.hosting.InstanceState
+import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -41,7 +41,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
 
     private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
     var instanceId: Int = -1
-    var instance: AudioPluginInstance? = null
+    var instance: NativeRemotePluginInstance? = null
     var guiInstanceId: Int? = null
     var pluginInfo: PluginInformation? = null
     private var lastError: Exception? = null
@@ -53,7 +53,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
             AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, pluginInfo!!.pluginId!!, v)
         }
     val isPluginInCurrentApplication
-        get() = instance != null && pluginInfo!!.packageName == context.packageName
+        get() = pluginInfo!!.packageName == context.packageName
     val inBuf : ByteArray
     val outBuf : ByteArray
     var selectedPresetIndex = -1
@@ -76,7 +76,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         host.dispose()
     }
 
-    suspend fun loadPlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
+    suspend fun loadPlugin(pluginInfo: PluginInformation) {
         if (instance != null)
             // FIXME: use some dedicated type
             throw Exception("A plugin ${pluginInfo.pluginId} is already loaded")
@@ -86,19 +86,18 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         host.connectToPluginService(pluginInfo.packageName)
         assert(this.instance == null) // avoid race condition
 
-        val instance = host.instantiatePlugin(pluginInfo)
+        val instance = host.instantiateNativePlugin(pluginInfo)
         instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
         if (instance.proxyError != null)
             throw instance.proxyError!!
         this.instanceId = instance.instanceId
         this.instance = instance
-        return instance
     }
 
     fun unloadPlugin() {
         val instance = this.instance
         if (instance != null) {
-            if (instance.state == AudioPluginInstance.InstanceState.ACTIVE)
+            if (instance.state == InstanceState.ACTIVE)
                 instance.deactivate()
             instance.destroy()
 
@@ -298,7 +297,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
                 instance.setPortBuffer(midi2In, localBuffer, midi2Bytes.size)
             }
 
-            instance.process(audioBufferFrameSize)
+            instance.process(audioBufferFrameSize, 0)
 
             if (midi2In >= 0)
                 midi2Bytes.clear()

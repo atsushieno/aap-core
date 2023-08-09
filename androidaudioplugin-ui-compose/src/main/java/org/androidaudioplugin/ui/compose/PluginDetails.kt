@@ -1,11 +1,7 @@
 package org.androidaudioplugin.ui.compose
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -48,7 +43,6 @@ import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
-import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
@@ -337,7 +331,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     }
     val instance = previewState.instance
     if (showWebUIState && instance != null)
-        PluginWebUI(instance.pluginInfo.packageName, instance.pluginInfo.pluginId!!, instance.native)
+        PluginWebUI(previewState.pluginInfo!!.packageName, previewState.pluginInfo!!.pluginId!!, instance)
     if (showSurfaceUIState && instance != null)
         PluginSurfaceControlUI(previewState)
 }

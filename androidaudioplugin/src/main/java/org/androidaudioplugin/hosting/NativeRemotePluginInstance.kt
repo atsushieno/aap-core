@@ -1,50 +1,130 @@
 package org.androidaudioplugin.hosting
 
+import android.os.RemoteException
+import android.util.Log
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 
 
+enum class InstanceState {
+    UNPREPARED,
+    INACTIVE,
+    ACTIVE,
+    DESTROYED,
+    ERROR
+}
+
 /* maps to aap::RemotePluginInstance */
 class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstance*
                                  private val client: Long) {
 
-    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = prepare(client, instanceId, frameCount, defaultControlBytesPerBlock)
-    fun activate() = activate(client, instanceId)
-    fun process(frameCount: Int, timeoutInNanoseconds: Long) = process(client, instanceId, frameCount, timeoutInNanoseconds)
-    fun deactivate() = deactivate(client, instanceId)
-    fun destroy() {
+    // error handling
+    var state = InstanceState.UNPREPARED
+    var proxyError: Exception? = null
+
+    private fun runCatchingRemoteException(func: () -> Unit) {
+        runCatchingRemoteException(Unit) {
+            func()
+        }
+    }
+    private fun <T> runCatchingRemoteException(default: T, func: () -> T) : T {
+        if (state == InstanceState.ERROR)
+            return default
+        return try {
+            func()
+        } catch (ex: RemoteException) {
+            state = InstanceState.ERROR
+            proxyError = ex
+            Log.e("AAP", "AudioPluginInstance received RemoteException: ${ex.message ?: ""}\n{${ex.stackTraceToString()}")
+            default
+        }
+    }
+
+    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = runCatchingRemoteException {
+        prepare(client, instanceId, frameCount, defaultControlBytesPerBlock)
+        state = InstanceState.INACTIVE
+    }
+    fun activate() = runCatchingRemoteException {
+        activate(client, instanceId)
+        state = InstanceState.ACTIVE
+    }
+    fun process(frameCount: Int, timeoutInNanoseconds: Long) = runCatchingRemoteException {
+        process(client, instanceId, frameCount, timeoutInNanoseconds)
+    }
+    fun deactivate() = runCatchingRemoteException {
+        deactivate(client, instanceId)
+        state = InstanceState.INACTIVE
+    }
+    fun destroy() = runCatchingRemoteException {
         destroy(client, instanceId)
+        state = InstanceState.DESTROYED
     }
 
     // standard extensions
     // state
-    fun getStateSize() : Int = getStateSize(client, instanceId)
-    fun getState(data: ByteArray) = getState(client, instanceId, data)
-    fun setState(data: ByteArray) = setState(client, instanceId, data)
+    fun getStateSize() = runCatchingRemoteException(0) {
+        getStateSize(client, instanceId)
+    }
+    fun getState(data: ByteArray) = runCatchingRemoteException {
+        getState(client, instanceId, data)
+    }
+    fun setState(data: ByteArray) = runCatchingRemoteException {
+        setState(client, instanceId, data)
+    }
     // presets
-    fun getPresetCount() = getPresetCount(client, instanceId)
-    fun getCurrentPresetIndex() = getCurrentPresetIndex(client, instanceId)
-    fun setCurrentPresetIndex(index: Int) = setCurrentPresetIndex(client, instanceId, index)
-    fun getPresetName(index: Int) = getPresetName(client, instanceId, index)
+    fun getPresetCount() = runCatchingRemoteException(0) {
+        getPresetCount(client, instanceId)
+    }
+    fun getCurrentPresetIndex() = runCatchingRemoteException(0) {
+        getCurrentPresetIndex(client, instanceId)
+    }
+    fun setCurrentPresetIndex(index: Int) = runCatchingRemoteException {
+        setCurrentPresetIndex(client, instanceId, index)
+    }
+    fun getPresetName(index: Int) = runCatchingRemoteException("") {
+        getPresetName(client, instanceId, index)
+    }
     // midi
-    fun getMidiMappingPolicy(): Int = getMidiMappingPolicy(client, instanceId)
+    fun getMidiMappingPolicy(): Int = runCatchingRemoteException(0) {
+        getMidiMappingPolicy(client, instanceId)
+    }
     // gui
-    fun createGui() = createGui(client, instanceId)
-    fun showGui(guiInstanceId: Int) = showGui(client, instanceId, guiInstanceId)
-    fun hideGui(guiInstanceId: Int) = hideGui(client, instanceId, guiInstanceId)
-    fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = resizeGui(client, instanceId, guiInstanceId, width, height)
-    fun destroyGui(guiInstanceId: Int) = destroyGui(client, instanceId, guiInstanceId)
+    fun createGui() = runCatchingRemoteException(0) {
+        createGui(client, instanceId)
+    }
+    fun showGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
+        showGui(client, instanceId, guiInstanceId)
+    }
+    fun hideGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
+        hideGui(client, instanceId, guiInstanceId)
+    }
+    fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = runCatchingRemoteException(0) {
+        resizeGui(client, instanceId, guiInstanceId, width, height)
+    }
+    fun destroyGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
+        destroyGui(client, instanceId, guiInstanceId)
+    }
 
-    fun addEventUmpInput(data: ByteBuffer, length: Int) = addEventUmpInput(client, instanceId, data, length)
+    fun addEventUmpInput(data: ByteBuffer, length: Int) = runCatchingRemoteException {
+        addEventUmpInput(client, instanceId, data, length)
+    }
 
     // plugin instance (dynamic) information retrieval
-    fun getParameterCount() = getParameterCount(client, instanceId)
+    fun getParameterCount() = runCatchingRemoteException(0) {
+        getParameterCount(client, instanceId)
+    }
     fun getParameter(index: Int) = getParameter(client, instanceId, index)
-    fun getPortCount() = getPortCount(client, instanceId)
+    fun getPortCount() = runCatchingRemoteException(0) {
+        getPortCount(client, instanceId)
+    }
     fun getPort(index: Int) = getPort(client, instanceId, index)
-    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = getPortBuffer(client, instanceId, portIndex, buffer, size)
-    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = setPortBuffer(client, instanceId, portIndex, buffer, size)
+    fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
+        getPortBuffer(client, instanceId, portIndex, buffer, size)
+    }
+    fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
+        setPortBuffer(client, instanceId, portIndex, buffer, size)
+    }
 
     companion object {
         fun create(pluginId: String, sampleRate: Int, nativeClient: Long) =

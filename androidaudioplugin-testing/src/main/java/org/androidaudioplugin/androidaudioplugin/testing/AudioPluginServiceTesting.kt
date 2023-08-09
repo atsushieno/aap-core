@@ -4,11 +4,9 @@ import android.content.Context
 import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.AudioPluginServiceHelper
-import org.androidaudioplugin.hosting.AudioPluginClientBase
-import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
-import org.androidaudioplugin.hosting.AudioPluginInstance
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 
 class AudioPluginServiceTesting(private val applicationContext: Context) {
 
@@ -49,16 +47,14 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
 
         for (i in 0 until cycles) {
             val p = numParallelInstances
-            val instances = ((0 until p).map { host.instantiatePlugin(pluginInfo) })
+            val instances = ((0 until p).map { host.instantiateNativePlugin(pluginInfo) })
             assert(instances.map { it.instanceId }.distinct().size == instances.size )
             (0 until p).forEach { instances[it].prepare(floatCount, controlBufferSize) }
             (0 until p).forEach { instances[it].activate() }
-            (0 until p).forEach { instances[it].process(floatCount) }
+            (0 until p).forEach { instances[it].process(floatCount, 0) }
             (0 until p).forEach { instances[it].deactivate() }
             (0 until p).forEach { instances[it].destroy() }
         }
-
-        assert(host.instantiatedPlugins.size == 0)
 
         host.disconnectPluginService(pluginInfo.packageName)
         host.dispose()

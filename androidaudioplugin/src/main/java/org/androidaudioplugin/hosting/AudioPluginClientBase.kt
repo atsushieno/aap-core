@@ -5,30 +5,7 @@ import android.media.AudioManager
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 
-
-open class AudioPluginClientBase(applicationContext: Context) : AudioPluginClientNativeBase(applicationContext) {
-    val instantiatedPlugins by lazy { mutableListOf<AudioPluginInstance>() }
-
-    var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
-
-    override fun onDispose() {
-        instantiatedPlugins.forEach { it.destroy() }
-    }
-
-    fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
-        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
-        assert(conn != null)
-        val instance = AudioPluginInstance.create(native,
-            {i ->
-                instantiatedPlugins.remove(i)
-                onInstanceDestroyed(i)
-            }, pluginInfo, sampleRate)
-        instantiatedPlugins.add(instance)
-        return instance
-    }
-}
-
-open class AudioPluginClientNativeBase(private val applicationContext: Context) {
+open class AudioPluginClientBase(private val applicationContext: Context) {
     // Service connection
     protected val serviceConnector by lazy { AudioPluginServiceConnector(applicationContext) }
     protected val native by lazy { NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId) }

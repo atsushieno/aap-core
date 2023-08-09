@@ -6,7 +6,7 @@ import androidx.compose.runtime.toMutableStateList
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
-import org.androidaudioplugin.hosting.AudioPluginClientNativeBase
+import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.PluginServiceConnection
@@ -17,7 +17,7 @@ class PluginManagerContext(val context: Context,
 ) {
     val logTag = "AAPPluginManager"
 
-    val client = AudioPluginClientNativeBase(context).apply {
+    val client = AudioPluginClientBase(context).apply {
         onConnectedListeners.add { conn -> connections.add(conn) }
         onDisconnectingListeners.add { conn -> connections.remove(conn) }
     }

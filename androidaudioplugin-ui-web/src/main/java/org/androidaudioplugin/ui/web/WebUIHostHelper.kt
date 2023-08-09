@@ -10,11 +10,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
-import org.androidaudioplugin.hosting.AudioPluginInstance
-import org.androidaudioplugin.hosting.NativePluginClient
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import java.io.FileInputStream
-import java.util.concurrent.Semaphore
 
 object WebUIHostHelper {
     fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
