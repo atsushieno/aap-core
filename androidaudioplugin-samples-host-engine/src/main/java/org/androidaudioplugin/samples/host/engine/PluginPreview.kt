@@ -40,6 +40,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
     }
 
     private val host : AudioPluginClient = AudioPluginClient(context.applicationContext)
+    var instanceId: Int = -1
     var instance: AudioPluginInstance? = null
     var guiInstanceId: Int? = null
     var pluginInfo: PluginInformation? = null
@@ -49,10 +50,10 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         set(v) {
             // We can set the value only if the plugin is within current application
             assert(isPluginInCurrentApplication)
-            AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, instance!!.pluginInfo.pluginId!!, v)
+            AudioPluginMidiSettings.putMidiSettingsToSharedPreference(context, pluginInfo!!.pluginId!!, v)
         }
     val isPluginInCurrentApplication
-        get() = instance != null && instance!!.pluginInfo.packageName == context.packageName
+        get() = instance != null && pluginInfo!!.packageName == context.packageName
     val inBuf : ByteArray
     val outBuf : ByteArray
     var selectedPresetIndex = -1
@@ -89,6 +90,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         instance.prepare(host.audioBufferSizeInBytes / 4, host.defaultControlBufferSizeInBytes)  // 4 is sizeof(float)
         if (instance.proxyError != null)
             throw instance.proxyError!!
+        this.instanceId = instance.instanceId
         this.instance = instance
         return instance
     }
@@ -100,7 +102,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
                 instance.deactivate()
             instance.destroy()
 
-            host.disconnectPluginService(instance.pluginInfo.packageName)
+            host.disconnectPluginService(pluginInfo!!.packageName)
             pluginInfo = null
             this.instance = null
         }
@@ -516,7 +518,7 @@ class PluginPreview(private val context: Context) : AutoCloseable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             surfaceControl.apply {
                 GlobalScope.launch {
-                    connectUI(instance!!.pluginInfo.packageName, instance!!.pluginInfo.pluginId!!, instance!!.instanceId, width, height)
+                    connectUI(pluginInfo!!.packageName, pluginInfo!!.pluginId!!, instanceId, width, height)
                 }
             }
         }

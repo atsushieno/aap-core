@@ -44,10 +44,10 @@ class PluginManagerContext(val context: Context,
         instances.add(instance)
     }
 
-    fun setNewMidiMappingFlags(instance: AudioPluginInstance, newFlags: Int) {
+    fun setNewMidiMappingFlags(pluginId: String, newFlags: Int) {
         AudioPluginMidiSettings.putMidiSettingsToSharedPreference(
             context,
-            instance.pluginInfo.pluginId!!,
+            pluginId,
             newFlags
         )
     }

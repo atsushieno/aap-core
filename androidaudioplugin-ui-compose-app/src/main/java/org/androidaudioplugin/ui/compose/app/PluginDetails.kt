@@ -42,10 +42,10 @@ fun PluginDetails(context: PluginManagerContext, pluginInfo: PluginInformation) 
     if (instance == null)
         Text("Further details are shown after instantiating the plugin...")
     if (instance != null)
-        MidiSettings(midiSettingsFlags = instance!!.getMidiMappingPolicy(),
+        MidiSettings(midiSettingsFlags = instance.getMidiMappingPolicy(),
             midiSeetingsFlagsChanged = { newFlags ->
                 context.setNewMidiMappingFlags(
-                    instance!!,
+                    instance.pluginInfo.pluginId!!,
                     newFlags
                 )
             })

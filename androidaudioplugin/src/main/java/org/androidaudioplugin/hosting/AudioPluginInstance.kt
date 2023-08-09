@@ -15,18 +15,6 @@ class AudioPluginInstance internal constructor(
     val pluginInfo: PluginInformation) {
 
     companion object {
-        @Deprecated("Use create() with fewer parameters; those additional parameters are extraneous now")
-        fun create(serviceConnector: AudioPluginServiceConnector,
-                   conn: PluginServiceConnection,
-                   client: NativePluginClient,
-                   onDestroy: (instance: AudioPluginInstance) -> Unit,
-                   pluginInfo: PluginInformation,
-                   sampleRate: Int) : AudioPluginInstance {
-            assert(serviceConnector.connectedServices.contains(conn))
-            val native = client.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
-            return AudioPluginInstance(native, onDestroy, pluginInfo)
-        }
-
         fun create(client: NativePluginClient,
                    onDestroy: (instance: AudioPluginInstance) -> Unit,
                    pluginInfo: PluginInformation,

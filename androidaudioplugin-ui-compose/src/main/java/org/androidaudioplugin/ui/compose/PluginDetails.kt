@@ -51,6 +51,7 @@ import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
 import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
+import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.samples.host.engine.PluginPreview
 import org.androidaudioplugin.ui.web.WebUIHostHelper
 
@@ -336,7 +337,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
     }
     val instance = previewState.instance
     if (showWebUIState && instance != null)
-        PluginWebUI(instance)
+        PluginWebUI(instance.pluginInfo.packageName, instance.pluginInfo.pluginId!!, instance.native)
     if (showSurfaceUIState && instance != null)
         PluginSurfaceControlUI(previewState)
 }
@@ -426,7 +427,7 @@ fun PluginSurfaceControlUI(preview: PluginPreview) {
 }
 
 @Composable
-fun PluginWebUI(instance: AudioPluginInstance) {
+fun PluginWebUI(packageName: String, pluginId: String, native: NativeRemotePluginInstance) {
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
@@ -452,7 +453,7 @@ fun PluginWebUI(instance: AudioPluginInstance) {
         AndroidView(
             modifier = Modifier
                 .border(1.dp, Color.Black),
-            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, instance.pluginInfo.pluginId!!, instance.pluginInfo.packageName, instance.native) }
+            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, pluginId, packageName, native) }
         )
     }
 }
