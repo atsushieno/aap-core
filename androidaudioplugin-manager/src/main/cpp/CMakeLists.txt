@@ -4,7 +4,15 @@ project(androidaudioplugin-manager LANGUAGES CXX)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin-manager_SOURCES
-	plugin-player.cpp
+		#zix/ring.cpp
+		AndroidAudioProcessorPAL.cpp
+		AudioProcessorPAL.cpp
+		AndroidAudioProcessor.cpp
+		AudioProcessor.cpp
+		AudioGraph.cpp
+		AudioGraphNode.cpp
+		plugin-player.cpp
+		JNI.cpp
 	)
 
 if (ANDROID)
@@ -17,6 +25,7 @@ set (androidaudioplugin-manager_SOURCES
 	)
 endif (ANDROID)
 
+find_package(oboe REQUIRED CONFIG)
 find_package(androidaudioplugin REQUIRED CONFIG)
 
 add_library (androidaudioplugin-manager
@@ -38,6 +47,7 @@ target_compile_definitions (androidaudioplugin-manager
 target_include_directories (androidaudioplugin-manager
 		PRIVATE
 		"../../../../include/"
+		#"../../../../external/choc"
 		)
 
 if (ANDROID)
@@ -47,6 +57,7 @@ target_include_directories (androidaudioplugin-manager
 
 target_link_libraries (androidaudioplugin-manager
 		androidaudioplugin::androidaudioplugin
+		oboe::oboe
 		log
 		)
 endif (ANDROID)

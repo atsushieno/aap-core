@@ -46,6 +46,7 @@ import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.composeaudiocontrols.DefaultKnobTooltip
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboard
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardMoveAction
+import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardWithControllers
 import org.androidaudioplugin.composeaudiocontrols.ImageStripKnob
 import kotlin.math.abs
@@ -79,7 +80,9 @@ interface PluginViewScopeEnumeration {
     val name: String
 }
 
-internal class PluginViewScopeImpl(
+// I wanted to have those classes internal, but they have to be referenced from ui-compose-app too...
+
+class PluginViewScopeImpl(
     val context: Context,
     val instance: NativeLocalPluginInstance,
     val parameters: List<Double>)
@@ -101,7 +104,7 @@ internal class PluginViewScopeImpl(
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
 }
 
-internal class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
+class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
     override val id: Int
         get() = info.id
     override val name: String
@@ -125,7 +128,7 @@ data class PluginViewScopeEnumerationImpl(
     override val name: String)
     : PluginViewScopeEnumeration
 
-internal class PluginViewScopePortImpl(private val info: PortInformation) : PluginViewScopePort {
+class PluginViewScopePortImpl(private val info: PortInformation) : PluginViewScopePort {
     override val name: String
         get() = info.name
     override val direction: Int
@@ -140,8 +143,9 @@ fun PluginViewScope.PluginView(
     modifier: Modifier = Modifier,
     getParameterValue: (Int) -> Float,
     onParameterChange: (Int, Float) -> Unit,
-    onNoteOn: (Int, Long) -> Unit,
-    onNoteOff: (Int, Long) -> Unit) {
+    onNoteOn: (Int, Long) -> Unit = { _,_ -> },
+    onNoteOff: (Int, Long) -> Unit = { _,_ -> },
+    onExpression: (DiatonicKeyboardNoteExpressionOrigin, Int, Float) -> Unit = { _,_,_ -> }) {
 
     // Keyboard controllers
     // This looks hacky, but it is done for compact yet touchable UI parts.
@@ -172,6 +176,9 @@ fun PluginViewScope.PluginView(
         onNoteOff = { note, _ ->
             noteOnStates[note] = 0
             onNoteOff(note, 0)
+        },
+        onExpression = { origin, note, data ->
+            onExpression(origin, note, data)
         }
     )
 

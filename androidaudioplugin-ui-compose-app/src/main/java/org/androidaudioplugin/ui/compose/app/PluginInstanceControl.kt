@@ -1,6 +1,8 @@
 package org.androidaudioplugin.ui.compose.app
 
 import android.content.Context
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,13 +42,21 @@ internal class RemotePluginViewScopeImpl(
 @Composable
 fun PluginInstanceControl(context: PluginManagerContext, instance: AudioPluginInstance) {
 
+    TextButton(onClick = { context.playPreloadedAudio() }) {
+        Text(text = "Play Audio")
+    }
 
+    // FIXME: should this be hoisted out? It feels like performance loss
     val parameters = remember { (0 until instance.getParameterCount())
         .map { instance.getParameter(it).defaultValue }
         .toMutableStateList() }
     val scope by remember { mutableStateOf(RemotePluginViewScopeImpl(context.context, instance.native, parameters, instance.pluginInfo)) }
     scope.PluginView(getParameterValue = { parameters[it].toFloat() },
-        onParameterChange = { index, value -> parameters[index] = value.toDouble() },
-        onNoteOn = { _,_ -> },
-        onNoteOff = { _,_ -> })
+        onParameterChange = { index, value ->
+            parameters[index] = value.toDouble()
+            context.setParameterValue(index.toUInt(), value)
+                            },
+        onNoteOn = { note, _ -> context.setNoteState(note, true) },
+        onNoteOff = { note, _ ->  context.setNoteState(note, false) },
+        onExpression = {origin, note, value -> context.processExpression(origin, note, value) })
 }
