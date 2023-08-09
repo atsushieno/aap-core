@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
 import org.androidaudioplugin.PluginInformation
-import org.androidaudioplugin.hosting.AudioPluginInstance
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.ui.compose.PluginView
 import org.androidaudioplugin.ui.compose.PluginViewScope
@@ -40,7 +39,7 @@ internal class RemotePluginViewScopeImpl(
 }
 
 @Composable
-fun PluginInstanceControl(context: PluginManagerContext, instance: AudioPluginInstance) {
+fun PluginInstanceControl(context: PluginManagerContext, pluginInfo: PluginInformation, instance: NativeRemotePluginInstance) {
 
     TextButton(onClick = { context.playPreloadedAudio() }) {
         Text(text = "Play Audio")
@@ -50,7 +49,7 @@ fun PluginInstanceControl(context: PluginManagerContext, instance: AudioPluginIn
     val parameters = remember { (0 until instance.getParameterCount())
         .map { instance.getParameter(it).defaultValue }
         .toMutableStateList() }
-    val scope by remember { mutableStateOf(RemotePluginViewScopeImpl(context.context, instance.native, parameters, instance.pluginInfo)) }
+    val scope by remember { mutableStateOf(RemotePluginViewScopeImpl(context.context, instance, parameters, pluginInfo)) }
     scope.PluginView(getParameterValue = { parameters[it].toFloat() },
         onParameterChange = { index, value ->
             parameters[index] = value.toDouble()

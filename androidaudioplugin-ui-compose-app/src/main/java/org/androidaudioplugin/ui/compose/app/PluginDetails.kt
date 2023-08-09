@@ -25,7 +25,7 @@ import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 @Composable
 fun PluginDetails(context: PluginManagerContext, pluginInfo: PluginInformation) {
-    val instance = context.instances.firstOrNull { it.pluginInfo.pluginId == pluginInfo.pluginId }
+    val instance = context.instance
     if (instance == null) {
         if (context.connections.any { it.serviceInfo.packageName == pluginInfo.packageName }) {
             LaunchedEffect(pluginInfo.packageName) {
@@ -45,13 +45,13 @@ fun PluginDetails(context: PluginManagerContext, pluginInfo: PluginInformation) 
         MidiSettings(midiSettingsFlags = instance.getMidiMappingPolicy(),
             midiSeetingsFlagsChanged = { newFlags ->
                 context.setNewMidiMappingFlags(
-                    instance.pluginInfo.pluginId!!,
+                    pluginInfo.pluginId!!,
                     newFlags
                 )
             })
 
     if (instance != null)
-        PluginInstanceControl(context, instance)
+        PluginInstanceControl(context, pluginInfo, instance)
 
     val ports =
         if (instance != null)

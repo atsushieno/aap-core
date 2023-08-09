@@ -5,25 +5,46 @@ import android.media.AudioManager
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 
-open class AudioPluginClientBase(private val applicationContext: Context) {
-    // Service connection
-    private val serviceConnector by lazy { AudioPluginServiceConnector(applicationContext) }
-    private val native by lazy { NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId) }
 
-    val serviceConnectionId by lazy { serviceConnector.serviceConnectionId }
-
+open class AudioPluginClientBase(applicationContext: Context) : AudioPluginClientNativeBase(applicationContext) {
     val instantiatedPlugins by lazy { mutableListOf<AudioPluginInstance>() }
 
     var onInstanceDestroyed: (instance: AudioPluginInstance) -> Unit = {}
+
+    override fun onDispose() {
+        instantiatedPlugins.forEach { it.destroy() }
+    }
+
+    fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
+        val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
+        assert(conn != null)
+        val instance = AudioPluginInstance.create(native,
+            {i ->
+                instantiatedPlugins.remove(i)
+                onInstanceDestroyed(i)
+            }, pluginInfo, sampleRate)
+        instantiatedPlugins.add(instance)
+        return instance
+    }
+}
+
+open class AudioPluginClientNativeBase(private val applicationContext: Context) {
+    // Service connection
+    protected val serviceConnector by lazy { AudioPluginServiceConnector(applicationContext) }
+    protected val native by lazy { NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId) }
+
+    val serviceConnectionId by lazy { serviceConnector.serviceConnectionId }
 
     val onConnectedListeners by lazy { serviceConnector.onConnectedListeners }
     val onDisconnectingListeners by lazy { serviceConnector.onDisconnectingListeners }
 
     fun dispose() {
-        instantiatedPlugins.forEach { it.destroy() }
+        onDispose()
         serviceConnector.connectedServices.forEach { disconnectPluginService(it.serviceInfo.packageName) }
         native.dispose()
     }
+
+    open fun onDispose() {}
 
     suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
         val conn = serviceConnector.findExistingServiceConnection(packageName)
@@ -41,16 +62,10 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
             serviceConnector.unbindAudioPluginService(conn.serviceInfo.packageName)
     }
 
-    fun instantiatePlugin(pluginInfo: PluginInformation) : AudioPluginInstance {
+    fun instantiateNativePlugin(pluginInfo: PluginInformation) : NativeRemotePluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        val instance = AudioPluginInstance.create(native,
-            {i ->
-                instantiatedPlugins.remove(i)
-                onInstanceDestroyed(i)
-            }, pluginInfo, sampleRate)
-        instantiatedPlugins.add(instance)
-        return instance
+        return native.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
     }
 
     var sampleRate : Int
