@@ -15,7 +15,6 @@
 #include "../extensions/presets-service.h"
 #include "../extensions/midi-service.h"
 #include "../extensions/port-config-service.h"
-#include "../extensions/gui-service.h"
 #include "aap/core/host/plugin-instance.h"
 
 
@@ -154,7 +153,6 @@ std::unique_ptr<PresetsExtensionFeature> aapxs_presets{nullptr};
 std::unique_ptr<PortConfigExtensionFeature> aapxs_port_config{nullptr};
 std::unique_ptr<MidiExtensionFeature> aapxs_midi2{nullptr};
 std::unique_ptr<ParametersExtensionFeature> aapxs_parameters{nullptr};
-std::unique_ptr<GuiExtensionFeature> aapxs_gui{nullptr};
 std::unique_ptr<AAPXSRegistry> standard_aapxs_registry{nullptr};
 
 void initializeStandardAAPXSRegistry() {
@@ -180,10 +178,6 @@ void initializeStandardAAPXSRegistry() {
     if (aapxs_parameters == nullptr)
         aapxs_parameters = std::make_unique<ParametersExtensionFeature>();
     aapxs_registry->add(aapxs_parameters->asPublicApi());
-    // gui
-    if (aapxs_gui == nullptr)
-        aapxs_gui = std::make_unique<GuiExtensionFeature>();
-    aapxs_registry->add(aapxs_gui->asPublicApi());
 
     aapxs_registry->freeze();
 

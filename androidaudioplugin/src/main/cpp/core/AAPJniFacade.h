@@ -54,12 +54,6 @@ namespace aap {
 
         void putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags);
 
-        void createGuiViaJni(GuiInstance* guiInstance,
-                             std::function<void()> callback);
-        void showGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
-        void hideGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
-        void destroyGuiViaJni(GuiInstance* guiInstance, std::function<void()> callback);
-
         void* getRemoteWebView(PluginClient* client, RemotePluginInstance* instance);
         void* createSurfaceControl();
         void disposeSurfaceControl(void* handle);
