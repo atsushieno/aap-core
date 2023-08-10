@@ -50,15 +50,13 @@ fun PluginDetails(context: PluginManagerContext, pluginInfo: PluginInformation) 
                 )
             })
 
+    val ports =
+        if (instance != null) (0 until instance.getPortCount()).map { instance.getPort(it) }
+        else pluginInfo.ports
+    PluginPortList(ports)
+
     if (instance != null)
         PluginInstanceControl(context, pluginInfo, instance)
-
-    val ports =
-        if (instance != null)
-            (0 until instance.getPortCount()).map { instance.getPort(it) }
-        else
-            pluginInfo.ports
-    PluginPortList(ports)
 }
 
 
@@ -173,7 +171,17 @@ fun MidiSettings(midiSettingsFlags: Int, midiSeetingsFlagsChanged: (Int) -> Unit
 
 @Composable
 fun PluginPortList(instancePorts: List<PortInformation>, modifier: Modifier = Modifier) {
-    Text(text = "Ports", fontSize = 20.sp, modifier = Modifier.padding(vertical = 12.dp))
+    var portListExpanded by remember { mutableStateOf(false) }
+
+    Text(text = (if (portListExpanded) "[-]" else "[+]") + " Ports", fontSize = 20.sp, modifier = Modifier
+        .padding(vertical = 12.dp)
+        .clickable {
+            portListExpanded = !portListExpanded
+        })
+
+    if (!portListExpanded)
+        return
+
     Column {
         for (port in instancePorts) {
             Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
