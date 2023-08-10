@@ -29,36 +29,4 @@ object AudioPluginServiceHelper {
         val factory = cls.newInstance() as AudioPluginViewFactory
         return factory.createView(context, pluginId, instanceId)
     }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    @JvmStatic
-    fun createSystemAlertView(context: Context, pluginId: String, instanceId: Int) : AudioPluginSystemAlertView {
-        val audioPluginView = AudioPluginSystemAlertView(context)
-        // content is asynchronously filled
-        Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
-            val view = createNativeView(context, pluginId, instanceId)
-            audioPluginView.addView(view)
-        }
-        return audioPluginView
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    @JvmStatic
-    fun showGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
-        Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
-            view.showOverlay()
-        }
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    @JvmStatic
-    fun hideGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
-        Dispatchers.Main.dispatch(GlobalScope.coroutineContext) {
-            view.hideOverlay(false)
-        }
-    }
-
-    @JvmStatic
-    fun destroyGui(context: Context, pluginId: String, instanceId: Int, view: AudioPluginSystemAlertView) {
-    }
 }

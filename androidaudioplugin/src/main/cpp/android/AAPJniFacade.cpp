@@ -52,10 +52,6 @@ namespace aap {
             j_method_port_get_direction,
             j_method_port_get_content,
             j_method_port_get_minimum_size_in_bytes,
-            j_method_create_gui,
-            j_method_show_gui,
-            j_method_hide_gui,
-            j_method_destroy_gui,
             j_method_remote_plugin_instance_create_from_native;
 
     void AAPJniFacade::initializeJNIMetadata() {
@@ -73,8 +69,6 @@ namespace aap {
                 java_enumeration_information_class = env->FindClass(
                     java_enumeration_information_class_name),
                 java_port_information_class = env->FindClass(java_port_information_class_name),
-                java_audio_plugin_service_helper_class = env->FindClass(
-                    java_audio_plugin_service_class_name),
                 java_native_remote_plugin_instance_class = env->FindClass(
                     java_native_remote_plugin_instance_class_name);
 
@@ -172,18 +166,6 @@ namespace aap {
         j_method_port_get_minimum_size_in_bytes = env->GetMethodID(java_port_information_class,
                                                                    "getMinimumSizeInBytes",
                                                                    "()I");
-        j_method_create_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
-                                                     "createSystemAlertView",
-                                                     "(Landroid/content/Context;Ljava/lang/String;I)Lorg/androidaudioplugin/AudioPluginSystemAlertView;");
-        j_method_show_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
-                                                     "showGui",
-                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
-        j_method_hide_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
-                                                   "hideGui",
-                                                   "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
-        j_method_destroy_gui = env->GetStaticMethodID(java_audio_plugin_service_helper_class,
-                                                   "destroyGui",
-                                                      "(Landroid/content/Context;Ljava/lang/String;ILorg/androidaudioplugin/AudioPluginSystemAlertView;)V");
         j_method_remote_plugin_instance_create_from_native = env->GetStaticMethodID(java_native_remote_plugin_instance_class,
                                                                                     "fromNative",
                                                                                     "(IJ)Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;");
@@ -416,6 +398,7 @@ namespace aap {
     protected:
         void handleMessage() {
             usingContext<int>([&](JNIEnv* env, jclass cls, jobject context) {
+                /*
                 auto pluginIdJString = env->NewStringUTF(gui_instance->pluginId.c_str());
                 auto ret = env->CallStaticObjectMethod(cls, j_method_create_gui, context, pluginIdJString,
                                                        gui_instance->instanceId);
@@ -428,6 +411,8 @@ namespace aap {
                 }
                 gui_instance->view = env->NewGlobalRef(ret);
                 callback();
+                */
+                assert(false); // FIXME: implement?
                 return 0;
             });
         }
@@ -459,6 +444,7 @@ namespace aap {
     protected:
         void handleMessage() {
             usingContext<int32_t>([&](JNIEnv* env, jclass cls, jobject context) {
+                /*
                 if (!gui_instance->view) {
                     // it must be assigned at create() state.
                     gui_instance->lastError = "createGui() was either not invoked or not successful. No further operation is performed.";
@@ -483,6 +469,8 @@ namespace aap {
                     env->ExceptionClear();
                 }
                 callback();
+                 */
+                assert(false); // FIXME: implement?
                 return 0;
             });
         }

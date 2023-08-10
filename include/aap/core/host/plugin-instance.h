@@ -310,7 +310,6 @@ namespace aap {
             virtual ~RemotePluginNativeUIController();
 
             void* getHandle() { return handle; }
-            void* getView();
             void show();
             void hide();
         };
@@ -363,9 +362,6 @@ namespace aap {
         StandardExtensions &getStandardExtensions() override { return standards; }
 
         void prepare(int frameCount) override;
-
-        [[deprecated("use getRemoteWebView()")]]
-        void* getWebView() { return getRemoteWebView(); }
 
         RemotePluginNativeUIController* getNativeUIController() { return native_ui_controller.get(); }
 
