@@ -58,7 +58,7 @@ dependencies {
     implementation (libs.accompanist.drawablepainter)
 
     implementation (libs.compose.ui)
-    implementation (libs.compose.material)
+    implementation (libs.material3)
     implementation (libs.compose.ui.tooling)
 
     implementation (libs.navigation.compose)

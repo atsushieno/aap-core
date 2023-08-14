@@ -62,9 +62,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             surface.setChildSurfacePackage(it)
-            println("client: surfaceView.setChildSurfacePackage() done.")
+            Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
+            connectedListeners.forEach { it() }
         }
     })
+
+    val connectedListeners = mutableListOf<() -> Unit>()
 
     private var surface = createSurfaceView()
     val surfaceView: View

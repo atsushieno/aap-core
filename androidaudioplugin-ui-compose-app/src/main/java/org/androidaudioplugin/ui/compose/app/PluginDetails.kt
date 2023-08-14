@@ -2,6 +2,7 @@ package org.androidaudioplugin.ui.compose.app
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -24,39 +25,77 @@ import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 
 @Composable
-fun PluginDetails(context: PluginManagerContext, pluginInfo: PluginInformation) {
-    val instance = context.instance
-    if (instance == null) {
-        if (context.connections.any { it.serviceInfo.packageName == pluginInfo.packageName }) {
-            LaunchedEffect(pluginInfo.packageName) {
-                context.instantiatePlugin(pluginInfo)
-            }
-        } else {
-            LaunchedEffect(pluginInfo.packageName) {
-                context.client.connectToPluginService(pluginInfo.packageName)
-            }
-        }
+fun PluginDetails(pluginInfo: PluginInformation, manager: PluginManagerScope) {
+    // PluginDetailsScope.create() involves suspend fun, so we replace the Composable once it's ready.
+    var scope by remember { mutableStateOf<PluginDetailsScope?>(null) }
+
+    LaunchedEffect(key1 = pluginInfo) {
+        scope = PluginDetailsScope.create(pluginInfo, manager)
     }
 
+    val currentScope = scope
+    if (currentScope == null) {
+        LaunchedEffect(pluginInfo.packageName) {
+            if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
+                manager.client.connectToPluginService(pluginInfo.packageName)
+        }
+        PluginDetailsInstancing(pluginInfo)
+    }
+    else
+        PluginDetailsInstantiated(currentScope)
+}
+
+@Composable
+fun PluginDetailsInstancing(pluginInfo: PluginInformation) {
+    Text("Instantiating ${pluginInfo.displayName} ...")
     PluginMetadata(pluginInfo)
-    if (instance == null)
-        Text("Further details are shown after instantiating the plugin...")
-    if (instance != null)
-        MidiSettings(midiSettingsFlags = instance.getMidiMappingPolicy(),
-            midiSeetingsFlagsChanged = { newFlags ->
-                context.setNewMidiMappingFlags(
-                    pluginInfo.pluginId!!,
-                    newFlags
-                )
-            })
+    PluginPortList(pluginInfo.ports)
+}
 
-    val ports =
-        if (instance != null) (0 until instance.getPortCount()).map { instance.getPort(it) }
-        else pluginInfo.ports
-    PluginPortList(ports)
+@Composable
+fun PluginDetailsInstantiated(context: PluginDetailsScope) {
+    val pluginInfo = context.pluginInfo
 
-    if (instance != null)
-        PluginInstanceControl(context, pluginInfo, instance)
+    var showWebUI by remember { mutableStateOf(false) }
+    var showSurfaceUI by remember { mutableStateOf(false) }
+    val instanceState by remember { context.instance }
+    val instance = instanceState!!
+
+    Box {
+        // We show the Web UI and the native UI *outside* any of the sequential layout contexts e.g.
+        // Column() or Row(), so we have WebUI and SurfaceControl UI on top level along with the main content.
+        //
+        // Their visibility state (showXxxUI) affects the content of PluginInstanceControl() so they
+        // have to be passed to the composable, along with onXxxChanged handlers...
+        Column {
+            PluginMetadata(pluginInfo)
+            val ports = (0 until instance.getPortCount()).map { instance.getPort(it) }
+            PluginPortList(ports)
+
+            PluginInstanceControl(
+                context, pluginInfo, instance,
+                webUIVisible = showWebUI,
+                webUIVisibleChanged = { showWebUI = it },
+                surfaceControlUIVisible = showSurfaceUI,
+                surfaceControlUIVisibleChanged = { showSurfaceUI = it },
+            )
+        }
+
+        if (showWebUI)
+            PluginWebUI(pluginInfo.packageName, pluginInfo.pluginId!!, instance,
+                onCloseClick = { showWebUI = false })
+
+        if (showSurfaceUI)
+            // FIXME: provide native UI width from somewhere
+            PluginSurfaceControlUI(
+                context,
+                pluginInfo,
+                instance.instanceId,
+                1000,
+                750,
+                showSurfaceUI,
+                onCloseClick = { showSurfaceUI = false })
+    }
 }
 
 

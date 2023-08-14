@@ -27,7 +27,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginList(context: PluginManagerContext,
+fun PluginList(context: PluginManagerScope,
                onSelectItem: (pluginId: String) -> Unit) {
     val pluginServices = remember { context.pluginServices }
 

@@ -45,31 +45,30 @@ fun GenericPluginHostPreview() {
 @Composable
 fun SystemPluginManagerMain() {
     val context = LocalContext.current
-    val data by remember { mutableStateOf(
-        PluginManagerContext(context,
+    val scope by remember { mutableStateOf(
+        PluginManagerScope(context,
             AudioPluginHostHelper.queryAudioPluginServices(context).toList().toMutableStateList())
     ) }
-    GenericPluginManagerMain(context = data,
-        listTitleBarText = "Plugins on this system")
+    GenericPluginManagerMain(scope, listTitleBarText = "Plugins on this system")
 }
 
 @Composable
 fun LocalPluginManagerMain() {
     val context = LocalContext.current
-    val data by remember { mutableStateOf(
-        PluginManagerContext(context,
+    val scope by remember { mutableStateOf(
+        PluginManagerScope(context,
             listOf(AudioPluginServiceHelper.getLocalAudioPluginService(context)).toMutableStateList())
     ) }
-    GenericPluginManagerMain(context = data, listTitleBarText = "Plugins in this application")
+    GenericPluginManagerMain(scope, listTitleBarText = "Plugins in this application")
 
     LaunchedEffect(key1 = "") {
-        data.client.connectToPluginService(data.pluginServices.first().packageName)
+        scope.client.connectToPluginService(scope.pluginServices.first().packageName)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GenericPluginManagerMain(context: PluginManagerContext, listTitleBarText: String) {
+fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String) {
     var lastBackPressed by remember { mutableStateOf(System.currentTimeMillis()) }
 
     val navController = rememberNavController()
@@ -80,7 +79,7 @@ fun GenericPluginManagerMain(context: PluginManagerContext, listTitleBarText: St
                 topBar = { TopAppBar(title = { Text(text = listTitleBarText) }) },
                 content = {
                     Column(Modifier.padding(it)) {
-                        PluginList(context, onSelectItem = { pluginId ->
+                        PluginList(scope, onSelectItem = { pluginId ->
                             navController.navigate("plugin_details/${Uri.encode(pluginId)}")
                         })
                     }
@@ -99,8 +98,8 @@ fun GenericPluginManagerMain(context: PluginManagerContext, listTitleBarText: St
                             .padding(it)
                             .verticalScroll(rememberScrollState())) {
                         val pluginId = Uri.decode(entry.arguments!!.getString("pluginId"))
-                        val pluginInfo = context.pluginServices.flatMap { it.plugins }.first { it.pluginId == pluginId }
-                        PluginDetails(context, pluginInfo)
+                        val pluginInfo = scope.pluginServices.flatMap { it.plugins }.first { it.pluginId == pluginId }
+                        PluginDetails(pluginInfo, scope)
                     }
                 }
             )

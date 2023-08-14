@@ -121,7 +121,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val pluginId: String,
         val instanceId: Int
     ) : AutoCloseable {
-        private lateinit var viewHost: SurfaceControlViewHost
+        private var viewHost: SurfaceControlViewHost? = null
 
         // FIXME: there could be more than one in the future, but so far 1:1 for instance:gui.
         val guiInstanceId: Int
@@ -154,7 +154,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
         override fun close() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                viewHost.release()
+                viewHost?.release()
             }
         }
     }
