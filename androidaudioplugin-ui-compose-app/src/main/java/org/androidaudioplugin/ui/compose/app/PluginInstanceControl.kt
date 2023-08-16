@@ -65,10 +65,6 @@ internal class RemotePluginViewScopeImpl(
 fun PluginInstanceControl(scope: PluginDetailsScope,
                           pluginInfo: PluginInformation,
                           instance: NativeRemotePluginInstance,
-                          webUIVisible: Boolean = false,
-                          webUIVisibleChanged: (Boolean) -> Unit = {},
-                          surfaceControlUIVisible: Boolean = false,
-                          surfaceControlUIVisibleChanged: (Boolean) -> Unit = {}
 ) {
     MidiSettings(midiSettingsFlags = instance.getMidiMappingPolicy(),
         midiSeetingsFlagsChanged = { newFlags ->
@@ -80,15 +76,6 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
 
     TextButton(onClick = { scope.playPreloadedAudio() }) {
         Text(text = "Play Audio")
-    }
-
-    Row {
-        Button(onClick = {
-            webUIVisibleChanged(!webUIVisible)
-        }) { Text(if (webUIVisible) "Hide Web UI" else "Show Web UI") }
-        Button(onClick = {
-            surfaceControlUIVisibleChanged(!surfaceControlUIVisible)
-        }) { Text(if (surfaceControlUIVisible) "Hide Native UI" else "Show Native UI") }
     }
 
     // FIXME: should this be hoisted out? It feels like performance loss
@@ -105,125 +92,3 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         onNoteOff = { note, _ ->  scope.setNoteState(note, false) },
         onExpression = {origin, note, value -> scope.processExpression(origin, note, value) })
 }
-
-@Composable
-fun PluginSurfaceControlUI(scope: PluginDetailsScope,
-                           pluginInfo: PluginInformation,
-                           instanceId: Int,
-                           width: Int,
-                           height: Int,
-                           visible: Boolean,
-                           onCloseClick: () -> Unit = {}) {
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
-    var notifyConnected by remember { mutableStateOf(false) }
-
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
-        return
-
-    val surfaceControl = scope.surfaceControl
-
-    if (visible) {
-        surfaceControl.surfaceView.visibility = View.VISIBLE
-    } else {
-        surfaceControl.surfaceView.visibility = View.GONE
-    }
-
-    Column(
-        Modifier
-            .padding(10.dp)
-            .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
-
-    ) {
-        // title bar
-        Row(Modifier
-            .padding(0.dp)
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    offsetX += dragAmount.x
-                    offsetY += dragAmount.y
-                }
-            }
-            .fillMaxWidth()
-            .background(Color.DarkGray.copy(alpha = 0.5f))
-            .border(1.dp, Color.Black)
-        ) {
-            TextButton(onClick = { onCloseClick() }) {
-                Text("[X]")
-            }
-            Text(pluginInfo.displayName)
-        }
-        var connectionStarted by remember { mutableStateOf(false) }
-        AndroidView(modifier = Modifier.border(1.dp, Color.Black),
-            factory = { surfaceControl.surfaceView },
-            update = {
-                if (connectionStarted)
-                    return@AndroidView
-                connectionStarted = true
-                scope.surfaceControl.connectedListeners.add {
-                    // FIXME: I could not manage to get this SurfaceView shown at rendered state at first.
-                    // It completes to setSurfaceChildPackage() as it is logged, but seems to some more means to forcibly update.
-                    // The code below is therefore not working.
-                    //
-                    // This triggers updating a remembered state that only prints some string to log.
-                    // It is important to trigger updates to the Composable to update AndroidView
-                    // that contains this SurfaceView.
-                    notifyConnected = true
-                    scope.manager.context.mainLooper.queue.addIdleHandler {
-                        scope.surfaceControl.surfaceView.layout(0, 0, 300, 300)
-                        scope.surfaceControl.surfaceView.requestLayout()
-                        scope.surfaceControl.surfaceView.z = -1f
-                        false
-                    }
-                }
-                GlobalScope.launch {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                        scope.surfaceControl.connectUI(pluginInfo.packageName, pluginInfo.pluginId!!, instanceId, width, height)
-                }
-            }
-        )
-        if (notifyConnected) {
-            Log.d(scope.manager.logTag, "${pluginInfo.displayName}: Remote Native UI connected")
-            notifyConnected = false
-            Text("Remote Native UI connected")
-        }
-    }
-}
-
-@Composable
-fun PluginWebUI(packageName: String, pluginId: String, native: NativeRemotePluginInstance,
-                onCloseClick: () -> Unit = {}) {
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
-
-    Column(
-        Modifier
-            .padding(40.dp)
-            .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }) {
-        // Titlebar
-        Box(Modifier
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    offsetX += dragAmount.x
-                    offsetY += dragAmount.y
-                }
-            }
-            .fillMaxWidth()
-            .background(Color.DarkGray.copy(alpha = 0.3f))
-            .border(1.dp, Color.Black)) {
-            Row {
-                TextButton(onClick = { onCloseClick() }) {
-                    Text("[X]")
-                }
-                Text("Web UI")
-            }
-        }
-        AndroidView(
-            modifier = Modifier.border(1.dp, Color.Black),
-            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, pluginId, packageName, native) }
-        )
-    }
-}
-

@@ -87,56 +87,78 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     @WorkerThread
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun connectUI(pluginPackageName: String, pluginId: String, instanceId: Int, width: Int, height: Int) {
-        surface.apply {
-            var handler: (() -> Boolean)? = null
-            handler = {
-                if (surface.layoutParams == null) { // resubmit it
-                    Log.w(LOG_TAG, "It seems SurfaceView is created but not initialized yet. Resubmitting messaging handler")
-                    context.mainLooper.queue.addIdleHandler(handler!!)
-                } else {
-                    surface.layoutParams.width = width
-                    surface.layoutParams.height = height
-                    requestLayout()
-                }
-                false
+        var handler: (() -> Boolean)? = null
+        handler = {
+            if (surface.layoutParams == null) { // resubmit it
+                Log.w(LOG_TAG, "It seems SurfaceView is created but not initialized yet. It is most likely that it is not attached to a live view tree. Resubmitting messaging handler")
+                context.mainLooper.queue.addIdleHandler(handler!!)
+            } else {
+                connectUIPrepareLayout(width, height)
             }
-            // This needs to be handled after layoutParams is initialized.
-            context.mainLooper.queue.addIdleHandler (handler)
+            false
         }
+        // This needs to be handled after layoutParams is initialized.
+        context.mainLooper.queue.addIdleHandler(handler)
 
-        surface.connection = suspendCoroutine { continuation ->
-             context.bindService(
-                Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
-                HostConnection(onConnected = { continuation.resume(it) }),
-                Context.BIND_AUTO_CREATE
-            )
-        }
+        connectUIBindService(pluginPackageName)
 
         var messageSender: (() -> Boolean)? = null
         messageSender = {
             if (surface.display == null) { // resubmit it
-                Log.w(LOG_TAG, "It seems SurfaceView is not attached to certain display. Resubmitting messaging handler")
+                Log.w(LOG_TAG, "SurfaceView is not attached to a display. It is most likely that it is not attached to a live view tree. Resubmitting messaging handler")
                 context.mainLooper.queue.addIdleHandler(messageSender!!)
             } else {
-                val message = Message.obtain().apply {
-                    data = bundleOf(
-                        AudioPluginViewService.MESSAGE_KEY_OPCODE to 0,
-                        AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surface.hostToken,
-                        AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surface.display.displayId,
-                        AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
-                        AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
-                        AudioPluginViewService.MESSAGE_KEY_WIDTH to surface.width,
-                        AudioPluginViewService.MESSAGE_KEY_HEIGHT to surface.height
-                    )
-                    replyTo = incomingMessenger
-                }
-
-                surface.connection?.outgoingMessenger?.send(message)
+                connectUISendMessage(pluginId, instanceId)
             }
             false
         }
         context.mainLooper.queue.addIdleHandler (messageSender)
     }
+
+    // connectUI without idle handler
+    @WorkerThread
+    @RequiresApi(Build.VERSION_CODES.R)
+    suspend fun connectUINoHandler(pluginPackageName: String, pluginId: String, instanceId: Int, width: Int, height: Int) {
+        connectUIPrepareLayout(width, height)
+
+        connectUIBindService(pluginPackageName)
+
+        connectUISendMessage(pluginId, instanceId)
+    }
+
+        private fun connectUIPrepareLayout(width: Int, height: Int) {
+            surface.layoutParams.width = width
+            surface.layoutParams.height = height
+            surface.requestLayout()
+        }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private suspend fun connectUIBindService(pluginPackageName: String) {
+            surface.connection = suspendCoroutine { continuation ->
+                context.bindService(
+                    Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
+                    HostConnection(onConnected = { continuation.resume(it) }),
+                    Context.BIND_AUTO_CREATE
+                )
+            }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private fun connectUISendMessage(pluginId: String, instanceId: Int) {
+            val message = Message.obtain().apply {
+                data = bundleOf(
+                    AudioPluginViewService.MESSAGE_KEY_OPCODE to 0,
+                    AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surface.hostToken,
+                    AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surface.display.displayId,
+                    AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
+                    AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
+                    AudioPluginViewService.MESSAGE_KEY_WIDTH to surface.width,
+                    AudioPluginViewService.MESSAGE_KEY_HEIGHT to surface.height
+                )
+                replyTo = incomingMessenger
+            }
+            surface.connection?.outgoingMessenger?.send(message)
+        }
 
     internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {

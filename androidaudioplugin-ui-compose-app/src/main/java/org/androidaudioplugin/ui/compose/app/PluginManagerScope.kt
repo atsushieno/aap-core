@@ -2,10 +2,13 @@ package org.androidaudioplugin.ui.compose.app
 
 import android.content.Context
 import android.os.Build
-import androidx.annotation.RequiresApi
+import android.view.View
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
@@ -19,7 +22,7 @@ import org.androidaudioplugin.manager.PluginPlayer
 
 class PluginManagerScope(val context: Context,
                          val pluginServices: SnapshotStateList<PluginServiceInformation>
-) {
+) : AutoCloseable {
     val logTag = "AAPPluginManager"
 
     val client = AudioPluginClientBase(context).apply {
@@ -29,6 +32,10 @@ class PluginManagerScope(val context: Context,
 
     // An observable list version of service connections
     val connections = listOf<PluginServiceConnection>().toMutableStateList()
+
+    override fun close() {
+        client.dispose()
+    }
 }
 
 class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
@@ -41,7 +48,7 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         }
     }
 
-    val instance = mutableStateOf<NativeRemotePluginInstance?>(null)
+    var instance: NativeRemotePluginInstance? = null
 
     private val pluginPlayer = PluginPlayer.create().apply {
         manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
@@ -54,7 +61,7 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
     suspend fun instantiatePlugin() {
         if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
             manager.client.connectToPluginService(pluginInfo.packageName)
-        instance.value = manager.client.instantiateNativePlugin(pluginInfo)
+        instance = manager.client.instantiateNativePlugin(pluginInfo)
     }
 
     fun setNewMidiMappingFlags(pluginId: String, newFlags: Int) {
@@ -84,8 +91,41 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
     fun setNoteState(note: Int, isNoteOn: Boolean) {
         pluginPlayer.setNoteState(note, 0xF800, isNoteOn)
     }
+ }
 
-    val surfaceControl: AudioPluginSurfaceControlClient by lazy {
-        AudioPluginHostHelper.createSurfaceControl(manager.context)
+class SurfaceControlUIScope private constructor(private val parentScope: PluginDetailsScope, private val width: Int, private val height: Int) : AutoCloseable {
+    companion object {
+        fun create(parentScope: PluginDetailsScope, width: Int, height: Int): SurfaceControlUIScope {
+            val scope = SurfaceControlUIScope(parentScope, width, height)
+            scope.surfaceControl = AudioPluginHostHelper.createSurfaceControl(parentScope.manager.context)
+            return scope
+        }
+    }
+
+    var surfaceControl: AudioPluginSurfaceControlClient? = null
+
+    suspend fun connectSurfaceControlUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val pluginInfo = parentScope.pluginInfo
+            surfaceControl!!.connectUINoHandler(
+                pluginInfo.packageName,
+                pluginInfo.pluginId!!,
+                parentScope.instance!!.instanceId,
+                width,
+                height
+            )
+        }
+    }
+
+    fun showSurfaceGUI() {
+        surfaceControl?.surfaceView?.visibility = View.VISIBLE
+    }
+
+    fun hideSurfaceGUI() {
+        surfaceControl?.surfaceView?.visibility = View.GONE
+    }
+
+    override fun close() {
+        surfaceControl?.close()
     }
 }
