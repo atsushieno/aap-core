@@ -1,7 +1,4 @@
-//
-// Created by atsushi on 2023/07/18.
-//
-
+/*
 #include <cmath>
 #include "AndroidAudioProcessorPAL.h"
 
@@ -88,3 +85,4 @@ void
 aap::InterleavedAudioProcessorPAL::processInterleavedAudioIO(void *audioData, int32_t numFrames) {
     impl->processInterleavedAudioIO(audioData, 1024);
 }
+*/

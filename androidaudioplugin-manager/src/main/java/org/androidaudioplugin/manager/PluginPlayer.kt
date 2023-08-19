@@ -33,9 +33,17 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     private external fun setTargetInstanceNative(native: Long, instanceId: Int)
 
-    fun playPreloadedAudio() {
-        TODO("implement")
-    }
+    fun startProcessing() = startProcessingNative(native)
+
+    fun pauseProcessing() = pauseProcessingNative(native)
+
+    private external fun startProcessingNative(native: Long)
+
+    private external fun pauseProcessingNative(native: Long)
+
+    fun playPreloadedAudio() = playPreloadedAudioNative(native)
+
+    private external fun playPreloadedAudioNative(native: Long)
 
     fun setParameterValue(parameterId: UInt, value: Float) {
         val umps = UmpHelper.aapUmpSysex8Parameter(parameterId, value).flatMap { Ump(it).toPlatformNativeBytes().asList() }

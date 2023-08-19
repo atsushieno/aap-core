@@ -72,6 +72,14 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         )
     }
 
+    fun startProcessing() {
+        pluginPlayer.startProcessing()
+    }
+
+    fun pauseProcessing() {
+        pluginPlayer.pauseProcessing()
+    }
+
     fun playPreloadedAudio() {
         pluginPlayer.playPreloadedAudio()
     }

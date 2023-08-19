@@ -1,12 +1,9 @@
-//
-// Created by atsushi on 2023/07/18.
-//
-
+/*
 #ifndef AAP_CORE_AUDIOPROCESSOR_H
 #define AAP_CORE_AUDIOPROCESSOR_H
 
 #include "AudioProcessor.h"
-#include "AudioProcessorPAL.h"
+#include "AudioDevicePAL.h"
 #include <aap/core/host/audio-plugin-host.h>
 //#include "containers/choc_SingleReaderSingleWriterFIFO.h"
 
@@ -36,7 +33,7 @@ namespace aap {
 
     protected:
         AudioProcessorState state{AAP_MIDI_PROCESSOR_STATE_CREATED};
-        virtual AudioProcessorPAL* pal() = 0;
+        virtual AudioDevicePAL* pal() = 0;
 
     public:
         // FIXME: we want to move this sampleRate argument to somewhere later
@@ -44,11 +41,11 @@ namespace aap {
 
         void instantiatePlugin(std::string pluginId);
 
-        void activate();
+        virtual void activate() = 0;
 
-        void deactivate();
+        virtual void deactivate() = 0;
 
-        void terminate();
+        virtual void terminate() = 0;
 
         virtual int32_t processAudioIO(void *audioData, int32_t numFrames) = 0;
 
@@ -66,3 +63,4 @@ namespace aap {
 
 
 #endif //AAP_CORE_AUDIOPROCESSOR_H
+*/

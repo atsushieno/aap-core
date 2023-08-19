@@ -1,5 +1,5 @@
-#ifndef AAP_CORE_PLUGIN_PLAYER_H
-#define AAP_CORE_PLUGIN_PLAYER_H
+#ifndef AAP_CORE_PLUGINPLAYER_H
+#define AAP_CORE_PLUGINPLAYER_H
 
 #include "aap/core/host/plugin-instance.h"
 
@@ -9,6 +9,7 @@ class PluginPlayer {
     aap::PluginListSnapshot pluginServices;
     std::unique_ptr<PluginClientConnectionList> connections;
     std::unique_ptr<PluginClient> client;
+    RemotePluginInstance* instance{nullptr};
     size_t ump_buffer_size;
     void* ump_in_buffer{nullptr};
     void* ump_out_buffer{nullptr};
@@ -34,8 +35,8 @@ public:
         ump_out_buffer = calloc(ump_buffer_size, 1);
     }
 
-    void activate();
-    void deactivate();
+    void start();
+    void pause();
 
     void enqueueUmp32(uint32_t i1);
     void enqueueUmp64(uint32_t i1, uint32_t i2);
@@ -44,4 +45,4 @@ public:
 };
 
 }
-#endif //AAP_CORE_PLUGIN_PLAYER_H
+#endif //AAP_CORE_PLUGINPLAYER_H

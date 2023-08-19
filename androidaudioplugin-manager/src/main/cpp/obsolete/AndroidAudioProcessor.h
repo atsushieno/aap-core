@@ -1,7 +1,4 @@
-//
-// Created by atsushi on 2023/07/18.
-//
-
+/*
 #ifndef AAP_CORE_ANDROIDAUDIOPROCESSOR_H
 #define AAP_CORE_ANDROIDAUDIOPROCESSOR_H
 
@@ -35,3 +32,4 @@ namespace aap {
 
 
 #endif //AAP_CORE_ANDROIDAUDIOPROCESSOR_H
+*/

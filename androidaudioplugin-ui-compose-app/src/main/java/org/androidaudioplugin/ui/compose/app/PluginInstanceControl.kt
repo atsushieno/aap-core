@@ -74,8 +74,20 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
             )
         })
 
-    TextButton(onClick = { scope.playPreloadedAudio() }) {
-        Text(text = "Play Audio")
+    Row {
+        var isActivated by remember { mutableStateOf(false) }
+        Button(onClick = {
+            isActivated = !isActivated
+            if (isActivated)
+                scope.startProcessing()
+            else
+                scope.pauseProcessing()
+        }) {
+            Text(text = if (isActivated) "Pause" else "Start")
+        }
+        Button(onClick = { scope.playPreloadedAudio() }) {
+            Text(text = "Play Audio")
+        }
     }
 
     // FIXME: should this be hoisted out? It feels like performance loss

@@ -1,18 +1,19 @@
-
+/*
 #ifndef AAP_ANDROID_AUDIO_PROCESSOR_PAL_H
 #define AAP_ANDROID_AUDIO_PROCESSOR_PAL_H
 
+#include <memory>
 #include <thread> // NDK has no jthread...
 #include <android/sharedmem.h>
 #include <oboe/Oboe.h>
-#include "AudioProcessorPAL.h"
+#include "AudioDevicePAL.h"
 #include "AudioProcessor.h"
 #include <aap/core/host/android/audio-plugin-host-android.h>
 #include <aap/unstable/logging.h>
 
 namespace aap {
 
-    class InterleavedAudioProcessorPAL : public AudioProcessorPAL {
+    class InterleavedAudioProcessorPAL : public AudioDevicePAL {
         class Impl;
         Impl* impl;
 
@@ -103,3 +104,4 @@ namespace aap {
 }
 
 #endif //AAP_ANDROID_AUDIO_PROCESSOR_PAL_H
+*/
