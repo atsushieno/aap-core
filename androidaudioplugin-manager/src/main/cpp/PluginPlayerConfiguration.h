@@ -6,20 +6,23 @@
 #include <cstdint>
 
 namespace aap {
-
     class PluginPlayerConfiguration {
-        AudioDeviceIn* input;
-        AudioDeviceOut* output;
-        int32_t audio_bus_id;
         int32_t sample_rate;
-    public:
+        int32_t frames_per_callback;
 
-        PluginPlayerConfiguration(AudioDeviceIn* input, AudioDeviceOut* output, int32_t audioBusId, int32_t sampleRate) :
-            input(input),
-            output(output),
-            audio_bus_id(audioBusId),
-            sample_rate(sampleRate) {
+    public:
+        PluginPlayerConfiguration(
+                /** should default to device optimal settings */
+                int32_t sampleRate,
+                /** should default to device optimal settings */
+                int32_t framesPerCallback) :
+                sample_rate(sampleRate),
+                frames_per_callback(framesPerCallback) {
         }
+
+        int32_t getSampleRate() { return sample_rate; }
+
+        int32_t getFramesPerCallback() { return frames_per_callback; }
     };
 
 }

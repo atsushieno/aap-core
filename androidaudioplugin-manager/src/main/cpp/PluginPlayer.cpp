@@ -1,9 +1,8 @@
-
 #include "PluginPlayer.h"
+#include <aap/core/host/plugin-instance.h>
 
-void aap::PluginPlayer::start() {
-    assert(instance != nullptr);
-    instance->activate();
-
-    assert(false); // TODO
+aap::PluginPlayer::PluginPlayer(aap::PluginPlayerConfiguration &pluginPlayerConfiguration,
+                                aap::RemotePluginInstance *instance) :
+                                configuration(pluginPlayerConfiguration),
+                                graph(configuration.getFramesPerCallback(), instance) {
 }

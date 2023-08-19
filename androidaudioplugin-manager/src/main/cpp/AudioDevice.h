@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "LocalDefinitions.h"
 
-
+#include <oboe/Oboe.h>
 
 namespace aap {
 

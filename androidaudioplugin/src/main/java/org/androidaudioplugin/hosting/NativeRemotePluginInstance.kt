@@ -17,7 +17,7 @@ enum class InstanceState {
 
 /* maps to aap::RemotePluginInstance */
 class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstance*
-                                 private val client: Long) {
+                                 val client: Long) {
 
     // error handling
     var state = InstanceState.UNPREPARED

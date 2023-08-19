@@ -9,3 +9,8 @@ void aap::BasicAudioGraph::attachNode(AudioGraphNode *sourceNode, int32_t source
 void aap::BasicAudioGraph::detachNode(AudioGraphNode *sourceNode, int32_t sourceOutputBusIndex) {
 
 }
+
+void aap::SimpleLinearAudioGraph::processAudio(void *audioData, int32_t numFrames) {
+    file.processAudio(audioData, numFrames);
+    plugin.processAudio(audioData, numFrames);
+}

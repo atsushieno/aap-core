@@ -22,8 +22,15 @@ Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventNative(JNIEnv *env,
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_00024Companion_createNewPluginPlayer(JNIEnv *env,
-                                                                                      jobject thiz) {
-    return (jlong) (void*) new aap::PluginPlayer();
+                                                                                      jobject thiz,
+                                                                                      int32_t sampleRate,
+                                                                                      int32_t framesPerCallback,
+                                                                                      jlong nativeClient,
+                                                                                      jint instanceId) {
+    aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback};
+    auto client = (aap::PluginClient*) nativeClient;
+    auto instance = client->getInstanceById(instanceId);
+    return (jlong) (void*) new aap::PluginPlayer(configuration, (aap::RemotePluginInstance*) instance);
 }
 
 extern "C"

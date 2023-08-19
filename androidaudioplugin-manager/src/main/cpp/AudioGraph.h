@@ -15,7 +15,7 @@ namespace aap {
     };
 
     class SimpleLinearAudioGraph : public AudioGraph {
-        //AudioDeviceInputNode input;
+        AudioDeviceInputNode input;
         AudioDeviceOutputNode output;
         AudioPluginNode plugin;
         AudioSourceNode file;
@@ -26,12 +26,14 @@ namespace aap {
 
     public:
         SimpleLinearAudioGraph(uint32_t framesPerCallback, RemotePluginInstance* instance) :
-                //input(AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback)),
+                input(AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback)),
                 output(AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback)),
                 plugin(instance),
                 file() {
             output.getDevice()->setAudioCallback(audio_callback);
         }
+
+        void processAudio(void *audioData, int32_t numFrames) override;
     };
 
     class AudioGraphNode;

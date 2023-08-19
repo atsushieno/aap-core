@@ -1,6 +1,7 @@
 package org.androidaudioplugin.ui.compose.app
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.Build
 import android.view.View
 import androidx.compose.runtime.mutableStateOf
@@ -50,11 +51,16 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
 
     var instance: NativeRemotePluginInstance? = null
 
-    private val pluginPlayer = PluginPlayer.create().apply {
-        manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
-            val bytes = ByteArray(it.available())
-            it.read(bytes)
-            loadAudioResource(bytes, PluginPlayer.sample_audio_filename)
+    private val pluginPlayer by lazy {
+        val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
+        val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
+        PluginPlayer.create(sampleRate, frames, instance!!).apply {
+            manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
+                val bytes = ByteArray(it.available())
+                it.read(bytes)
+                loadAudioResource(bytes, PluginPlayer.sample_audio_filename)
+            }
         }
     }
 
