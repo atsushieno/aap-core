@@ -5,32 +5,40 @@
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_loadAudioResourceNative(JNIEnv *env, jobject thiz,
-                                                                         jlong native,
+                                                                         jlong player,
                                                                          jbyteArray bytes,
                                                                          jstring filename) {
-    // TODO: implement loadAudioResourceNative()
+    jboolean isDataCopy{false};
+    auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
+    jboolean isNameCopy{false};
+    auto name = env->GetStringUTFChars(filename, &isNameCopy);
+    ((aap::PluginPlayer*) player)->setAudioSource(data, env->GetArrayLength(bytes), name);
+    if (isNameCopy)
+        free((void*) name);
+    if (isDataCopy)
+        free((void*) data);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventNative(JNIEnv *env, jobject thiz,
-                                                                    jlong native, jbyteArray bytes,
+                                                                    jlong player, jbyteArray bytes,
                                                                     jint offset, jint length) {
     // TODO: implement addMidiEventNative()
+    jboolean isDataCopy{false};
+    auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
+    ((aap::PluginPlayer*) player)->graph.addMidiEvent(data + offset, length);
+    if (isDataCopy)
+        free((void*) data);
 }
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_org_androidaudioplugin_manager_PluginPlayer_00024Companion_createNewPluginPlayer(JNIEnv *env,
-                                                                                      jobject thiz,
-                                                                                      int32_t sampleRate,
-                                                                                      int32_t framesPerCallback,
-                                                                                      jlong nativeClient,
-                                                                                      jint instanceId) {
+Java_org_androidaudioplugin_manager_PluginPlayer_createNewPluginPlayer(JNIEnv *env, jclass clazz,
+                                                                       jint sampleRate,
+                                                                       jint framesPerCallback) {
     aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback};
-    auto client = (aap::PluginClient*) nativeClient;
-    auto instance = client->getInstanceById(instanceId);
-    return (jlong) (void*) new aap::PluginPlayer(configuration, (aap::RemotePluginInstance*) instance);
+    return (jlong) (void*) new aap::PluginPlayer(configuration);
 }
 
 extern "C"
@@ -42,29 +50,31 @@ Java_org_androidaudioplugin_manager_PluginPlayer_deletePluginPlayer(JNIEnv *env,
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_manager_PluginPlayer_setTargetInstanceNative(JNIEnv *env, jobject thiz,
-                                                                         jlong native,
-                                                                         jint instance_id) {
-    // TODO: implement setTargetInstanceNative()
-}
-
-extern "C"
-JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_startProcessingNative(JNIEnv *env, jobject thiz,
-                                                                       jlong native) {
-    // TODO: implement startProcessingNative()
+                                                                       jlong player) {
+    ((aap::PluginPlayer*) player)->startProcessing();
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_pauseProcessingNative(JNIEnv *env, jobject thiz,
-                                                                       jlong native) {
-    // TODO: implement startProcessingNative()
+                                                                       jlong player) {
+    ((aap::PluginPlayer*) player)->pauseProcessing();
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_playPreloadedAudioNative(JNIEnv *env, jobject thiz,
-                                                                          jlong native) {
-    // TODO: implement playPreloadedAudioNative()
+                                                                          jlong player) {
+    ((aap::PluginPlayer*) player)->graph.playAudioData();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_manager_PluginPlayer_setPluginNative(JNIEnv *env, jobject thiz,
+                                                                 jlong player, jlong nativeClient,
+                                                                 jint instanceId) {
+    auto client = (aap::PluginClient*) nativeClient;
+    auto instance = client->getInstanceById(instanceId);
+    ((aap::PluginPlayer*) player)->graph.setPlugin((aap::RemotePluginInstance*) instance);
 }

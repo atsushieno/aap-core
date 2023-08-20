@@ -7,11 +7,17 @@
 namespace aap {
     class PluginPlayer {
         PluginPlayerConfiguration configuration;
-        SimpleLinearAudioGraph graph;
 
     public:
-        PluginPlayer(PluginPlayerConfiguration &configuration,
-                     aap::RemotePluginInstance *instance);
+        PluginPlayer(PluginPlayerConfiguration &configuration);
+
+        SimpleLinearAudioGraph graph;
+
+        void setAudioSource(uint8_t *data, int dataLength, const char *filename);
+
+        void startProcessing();
+
+        void pauseProcessing();
     };
 }
 

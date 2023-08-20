@@ -10,28 +10,31 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     companion object {
         const val sample_audio_filename = "androidaudioplugin_manager_sample_audio.ogg"
 
-        fun create(sampleRate: Int, framesPerCallback: Int, instance: NativeRemotePluginInstance) =
-            PluginPlayer(createNewPluginPlayer(sampleRate, framesPerCallback, instance.client, instance.instanceId))
+        fun create(sampleRate: Int, framesPerCallback: Int) =
+            PluginPlayer(createNewPluginPlayer(sampleRate, framesPerCallback))
 
         init {
             System.loadLibrary("androidaudioplugin-manager")
         }
 
-        private external fun createNewPluginPlayer(sampleRate: Int, framesPerCallback: Int, nativeClient: Long, instanceId: Int): Long
+        @JvmStatic
+        private external fun createNewPluginPlayer(sampleRate: Int, framesPerCallback: Int): Long
     }
 
     override fun close() {
         deletePluginPlayer(native)
     }
 
+    private external fun setPluginNative(player: Long, nativeClient: Long, instanceId: Int)
+
+    fun setPlugin(plugin: NativeRemotePluginInstance) = setPluginNative(native, plugin.client, plugin.instanceId)
+
     private external fun deletePluginPlayer(native: Long)
 
     fun loadAudioResource(bytes: ByteArray, filename: String) =
-        loadAudioResourceNative(bytes, filename)
+        loadAudioResourceNative(native, bytes, filename)
 
-    private external fun loadAudioResourceNative(bytes: ByteArray, filename: String)
-
-    fun setTargetInstance(instanceId: Int) = setTargetInstanceNative(native, instanceId)
+    private external fun loadAudioResourceNative(player: Long, bytes: ByteArray, filename: String)
 
     private external fun setTargetInstanceNative(native: Long, instanceId: Int)
 

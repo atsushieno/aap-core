@@ -11,6 +11,24 @@ void aap::BasicAudioGraph::detachNode(AudioGraphNode *sourceNode, int32_t source
 }
 
 void aap::SimpleLinearAudioGraph::processAudio(void *audioData, int32_t numFrames) {
-    file.processAudio(audioData, numFrames);
-    plugin.processAudio(audioData, numFrames);
+    if (!audio_data.shouldSkip())
+        audio_data.processAudio(audioData, numFrames);
+    if (!plugin.shouldSkip())
+        plugin.processAudio(audioData, numFrames);
+}
+
+void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance) {
+    plugin.setPlugin(instance);
+}
+
+void aap::SimpleLinearAudioGraph::setAudioData(void *audioData, int32_t numFrames, int32_t numChannels) {
+    audio_data.setData(audioData, numChannels, numChannels);
+}
+
+void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length) {
+    midi_input.addMidiEvent(data, length);
+}
+
+void aap::SimpleLinearAudioGraph::playAudioData() {
+    audio_data.setPlaying(true);
 }
