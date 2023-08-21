@@ -32,3 +32,11 @@ void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length) {
 void aap::SimpleLinearAudioGraph::playAudioData() {
     audio_data.setPlaying(true);
 }
+
+void aap::SimpleLinearAudioGraph::startProcessing() {
+    output.getDevice()->startCallback();
+}
+
+void aap::SimpleLinearAudioGraph::pauseProcessing() {
+    output.getDevice()->stopCallback();
+}

@@ -11,8 +11,6 @@ namespace aap {
     typedef void(AudioDeviceCallback(void* callbackContext, void* audioData, int32_t numFrames));
 
     class AAP_PUBLIC_API AudioDeviceIn {
-    protected:
-        AudioDeviceCallback *callback;
 
     public:
         AudioDeviceIn() {}
@@ -20,20 +18,21 @@ namespace aap {
         AAP_PUBLIC_API virtual void startCallback() = 0;
         AAP_PUBLIC_API virtual void stopCallback() = 0;
 
-        void setAudioCallback(AudioDeviceCallback audioDeviceCallback) { callback = audioDeviceCallback; }
+        virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
+
+        virtual void readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) = 0;
     };
 
     class AAP_PUBLIC_API AudioDeviceOut {
-    protected:
-        AudioDeviceCallback *callback;
-
     public:
         AudioDeviceOut() {}
 
         AAP_PUBLIC_API virtual void startCallback() = 0;
         AAP_PUBLIC_API virtual void stopCallback() = 0;
 
-        void setAudioCallback(AudioDeviceCallback audioDeviceCallback) { callback = audioDeviceCallback; }
+        virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
+
+        virtual void writeToPlatformBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) = 0;
     };
 }
 

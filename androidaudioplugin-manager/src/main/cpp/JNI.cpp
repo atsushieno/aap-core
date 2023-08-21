@@ -24,7 +24,6 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventNative(JNIEnv *env, jobject thiz,
                                                                     jlong player, jbyteArray bytes,
                                                                     jint offset, jint length) {
-    // TODO: implement addMidiEventNative()
     jboolean isDataCopy{false};
     auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
     ((aap::PluginPlayer*) player)->graph.addMidiEvent(data + offset, length);

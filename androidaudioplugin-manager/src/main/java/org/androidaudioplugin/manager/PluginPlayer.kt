@@ -36,13 +36,11 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     private external fun loadAudioResourceNative(player: Long, bytes: ByteArray, filename: String)
 
-    private external fun setTargetInstanceNative(native: Long, instanceId: Int)
-
     fun startProcessing() = startProcessingNative(native)
 
-    fun pauseProcessing() = pauseProcessingNative(native)
-
     private external fun startProcessingNative(native: Long)
+
+    fun pauseProcessing() = pauseProcessingNative(native)
 
     private external fun pauseProcessingNative(native: Long)
 
@@ -50,10 +48,7 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     private external fun playPreloadedAudioNative(native: Long)
 
-    fun setParameterValue(parameterId: UInt, value: Float) {
-        val umps = UmpHelper.aapUmpSysex8Parameter(parameterId, value).flatMap { Ump(it).toPlatformNativeBytes().asList() }
-        addMidiEvents(umps.toByteArray())
-    }
+    // MIDI events
 
     fun addMidiEvent(ump: Long) = addMidiEvent(Ump(ump))
 
@@ -63,6 +58,11 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
         addMidiEventNative(native, bytes, offset, length)
 
     private external fun addMidiEventNative(native: Long, bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset)
+
+    fun setParameterValue(parameterId: UInt, value: Float) {
+        val umps = UmpHelper.aapUmpSysex8Parameter(parameterId, value).flatMap { Ump(it).toPlatformNativeBytes().asList() }
+        addMidiEvents(umps.toByteArray())
+    }
 
     fun processPitchBend(note: Int, value: Float) {
         assert(0.0 <= value && value < 1.0)

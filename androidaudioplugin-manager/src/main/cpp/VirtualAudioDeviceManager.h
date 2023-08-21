@@ -16,6 +16,12 @@ namespace aap {
 
         void startCallback() override { running = true; }
         void stopCallback() override { running = false; }
+        void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
+            // should we implement something here?
+        }
+        void readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override {
+            // should we implement something here?
+        }
     };
 
     class VirtualAudioDeviceOut : public AudioDeviceOut {
@@ -26,6 +32,12 @@ namespace aap {
 
         void startCallback() override { running = true; }
         void stopCallback() override { running = false; }
+        void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
+            // should we implement something here?
+        }
+        void writeToPlatformBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override {
+            // should we implement something here?
+        }
     };
 
     class VirtualAudioDeviceManager : public AudioDeviceManager {

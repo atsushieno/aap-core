@@ -1,13 +1,19 @@
 #include "AudioGraphNode.h"
 
 void aap::AudioDeviceInputNode::processAudio(void *audioData, int32_t numFrames) {
-    assert(false); // TODO, maybe not supported in SimpleLinearAudioGraph
+    // TODO: copy current audio input data into `audioData`
+    getDevice()->readAAPNodeBuffer(audioData, consumer_position, numFrames);
+    // TODO: adjust ring buffer offset, not just simple adder.
+    consumer_position += numFrames;
 }
 
 //--------
 
 void aap::AudioDeviceOutputNode::processAudio(void *audioData, int32_t numFrames) {
-    assert(false); // TODO
+    // TODO: copy `audioData` into current audio output buffer
+    getDevice()->writeToPlatformBuffer(audioData, consumer_position, numFrames);
+    // TODO: adjust ring buffer offset, not just simple adder.
+    consumer_position += numFrames;
 }
 
 //--------

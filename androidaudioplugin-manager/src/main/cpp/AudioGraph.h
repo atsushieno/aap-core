@@ -34,7 +34,7 @@ namespace aap {
                 audio_data(nullptr, 0, 0),
                 midi_input(AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
                 midi_output(AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
-            output.getDevice()->setAudioCallback(audio_callback);
+            output.getDevice()->setAudioCallback(audio_callback, this);
         }
 
         void setPlugin(RemotePluginInstance* instance);
@@ -46,6 +46,10 @@ namespace aap {
         void addMidiEvent(uint8_t *string, int32_t i);
 
         void playAudioData();
+
+        void startProcessing();
+
+        void pauseProcessing();
     };
 
     class AudioGraphNode;

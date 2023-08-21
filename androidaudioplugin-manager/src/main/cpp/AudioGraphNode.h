@@ -13,8 +13,19 @@ namespace aap {
         virtual void processAudio(void* audioData, int32_t numFrames) = 0;
     };
 
+    /**
+     * AudioDeviceInputNode outputs the audio input from the device callback at processing.
+     * More than one node could retrieve the same input buffer.
+     *
+     * It internally uses ring buffer for audio inputs. (TODO)
+     *
+     * In case of failed audio processing, it may resend the same output chunk.
+     * It does not check if the input was already consumed or not.
+     *
+     */
     class AudioDeviceInputNode : public AudioGraphNode {
         AudioDeviceIn* input;
+        int32_t consumer_position{0};
 
     public:
         AudioDeviceInputNode(AudioDeviceIn* input) :
@@ -26,8 +37,18 @@ namespace aap {
         void processAudio(void* audioData, int32_t numFrames) override;
     };
 
+    /**
+     * AudioDeviceOutputNode outputs its input directly to the device at processing.
+     *
+     * On a live audio processor, the Oboe audio device callback would kick the overall
+     * AudioGraph processing, and this node is typically laid out at the end of one of the chains.
+     *
+     * AudioGraph itself does not handle output copying - it might just store the processing
+     * results on an AudioDestinationNode and let the client app retrieve the buffer.
+     */
     class AudioDeviceOutputNode : public AudioGraphNode {
         AudioDeviceOut* output;
+        int32_t consumer_position{0};
 
     public:
         AudioDeviceOutputNode(AudioDeviceOut* output) :

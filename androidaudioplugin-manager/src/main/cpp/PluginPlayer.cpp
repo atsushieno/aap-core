@@ -7,13 +7,13 @@ aap::PluginPlayer::PluginPlayer(aap::PluginPlayerConfiguration &pluginPlayerConf
 }
 
 void aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
-    // TODO: implement
+    // TODO: implement uncompressing `data` into AAP audio data.
 }
 
 void aap::PluginPlayer::startProcessing() {
-    // TODO: implement
+    graph.startProcessing();
 }
 
 void aap::PluginPlayer::pauseProcessing() {
-    // TODO: implement
+    graph.pauseProcessing();
 }
