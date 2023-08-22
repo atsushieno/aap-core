@@ -2,6 +2,13 @@
 
 #include "PluginPlayer.h"
 
+JavaVM* java_vm;
+
+extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    java_vm = vm;
+    return JNI_VERSION_1_6;
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_loadAudioResourceNative(JNIEnv *env, jobject thiz,
@@ -76,4 +83,12 @@ Java_org_androidaudioplugin_manager_PluginPlayer_setPluginNative(JNIEnv *env, jo
     auto client = (aap::PluginClient*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
     ((aap::PluginPlayer*) player)->graph.setPlugin((aap::RemotePluginInstance*) instance);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_manager_PluginPlayer_enableAudioRecorderNative(JNIEnv *env,
+                                                                           jobject thiz,
+                                                                           jlong player) {
+    ((aap::PluginPlayer*) player)->enableAudioRecorder();
 }

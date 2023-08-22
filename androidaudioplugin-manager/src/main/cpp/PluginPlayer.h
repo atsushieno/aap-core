@@ -18,6 +18,8 @@ namespace aap {
         void startProcessing();
 
         void pauseProcessing();
+
+        void enableAudioRecorder();
     };
 }
 

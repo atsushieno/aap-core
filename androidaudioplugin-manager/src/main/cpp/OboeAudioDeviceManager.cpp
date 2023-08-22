@@ -38,6 +38,9 @@ namespace aap {
         OboeAudioDeviceIn(uint32_t framesPerCallback);
         virtual ~OboeAudioDeviceIn() {}
 
+        // required on Android platform
+        bool isPermissionRequired() override { return true; }
+
         void startCallback() override { impl.startCallback(); }
 
         void stopCallback() override { impl.stopCallback(); }
@@ -99,7 +102,8 @@ aap::OboeAudioDevice::OboeAudioDevice(uint32_t framesPerCallback, oboe::Directio
             ->setFramesPerDataCallback(framesPerCallback)
             ->setContentType(oboe::ContentType::Music)
             ->setInputPreset(oboe::InputPreset::Unprocessed)
-            ->setDirection(direction);
+            ->setDirection(direction)
+            ->setCallback(this);
 }
 
 void aap::OboeAudioDevice::startCallback() {

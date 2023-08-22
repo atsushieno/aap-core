@@ -21,6 +21,8 @@ namespace aap {
         virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
 
         virtual void readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) = 0;
+
+        virtual bool isPermissionRequired() { return false; }
     };
 
     class AAP_PUBLIC_API AudioDeviceOut {

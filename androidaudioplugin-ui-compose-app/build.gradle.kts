@@ -56,6 +56,7 @@ dependencies {
     implementation (libs.androidx.appcompat)
 
     implementation (libs.accompanist.drawablepainter)
+    implementation (libs.accompanist.permissions)
 
     implementation (libs.compose.ui)
     implementation (libs.material3)

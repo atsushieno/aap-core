@@ -79,6 +79,10 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         )
     }
 
+    fun enableAudioRecorder() {
+        pluginPlayer.enableAudioRecorder()
+    }
+
     fun startProcessing() {
         pluginPlayer.startProcessing()
     }

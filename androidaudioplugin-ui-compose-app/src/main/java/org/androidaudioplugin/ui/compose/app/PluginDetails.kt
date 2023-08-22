@@ -1,8 +1,14 @@
 package org.androidaudioplugin.ui.compose.app
 
+import android.Manifest
+import androidx.appcompat.app.AppCompatActivity
 import android.app.job.JobScheduler
+import android.content.pm.PackageManager
 import android.os.Build
 import android.view.View
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -12,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -25,9 +33,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withRunningRecomposer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.PermissionChecker
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -39,6 +53,7 @@ import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
 import kotlin.coroutines.coroutineContext
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun PluginDetails(pluginInfo: PluginInformation, manager: PluginManagerScope) {
     // PluginDetailsScope.create() involves suspend fun, so we replace the Composable once it's ready.

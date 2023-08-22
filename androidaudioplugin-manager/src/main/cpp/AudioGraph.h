@@ -10,8 +10,16 @@
 
 namespace aap {
     AAP_OPEN_CLASS class AudioGraph {
+        int32_t frames_per_callback;
+
     public:
+        explicit AudioGraph(int32_t framesPerCallback) :
+                frames_per_callback(framesPerCallback) {
+        }
+
         virtual void processAudio(void* audioData, int32_t numFrames) = 0;
+
+        int32_t getFramesPerCallback() { return frames_per_callback; }
     };
 
     class SimpleLinearAudioGraph : public AudioGraph {
@@ -21,21 +29,14 @@ namespace aap {
         AudioDataSourceNode audio_data;
         MidiSourceNode midi_input;
         MidiDestinationNode midi_output;
+        std::vector<AudioGraphNode*> nodes{};
 
         static void audio_callback(void* callbackContext, void* audioData, int32_t numFrames) {
             ((SimpleLinearAudioGraph*) callbackContext)->processAudio(audioData, numFrames);
         }
 
     public:
-        SimpleLinearAudioGraph(uint32_t framesPerCallback) :
-                input(AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback)),
-                output(AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback)),
-                plugin(nullptr),
-                audio_data(nullptr, 0, 0),
-                midi_input(AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
-                midi_output(AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
-            output.getDevice()->setAudioCallback(audio_callback, this);
-        }
+        SimpleLinearAudioGraph(uint32_t framesPerCallback);
 
         void setPlugin(RemotePluginInstance* instance);
 
@@ -50,13 +51,16 @@ namespace aap {
         void startProcessing();
 
         void pauseProcessing();
+
+        void enableAudioRecorder();
     };
 
     class AudioGraphNode;
 
     class BasicAudioGraph : public AudioGraph {
     public:
-        BasicAudioGraph() {
+        BasicAudioGraph(int32_t framesPerCallback) :
+                AudioGraph(framesPerCallback) {
             assert(false); // TODO
         }
 

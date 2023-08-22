@@ -25,11 +25,11 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
         deletePluginPlayer(native)
     }
 
-    private external fun setPluginNative(player: Long, nativeClient: Long, instanceId: Int)
+    private external fun deletePluginPlayer(native: Long)
 
     fun setPlugin(plugin: NativeRemotePluginInstance) = setPluginNative(native, plugin.client, plugin.instanceId)
 
-    private external fun deletePluginPlayer(native: Long)
+    private external fun setPluginNative(player: Long, nativeClient: Long, instanceId: Int)
 
     fun loadAudioResource(bytes: ByteArray, filename: String) =
         loadAudioResourceNative(native, bytes, filename)
@@ -47,6 +47,10 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     fun playPreloadedAudio() = playPreloadedAudioNative(native)
 
     private external fun playPreloadedAudioNative(native: Long)
+
+    fun enableAudioRecorder() = enableAudioRecorderNative(native)
+
+    private external fun enableAudioRecorderNative(native: Long)
 
     // MIDI events
 

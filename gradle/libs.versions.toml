@@ -4,6 +4,7 @@ aap-core = "0.7.8-pre"
 aap-lv2 = "0.2.8-pre"
 
 accompanist-drawablepainter = "0.30.1"
+accompanist-permissions = "0.30.1"
 agp = "8.1.0"
 kotlin = "1.8.10"
 ndk = "25.2.9519653"
@@ -27,6 +28,7 @@ aap-testing = { module = "org.androidaudioplugin:androidaudioplugin-testing", ve
 aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.ref = "aap-lv2" }
 
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist-drawablepainter" }
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
 compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version = "0.2.0" }
 
 tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }

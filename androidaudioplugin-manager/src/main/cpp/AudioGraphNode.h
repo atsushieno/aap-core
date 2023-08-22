@@ -7,15 +7,27 @@
 #define AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE 8192
 
 namespace aap {
+    class AudioGraph;
+
     class AudioGraphNode {
+
+    protected:
+        AudioGraph* graph;
+
+        AudioGraphNode(AudioGraph* ownerGraph) : graph(ownerGraph) {}
+
     public:
+
         virtual bool shouldSkip() { return false; }
+        virtual void start() = 0;
+        virtual void pause() = 0;
         virtual void processAudio(void* audioData, int32_t numFrames) = 0;
     };
 
     /**
      * AudioDeviceInputNode outputs the audio input from the device callback at processing.
-     * More than one node could retrieve the same input buffer.
+     *
+     * Single producer, multiple consumer: more than one node could retrieve the same input buffer.
      *
      * It internally uses ring buffer for audio inputs. (TODO)
      *
@@ -26,19 +38,29 @@ namespace aap {
     class AudioDeviceInputNode : public AudioGraphNode {
         AudioDeviceIn* input;
         int32_t consumer_position{0};
+        bool permission_granted{false};
 
     public:
-        AudioDeviceInputNode(AudioDeviceIn* input) :
+        AudioDeviceInputNode(AudioGraph* ownerGraph, AudioDeviceIn* input) :
+                AudioGraphNode(ownerGraph),
                 input(input) {
         }
 
         AudioDeviceIn* getDevice() { return input; }
 
+        bool shouldSkip() override;
+
+        void start() override;
+        void pause() override;
         void processAudio(void* audioData, int32_t numFrames) override;
+
+        void setPermissionGranted();
     };
 
     /**
      * AudioDeviceOutputNode outputs its input directly to the device at processing.
+     *
+     * Single producer (app), single consumer (audio device callback).
      *
      * On a live audio processor, the Oboe audio device callback would kick the overall
      * AudioGraph processing, and this node is typically laid out at the end of one of the chains.
@@ -51,12 +73,15 @@ namespace aap {
         int32_t consumer_position{0};
 
     public:
-        AudioDeviceOutputNode(AudioDeviceOut* output) :
+        AudioDeviceOutputNode(AudioGraph* ownerGraph, AudioDeviceOut* output) :
+                AudioGraphNode(ownerGraph),
                 output(output) {
         }
 
         AudioDeviceOut* getDevice() { return output; }
 
+        void start() override;
+        void pause() override;
         void processAudio(void* audioData, int32_t numFrames) override;
     };
 
@@ -64,22 +89,29 @@ namespace aap {
         RemotePluginInstance* plugin;
 
     public:
-        AudioPluginNode(RemotePluginInstance* plugin) :
+        AudioPluginNode(AudioGraph* ownerGraph, RemotePluginInstance* plugin) :
+                AudioGraphNode(ownerGraph),
                 plugin(plugin) {
         }
 
         void setPlugin(RemotePluginInstance* instance) { plugin = instance; }
 
+        void start() override;
+        void pause() override;
         bool shouldSkip() override;
         void processAudio(void* audioData, int32_t numFrames) override;
     };
 
     AAP_OPEN_CLASS class AudioSourceNode : public AudioGraphNode {
+        bool active{false};
 
     public:
-        AudioSourceNode() {
+        AudioSourceNode(AudioGraph* ownerGraph) :
+            AudioGraphNode(ownerGraph) {
         }
 
+        void start() override;
+        void pause() override;
         bool shouldSkip() override;
         void processAudio(void* audioData, int32_t numFrames) override;
 
@@ -96,8 +128,11 @@ namespace aap {
         bool playing{false};
 
     public:
-        explicit AudioDataSourceNode() {}
-        AudioDataSourceNode(void* audioData, int32_t numFrames, int32_t numChannels) {
+        explicit AudioDataSourceNode(AudioGraph* ownerGraph) :
+                AudioSourceNode(ownerGraph) {
+        }
+        AudioDataSourceNode(AudioGraph* ownerGraph, void* audioData, int32_t numFrames, int32_t numChannels) :
+                AudioSourceNode(ownerGraph) {
             setData(audioData, numFrames, numChannels);
         }
 
@@ -114,12 +149,14 @@ namespace aap {
         int32_t next_data_offset{0};
 
     public:
-        MidiSourceNode(int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
+        MidiSourceNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
         virtual ~MidiSourceNode();
 
         void addMidiEvent(uint8_t *data, int32_t length);
 
+        void start() override;
+        void pause() override;
         void processAudio(void* audioData, int32_t numFrames) override;
     };
 
@@ -128,10 +165,12 @@ namespace aap {
         int32_t current_offset{0};
 
     public:
-        MidiDestinationNode(int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
+        MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
         virtual ~MidiDestinationNode();
 
+        void start() override;
+        void pause() override;
         void processAudio(void* audioData, int32_t numFrames) override;
     };
 

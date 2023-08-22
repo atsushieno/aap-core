@@ -17,3 +17,7 @@ void aap::PluginPlayer::startProcessing() {
 void aap::PluginPlayer::pauseProcessing() {
     graph.pauseProcessing();
 }
+
+void aap::PluginPlayer::enableAudioRecorder() {
+    graph.enableAudioRecorder();
+}

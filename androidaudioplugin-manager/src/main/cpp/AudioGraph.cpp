@@ -34,9 +34,33 @@ void aap::SimpleLinearAudioGraph::playAudioData() {
 }
 
 void aap::SimpleLinearAudioGraph::startProcessing() {
-    output.getDevice()->startCallback();
+    for (auto node : nodes)
+        node->start();
 }
 
 void aap::SimpleLinearAudioGraph::pauseProcessing() {
-    output.getDevice()->stopCallback();
+    for (auto node : nodes)
+        node->pause();
+}
+
+aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t framesPerCallback) :
+        AudioGraph(framesPerCallback),
+        input(this, AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback)),
+        output(this, AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback)),
+        plugin(this, nullptr),
+        audio_data(this, nullptr, 0, 0),
+        midi_input(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
+        midi_output(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
+    nodes.emplace_back(&input);
+    nodes.emplace_back(&audio_data);
+    nodes.emplace_back(&midi_input);
+    nodes.emplace_back(&plugin);
+    nodes.emplace_back(&midi_output);
+    nodes.emplace_back(&output);
+
+    output.getDevice()->setAudioCallback(audio_callback, this);
+}
+
+void aap::SimpleLinearAudioGraph::enableAudioRecorder() {
+    input.setPermissionGranted();
 }

@@ -1,5 +1,6 @@
 package org.androidaudioplugin.ui.compose.app
 
+import android.Manifest
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -28,6 +29,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
@@ -61,6 +65,7 @@ internal class RemotePluginViewScopeImpl(
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PluginInstanceControl(scope: PluginDetailsScope,
                           pluginInfo: PluginInformation,
@@ -87,6 +92,15 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         }
         Button(onClick = { scope.playPreloadedAudio() }) {
             Text(text = "Play Audio")
+        }
+
+        val permState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+        if (permState.status.isGranted)
+            scope.enableAudioRecorder()
+        else {
+            Button(onClick = { permState.launchPermissionRequest() }) {
+                Text("enable Audio Recording")
+            }
         }
     }
 
