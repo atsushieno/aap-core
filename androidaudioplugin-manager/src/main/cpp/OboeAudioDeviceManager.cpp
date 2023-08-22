@@ -7,14 +7,17 @@ namespace aap {
     protected:
         std::shared_ptr<oboe::AudioStream> stream{};
         oboe::AudioStreamBuilder builder{};
-        void* callback_context{nullptr};
+        void* callback_context;
         AudioDeviceCallback *aap_callback;
         oboe::AudioStream *current_audio_stream;
         void *current_oboe_data;
         void *current_aap_data;
 
+        oboe::DataCallbackResult onAudioInputReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
+        oboe::DataCallbackResult onAudioOutputReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
+
     public:
-        explicit OboeAudioDevice(uint32_t framesPerCallback, oboe::Direction direction);
+        explicit OboeAudioDevice(uint32_t framesPerCallback, int32_t numChannels, oboe::Direction direction);
 
         void setCallback(AudioDeviceCallback callback, void* callbackContext);
 
@@ -22,12 +25,11 @@ namespace aap {
 
         void stopCallback();
 
-        oboe::DataCallbackResult
-        onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
+        oboe::DataCallbackResult onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
 
-        void copyCurrentAAPBufferTo(void *dstAudioData, int32_t bufferPosition, int32_t numFrames);
+        void copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames);
 
-        void copyAAPBufferForWriting(void *srcAudioData, int32_t currentPosition, int32_t numFrames);
+        void copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition, int32_t numFrames);
     };
 
     class OboeAudioDeviceIn :
@@ -35,7 +37,7 @@ namespace aap {
         OboeAudioDevice impl;
 
     public:
-        OboeAudioDeviceIn(uint32_t framesPerCallback);
+        OboeAudioDeviceIn(uint32_t framesPerCallback, int32_t numChannels);
         virtual ~OboeAudioDeviceIn() {}
 
         // required on Android platform
@@ -49,7 +51,7 @@ namespace aap {
             impl.setCallback(callback, callbackContext);
         }
 
-        void readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override;
+        void readAAPNodeBuffer(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) override;
     };
 
     class OboeAudioDeviceOut :
@@ -57,7 +59,7 @@ namespace aap {
         OboeAudioDevice impl;
 
     public:
-        OboeAudioDeviceOut(uint32_t framesPerCallback);
+        OboeAudioDeviceOut(uint32_t framesPerCallback, int32_t numChannels);
         virtual ~OboeAudioDeviceOut() {}
 
         void startCallback() override { impl.startCallback(); }
@@ -68,42 +70,43 @@ namespace aap {
             impl.setCallback(callback, callbackContext);
         }
 
-        void writeToPlatformBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override;
+        void writeToPlatformBuffer(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) override;
     };
 }
 
 //--------
 
 aap::AudioDeviceIn *
-aap::OboeAudioDeviceManager::openDefaultInput(uint32_t framesPerCallback) {
+aap::OboeAudioDeviceManager::openDefaultInput(uint32_t framesPerCallback, int32_t numChannels) {
     assert(input == nullptr);
-    input = std::make_shared<OboeAudioDeviceIn>(framesPerCallback);
+    input = std::make_shared<OboeAudioDeviceIn>(framesPerCallback, numChannels);
     return input.get();
 }
 
 aap::AudioDeviceOut *
-aap::OboeAudioDeviceManager::openDefaultOutput(uint32_t framesPerCallback) {
+aap::OboeAudioDeviceManager::openDefaultOutput(uint32_t framesPerCallback, int32_t numChannels) {
     assert(output == nullptr);
-    output = std::make_shared<OboeAudioDeviceOut>(framesPerCallback);
+    output = std::make_shared<OboeAudioDeviceOut>(framesPerCallback, numChannels);
     return output.get();
 }
 
 //--------
 
-aap::OboeAudioDevice::OboeAudioDevice(uint32_t framesPerCallback, oboe::Direction direction) :
+aap::OboeAudioDevice::OboeAudioDevice(uint32_t framesPerCallback, int32_t numChannels, oboe::Direction direction) :
         oboe::StabilizedCallback(this) {
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
             ->setSharingMode(oboe::SharingMode::Exclusive)
+            ->setFormatConversionAllowed(true)
             ->setFormat(oboe::AudioFormat::Float)
-                    // FIXME: this is incorrect. It should be possible to process stereo outputs from the MIDI synths
-                    // but need to figure out why it fails to generate valid outputs for the target device.
-            ->setChannelCount(1) // channel_count);
-            ->setChannelConversionAllowed(false)
+            ->setChannelConversionAllowed(true)
+            ->setChannelCount(numChannels)
             ->setFramesPerDataCallback(framesPerCallback)
             ->setContentType(oboe::ContentType::Music)
             ->setInputPreset(oboe::InputPreset::Unprocessed)
             ->setDirection(direction)
             ->setCallback(this);
+
+    current_aap_data = calloc(numChannels + AudioDataNumExtraChannels, framesPerCallback);
 }
 
 void aap::OboeAudioDevice::startCallback() {
@@ -126,14 +129,38 @@ void aap::OboeAudioDevice::stopCallback() {
 oboe::DataCallbackResult
 aap::OboeAudioDevice::onAudioReady(oboe::AudioStream *audioStream, void *oboeAudioData,
                                       int32_t numFrames) {
+    if (audioStream->getDirection() == oboe::Direction::Input)
+        return onAudioInputReady(audioStream, oboeAudioData, numFrames);
+    else
+        return onAudioOutputReady(audioStream, oboeAudioData, numFrames);
+}
+
+oboe::DataCallbackResult
+aap::OboeAudioDevice::onAudioInputReady(oboe::AudioStream *audioStream, void *oboeAudioData,
+                                        int32_t numFrames) {
     if (aap_callback != nullptr) {
         current_audio_stream = audioStream;
         current_oboe_data = oboeAudioData;
 
-        // FIXME: convert Oboe AudioStream to our buffer structure
+        // TODO: convert Oboe AudioStream to our buffer structure
         current_aap_data = oboeAudioData;
 
         aap_callback(callback_context, current_aap_data, numFrames);
+    }
+    return oboe::DataCallbackResult::Continue;
+}
+
+oboe::DataCallbackResult
+aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *oboeAudioData,
+                                        int32_t numFrames) {
+    if (aap_callback != nullptr) {
+        current_audio_stream = audioStream;
+        current_oboe_data = oboeAudioData;
+
+        aap_callback(callback_context, current_aap_data, numFrames);
+
+        // TODO: convert Oboe AudioStream to our buffer structure, not just memcpy
+        memcpy(oboeAudioData, current_aap_data, numFrames * sizeof(float) * audioStream->getChannelCount());
     }
     return oboe::DataCallbackResult::Continue;
 }
@@ -143,13 +170,13 @@ void aap::OboeAudioDevice::setCallback(aap::AudioDeviceCallback aapCallback, voi
     callback_context = callbackContext;
 }
 
-void aap::OboeAudioDevice::copyCurrentAAPBufferTo(void *dstAudioData, int32_t bufferPosition,
+void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition,
                                                   int32_t numFrames) {
     // This copies current AAP input buffer (ring buffer) into the argument `dstAudioData`, without "consuming".
     // TODO: implement
 }
 
-void aap::OboeAudioDevice::copyAAPBufferForWriting(void *srcAudioData, int32_t currentPosition,
+void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition,
                                                    int32_t numFrames) {
     // This puts `srcAudioData` into current AAP output buffer (ring buffer).
     // TODO: implement
@@ -157,20 +184,20 @@ void aap::OboeAudioDevice::copyAAPBufferForWriting(void *srcAudioData, int32_t c
 
 //--------
 
-aap::OboeAudioDeviceIn::OboeAudioDeviceIn(uint32_t framesPerCallback) :
-        impl(framesPerCallback, oboe::Direction::Input) {
+aap::OboeAudioDeviceIn::OboeAudioDeviceIn(uint32_t framesPerCallback, int32_t numChannels) :
+        impl(framesPerCallback, numChannels, oboe::Direction::Input) {
 }
 
-aap::OboeAudioDeviceOut::OboeAudioDeviceOut(uint32_t framesPerCallback) :
-        impl(framesPerCallback, oboe::Direction::Output) {
+aap::OboeAudioDeviceOut::OboeAudioDeviceOut(uint32_t framesPerCallback, int32_t numChannels) :
+        impl(framesPerCallback, numChannels, oboe::Direction::Output) {
 
 }
 
-void aap::OboeAudioDeviceIn::readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) {
+void aap::OboeAudioDeviceIn::readAAPNodeBuffer(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) {
     impl.copyCurrentAAPBufferTo(audioData, bufferPosition, numFrames);
 }
 
-void aap::OboeAudioDeviceOut::writeToPlatformBuffer(void *audioData, int32_t bufferPosition,
+void aap::OboeAudioDeviceOut::writeToPlatformBuffer(AudioData *audioData, int32_t bufferPosition,
                                                 int32_t numFrames) {
     impl.copyAAPBufferForWriting(audioData, bufferPosition, numFrames);
 }

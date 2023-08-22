@@ -9,11 +9,13 @@ void aap::AudioDeviceInputNode::processAudio(void *audioData, int32_t numFrames)
 }
 
 void aap::AudioDeviceInputNode::start() {
-    getDevice()->startCallback();
+    if (!shouldSkip())
+        getDevice()->startCallback();
 }
 
 void aap::AudioDeviceInputNode::pause() {
-    getDevice()->stopCallback();
+    if (!shouldSkip())
+        getDevice()->stopCallback();
 }
 
 void aap::AudioDeviceInputNode::setPermissionGranted() {
@@ -47,7 +49,7 @@ bool aap::AudioPluginNode::shouldSkip() {
     return plugin == nullptr;
 }
 
-void aap::AudioPluginNode::processAudio(void *audioData, int32_t numFrames) {
+void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames) {
     if (!plugin)
         return;
     plugin->process(numFrames, 0); // FIXME: timeout?
@@ -65,12 +67,10 @@ void aap::AudioPluginNode::pause() {
 //--------
 
 bool aap::AudioSourceNode::shouldSkip() {
-    return !active && !hasData();
+    return !active || !hasData();
 }
 
-void aap::AudioSourceNode::processAudio(void *audioData, int32_t numFrames) {
-    if (!hasData())
-        return;
+void aap::AudioSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // TODO: copy input audio buffer for numFrames to audioData using read()
 }
 
@@ -82,55 +82,64 @@ void aap::AudioSourceNode::pause() {
     active = false;
 }
 
-int32_t aap::AudioDataSourceNode::read(void *dst, int32_t size) {
+void aap::AudioSourceNode::setPlaying(bool newPlayingState) {
+    playing = newPlayingState;
+}
 
+//--------
+
+int32_t aap::AudioDataSourceNode::read(AudioData *dst, int32_t numFrames) {
+    // TODO: correct implementation
+    memcpy(dst, audio_data, graph->getAAPChannelCount(graph->getChannelsInAudioBus()) * numFrames);
     return 0;
 }
 
-void aap::AudioDataSourceNode::setData(void *audioData, int32_t numFrames, int32_t numChannels) {
-    // TODO: atomic locks
+void aap::AudioDataSourceNode::setData(AudioData *audioData, int32_t numFrames, int32_t numChannels) {
+    // FIXME: atomic locks
     // TODO: convert data to de-interleaved uncompressed binary
     audio_data = audioData;
     frames = numFrames;
     channels = numChannels;
 }
 
-void aap::AudioDataSourceNode::setPlaying(bool newPlayingState) {
-    playing = newPlayingState;
-}
+//--------
 
 aap::MidiSourceNode::MidiSourceNode(AudioGraph* ownerGraph, int32_t internalBufferSize) :
         AudioGraphNode(ownerGraph) {
-    data = (uint8_t*) calloc(1, internalBufferSize);
+    buffer = (uint8_t*) calloc(1, internalBufferSize);
+    capacity = internalBufferSize;
 }
 
 aap::MidiSourceNode::~MidiSourceNode() {
-    free(data);
+    free(buffer);
 }
 
-void aap::MidiSourceNode::processAudio(void *audioData, int32_t numFrames) {
+void aap::MidiSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // TODO: copy buffered MIDI inputs to audioData
 }
 
 void aap::MidiSourceNode::addMidiEvent(uint8_t *data, int32_t length) {
-    // TODO: implement
+    if (producer_offset + length < capacity)
+        memcpy(buffer + producer_offset, data, length);
+    // FIXME: log error for insufficient event buffer
 }
 
 void aap::MidiSourceNode::start() {
-
 }
 
 void aap::MidiSourceNode::pause() {
 
 }
 
+//--------
+
 aap::MidiDestinationNode::MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize) :
         AudioGraphNode(ownerGraph) {
-    data = (uint8_t*) calloc(1, internalBufferSize);
+    buffer = (uint8_t*) calloc(1, internalBufferSize);
 }
 
 aap::MidiDestinationNode::~MidiDestinationNode() {
-    free(data);
+    free(buffer);
 }
 
 void aap::MidiDestinationNode::processAudio(void *audioData, int32_t numFrames) {

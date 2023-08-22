@@ -3,11 +3,16 @@
 
 aap::PluginPlayer::PluginPlayer(aap::PluginPlayerConfiguration &pluginPlayerConfiguration) :
                                 configuration(pluginPlayerConfiguration),
-                                graph(configuration.getFramesPerCallback()) {
+                                graph(configuration.getFramesPerCallback(), configuration.getChannelCount()) {
 }
 
 void aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
     // TODO: implement uncompressing `data` into AAP audio data.
+    auto aapAudioData = data;
+    int32_t numFrames = dataLength;
+    int32_t numChannels = 2;
+
+    graph.setAudioData(aapAudioData, numFrames, numChannels);
 }
 
 void aap::PluginPlayer::startProcessing() {

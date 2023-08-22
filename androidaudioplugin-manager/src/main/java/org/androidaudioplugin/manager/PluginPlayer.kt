@@ -10,15 +10,15 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     companion object {
         const val sample_audio_filename = "androidaudioplugin_manager_sample_audio.ogg"
 
-        fun create(sampleRate: Int, framesPerCallback: Int) =
-            PluginPlayer(createNewPluginPlayer(sampleRate, framesPerCallback))
+        fun create(sampleRate: Int, framesPerCallback: Int, channelCount: Int) =
+            PluginPlayer(createNewPluginPlayer(sampleRate, framesPerCallback, channelCount))
 
         init {
             System.loadLibrary("androidaudioplugin-manager")
         }
 
         @JvmStatic
-        private external fun createNewPluginPlayer(sampleRate: Int, framesPerCallback: Int): Long
+        private external fun createNewPluginPlayer(sampleRate: Int, framesPerCallback: Int, channelCount: Int): Long
     }
 
     override fun close() {

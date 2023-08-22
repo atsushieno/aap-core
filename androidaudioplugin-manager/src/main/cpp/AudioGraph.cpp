@@ -1,16 +1,6 @@
 #include "AudioGraph.h"
 
-void aap::BasicAudioGraph::attachNode(AudioGraphNode *sourceNode, int32_t sourceOutputBusIndex,
-                                 AudioGraphNode *destinationNode,
-                                 int32_t destinationInputBusIndex) {
-
-}
-
-void aap::BasicAudioGraph::detachNode(AudioGraphNode *sourceNode, int32_t sourceOutputBusIndex) {
-
-}
-
-void aap::SimpleLinearAudioGraph::processAudio(void *audioData, int32_t numFrames) {
+void aap::SimpleLinearAudioGraph::processAudio(AudioData *audioData, int32_t numFrames) {
     if (!audio_data.shouldSkip())
         audio_data.processAudio(audioData, numFrames);
     if (!plugin.shouldSkip())
@@ -21,8 +11,8 @@ void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance)
     plugin.setPlugin(instance);
 }
 
-void aap::SimpleLinearAudioGraph::setAudioData(void *audioData, int32_t numFrames, int32_t numChannels) {
-    audio_data.setData(audioData, numChannels, numChannels);
+void aap::SimpleLinearAudioGraph::setAudioData(AudioData *audioData, int32_t numFrames, int32_t channelsInAudioData) {
+    audio_data.setData(audioData, numFrames, channelsInAudioData);
 }
 
 void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length) {
@@ -43,12 +33,12 @@ void aap::SimpleLinearAudioGraph::pauseProcessing() {
         node->pause();
 }
 
-aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t framesPerCallback) :
-        AudioGraph(framesPerCallback),
-        input(this, AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback)),
-        output(this, AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback)),
+aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t framesPerCallback, int32_t channelsInAudioBus) :
+        AudioGraph(framesPerCallback, channelsInAudioBus),
+        input(this, AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback, channelsInAudioBus)),
+        output(this, AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback, channelsInAudioBus)),
         plugin(this, nullptr),
-        audio_data(this, nullptr, 0, 0),
+        audio_data(this),
         midi_input(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
         midi_output(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
     nodes.emplace_back(&input);

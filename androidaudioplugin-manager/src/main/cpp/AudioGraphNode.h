@@ -21,7 +21,7 @@ namespace aap {
         virtual bool shouldSkip() { return false; }
         virtual void start() = 0;
         virtual void pause() = 0;
-        virtual void processAudio(void* audioData, int32_t numFrames) = 0;
+        virtual void processAudio(AudioData* audioData, int32_t numFrames) = 0;
     };
 
     /**
@@ -52,7 +52,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
 
         void setPermissionGranted();
     };
@@ -82,7 +82,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
 
     class AudioPluginNode : public AudioGraphNode {
@@ -99,11 +99,12 @@ namespace aap {
         void start() override;
         void pause() override;
         bool shouldSkip() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
 
     AAP_OPEN_CLASS class AudioSourceNode : public AudioGraphNode {
         bool active{false};
+        bool playing{false};
 
     public:
         AudioSourceNode(AudioGraph* ownerGraph) :
@@ -113,40 +114,37 @@ namespace aap {
         void start() override;
         void pause() override;
         bool shouldSkip() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
 
         virtual bool hasData() { return false; };
 
-        virtual int32_t read(void* dst, int32_t size) = 0;
+        void setPlaying(bool newPlayingState);
+
+        virtual int32_t read(AudioData* dst, int32_t numFrames) = 0;
     };
 
     class AudioDataSourceNode : public AudioSourceNode {
         void* audio_data{nullptr};
         int32_t frames{0};
         int32_t channels{0};
+
         int32_t current_offset{0};
-        bool playing{false};
 
     public:
         explicit AudioDataSourceNode(AudioGraph* ownerGraph) :
                 AudioSourceNode(ownerGraph) {
         }
-        AudioDataSourceNode(AudioGraph* ownerGraph, void* audioData, int32_t numFrames, int32_t numChannels) :
-                AudioSourceNode(ownerGraph) {
-            setData(audioData, numFrames, numChannels);
-        }
 
-        void setData(void* audioData, int32_t numFrames, int32_t numChannels);
+        void setData(AudioData* audioData, int32_t numFrames, int32_t numChannels);
 
-        int32_t read(void* dst, int32_t size) override;
-
-        void setPlaying(bool newPlayingState);
+        int32_t read(AudioData* dst, int32_t numFrames) override;
     };
 
     class MidiSourceNode : public AudioGraphNode {
-        uint8_t* data;
-        int32_t current_play_offset{0};
-        int32_t next_data_offset{0};
+        uint8_t* buffer;
+        int32_t capacity;
+        int32_t consumer_offset{0};
+        int32_t producer_offset{0};
 
     public:
         MidiSourceNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
@@ -161,8 +159,8 @@ namespace aap {
     };
 
     class MidiDestinationNode : public AudioGraphNode {
-        uint8_t* data;
-        int32_t current_offset{0};
+        uint8_t* buffer;
+        int32_t consumer_offset{0};
 
     public:
         MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
@@ -171,7 +169,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
 
 }

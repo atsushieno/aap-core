@@ -55,7 +55,8 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
         val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
-        PluginPlayer.create(sampleRate, frames).apply {
+        val channelCount = 2
+        PluginPlayer.create(sampleRate, frames, channelCount).apply {
             setPlugin(instance!!)
             manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
                 val bytes = ByteArray(it.available())

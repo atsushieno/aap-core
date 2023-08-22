@@ -12,8 +12,8 @@ namespace aap {
         // This needs to be implemented for each platform
         static AudioDeviceManager* getInstance();
 
-        virtual AudioDeviceIn* openDefaultInput(uint32_t framesPerCallback) = 0;
-        virtual AudioDeviceOut* openDefaultOutput(uint32_t framesPerCallback) = 0;
+        virtual AudioDeviceIn* openDefaultInput(uint32_t framesPerCallback, int32_t numChannels) = 0;
+        virtual AudioDeviceOut* openDefaultOutput(uint32_t framesPerCallback, int32_t numChannels) = 0;
     };
 }
 

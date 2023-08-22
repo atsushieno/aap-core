@@ -2,13 +2,6 @@
 
 #include "PluginPlayer.h"
 
-JavaVM* java_vm;
-
-extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-    java_vm = vm;
-    return JNI_VERSION_1_6;
-}
-
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_loadAudioResourceNative(JNIEnv *env, jobject thiz,
@@ -42,8 +35,9 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_createNewPluginPlayer(JNIEnv *env, jclass clazz,
                                                                        jint sampleRate,
-                                                                       jint framesPerCallback) {
-    aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback};
+                                                                       jint framesPerCallback,
+                                                                       jint channelCount) {
+    aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback, channelCount};
     return (jlong) (void*) new aap::PluginPlayer(configuration);
 }
 

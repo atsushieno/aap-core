@@ -11,15 +11,21 @@
 namespace aap {
     AAP_OPEN_CLASS class AudioGraph {
         int32_t frames_per_callback;
+        int32_t num_channels;
 
     public:
-        explicit AudioGraph(int32_t framesPerCallback) :
-                frames_per_callback(framesPerCallback) {
+        static int32_t getAAPChannelCount(int32_t channelsInAudioBus) { return channelsInAudioBus + 2; }
+
+        explicit AudioGraph(int32_t framesPerCallback, int32_t channelsInAudioBus) :
+                frames_per_callback(framesPerCallback),
+                num_channels(channelsInAudioBus) {
         }
 
         virtual void processAudio(void* audioData, int32_t numFrames) = 0;
 
         int32_t getFramesPerCallback() { return frames_per_callback; }
+
+        int32_t getChannelsInAudioBus() { return num_channels; }
     };
 
     class SimpleLinearAudioGraph : public AudioGraph {
@@ -31,20 +37,20 @@ namespace aap {
         MidiDestinationNode midi_output;
         std::vector<AudioGraphNode*> nodes{};
 
-        static void audio_callback(void* callbackContext, void* audioData, int32_t numFrames) {
+        static void audio_callback(void* callbackContext, AudioData* audioData, int32_t numFrames) {
             ((SimpleLinearAudioGraph*) callbackContext)->processAudio(audioData, numFrames);
         }
 
     public:
-        SimpleLinearAudioGraph(uint32_t framesPerCallback);
+        SimpleLinearAudioGraph(uint32_t framesPerCallback, int32_t channelsInAudioBus);
 
         void setPlugin(RemotePluginInstance* instance);
 
-        void setAudioData(void* data, int32_t numFrames, int32_t numChannels);
+        void setAudioData(void* data, int32_t numFrames, int32_t channelsInAudioData);
 
-        void processAudio(void *audioData, int32_t numFrames) override;
+        void processAudio(AudioData *audioData, int32_t numFrames) override;
 
-        void addMidiEvent(uint8_t *string, int32_t i);
+        void addMidiEvent(uint8_t *data, int32_t dataLength);
 
         void playAudioData();
 
@@ -55,17 +61,15 @@ namespace aap {
         void enableAudioRecorder();
     };
 
-    class AudioGraphNode;
-
+    // Not planned to implement so far.
     class BasicAudioGraph : public AudioGraph {
     public:
-        BasicAudioGraph(int32_t framesPerCallback) :
-                AudioGraph(framesPerCallback) {
-            assert(false); // TODO
+        BasicAudioGraph(int32_t framesPerCallback, int32_t channelsInAudioBus) :
+                AudioGraph(framesPerCallback, channelsInAudioBus) {
         }
 
-        void attachNode(AudioGraphNode* sourceNode, int32_t sourceOutputBusIndex, AudioGraphNode* destinationNode, int32_t destinationInputBusIndex);
-        void detachNode(AudioGraphNode* sourceNode, int32_t sourceOutputBusIndex);
+        void attachNode(AudioGraphNode* sourceNode, int32_t sourceOutputBusIndex, AudioGraphNode* destinationNode, int32_t destinationInputBusIndex) {}
+        void detachNode(AudioGraphNode* sourceNode, int32_t sourceOutputBusIndex) {}
     };
 }
 

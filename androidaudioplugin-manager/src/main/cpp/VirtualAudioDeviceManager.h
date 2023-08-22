@@ -19,7 +19,7 @@ namespace aap {
         void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
             // should we implement something here?
         }
-        void readAAPNodeBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override {
+        void readAAPNodeBuffer(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) override {
             // should we implement something here?
         }
     };
@@ -35,7 +35,7 @@ namespace aap {
         void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
             // should we implement something here?
         }
-        void writeToPlatformBuffer(void *audioData, int32_t bufferPosition, int32_t numFrames) override {
+        void writeToPlatformBuffer(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) override {
             // should we implement something here?
         }
     };
@@ -50,8 +50,8 @@ namespace aap {
                   output(std::make_shared<VirtualAudioDeviceOut>()) {
         }
 
-        AudioDeviceIn * openDefaultInput(uint32_t framesPerCallback) override { return input.get(); }
-        AudioDeviceOut * openDefaultOutput(uint32_t framesPerCallback) override { return output.get(); }
+        AudioDeviceIn * openDefaultInput(uint32_t framesPerCallback, int32_t numChannels) override { return input.get(); }
+        AudioDeviceOut * openDefaultOutput(uint32_t framesPerCallback, int32_t numChannels) override { return output.get(); }
     };
 
 }

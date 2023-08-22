@@ -12,6 +12,6 @@ aap::AudioDeviceManager* aap::AudioDeviceManager::getInstance() {
 
 #else
 
-// TODO: implement
+// implement desktop version?
 
 #endif
