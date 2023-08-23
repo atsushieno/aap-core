@@ -21,7 +21,7 @@ namespace aap {
                 num_channels(channelsInAudioBus) {
         }
 
-        virtual void processAudio(void* audioData, int32_t numFrames) = 0;
+        virtual void processAudio(AudioData* audioData, int32_t numFrames) = 0;
 
         int32_t getFramesPerCallback() { return frames_per_callback; }
 
@@ -46,7 +46,7 @@ namespace aap {
 
         void setPlugin(RemotePluginInstance* instance);
 
-        void setAudioData(void* data, int32_t numFrames, int32_t channelsInAudioData);
+        void setAudioData(AudioData* data, int32_t numFrames, int32_t channelsInAudioData);
 
         void processAudio(AudioData *audioData, int32_t numFrames) override;
 

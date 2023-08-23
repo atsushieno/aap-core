@@ -155,7 +155,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(void* audioData, int32_t numFrames) override;
+        void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
 
     class MidiDestinationNode : public AudioGraphNode {
