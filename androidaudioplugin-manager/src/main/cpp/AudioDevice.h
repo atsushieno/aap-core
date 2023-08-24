@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "LocalDefinitions.h"
+#include "AudioData.h"
 
 #include <oboe/Oboe.h>
 
@@ -20,8 +21,11 @@ namespace aap {
 
         virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
 
-        virtual void readAAPNodeBuffer(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames) = 0;
+        /// reads the audio data from the backend into `dstAudioData`.
+        virtual void read(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames) = 0;
 
+        /// The platform backend may require audio recording permission (e.g. Android).
+        /// The backend implementation should return true if that is the case.
         virtual bool isPermissionRequired() { return false; }
     };
 
@@ -32,9 +36,19 @@ namespace aap {
         AAP_PUBLIC_API virtual void startCallback() = 0;
         AAP_PUBLIC_API virtual void stopCallback() = 0;
 
+        /// Sets an abstracted `AudioDeviceCallback` to be called within the actual device callback.
+        ///
+        /// The platform backend (e.g. OboeAudioDeviceOut) will invoke `audioDeviceCallback`
+        /// before it attempts to write its cached output buffer.
+        ///
+        /// A user app is supposed to call `write()` within the actual callback. `write()` will then
+        /// store the audio buffer within the instance of this class so that the platform backend
+        /// can write to its audio buffer (e.g. `audioData` in Oboe `onAudioReady()`).
         virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
 
-        virtual void writeToPlatformBuffer(AudioData *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) = 0;
+        /// writes `audioDataToWrite` into the backend audio output.
+        /// Note that the actual outputting is done through the backend audio callback.
+        virtual void write(AudioData *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) = 0;
     };
 }
 

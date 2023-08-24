@@ -57,3 +57,29 @@ Since `AudioDeviceIn` and `AudioDeviceOut` involves audio buffering and there mi
 #### Audio Recoring Permission
 
 One thing to note is that audio inputs needs to be explicitly enabled. In `PluginPlayer` case, it is triggered by `RECORD_AUDIO` permission checker - if it is permitted then `PluginPlayer.enableAudioRecorder()` is invoked, which in turn enables the Oboe input callback.
+
+
+### Configuration
+
+`PluginPlayer` is a host application that is tailored for hosting one single AAP plugin.
+
+While it could be configured per plugin (because there is only one plugin in the audio graph, it is quite possible), we would begin with a fixed Stereo audio bus configuration (i.e. left and right for the input and the output), with a virtual MIDI2 input port and a virtual MIDI2 output port.
+
+However, we can specify the number of input channels at `PluginPlayer` constructors so it may still work. What is left unsupported is adjusting input audio file data to what `AudioData` expects (for audio device inputs it is handled at Oboe or AAudio).
+
+#### Configuration Changes
+
+The audio config changes (not to confuse with Android device config changes such as device orientation) will trigger rebuilding of the entire `AudioGraph`, as it involves reallocation of memory resources and potential total breakage of position information. Files need to be reloaded and re-converted to the new channel layout, the new sample rate, and the new frame size.
+
+Rebuilding `PluginPlayer` involves state saving and restoring of the plugin.
+
+
+### External Dependencies
+
+We use Tracktion/choc for a few utilities:
+
+- concurrent queue (ring buffer)
+- audio buffer interleaving / de-interleaving
+- ogg vorbis decoding
+
+It is somewhat risky to depend on it because choc is far from ABI stable (it's like using Skia), but we can keep using a fixed version if we find upgrades problematic.

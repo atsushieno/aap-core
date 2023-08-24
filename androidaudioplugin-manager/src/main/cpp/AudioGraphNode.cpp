@@ -3,7 +3,7 @@
 
 void aap::AudioDeviceInputNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // TODO: copy current audio input data into `audioData`
-    getDevice()->readAAPNodeBuffer(audioData, consumer_position, numFrames);
+    getDevice()->read(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
     consumer_position += numFrames;
 }
@@ -30,7 +30,7 @@ bool aap::AudioDeviceInputNode::shouldSkip() {
 
 void aap::AudioDeviceOutputNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // TODO: copy `audioData` into current audio output buffer
-    getDevice()->writeToPlatformBuffer(audioData, consumer_position, numFrames);
+    getDevice()->write(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
     consumer_position += numFrames;
 }

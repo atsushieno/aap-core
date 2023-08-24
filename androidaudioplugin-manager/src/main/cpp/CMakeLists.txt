@@ -5,6 +5,7 @@ project(androidaudioplugin-manager LANGUAGES CXX)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin-manager_SOURCES
 		#zix/ring.cpp
+		AudioData.cpp
 		AudioDevice.cpp
         AudioDeviceManager.cpp
 		OboeAudioDeviceManager.cpp
@@ -48,7 +49,7 @@ target_compile_definitions (androidaudioplugin-manager
 target_include_directories (androidaudioplugin-manager
 		PRIVATE
 		"../../../../include/"
-		#"../../../../external/choc"
+		"../../../../external/choc"
 		)
 
 if (ANDROID)
