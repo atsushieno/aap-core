@@ -5,17 +5,28 @@
 #define AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES 4
 #include <audio/choc_SampleBuffers.h>
 #include <containers/choc_SingleReaderSingleWriterFIFO.h>
+#include <aap/android-audio-plugin.h>
 
 namespace aap {
 
-    struct AudioData {
-        choc::buffer::ChannelArrayBuffer<float> audio;
-        choc::fifo::SingleReaderSingleWriterFIFO<float> midi_in;
-        choc::fifo::SingleReaderSingleWriterFIFO<float> midi_out;
+    class AudioData {
+        static int32_t aapBufferGetNumFrames(aap_buffer_t &);
+        static void *aapBufferGetBuffer(aap_buffer_t &, int32_t);
+        static int32_t aapBufferGetBufferSize(aap_buffer_t &, int32_t);
+        static int32_t aapBufferGetNumPorts(aap_buffer_t &);
 
-        AudioData(int32_t numChannels, int32_t framesPerCallback) {
+    public:
+        choc::buffer::ChannelArrayBuffer<float> audio;
+        void *midi_in;
+        void *midi_out;
+
+        AudioData(int32_t numChannels, int32_t framesPerCallback, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE) {
             audio = choc::buffer::createChannelArrayBuffer(numChannels, framesPerCallback * AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES, []() { return (float) 0; });
+            midi_in = calloc(1, midiBufferSize);
+            midi_out = calloc(1, midiBufferSize);
         }
+
+        aap_buffer_t asAAPBuffer();
     };
 
 }

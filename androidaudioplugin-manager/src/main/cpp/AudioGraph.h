@@ -42,7 +42,7 @@ namespace aap {
         }
 
     public:
-        SimpleLinearAudioGraph(uint32_t framesPerCallback, int32_t channelsInAudioBus);
+        SimpleLinearAudioGraph(uint32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus);
 
         void setPlugin(RemotePluginInstance* instance);
 
@@ -50,7 +50,7 @@ namespace aap {
 
         void processAudio(AudioData *audioData, int32_t numFrames) override;
 
-        void addMidiEvent(uint8_t *data, int32_t dataLength);
+        void addMidiEvent(uint8_t *data, int32_t dataLength, int64_t timestampInNanoseconds);
 
         void playAudioData();
 

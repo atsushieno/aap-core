@@ -12,6 +12,7 @@ set (androidaudioplugin-manager_SOURCES
 		VirtualAudioDeviceManager.cpp
 		AudioGraph.cpp
 		AudioGraphNode.cpp
+		AAPMidiEventTranslator.cpp
 		PluginPlayer.cpp
 		PluginPlayerConfiguration.cpp
 		JNI.cpp
@@ -49,6 +50,7 @@ target_compile_definitions (androidaudioplugin-manager
 target_include_directories (androidaudioplugin-manager
 		PRIVATE
 		"../../../../include/"
+		"../../../../external/cmidi2"
 		"../../../../external/choc"
 		)
 

@@ -1,10 +1,9 @@
 #include "AudioGraph.h"
 
 void aap::SimpleLinearAudioGraph::processAudio(AudioData *audioData, int32_t numFrames) {
-    if (!audio_data.shouldSkip())
-        audio_data.processAudio(audioData, numFrames);
-    if (!plugin.shouldSkip())
-        plugin.processAudio(audioData, numFrames);
+    for (auto node : nodes)
+        if (!node->shouldSkip())
+            node->processAudio(audioData, numFrames);
 }
 
 void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance) {
@@ -15,8 +14,8 @@ void aap::SimpleLinearAudioGraph::setAudioData(AudioData *audioData, int32_t num
     audio_data.setData(audioData, numFrames, channelsInAudioData);
 }
 
-void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length) {
-    midi_input.addMidiEvent(data, length);
+void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length, int64_t timestampInNanoseconds) {
+    midi_input.addMidiEvent(data, length, timestampInNanoseconds);
 }
 
 void aap::SimpleLinearAudioGraph::playAudioData() {
@@ -33,13 +32,13 @@ void aap::SimpleLinearAudioGraph::pauseProcessing() {
         node->pause();
 }
 
-aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t framesPerCallback, int32_t channelsInAudioBus) :
+aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus) :
         AudioGraph(framesPerCallback, channelsInAudioBus),
         input(this, AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback, channelsInAudioBus)),
         output(this, AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback, channelsInAudioBus)),
         plugin(this, nullptr),
         audio_data(this),
-        midi_input(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
+        midi_input(this, nullptr, sampleRate, framesPerCallback, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
         midi_output(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
     nodes.emplace_back(&input);
     nodes.emplace_back(&audio_data);

@@ -20,7 +20,24 @@ typedef struct AAPMidiBufferHeader {
 } AAPMidiBufferHeader;
 
 //
-// This MIDI extension assumes that parameter updates by host are sent to the plugin using
+// This MIDI extension assumes these two behaviors:
+//
+// (1) In real-time mode, an AAP host sends extension operations as Universal System Exclusive
+// messages in SysEx8 format. (see issue #73 for some background)
+//
+// The SysEx8 UMP packets consist of multiple UMP packets, which are like
+// `5g sz pc 7E  7F 00 01 ext-flag  00 00 00 00  uri-size  uri  value-size  value`, where -
+//   - g : UMP group
+//   - sz : UMP status and size, always 1F
+//   - pc : UMP packet format, 00 or 01 depending on the size
+//   - ext-flag : reserved; it may be used once we started supporting something like
+//     "local extension index" (LV2 URID alike).
+//   - uri-size: string length for extension URI, in 4 bytes
+//   - uri: string URI in escaped ASCII format, split and padded by 13 bytes (modulo padded as 0)
+//   - value-size: binary length for value in 4 bytes
+//   - value: serialized extension message binary, just like it is sent through Binder.
+//
+// (2) AAP parameter updates by host are sent to the plugin using
 // MIDI2 inputs, and parameter change notification back to the host is sent from the plugin
 // using MIDI2 outputs. The source input is a MIDI2 input port, and the destination
 // should be a MIDI2 output port. There is the only one input and the only one output.
@@ -97,20 +114,6 @@ typedef struct AAPMidiBufferHeader {
 //   plugin to process parameters and get parameter change notifications synchronously.
 //   It does not care about UI/DSP separation. It only cares the interface between host and plugin.
 //
-// <del>
-// The in-process UI and any other out-process UIs, apart from the primary sequencer (DAW) MIDI2
-// inputs, should also be able to send parameter changes. That is why we will have `addEvents()`
-// member function as part of this extension.
-// Note that it is not usable for "receiving" change notifications, as change notifications
-// would be often sent as to notify the "latest value" which cannot be really calculated without
-// the actual audio processing inputs.
-// To not interrupt realtime audio processing loop, additional events from UI should be enqueued,
-// not processed within the call to the processing function. We could name the function as
-// `process()` instead of `addEvents()` and specify outputs stream as an argument too, but that
-// implies we generate the outputs *on time*, which is not realistic (the function should behave
-// like "enqueue and return immediately", nothing to process further to get outputs).
-// </del>
-//
 
 // keep these in sync with AudioPluginMidiSettings.
 enum aap_midi_mapping_policy {
@@ -122,7 +125,7 @@ enum aap_midi_mapping_policy {
 };
 
 static inline void aapMidi2ParameterSysex8(uint32_t *dst1, uint32_t *dst2, uint32_t *dst3, uint32_t *dst4, uint8_t group, uint8_t channel, uint8_t key, uint16_t extra, uint16_t index, float value) {
-    *dst1 = ((0x50 + group) << 24) + 0x7E;
+    *dst1 = ((0x50 + group) << 24) + (0x0F << 16) + 0x7E;
     *dst2 = 0x7F000000 + channel;
     *dst3 = (key << 24) + (extra << 16) + index;
     *dst4 = *(uint32_t*) (void*) &value;

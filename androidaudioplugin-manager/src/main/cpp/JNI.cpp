@@ -26,7 +26,8 @@ Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventNative(JNIEnv *env,
                                                                     jint offset, jint length) {
     jboolean isDataCopy{false};
     auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
-    ((aap::PluginPlayer*) player)->graph.addMidiEvent(data + offset, length);
+    // timeout would not be reliable from non-RT language environment...
+    ((aap::PluginPlayer*) player)->graph.addMidiEvent(data + offset, length, 0);
     if (isDataCopy)
         free((void*) data);
 }

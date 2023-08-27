@@ -2,9 +2,9 @@
 #define AAP_CORE_AUDIOGRAPHNODE_H
 
 #include "AudioDevice.h"
+#include "AAPMidiEventTranslator.h"
 #include <aap/core/host/plugin-instance.h>
-
-#define AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE 8192
+#include <cmidi2.h>
 
 namespace aap {
     class AudioGraph;
@@ -140,18 +140,41 @@ namespace aap {
         int32_t read(AudioData* dst, int32_t numFrames) override;
     };
 
+    // I don't think any simple and stupid SpinLock works well on mobiles, as we do not want to dry up battery.
+    // FIXME: unify code with androidaudioplugin
+    class NanoSleepLock {
+        std::atomic_flag state = ATOMIC_FLAG_INIT;
+    public:
+        void lock() noexcept {
+            const auto delay = timespec{0, 1000}; // 1 microsecond
+            while(state.test_and_set())
+                clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
+        }
+        void unlock() noexcept { state.clear(); }
+        bool try_lock() noexcept { return !state.test_and_set(); }
+    };
+
+
     class MidiSourceNode : public AudioGraphNode {
         uint8_t* buffer;
         int32_t capacity;
         int32_t consumer_offset{0};
         int32_t producer_offset{0};
 
+        NanoSleepLock midi_buffer_mutex{};
+        AAPMidiEventTranslator translator;
+
+        // needed for sample accurate time calculation
+        int32_t sample_rate{0};
+        int32_t aap_frame_size{1024};
+        struct timespec last_aap_process_time{0, 0};
+
     public:
-        MidiSourceNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
+        MidiSourceNode(AudioGraph* ownerGraph, RemotePluginInstance* instance, int32_t sampleRate, int32_t audioNumFramesPerCallback, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
         virtual ~MidiSourceNode();
 
-        void addMidiEvent(uint8_t *data, int32_t length);
+        void addMidiEvent(uint8_t *data, int32_t length, int64_t timestampInNanoseconds);
 
         void start() override;
         void pause() override;
@@ -171,7 +194,6 @@ namespace aap {
         void pause() override;
         void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
-
 }
 
 

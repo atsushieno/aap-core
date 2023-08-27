@@ -133,6 +133,8 @@ namespace aap {
 
         virtual void prepare(int maximumExpectedSamplesPerBlock) = 0;
 
+        aap::PluginInstantiationState getInstanceState() { return instantiation_state; }
+
         void activate() {
             if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
                 return;

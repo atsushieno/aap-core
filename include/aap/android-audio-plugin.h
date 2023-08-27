@@ -33,7 +33,7 @@ typedef struct aap_buffer_t {
     int32_t (*num_ports)(aap_buffer_t& self);
 
     /**
-     * The pointer to the audio buffer. It may or may not be the shared pointer betwee host and client.
+     * The pointer to the audio buffer. It may or may not be the shared pointer between host and client.
      * It may return null.*/
     void * (*get_buffer)(aap_buffer_t& self, int32_t index);
 

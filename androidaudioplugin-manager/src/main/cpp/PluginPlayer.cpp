@@ -3,7 +3,7 @@
 
 aap::PluginPlayer::PluginPlayer(aap::PluginPlayerConfiguration &pluginPlayerConfiguration) :
                                 configuration(pluginPlayerConfiguration),
-                                graph(configuration.getFramesPerCallback(), configuration.getChannelCount()) {
+                                graph(configuration.getSampleRate(), configuration.getFramesPerCallback(), configuration.getChannelCount()) {
 }
 
 void aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
