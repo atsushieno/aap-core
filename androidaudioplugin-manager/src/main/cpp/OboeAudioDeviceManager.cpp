@@ -149,9 +149,11 @@ oboe::DataCallbackResult
 aap::OboeAudioDevice::onAudioInputReady(oboe::AudioStream *audioStream, void *oboeAudioData,
                                         int32_t numFrames) {
     if (aap_callback != nullptr) {
-        auto size = numFrames * audioStream->getChannelCount();
-        audioStream->read(oboe_buffer, size, AAP_OBOE_IO_TIMEOUT_MILLISECONDS);
-        auto oboeView = choc::buffer::createInterleavedView((float*) oboe_buffer, audioStream->getChannelCount(), numFrames);
+        aap_buffer.audio.clear();
+        memset(aap_buffer.midi_in, 0, aap_buffer.midi_capacity);
+        memset(aap_buffer.midi_out, 0, aap_buffer.midi_capacity);
+
+        auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copyRemappingChannels(aap_buffer.audio.getStart(numFrames), oboeView);
 
         aap_callback(callback_context, &aap_buffer, numFrames);
@@ -165,10 +167,14 @@ aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *o
     if (aap_callback != nullptr) {
         // kick AAP callback, convert AAP result (channel array) to Oboe (interleaved), then write to oboe buffer
 
+        aap_buffer.audio.clear();
+        memset(aap_buffer.midi_in, 0, aap_buffer.midi_capacity);
+        memset(aap_buffer.midi_out, 0, aap_buffer.midi_capacity);
+        memset(oboeAudioData, 0, numFrames * sizeof(float));
+
         aap_callback(callback_context, &aap_buffer, numFrames);
 
-        auto size = audioStream->getChannelCount() * numFrames;
-        auto oboeView = choc::buffer::createInterleavedView((float*) oboe_buffer, audioStream->getChannelCount(), numFrames);
+        auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copyRemappingChannels(oboeView, aap_buffer.audio.getStart(numFrames));
     }
 
@@ -191,8 +197,9 @@ void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioData *dstAudioData, int32
 void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition,
                                                    int32_t numFrames) {
     // This puts `srcAudioData` into current AAP output buffer (ring buffer).
-    // TODO: implement
-    choc::buffer::copy(aap_buffer.audio, srcAudioData->audio.getView());
+    // FIXME: currentPosition?
+    choc::buffer::FrameRange range{0, (uint32_t ) numFrames};
+    choc::buffer::copy(aap_buffer.audio.getFrameRange(range), srcAudioData->audio.getView().getFrameRange(range));
 }
 
 //--------

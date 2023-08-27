@@ -1,8 +1,15 @@
-//
-// Created by Atsushi Eno on 2023/08/24.
-//
-
 #include "AudioData.h"
+
+aap::AudioData::AudioData(int32_t numChannels, int32_t framesPerCallback, int32_t midiBufferSize) {
+    audio = choc::buffer::createChannelArrayBuffer(numChannels,
+                                                   framesPerCallback * AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES,
+                                                   []() { return (float) 0; });
+    audio.clear();
+    midi_capacity = midiBufferSize;
+    midi_in = calloc(1, midiBufferSize);
+    midi_out = calloc(1, midiBufferSize);
+}
+
 
 aap_buffer_t aap::AudioData::asAAPBuffer() {
     aap_buffer_t ret{};
