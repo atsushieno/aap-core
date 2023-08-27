@@ -35,6 +35,9 @@ namespace aap {
                 free(buffers);
         }
 
+        virtual int32_t getPortContentType(int32_t portIndex) = 0;
+        virtual int32_t getPortDirection(int32_t portIndex) = 0;
+
         bool initialize(int32_t numPorts, int32_t numFrames);
 
         aap_buffer_t* toPublicApi() {
@@ -52,12 +55,30 @@ namespace aap {
             return 0 <= bufferIndex && bufferIndex < num_ports ? buffers[bufferIndex] : nullptr;
         }
         inline int32_t getBufferSize(int32_t bufferIndex) {
-            return 0 <= bufferIndex && bufferIndex < num_ports ? buffer_sizes[bufferIndex] : 0;
+            if (0 <= bufferIndex && bufferIndex < num_ports) {
+                int32_t size = buffer_sizes[bufferIndex];
+                if (size > 0)
+                    return size;
+                switch (getPortContentType(bufferIndex)) {
+                    case AAP_CONTENT_TYPE_AUDIO:
+                        return num_frames * sizeof(float);
+                    case AAP_CONTENT_TYPE_MIDI2:
+                        return DEFAULT_CONTROL_BUFFER_SIZE;
+                }
+                return 0;
+            }
+            return 0;
         }
     };
 
     class SharedMemoryPluginBuffer : public AbstractPluginBuffer {
+        PluginInstance* instance;
     public:
+        SharedMemoryPluginBuffer(PluginInstance* instance) : instance(instance) {}
+
+        int32_t getPortContentType(int32_t portIndex) override { return instance->getPort(portIndex)->getContentType(); }
+        int32_t getPortDirection(int32_t portIndex) override { return instance->getPort(portIndex)->getPortDirection(); }
+
         inline void setBuffer(size_t index, void* buffer) { buffers[index] = buffer; }
 
         void unmapSharedMemory() {

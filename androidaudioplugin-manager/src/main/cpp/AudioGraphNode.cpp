@@ -52,7 +52,58 @@ bool aap::AudioPluginNode::shouldSkip() {
 void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames) {
     if (!plugin)
         return;
+
+    // Copy input audioData into each plugin's buffer (it is inevitable; each plugin has
+    // shared memory between the service and this host, which are not sharable with other plugins
+    // in the chain. So, it's optimal enough.)
+
+    auto aapBuffer = plugin->getAudioPluginBuffer();
+
+    int32_t currentChannelInAudioData = 0;
+    for (int32_t i = 0, n = aapBuffer->num_ports(*aapBuffer); i < n; i++) {
+        switch (plugin->getPort(i)->getContentType()) {
+            case AAP_CONTENT_TYPE_AUDIO:
+                if (plugin->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                    memcpy(aapBuffer->get_buffer(*aapBuffer, i),
+                       audioData->audio.getView().getChannel(currentChannelInAudioData).data.data, numFrames);
+                currentChannelInAudioData++;
+                break;
+            case AAP_CONTENT_TYPE_MIDI2: {
+                if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
+                    continue;
+                size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
+                                           audioData->midi_capacity);
+                memcpy(aapBuffer->get_buffer(*aapBuffer, i), (const void *) audioData->midi_in,
+                       midiSize);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     plugin->process(numFrames, 0); // FIXME: timeout?
+
+    currentChannelInAudioData = 0;
+    for (int32_t i = 0, n = aapBuffer->num_ports(*aapBuffer); i < n; i++) {
+        switch (plugin->getPort(i)->getContentType()) {
+            case AAP_CONTENT_TYPE_AUDIO:
+                if (plugin->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT)
+                    memcpy(audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,aapBuffer->get_buffer(*aapBuffer, i), numFrames);
+                currentChannelInAudioData++;
+                break;
+            case AAP_CONTENT_TYPE_MIDI2: {
+                if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
+                    continue;
+                size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
+                                           audioData->midi_capacity);
+                memcpy(audioData->midi_out, aapBuffer->get_buffer(*aapBuffer, i), midiSize);
+                break;
+            }
+            default:
+                break;
+        }
+    }
 }
 
 void aap::AudioPluginNode::start() {

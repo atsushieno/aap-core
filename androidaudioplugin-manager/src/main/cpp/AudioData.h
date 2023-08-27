@@ -19,9 +19,11 @@ namespace aap {
         choc::buffer::ChannelArrayBuffer<float> audio;
         void *midi_in;
         void *midi_out;
+        int32_t midi_capacity;
 
         AudioData(int32_t numChannels, int32_t framesPerCallback, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE) {
             audio = choc::buffer::createChannelArrayBuffer(numChannels, framesPerCallback * AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES, []() { return (float) 0; });
+            midi_capacity = midiBufferSize;
             midi_in = calloc(1, midiBufferSize);
             midi_out = calloc(1, midiBufferSize);
         }

@@ -98,7 +98,7 @@ int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, siz
 	memory_origin = PLUGIN_BUFFER_ORIGIN_LOCAL;
 
 	size_t commonMemSize = numFrames * sizeof(float);
-	port_buffer = std::make_unique<SharedMemoryPluginBuffer>();
+	port_buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
 	assert(port_buffer);
 	port_buffer->initialize(numPorts, numFrames);
 
@@ -124,7 +124,7 @@ int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_
 
 	size_t numPorts = clientFDs.size();
 	size_t commonMemSize = numFrames * sizeof(float);
-	port_buffer = std::make_unique<SharedMemoryPluginBuffer>();
+	port_buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
 	assert(port_buffer);
 	if (!port_buffer->initialize(numPorts, numFrames))
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;

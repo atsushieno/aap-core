@@ -192,6 +192,7 @@ void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int3
                                                    int32_t numFrames) {
     // This puts `srcAudioData` into current AAP output buffer (ring buffer).
     // TODO: implement
+    choc::buffer::copy(aap_buffer.audio, srcAudioData->audio.getView());
 }
 
 //--------
