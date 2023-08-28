@@ -2,6 +2,7 @@ package org.androidaudioplugin.manager
 
 import dev.atsushieno.ktmidi.Ump
 import dev.atsushieno.ktmidi.UmpFactory
+import dev.atsushieno.ktmidi.UmpRetriever
 import dev.atsushieno.ktmidi.toPlatformNativeBytes
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
@@ -64,7 +65,9 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     private external fun addMidiEventNative(native: Long, bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset)
 
     fun setParameterValue(parameterId: UInt, value: Float) {
-        val umps = UmpHelper.aapUmpSysex8Parameter(parameterId, value).flatMap { Ump(it).toPlatformNativeBytes().asList() }
+        val ints = UmpHelper.aapUmpSysex8Parameter(parameterId, value)
+        val umps = ints.filterIndexed { i, _ -> i % 4 == 0 }.flatMapIndexed { i, v ->
+            Ump(v, ints[i * 4 + 1], ints[i * 4 + 2], ints[i * 4 + 3]).toPlatformNativeBytes().asList() }
         addMidiEvents(umps.toByteArray())
     }
 
