@@ -4,6 +4,7 @@
 
 #include <mutex>
 #include "aap/core/aapxs/standard-extensions.h"
+#include "aap/unstable/utility.h"
 #include "plugin-host.h"
 
 #if ANDROID
@@ -26,18 +27,6 @@ namespace aap {
 
         AndroidAudioPluginFactory *plugin_factory;
 
-        // FIXME: unify code with androidaudioplugin-midi-device-service
-        class NanoSleepLock {
-            std::atomic_flag state = ATOMIC_FLAG_INIT;
-        public:
-            void lock() noexcept {
-                const auto delay = timespec{0, 1000}; // 1 microsecond
-                while(state.test_and_set())
-                    clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
-            }
-            void unlock() noexcept { state.clear(); }
-            bool try_lock() noexcept { return !state.test_and_set(); }
-        };
         NanoSleepLock event_input_buffer_mutex{};
 
     protected:

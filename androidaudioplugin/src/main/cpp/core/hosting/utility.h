@@ -1,5 +1,5 @@
-#ifndef AAP_CORE_UTILITY_H
-#define AAP_CORE_UTILITY_H
+#ifndef AAP_CORE_HOSTING_UTILITY_H
+#define AAP_CORE_HOSTING_UTILITY_H
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
@@ -28,4 +28,4 @@ namespace aap {
     }
 }
 
-#endif //AAP_CORE_UTILITY_H
+#endif //AAP_CORE_HOSTING_UTILITY_H

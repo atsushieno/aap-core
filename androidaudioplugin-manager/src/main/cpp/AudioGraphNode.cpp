@@ -2,7 +2,7 @@
 #include "AudioGraph.h"
 
 void aap::AudioDeviceInputNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    // TODO: copy current audio input data into `audioData`
+    // copy current audio input data into `audioData`
     getDevice()->read(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
     consumer_position += numFrames;
@@ -29,7 +29,7 @@ bool aap::AudioDeviceInputNode::shouldSkip() {
 //--------
 
 void aap::AudioDeviceOutputNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    // TODO: copy `audioData` into current audio output buffer
+    // copy `audioData` into current audio output buffer
     getDevice()->write(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
     consumer_position += numFrames;
@@ -123,7 +123,7 @@ bool aap::AudioSourceNode::shouldSkip() {
 }
 
 void aap::AudioSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    // TODO: copy input audio buffer for numFrames to audioData using read()
+    read(audioData, numFrames);
 }
 
 void aap::AudioSourceNode::start() {

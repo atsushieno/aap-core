@@ -12,6 +12,7 @@
 #pragma clang diagnostic pop
 #include <aap/core/host/audio-plugin-host.h>
 #include <aap/core/aapxs/extension-service.h>
+#include <aap/unstable/utility.h>
 
 namespace aap::midi {
     // keep it compatible with Oboe
@@ -100,19 +101,6 @@ namespace aap::midi {
         float *interleave_buffer{nullptr};
         struct timespec last_aap_process_time{0, 0};
 
-        // I don't think simple and stupid SpinLock is appropriate here. We do not want to dry up mobile battery.
-        // FIXME: unify code with androidaudioplugin
-        class NanoSleepLock {
-            std::atomic_flag state = ATOMIC_FLAG_INIT;
-        public:
-            void lock() noexcept {
-                const auto delay = timespec{0, 1000}; // 1 microsecond
-                while(state.test_and_set())
-                    clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
-            }
-            void unlock() noexcept { state.clear(); }
-            bool try_lock() noexcept { return !state.test_and_set(); }
-        };
         NanoSleepLock midi_buffer_mutex{};
         uint8_t midi_input_buffer[4096];
 

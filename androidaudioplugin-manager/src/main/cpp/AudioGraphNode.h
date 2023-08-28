@@ -4,6 +4,7 @@
 #include "AudioDevice.h"
 #include "AAPMidiEventTranslator.h"
 #include <aap/core/host/plugin-instance.h>
+#include <aap/unstable/utility.h>
 #include <cmidi2.h>
 
 namespace aap {
@@ -138,20 +139,6 @@ namespace aap {
         void setData(AudioData* audioData, int32_t numFrames, int32_t numChannels);
 
         int32_t read(AudioData* dst, int32_t numFrames) override;
-    };
-
-    // I don't think any simple and stupid SpinLock works well on mobiles, as we do not want to dry up battery.
-    // FIXME: unify code with androidaudioplugin
-    class NanoSleepLock {
-        std::atomic_flag state = ATOMIC_FLAG_INIT;
-    public:
-        void lock() noexcept {
-            const auto delay = timespec{0, 1000}; // 1 microsecond
-            while(state.test_and_set())
-                clock_nanosleep(CLOCK_REALTIME, 0, &delay, nullptr);
-        }
-        void unlock() noexcept { state.clear(); }
-        bool try_lock() noexcept { return !state.test_and_set(); }
     };
 
 
