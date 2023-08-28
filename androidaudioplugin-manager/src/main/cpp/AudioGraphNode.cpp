@@ -1,5 +1,9 @@
 #include "AudioGraphNode.h"
 #include "AudioGraph.h"
+#include <audio/choc_AudioFileFormat_Wav.h>
+#include <audio/choc_AudioFileFormat_MP3.h>
+#include <audio/choc_AudioFileFormat_Ogg.h>
+#include <audio/choc_AudioFileFormat_FLAC.h>
 
 void aap::AudioDeviceInputNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // copy current audio input data into `audioData`
@@ -45,236 +49,104 @@ void aap::AudioDeviceOutputNode::pause() {
 
 //--------
 
-bool aap::AudioPluginNode::shouldSkip() {
-    return plugin == nullptr;
-}
-
-void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    if (!plugin)
-        return;
-
-    // Copy input audioData into each plugin's buffer (it is inevitable; each plugin has
-    // shared memory between the service and this host, which are not sharable with other plugins
-    // in the chain. So, it's optimal enough.)
-
-    auto aapBuffer = plugin->getAudioPluginBuffer();
-
-    int32_t currentChannelInAudioData = 0;
-    for (int32_t i = 0, n = aapBuffer->num_ports(*aapBuffer); i < n; i++) {
-        switch (plugin->getPort(i)->getContentType()) {
-            case AAP_CONTENT_TYPE_AUDIO:
-                if (plugin->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
-                    memcpy(aapBuffer->get_buffer(*aapBuffer, i),
-                       audioData->audio.getView().getChannel(currentChannelInAudioData).data.data, numFrames);
-                currentChannelInAudioData++;
-                break;
-            case AAP_CONTENT_TYPE_MIDI2: {
-                if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
-                    continue;
-                size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
-                                           audioData->midi_capacity);
-                memcpy(aapBuffer->get_buffer(*aapBuffer, i), (const void *) audioData->midi_in,
-                       midiSize);
-                break;
-            }
-            default:
-                break;
-        }
+class SeekableByteBuffer : public std::streambuf {
+public:
+    SeekableByteBuffer(uint8_t* data, std::size_t size) {
+        setg(reinterpret_cast<char*>(data), reinterpret_cast<char*>(data), reinterpret_cast<char*>(data) + size);
     }
 
-    plugin->process(numFrames, 0); // FIXME: timeout?
-
-    currentChannelInAudioData = 0;
-    for (int32_t i = 0, n = aapBuffer->num_ports(*aapBuffer); i < n; i++) {
-        switch (plugin->getPort(i)->getContentType()) {
-            case AAP_CONTENT_TYPE_AUDIO:
-                if (plugin->getPort(i)->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT)
-                    memcpy(audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,aapBuffer->get_buffer(*aapBuffer, i), numFrames);
-                currentChannelInAudioData++;
-                break;
-            case AAP_CONTENT_TYPE_MIDI2: {
-                if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
-                    continue;
-                size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
-                                           audioData->midi_capacity);
-                memcpy(audioData->midi_out, aapBuffer->get_buffer(*aapBuffer, i), midiSize);
-                break;
-            }
-            default:
-                break;
+    std::streampos seekoff(std::streamoff off, std::ios_base::seekdir dir, std::ios_base::openmode which) override {
+        switch (dir) {
+            case std::ios_base::beg: setg(eback(), eback() + off, egptr()); break;
+            case std::ios_base::cur: gbump((int) off); break;
+            case std::ios_base::end: setg(eback(), egptr() + off, egptr()); break;
         }
+        return gptr() - eback();
     }
+};
+
+aap::AudioDataSourceNode::AudioDataSourceNode(aap::AudioGraph *ownerGraph) :
+        AudioGraphNode(ownerGraph),
+        audio_data(ownerGraph->getChannelsInAudioBus(), ownerGraph->getFramesPerCallback()) {
 }
 
-void aap::AudioPluginNode::start() {
-    if (plugin->getInstanceState() == aap::PluginInstantiationState::PLUGIN_INSTANTIATION_STATE_UNPREPARED)
-        plugin->prepare(graph->getFramesPerCallback());
-    plugin->activate();
+bool aap::AudioDataSourceNode::shouldSkip() {
+    // We do not filter out active. If !active and playing, then it consumes the stream
+    return !hasData() || !playing;
 }
 
-void aap::AudioPluginNode::pause() {
-    plugin->deactivate();
-}
-
-//--------
-
-bool aap::AudioSourceNode::shouldSkip() {
-    return !active || !hasData();
-}
-
-void aap::AudioSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::AudioDataSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
+    // It ignores errors or empty buffers
     read(audioData, numFrames);
 }
 
-void aap::AudioSourceNode::start() {
+void aap::AudioDataSourceNode::start() {
     active = true;
 }
 
-void aap::AudioSourceNode::pause() {
+void aap::AudioDataSourceNode::pause() {
     active = false;
 }
 
-void aap::AudioSourceNode::setPlaying(bool newPlayingState) {
+void aap::AudioDataSourceNode::setPlaying(bool newPlayingState) {
+    // if it was already playing, reset current position.
+    if (playing)
+        current_frame_offset = 0;
     playing = newPlayingState;
 }
 
-//--------
-
 int32_t aap::AudioDataSourceNode::read(AudioData *dst, int32_t numFrames) {
-    // TODO: correct implementation
-    memcpy(dst, audio_data, graph->getAAPChannelCount(graph->getChannelsInAudioBus()) * numFrames);
-    return 0;
-}
 
-void aap::AudioDataSourceNode::setData(AudioData *audioData, int32_t numFrames, int32_t numChannels) {
-    // FIXME: atomic locks
-    // TODO: convert data to de-interleaved uncompressed binary
-    audio_data = audioData;
-    frames = numFrames;
-    channels = numChannels;
-}
+    uint32_t size = std::min(audio_data.audio.getNumFrames() - current_frame_offset,
+                             (uint32_t) numFrames);
+    if (size <= 0)
+        return 0;
 
-//--------
-
-aap::MidiSourceNode::MidiSourceNode(AudioGraph* ownerGraph,
-                                    RemotePluginInstance* instance,
-                                    int32_t sampleRate,
-                                    int32_t audioNumFramesPerCallback,
-                                    int32_t internalBufferSize) :
-        AudioGraphNode(ownerGraph),
-        capacity(internalBufferSize),
-        translator(instance, internalBufferSize),
-        sample_rate(sampleRate),
-        aap_frame_size(audioNumFramesPerCallback) {
-    buffer = (uint8_t*) calloc(1, internalBufferSize);
-}
-
-aap::MidiSourceNode::~MidiSourceNode() {
-    free(buffer);
-}
-
-void aap::MidiSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    auto dstBuffer = (AAPMidiBufferHeader*) audioData->midi_in;
-    // MIDI event might be being added, so we wait a bit using "almost-spin" lock (uses nano-sleep).
-    if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
-        auto srcBuffer = (AAPMidiBufferHeader*) buffer;
-        if (srcBuffer->length)
-            memcpy(dstBuffer + 1, srcBuffer + 1, srcBuffer->length);
-        dstBuffer->length = srcBuffer->length;
-        srcBuffer->length = 0;
-    } else {
-        // failed to acquire lock; we do not send anything this time.
-        dstBuffer->length = 0;
-    }
-    dstBuffer->time_options = 0; // reserved in MIDI2 mode
-}
-
-void aap::MidiSourceNode::addMidiEvent(uint8_t *bytes, int32_t length, int64_t timestampInNanoseconds) {
-
-    // This function is invoked every time Kotlin PluginPlayer.addMidiEvent() is invoked, immediately.
-    // On the other hand, AAPs don't process MIDI events immediately (it is handled at `process()`),
-    // so we have to buffer them and flush them to the instrument plugin every time process() is invoked.
-    //
-    // Since we don't really know when it is actually processed but have to accurately
-    // pass delta time for each input events, we assign event timecode from
-    // 1) argument timestampInNanoseconds and 2) actual time passed from previous call to
-    // this function.
-    int64_t actualTimestamp = timestampInNanoseconds;
-    struct timespec curtime{};
-    clock_gettime(CLOCK_REALTIME, &curtime);
-
-    // it is 99.999... percent true since audio loop must have started before any MIDI events...
-    if (last_aap_process_time.tv_sec > 0) {
-        int64_t diff = (curtime.tv_sec - last_aap_process_time.tv_sec) * 1000000000 +
-                       curtime.tv_nsec - last_aap_process_time.tv_nsec;
-        auto nanosecondsPerCycle = (int64_t) (1.0 * aap_frame_size / sample_rate * 1000000000);
-        actualTimestamp = (timestampInNanoseconds + diff) % nanosecondsPerCycle;
+    if (shouldConsumeButBypass()) {
+        current_frame_offset += size;
+        return size;
     }
 
-    // apply translation at this step (every time event is added, non-RT processing, unlocked)
-    size_t translatedLength = translator.translateMidiEvent(bytes, length);
-    auto actualData = translatedLength > 0 ? translator.getTranslationBuffer() : bytes;
-    auto actualLength = translatedLength > 0 ? translatedLength : length;
+    // read only if it is not locked.
+    if (std::unique_lock<NanoSleepLock> tryLock(data_source_mutex, std::try_to_lock); tryLock.owns_lock()) {
 
-    // update MIDI input buffer with lock
-    { // lock scope
-        auto dst8 = (uint8_t *) buffer;
-        auto dstMBH = (AAPMidiBufferHeader *) dst8;
-        const std::lock_guard <NanoSleepLock> lock{midi_buffer_mutex};
+        choc::buffer::FrameRange range{(uint32_t) current_frame_offset, current_frame_offset + size};
+        choc::buffer::copyRemappingChannels(dst->audio.getStart(size),
+                                            audio_data.audio.getFrameRange(range));
 
-        if (dst8 != nullptr) {
-            uint32_t savedOffset = dstMBH->length;
-            uint32_t currentOffset = savedOffset;
-            int32_t tIter = 0;
-            auto headerSize = sizeof(AAPMidiBufferHeader);
-            for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
-                 ticks > 0; ticks -= 31250, tIter++) {
-                *(int32_t * )(dst8 + headerSize + currentOffset + tIter * 4) =
-                        (int32_t) cmidi2_ump_jr_timestamp_direct(0,
-                                                                 ticks > 31250 ? 31250 : ticks);
-            }
-            currentOffset += tIter * 4;
-            memcpy(dst8 + headerSize + currentOffset, actualData, actualLength);
-            currentOffset += actualLength;
+        aap::a_log_f(AAP_LOG_LEVEL_DEBUG, AAP_MANAGER_LOG_TAG,
+                     "AudioDataSourceNode::read() consumed %d frames. Remaining: %d",
+                     numFrames,
+                     audio_data.audio.getNumFrames() - current_frame_offset);
+        current_frame_offset += size;
+        return size;
+    }
+    else
+        return 0;
+}
 
-            if (savedOffset != dstMBH->length) {
-                // updated
-                memcpy(dst8 + headerSize, dst8 + headerSize + savedOffset, actualLength);
-                dstMBH->length = currentOffset - savedOffset;
-            } else
-                dstMBH->length = currentOffset;
+choc::audio::WAVAudioFileFormat<false> formatWav{};
+choc::audio::MP3AudioFileFormat formatMp3{};
+choc::audio::OggAudioFileFormat<false> formatOgg{};
+choc::audio::FLACAudioFileFormat<false> formatFlac{};
+choc::audio::AudioFileFormat* formats[] {&formatWav, &formatMp3, &formatOgg, &formatFlac};
+
+bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, const char *filename) {
+    const std::lock_guard <NanoSleepLock> lock{data_source_mutex};
+
+    for (auto format : formats) {
+        if (format->filenameSuffixMatches(filename)) {
+            SeekableByteBuffer buffer(data, dataLength);
+            auto stream = std::make_shared<std::istream>(&buffer);
+            auto reader = format->createReader(stream);
+            reader->loadFileContent();
+            auto props = reader->getProperties();
+            audio_data = AudioData{(int32_t) props.numChannels, (int32_t) props.numFrames};
+            reader->readFrames(0, audio_data.audio);
+            return true;
         }
     }
-}
 
-
-void aap::MidiSourceNode::start() {
-}
-
-void aap::MidiSourceNode::pause() {
-
-}
-
-//--------
-
-aap::MidiDestinationNode::MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize) :
-        AudioGraphNode(ownerGraph) {
-    buffer = (uint8_t*) calloc(1, internalBufferSize);
-}
-
-aap::MidiDestinationNode::~MidiDestinationNode() {
-    free(buffer);
-}
-
-void aap::MidiDestinationNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    // TODO: copy audioData to buffered MIDI outputs
-}
-
-void aap::MidiDestinationNode::start() {
-
-}
-
-void aap::MidiDestinationNode::pause() {
-
+    return false;
 }
 

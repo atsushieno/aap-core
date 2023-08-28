@@ -46,7 +46,7 @@ namespace aap {
 
         void setPlugin(RemotePluginInstance* instance);
 
-        void setAudioData(AudioData* data, int32_t numFrames, int32_t channelsInAudioData);
+        void setAudioSource(uint8_t *data, int dataLength, const char *filename);
 
         void processAudio(AudioData *audioData, int32_t numFrames) override;
 

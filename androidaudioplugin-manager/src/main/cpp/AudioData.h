@@ -23,6 +23,7 @@ namespace aap {
 
         AudioData(int32_t numChannels, int32_t framesPerCallback,
                   int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE);
+        ~AudioData();
 
         aap_buffer_t asAAPBuffer();
     };

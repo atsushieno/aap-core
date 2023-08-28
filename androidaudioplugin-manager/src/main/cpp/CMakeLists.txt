@@ -12,6 +12,8 @@ set (androidaudioplugin-manager_SOURCES
 		VirtualAudioDeviceManager.cpp
 		AudioGraph.cpp
 		AudioGraphNode.cpp
+		AudioGraphNode.Plugin.cpp
+		AudioGraphNode.Midi.cpp
 		AAPMidiEventTranslator.cpp
 		PluginPlayer.cpp
 		PluginPlayerConfiguration.cpp

@@ -103,42 +103,37 @@ namespace aap {
         void processAudio(AudioData* audioData, int32_t numFrames) override;
     };
 
-    AAP_OPEN_CLASS class AudioSourceNode : public AudioGraphNode {
+    class AudioDataSourceNode : public AudioGraphNode {
         bool active{false};
         bool playing{false};
+        AudioData audio_data;
+        NanoSleepLock data_source_mutex{};
+
+        int32_t current_frame_offset{0};
 
     public:
-        AudioSourceNode(AudioGraph* ownerGraph) :
-            AudioGraphNode(ownerGraph) {
-        }
+        explicit AudioDataSourceNode(AudioGraph* ownerGraph);
 
         void start() override;
         void pause() override;
         bool shouldSkip() override;
+        virtual bool shouldConsumeButBypass() { return playing && !active; }
         void processAudio(AudioData* audioData, int32_t numFrames) override;
 
-        virtual bool hasData() { return false; };
+        bool hasData() { return current_frame_offset < audio_data.audio.getNumFrames(); };
 
         void setPlaying(bool newPlayingState);
 
-        virtual int32_t read(AudioData* dst, int32_t numFrames) = 0;
-    };
 
-    class AudioDataSourceNode : public AudioSourceNode {
-        void* audio_data{nullptr};
-        int32_t frames{0};
-        int32_t channels{0};
+        /// returns the size in frames that were successfully read. 0 if it is empty.
+        int32_t read(AudioData* dst, int32_t numFrames);
 
-        int32_t current_offset{0};
-
-    public:
-        explicit AudioDataSourceNode(AudioGraph* ownerGraph) :
-                AudioSourceNode(ownerGraph) {
-        }
-
-        void setData(AudioData* audioData, int32_t numFrames, int32_t numChannels);
-
-        int32_t read(AudioData* dst, int32_t numFrames) override;
+        /// Sets PCM data of some formats, as indicated by the filename.
+        /// Currently ogg, mp3 and wav formats work.
+        /// Returns true if loaded successfully, false if not.
+        ///
+        /// It locks the data source until it finishes loading and converting data into `audio_data`.
+        bool setAudioSource(uint8_t *data, int dataLength, const char *filename);
     };
 
 

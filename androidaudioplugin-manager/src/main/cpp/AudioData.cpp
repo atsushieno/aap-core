@@ -2,7 +2,7 @@
 
 aap::AudioData::AudioData(int32_t numChannels, int32_t framesPerCallback, int32_t midiBufferSize) {
     audio = choc::buffer::createChannelArrayBuffer(numChannels,
-                                                   framesPerCallback * AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES,
+                                                   framesPerCallback,
                                                    []() { return (float) 0; });
     audio.clear();
     midi_capacity = midiBufferSize;
@@ -10,6 +10,12 @@ aap::AudioData::AudioData(int32_t numChannels, int32_t framesPerCallback, int32_
     midi_out = calloc(1, midiBufferSize);
 }
 
+aap::AudioData::~AudioData() {
+    if (midi_in)
+        free(midi_in);
+    if (midi_out)
+        free(midi_out);
+}
 
 aap_buffer_t aap::AudioData::asAAPBuffer() {
     aap_buffer_t ret{};
