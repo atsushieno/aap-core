@@ -1,9 +1,30 @@
 #include "AudioGraph.h"
+#if ANDROID
+#include <android/trace.h>
+#endif
 
 void aap::SimpleLinearAudioGraph::processAudio(AudioData *audioData, int32_t numFrames) {
+    struct timespec timeSpecBegin{}, timeSpecEnd{};
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        ATrace_beginSection("AAP::SimpleLinearAudioGraph_processAudio");
+        clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+    }
+#endif
+
     for (auto node : nodes)
         if (!node->shouldSkip())
             node->processAudio(audioData, numFrames);
+
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+        ATrace_setCounter("AAP::SimpleLinearAudioGraph_processAudio",
+                          (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+        ATrace_endSection();
+    }
+#endif
+
 }
 
 void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance) {

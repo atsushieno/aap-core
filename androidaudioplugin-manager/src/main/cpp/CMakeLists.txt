@@ -65,6 +65,7 @@ target_link_libraries (androidaudioplugin-manager
 		androidaudioplugin::androidaudioplugin
 		oboe::oboe
 		log
+		android
 		)
 endif (ANDROID)
 
