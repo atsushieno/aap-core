@@ -188,10 +188,11 @@ void aap::OboeAudioDevice::setCallback(aap::AudioDeviceCallback aapCallback, voi
 
 void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition,
                                                   int32_t numFrames) {
-    auto dstView = choc::buffer::createInterleavedView(dstAudioData, stream->getChannelCount(), numFrames);
-
     // This copies current AAP input buffer (ring buffer) into the argument `dstAudioData`, without "consuming".
-    // TODO: implement
+    // FIXME: use currentPosition
+    // FIXME: use bufferPosition
+    choc::buffer::FrameRange range{0, (uint32_t ) numFrames};
+    choc::buffer::copyRemappingChannels(dstAudioData->audio, aap_buffer.audio.getView().getFrameRange(range));
 }
 
 void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition,

@@ -111,7 +111,9 @@ aap::MidiDestinationNode::~MidiDestinationNode() {
 }
 
 void aap::MidiDestinationNode::processAudio(AudioData *audioData, int32_t numFrames) {
-    // TODO: copy audioData to buffered MIDI outputs
+    auto mbh = (AAPMidiBufferHeader *) audioData->midi_out;
+    if (mbh->length > 0)
+        memcpy(buffer, audioData->midi_out, sizeof(AAPMidiBufferHeader) + mbh->length);
 }
 
 void aap::MidiDestinationNode::start() {
