@@ -38,7 +38,8 @@ Java_org_androidaudioplugin_manager_PluginPlayer_createNewPluginPlayer(JNIEnv *e
                                                                        jint sampleRate,
                                                                        jint framesPerCallback,
                                                                        jint channelCount) {
-    aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback, channelCount};
+    // FIXME: store framesPerCalback somewhere. We use irrelevant value.
+    aap::PluginPlayerConfiguration configuration{sampleRate, 1024, channelCount};
     return (jlong) (void*) new aap::PluginPlayer(configuration);
 }
 

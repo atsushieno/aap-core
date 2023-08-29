@@ -142,7 +142,7 @@ bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, con
             reader->loadFileContent();
             auto props = reader->getProperties();
             audio_data = AudioData{(int32_t) props.numChannels, (int32_t) props.numFrames};
-            reader->readFrames(0, audio_data.audio);
+            assert(reader->readFrames(0, audio_data.audio));
             return true;
         }
     }

@@ -56,8 +56,8 @@ void aap::SimpleLinearAudioGraph::pauseProcessing() {
 
 aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus) :
         AudioGraph(framesPerCallback, channelsInAudioBus),
-        input(this, AudioDeviceManager::getInstance()->openDefaultInput(framesPerCallback, channelsInAudioBus)),
-        output(this, AudioDeviceManager::getInstance()->openDefaultOutput(framesPerCallback, channelsInAudioBus)),
+        input(this, AudioDeviceManager::getInstance()->openDefaultInput(sampleRate, framesPerCallback, channelsInAudioBus)),
+        output(this, AudioDeviceManager::getInstance()->openDefaultOutput(sampleRate, framesPerCallback, channelsInAudioBus)),
         plugin(this, nullptr),
         audio_data(this),
         midi_input(this, nullptr, sampleRate, framesPerCallback, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
