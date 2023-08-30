@@ -78,8 +78,7 @@ Rebuilding `PluginPlayer` involves state saving and restoring of the plugin.
 
 We use Tracktion/choc for a few utilities:
 
-- concurrent queue (ring buffer)
-- audio buffer interleaving / de-interleaving
-- ogg vorbis decoding
+- audio buffer interleaving and de-interleaving
+- audio file decoding and resampling
 
-It is somewhat risky to depend on it because choc is far from ABI stable (it's like using Skia), but we can keep using a fixed version if we find upgrades problematic.
+It is somewhat risky to depend on it because choc API is not stable (it's like using Skia), but we can keep using a fixed version if we find upgrades problematic.
