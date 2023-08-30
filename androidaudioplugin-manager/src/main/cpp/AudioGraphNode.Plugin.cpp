@@ -22,7 +22,7 @@ void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames)
             case AAP_CONTENT_TYPE_AUDIO:
                 memcpy(aapBuffer->get_buffer(*aapBuffer, i),
                        audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,
-                       numFrames);
+                       numFrames * sizeof(float));
                 currentChannelInAudioData++;
                 break;
             case AAP_CONTENT_TYPE_MIDI2: {
@@ -47,7 +47,7 @@ void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames)
             case AAP_CONTENT_TYPE_AUDIO:
                 memcpy(audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,
                        aapBuffer->get_buffer(*aapBuffer, i),
-                       numFrames);
+                       numFrames * sizeof(float));
                 currentChannelInAudioData++;
                 break;
             case AAP_CONTENT_TYPE_MIDI2: {

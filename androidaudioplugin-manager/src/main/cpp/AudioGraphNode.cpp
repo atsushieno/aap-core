@@ -114,11 +114,6 @@ int32_t aap::AudioDataSourceNode::read(AudioData *dst, int32_t numFrames) {
         choc::buffer::FrameRange range{(uint32_t) current_frame_offset, current_frame_offset + size};
         choc::buffer::copyRemappingChannels(dst->audio.getStart(size),
                                             audio_data.audio.getFrameRange(range));
-
-        aap::a_log_f(AAP_LOG_LEVEL_DEBUG, AAP_MANAGER_LOG_TAG,
-                     "AudioDataSourceNode::read() consumed %d frames. Remaining: %d",
-                     numFrames,
-                     audio_data.audio.getNumFrames() - current_frame_offset);
         current_frame_offset += size;
         return size;
     }
