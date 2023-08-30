@@ -10,18 +10,20 @@
 
 namespace aap {
     AAP_OPEN_CLASS class AudioGraph {
+        int32_t sample_rate;
         int32_t frames_per_callback;
         int32_t num_channels;
 
     public:
-        static int32_t getAAPChannelCount(int32_t channelsInAudioBus) { return channelsInAudioBus + 2; }
-
-        explicit AudioGraph(int32_t framesPerCallback, int32_t channelsInAudioBus) :
+        explicit AudioGraph(int32_t sampleRate, int32_t framesPerCallback, int32_t channelsInAudioBus) :
+                sample_rate(sampleRate),
                 frames_per_callback(framesPerCallback),
                 num_channels(channelsInAudioBus) {
         }
 
         virtual void processAudio(AudioData* audioData, int32_t numFrames) = 0;
+
+        int32_t getSampleRate() { return sample_rate; }
 
         int32_t getFramesPerCallback() { return frames_per_callback; }
 
@@ -42,7 +44,7 @@ namespace aap {
         }
 
     public:
-        SimpleLinearAudioGraph(uint32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus);
+        SimpleLinearAudioGraph(int32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus);
 
         void setPlugin(RemotePluginInstance* instance);
 
@@ -64,8 +66,8 @@ namespace aap {
     // Not planned to implement so far.
     class BasicAudioGraph : public AudioGraph {
     public:
-        BasicAudioGraph(int32_t framesPerCallback, int32_t channelsInAudioBus) :
-                AudioGraph(framesPerCallback, channelsInAudioBus) {
+        BasicAudioGraph(int32_t sampleRate, int32_t framesPerCallback, int32_t channelsInAudioBus) :
+                AudioGraph(sampleRate, framesPerCallback, channelsInAudioBus) {
         }
 
         void attachNode(AudioGraphNode* sourceNode, int32_t sourceOutputBusIndex, AudioGraphNode* destinationNode, int32_t destinationInputBusIndex) {}

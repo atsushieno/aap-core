@@ -54,8 +54,8 @@ void aap::SimpleLinearAudioGraph::pauseProcessing() {
         node->pause();
 }
 
-aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(uint32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus) :
-        AudioGraph(framesPerCallback, channelsInAudioBus),
+aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(int32_t sampleRate, uint32_t framesPerCallback, int32_t channelsInAudioBus) :
+        AudioGraph(sampleRate, framesPerCallback, channelsInAudioBus),
         input(this, AudioDeviceManager::getInstance()->openDefaultInput(sampleRate, framesPerCallback, channelsInAudioBus)),
         output(this, AudioDeviceManager::getInstance()->openDefaultOutput(sampleRate, framesPerCallback, channelsInAudioBus)),
         plugin(this, nullptr),

@@ -4,6 +4,7 @@
 #include <audio/choc_AudioFileFormat_MP3.h>
 #include <audio/choc_AudioFileFormat_Ogg.h>
 #include <audio/choc_AudioFileFormat_FLAC.h>
+#include <audio/choc_SincInterpolator.h>
 
 void aap::AudioDeviceInputNode::processAudio(AudioData *audioData, int32_t numFrames) {
     // copy current audio input data into `audioData`
@@ -139,10 +140,16 @@ bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, con
             SeekableByteBuffer buffer(data, dataLength);
             auto stream = std::make_shared<std::istream>(&buffer);
             auto reader = format->createReader(stream);
-            reader->loadFileContent();
             auto props = reader->getProperties();
-            audio_data = AudioData{(int32_t) props.numChannels, (int32_t) props.numFrames};
-            assert(reader->readFrames(0, audio_data.audio));
+            AudioData tmpData{(int32_t) props.numChannels, (int32_t) props.numFrames};
+            assert(reader->readFrames(0, tmpData.audio));
+
+            // resample
+            auto durationInSeconds = 1.0 * props.numFrames / props.sampleRate;
+            auto targetFrames = (int32_t) (durationInSeconds * graph->getSampleRate());
+            audio_data = AudioData{(int32_t) props.numChannels, targetFrames};
+            choc::interpolation::sincInterpolate(audio_data.audio, tmpData.audio);
+
             return true;
         }
     }

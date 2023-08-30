@@ -30,7 +30,9 @@ namespace aap {
 
         void stopCallback();
 
-        oboe::DataCallbackResult onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
+        oboe::DataCallbackResult onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames) override;
+
+        bool onError(oboe::AudioStream *, oboe::Result) override;
 
         void copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames);
 
@@ -178,7 +180,7 @@ aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *o
 
         memset(oboeAudioData, 0, numFrames * sizeof(float));
 
-        auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, 2/*audioStream->getChannelCount()*/, numFrames);
+        auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copy(oboeView, aap_buffer.audio.getStart(numFrames));
     }
 
@@ -205,6 +207,11 @@ void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int3
     // FIXME: currentPosition?
     choc::buffer::FrameRange range{0, (uint32_t ) numFrames};
     choc::buffer::copy(aap_buffer.audio.getFrameRange(range), srcAudioData->audio.getView().getFrameRange(range));
+}
+
+bool aap::OboeAudioDevice::onError(oboe::AudioStream *stream, oboe::Result result) {
+    // Should we log errors here?
+    return AudioStreamErrorCallback::onError(stream, result);
 }
 
 //--------
