@@ -3,13 +3,13 @@
 
 #include <cstdint>
 #include "LocalDefinitions.h"
-#include "AudioData.h"
+#include "AudioBuffer.h"
 
 #include <oboe/Oboe.h>
 
 namespace aap {
 
-    typedef void(AudioDeviceCallback(void* callbackContext, AudioData* audioData, int32_t numFrames));
+    typedef void(AudioDeviceCallback(void* callbackContext, AudioBuffer* audioData, int32_t numFrames));
 
     class AAP_PUBLIC_API AudioDeviceIn {
 
@@ -22,7 +22,7 @@ namespace aap {
         virtual void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) = 0;
 
         /// reads the audio data from the backend into `dstAudioData`.
-        virtual void read(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames) = 0;
+        virtual void read(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames) = 0;
 
         /// The platform backend may require audio recording permission (e.g. Android).
         /// The backend implementation should return true if that is the case.
@@ -48,7 +48,7 @@ namespace aap {
 
         /// writes `audioDataToWrite` into the backend audio output.
         /// Note that the actual outputting is done through the backend audio callback.
-        virtual void write(AudioData *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) = 0;
+        virtual void write(AudioBuffer *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) = 0;
     };
 }
 

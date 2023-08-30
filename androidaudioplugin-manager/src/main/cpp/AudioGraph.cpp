@@ -3,7 +3,7 @@
 #include <android/trace.h>
 #endif
 
-void aap::SimpleLinearAudioGraph::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::SimpleLinearAudioGraph::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     struct timespec timeSpecBegin{}, timeSpecEnd{};
 #if ANDROID
     if (ATrace_isEnabled()) {

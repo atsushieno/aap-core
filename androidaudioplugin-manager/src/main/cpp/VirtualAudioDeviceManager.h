@@ -19,7 +19,7 @@ namespace aap {
         void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
             // should we implement something here?
         }
-        void read(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames) override {
+        void read(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames) override {
             // should we implement something here?
         }
     };
@@ -35,7 +35,7 @@ namespace aap {
         void setAudioCallback(AudioDeviceCallback audioDeviceCallback, void* callbackContext) override {
             // should we implement something here?
         }
-        void write(AudioData *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) override {
+        void write(AudioBuffer *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) override {
             // should we implement something here?
         }
     };

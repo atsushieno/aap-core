@@ -21,7 +21,7 @@ namespace aap {
                 num_channels(channelsInAudioBus) {
         }
 
-        virtual void processAudio(AudioData* audioData, int32_t numFrames) = 0;
+        virtual void processAudio(AudioBuffer* audioData, int32_t numFrames) = 0;
 
         int32_t getSampleRate() { return sample_rate; }
 
@@ -39,7 +39,7 @@ namespace aap {
         MidiDestinationNode midi_output;
         std::vector<AudioGraphNode*> nodes{};
 
-        static void audio_callback(void* callbackContext, AudioData* audioData, int32_t numFrames) {
+        static void audio_callback(void* callbackContext, AudioBuffer* audioData, int32_t numFrames) {
             ((SimpleLinearAudioGraph*) callbackContext)->processAudio(audioData, numFrames);
         }
 
@@ -50,7 +50,7 @@ namespace aap {
 
         void setAudioSource(uint8_t *data, int dataLength, const char *filename);
 
-        void processAudio(AudioData *audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer *audioData, int32_t numFrames) override;
 
         void addMidiEvent(uint8_t *data, int32_t dataLength, int64_t timestampInNanoseconds);
 

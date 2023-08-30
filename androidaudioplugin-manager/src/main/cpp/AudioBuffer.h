@@ -1,5 +1,5 @@
-#ifndef AAP_CORE_AUDIODATA_H
-#define AAP_CORE_AUDIODATA_H
+#ifndef AAP_CORE_AUDIOBUFFER_H
+#define AAP_CORE_AUDIOBUFFER_H
 
 #include "LocalDefinitions.h"
 #define AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES 4
@@ -9,7 +9,7 @@
 
 namespace aap {
 
-    class AudioData {
+    class AudioBuffer {
         static int32_t aapBufferGetNumFrames(aap_buffer_t &);
         static void *aapBufferGetBuffer(aap_buffer_t &, int32_t);
         static int32_t aapBufferGetBufferSize(aap_buffer_t &, int32_t);
@@ -21,13 +21,13 @@ namespace aap {
         void *midi_out;
         int32_t midi_capacity;
 
-        AudioData(int32_t numChannels, int32_t framesPerCallback,
-                  int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE);
-        ~AudioData();
+        AudioBuffer(int32_t numChannels, int32_t framesPerCallback,
+                    int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE);
+        ~AudioBuffer();
 
         aap_buffer_t asAAPBuffer();
     };
 
 }
 
-#endif //AAP_CORE_AUDIODATA_H
+#endif //AAP_CORE_AUDIOBUFFER_H

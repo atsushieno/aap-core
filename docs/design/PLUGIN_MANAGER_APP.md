@@ -29,7 +29,7 @@ The diagram below is a flow chart for the audio graph processing for current `Si
 
 `androidaudioplugin-manager` defines its own abstraction layer for audio device I/O. To support low latency audio, it is defined as callback API. They are abstracted away as `AudioDeviceIn` and `AudioDeviceOut`. There is `AudioDeviceManager` abstract class that open those I/O devices too. There are `Oboe` and `Virtual` implementation for them (virtual does not do anything).
 
-Since platform audio API is different for each platform, we also abstract away the audio buffer layer, named as `AudioData` in C++ code for now.
+Since platform audio API is different for each platform, we also abstract away the audio buffer layer, named as `AudioBuffer` in C++ code for now.
 
 `AudioDeviceIn` and `AudioDeviceOut` provides `setAudioCallback` function that takes `AudioDeviceCallback`. The callbacks are invoked whenever the platform audio API yields a new callback, for each.
 
@@ -65,7 +65,7 @@ One thing to note is that audio inputs needs to be explicitly enabled. In `Plugi
 
 While it could be configured per plugin (because there is only one plugin in the audio graph, it is quite possible), we would begin with a fixed Stereo audio bus configuration (i.e. left and right for the input and the output), with a virtual MIDI2 input port and a virtual MIDI2 output port.
 
-However, we can specify the number of input channels at `PluginPlayer` constructors so it may still work. What is left unsupported is adjusting input audio file data to what `AudioData` expects (for audio device inputs it is handled at Oboe or AAudio).
+However, we can specify the number of input channels at `PluginPlayer` constructors so it may still work. What is left unsupported is adjusting input audio file data to what `AudioBuffer` expects (for audio device inputs it is handled at Oboe or AAudio).
 
 #### Configuration Changes
 

@@ -13,7 +13,7 @@ namespace aap {
         oboe::AudioStreamBuilder builder{};
         void* callback_context;
         AudioDeviceCallback *aap_callback;
-        AudioData aap_buffer;
+        AudioBuffer aap_buffer;
         void* oboe_buffer;
 
         oboe::DataCallbackResult onAudioInputReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
@@ -34,9 +34,9 @@ namespace aap {
 
         bool onError(oboe::AudioStream *, oboe::Result) override;
 
-        void copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames);
+        void copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames);
 
-        void copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition, int32_t numFrames);
+        void copyAAPBufferForWriting(AudioBuffer *srcAudioData, int32_t currentPosition, int32_t numFrames);
     };
 
     class OboeAudioDeviceIn :
@@ -58,7 +58,7 @@ namespace aap {
             impl.setCallback(callback, callbackContext);
         }
 
-        void read(AudioData *audioData, int32_t bufferPosition, int32_t numFrames) override;
+        void read(AudioBuffer *audioData, int32_t bufferPosition, int32_t numFrames) override;
     };
 
     class OboeAudioDeviceOut :
@@ -77,7 +77,7 @@ namespace aap {
             impl.setCallback(callback, callbackContext);
         }
 
-        void write(AudioData *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) override;
+        void write(AudioBuffer *audioDataToWrite, int32_t bufferPosition, int32_t numFrames) override;
     };
 }
 
@@ -192,7 +192,7 @@ void aap::OboeAudioDevice::setCallback(aap::AudioDeviceCallback aapCallback, voi
     callback_context = callbackContext;
 }
 
-void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioData *dstAudioData, int32_t bufferPosition,
+void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int32_t bufferPosition,
                                                   int32_t numFrames) {
     // This copies current AAP input buffer (ring buffer) into the argument `dstAudioData`, without "consuming".
     // FIXME: use currentPosition
@@ -201,7 +201,7 @@ void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioData *dstAudioData, int32
     choc::buffer::copy(dstAudioData->audio, aap_buffer.audio.getView().getFrameRange(range));
 }
 
-void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioData *srcAudioData, int32_t currentPosition,
+void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioBuffer *srcAudioData, int32_t currentPosition,
                                                    int32_t numFrames) {
     // This puts `srcAudioData` into current AAP output buffer (ring buffer).
     // FIXME: currentPosition?
@@ -225,11 +225,11 @@ aap::OboeAudioDeviceOut::OboeAudioDeviceOut(uint32_t sampleRate, uint32_t frames
 
 }
 
-void aap::OboeAudioDeviceIn::read(AudioData *dstAudioData, int32_t bufferPosition, int32_t numFrames) {
+void aap::OboeAudioDeviceIn::read(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames) {
     impl.copyCurrentAAPBufferTo(dstAudioData, bufferPosition, numFrames);
 }
 
-void aap::OboeAudioDeviceOut::write(AudioData *audioDataToWrite, int32_t bufferPosition,
+void aap::OboeAudioDeviceOut::write(AudioBuffer *audioDataToWrite, int32_t bufferPosition,
                                     int32_t numFrames) {
     impl.copyAAPBufferForWriting(audioDataToWrite, bufferPosition, numFrames);
 }

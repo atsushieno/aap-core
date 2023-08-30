@@ -5,7 +5,7 @@ project(androidaudioplugin-manager LANGUAGES CXX)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin-manager_SOURCES
 		#zix/ring.cpp
-		AudioData.cpp
+        AudioBuffer.cpp
 		AudioDevice.cpp
         AudioDeviceManager.cpp
 		OboeAudioDeviceManager.cpp

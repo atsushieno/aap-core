@@ -6,7 +6,7 @@
 #include <audio/choc_AudioFileFormat_FLAC.h>
 #include <audio/choc_SincInterpolator.h>
 
-void aap::AudioDeviceInputNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::AudioDeviceInputNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     // copy current audio input data into `audioData`
     getDevice()->read(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
@@ -33,7 +33,7 @@ bool aap::AudioDeviceInputNode::shouldSkip() {
 
 //--------
 
-void aap::AudioDeviceOutputNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::AudioDeviceOutputNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     // copy `audioData` into current audio output buffer
     getDevice()->write(audioData, consumer_position, numFrames);
     // TODO: adjust ring buffer offset, not just simple adder.
@@ -76,7 +76,7 @@ bool aap::AudioDataSourceNode::shouldSkip() {
     return !hasData() || !playing;
 }
 
-void aap::AudioDataSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::AudioDataSourceNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     // It ignores errors or empty buffers
     read(audioData, numFrames);
 }
@@ -96,7 +96,7 @@ void aap::AudioDataSourceNode::setPlaying(bool newPlayingState) {
     playing = newPlayingState;
 }
 
-int32_t aap::AudioDataSourceNode::read(AudioData *dst, int32_t numFrames) {
+int32_t aap::AudioDataSourceNode::read(AudioBuffer *dst, int32_t numFrames) {
 
     uint32_t size = std::min(audio_data.audio.getNumFrames() - current_frame_offset,
                              (uint32_t) numFrames);
@@ -136,13 +136,13 @@ bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, con
             auto stream = std::make_shared<std::istream>(&buffer);
             auto reader = format->createReader(stream);
             auto props = reader->getProperties();
-            AudioData tmpData{(int32_t) props.numChannels, (int32_t) props.numFrames};
+            AudioBuffer tmpData{(int32_t) props.numChannels, (int32_t) props.numFrames};
             assert(reader->readFrames(0, tmpData.audio));
 
             // resample
             auto durationInSeconds = 1.0 * props.numFrames / props.sampleRate;
             auto targetFrames = (int32_t) (durationInSeconds * graph->getSampleRate());
-            audio_data = AudioData{(int32_t) props.numChannels, targetFrames};
+            audio_data = AudioBuffer{(int32_t) props.numChannels, targetFrames};
             choc::interpolation::sincInterpolate(audio_data.audio, tmpData.audio);
 
             return true;

@@ -22,7 +22,7 @@ namespace aap {
         virtual bool shouldSkip() { return false; }
         virtual void start() = 0;
         virtual void pause() = 0;
-        virtual void processAudio(AudioData* audioData, int32_t numFrames) = 0;
+        virtual void processAudio(AudioBuffer* audioData, int32_t numFrames) = 0;
     };
 
     /**
@@ -53,7 +53,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
 
         void setPermissionGranted();
     };
@@ -83,7 +83,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
     };
 
     class AudioPluginNode : public AudioGraphNode {
@@ -100,13 +100,13 @@ namespace aap {
         void start() override;
         void pause() override;
         bool shouldSkip() override;
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
     };
 
     class AudioDataSourceNode : public AudioGraphNode {
         bool active{false};
         bool playing{false};
-        AudioData audio_data;
+        AudioBuffer audio_data;
         NanoSleepLock data_source_mutex{};
 
         int32_t current_frame_offset{0};
@@ -118,7 +118,7 @@ namespace aap {
         void pause() override;
         bool shouldSkip() override;
         virtual bool shouldConsumeButBypass() { return playing && !active; }
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
 
         bool hasData() { return current_frame_offset < audio_data.audio.getNumFrames(); };
 
@@ -126,7 +126,7 @@ namespace aap {
 
 
         /// returns the size in frames that were successfully read. 0 if it is empty.
-        int32_t read(AudioData* dst, int32_t numFrames);
+        int32_t read(AudioBuffer* dst, int32_t numFrames);
 
         /// Sets PCM data of some formats, as indicated by the filename.
         /// Currently ogg, mp3 and wav formats work.
@@ -160,7 +160,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
     };
 
     class MidiDestinationNode : public AudioGraphNode {
@@ -174,7 +174,7 @@ namespace aap {
 
         void start() override;
         void pause() override;
-        void processAudio(AudioData* audioData, int32_t numFrames) override;
+        void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
     };
 }
 

@@ -17,7 +17,7 @@ aap::MidiSourceNode::~MidiSourceNode() {
     free(buffer);
 }
 
-void aap::MidiSourceNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::MidiSourceNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     auto dstBuffer = (AAPMidiBufferHeader*) audioData->midi_in;
     // MIDI event might be being added, so we wait a bit using "almost-spin" lock (uses nano-sleep).
     if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
@@ -110,7 +110,7 @@ aap::MidiDestinationNode::~MidiDestinationNode() {
     free(buffer);
 }
 
-void aap::MidiDestinationNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::MidiDestinationNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     auto mbh = (AAPMidiBufferHeader *) audioData->midi_out;
     if (mbh->length > 0)
         memcpy(buffer, audioData->midi_out, sizeof(AAPMidiBufferHeader) + mbh->length);

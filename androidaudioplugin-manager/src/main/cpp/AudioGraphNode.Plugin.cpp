@@ -4,7 +4,7 @@ bool aap::AudioPluginNode::shouldSkip() {
     return plugin == nullptr;
 }
 
-void aap::AudioPluginNode::processAudio(AudioData *audioData, int32_t numFrames) {
+void aap::AudioPluginNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     if (!plugin)
         return;
 
