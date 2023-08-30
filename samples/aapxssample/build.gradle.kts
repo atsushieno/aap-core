@@ -63,7 +63,7 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
-    implementation (project(":androidaudioplugin-ui-compose"))
+    implementation (project(":androidaudioplugin-ui-compose-app"))
     androidTestImplementation (project(":androidaudioplugin-testing"))
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)

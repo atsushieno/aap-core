@@ -6,10 +6,6 @@ plugins {
 apply { from ("../../common.gradle") }
 
 // What a mess...
-val kotlin_version: String by rootProject
-val dokka_version: String by rootProject
-val compose_version: String by rootProject
-val aap_version: String by rootProject
 val enable_asan: Boolean by rootProject
 
 android {
@@ -22,7 +18,7 @@ android {
     }
     buildTypes {
         debug {
-            packagingOptions {
+            packaging {
                 jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
@@ -31,7 +27,7 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    packagingOptions {
+    packaging {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
@@ -59,7 +55,7 @@ android {
 dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-samples-host-engine"))
-    implementation (project(":androidaudioplugin-ui-compose"))
+    implementation (project(":androidaudioplugin-ui-compose-app"))
     androidTestImplementation (project(":androidaudioplugin-testing"))
 
     runtimeOnly (libs.libcxx.provider)

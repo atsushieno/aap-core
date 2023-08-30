@@ -8,10 +8,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:autoRevokePermissions="allowed"
-        tools:targetApi="31"
-        android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity" android:launchMode="singleTask" android:exported="true">
+        tools:targetApi="31">
+        <activity android:name="org.androidaudioplugin.ui.compose.app.GenericPluginHostActivity" android:launchMode="singleTask" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
