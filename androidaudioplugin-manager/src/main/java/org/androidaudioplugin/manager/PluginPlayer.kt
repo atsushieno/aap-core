@@ -72,7 +72,7 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     }
 
     fun processPitchBend(note: Int, value: Float) {
-        assert(0.0 <= value && value < 1.0)
+        assert(value in -1.0..1.0)
         val ump =
             if (note < 0) UmpFactory.midi2PitchBend(0, 0, (0x1_0000_0000 * value).toLong())
             else UmpFactory.midi2PerNotePitchBend(0, 0, note, (0x1_0000_0000 * value).toLong())
@@ -80,7 +80,7 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     }
 
     fun processPressure(note: Int, value: Float) {
-        assert(0.0 <= value && value < 1.0)
+        assert(value in -1.0..1.0)
         val ump = Ump(UmpFactory.midi2PAf(0, 0, note, (0x1_0000_0000 * value).toLong()))
         addMidiEvent(ump)
     }
