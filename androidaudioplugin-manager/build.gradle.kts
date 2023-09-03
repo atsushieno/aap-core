@@ -74,13 +74,9 @@ dependencies {
     androidTestImplementation (libs.test.espresso.core)
 }
 
-/*
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
 // This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
 gradle.projectsEvaluated {
-    tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabDebugPackage"])
-    tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
-    // It also seems that AGP is quite buggy on handling prefab extraction - it tries to resolve androidaudioplugin prefab from Release build even if we build Debug.
-    tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
+    tasks.findByPath(":androidaudioplugin-manager:buildCMakeDebug")!!.dependsOn(":androidaudioplugin:prefabDebugPackage")
+    tasks.findByPath(":androidaudioplugin-manager:buildCMakeRelWithDebInfo")!!.dependsOn(":androidaudioplugin:prefabReleasePackage")
 }
-*/

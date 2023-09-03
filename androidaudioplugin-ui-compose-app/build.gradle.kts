@@ -21,7 +21,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.kotlin.compose.compiler.extension.get()
+        kotlinCompilerExtensionVersion = libs.versions.compose.get()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

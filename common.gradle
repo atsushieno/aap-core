@@ -1,11 +1,11 @@
 
 android {
-    compileSdk = 33
+    compileSdk = 34
     buildToolsVersion = libs.versions.build.tools.get()
 
     defaultConfig {
         minSdk = 29
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = libs.versions.aap.core.get()
 
