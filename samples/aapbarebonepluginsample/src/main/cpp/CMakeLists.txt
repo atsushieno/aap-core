@@ -37,7 +37,6 @@ target_compile_options(aapbarebonepluginsample
         -Wshadow-field
         # uncomment this if you want to enable AddressSanitizer
         #-fsanitize=address -fno-omit-frame-pointer
-        -mbranch-protection=standard
         )
 
 if (BUILD_WITH_PREFAB)

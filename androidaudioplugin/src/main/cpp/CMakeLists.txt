@@ -43,7 +43,6 @@ target_compile_options (androidaudioplugin
 		-std=c++17 -Wall -Wshadow
 		# see https://issuetracker.google.com/issues/219987524#comment37
 		-Werror=unguarded-availability
-		-mbranch-protection=standard
 		)
 
 target_compile_definitions (androidaudioplugin

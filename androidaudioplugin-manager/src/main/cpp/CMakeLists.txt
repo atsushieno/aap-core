@@ -42,7 +42,6 @@ target_compile_options (androidaudioplugin-manager
 		PRIVATE
 		-std=c++17 -Wall -Wshadow
 		-Werror=unguarded-availability
-		-mbranch-protection=standard
 		)
 
 target_compile_definitions (androidaudioplugin-manager
