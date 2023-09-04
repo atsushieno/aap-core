@@ -59,7 +59,7 @@ typedef struct aap_parameter_info_t {
     //      - OSC1 Delay Send Level
     //    ...
     char path[AAP_MAX_PARAMETER_PATH_CHARS];
-    // the actual value range would be of float, but in case we support double in the future it will ont lose API compatibility here.
+    // the actual value range would be of float, but in case we support double in the future it will not lose API compatibility here.
     double min_value;
     double max_value;
     double default_value;

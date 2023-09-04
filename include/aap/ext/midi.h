@@ -26,12 +26,14 @@ typedef struct AAPMidiBufferHeader {
 // messages in SysEx8 format. (see issue #73 for some background)
 //
 // The SysEx8 UMP packets consist of multiple UMP packets, which are like
-// `5g sz pc 7E  7F 00 01 ext-flag  00 00 00 00  uri-size  uri  value-size  value`, where -
+// `[5g sz pc 7E]  [7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [value-size]  [..value..]`, where -
 //   - g : UMP group
 //   - sz : UMP status and size, always 1F
 //   - pc : UMP packet format, 00 or 01 depending on the size
+//   - co-de : AAP sysex8 code. Always 00-01 for realtime extension controls.
 //   - ext-flag : reserved; it may be used once we started supporting something like
 //     "local extension index" (LV2 URID alike).
+//   - re-se-rv-ed : reserved, always 00 00 00 00.
 //   - uri-size: string length for extension URI, in 4 bytes
 //   - uri: string URI in escaped ASCII format, split and padded by 13 bytes (modulo padded as 0)
 //   - value-size: binary length for value in 4 bytes
@@ -66,11 +68,12 @@ typedef struct AAPMidiBufferHeader {
 // and not injected.
 //
 // The sysex8 as parameter change UMP consists of a single UMP packet (i.e. 16 bits) and
-// looks like `5g sz pc 7E  7F 00 00 ch  k.n.idx.  value...`, where -
+// looks like `[5g sz pc 7E]  [7F co-de ch]  [k. n. idx.]  [value...]`, where -
 //   - g : UMP group
 //   - sz : status and size, always 0F
 //   - pc : packet, always 00
 //   - ch : channel, 00-0F
+//   - co-de : AAP sysex8 code. Always 00-00 for AAP parameter changes.
 //   - k. : key for per-note parameter change, 00-7F
 //   - n. : reserved, but it might be used for note ID for per note parameter change, 00-7F.
 //          If it is being used for note ID, host can assign a consistent number across note on/off
