@@ -27,7 +27,7 @@ android {
     }
     buildTypes {
         debug {
-            packagingOptions {
+            packaging {
                 jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
