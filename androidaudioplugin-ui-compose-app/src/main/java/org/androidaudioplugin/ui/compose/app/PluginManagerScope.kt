@@ -40,7 +40,7 @@ class PluginManagerScope(val context: Context,
 }
 
 class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
-                         val manager: PluginManagerScope) {
+                         val manager: PluginManagerScope) : AutoCloseable {
     companion object {
         suspend fun create(pluginInfo: PluginInformation, manager: PluginManagerScope): PluginDetailsScope {
             val scope = PluginDetailsScope(pluginInfo, manager)
@@ -54,7 +54,9 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
     private val pluginPlayer by lazy {
         val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
-        val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
+        // It is for the audio processor's callback
+        // FIXME: make them configurable?
+        val frames = 1024 //audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
         val channelCount = 2
         PluginPlayer.create(sampleRate, frames, channelCount).apply {
             setPlugin(instance!!)
@@ -64,6 +66,10 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
                 loadAudioResource(bytes, PluginPlayer.sample_audio_filename)
             }
         }
+    }
+
+    override fun close() {
+        pluginPlayer.close()
     }
 
     suspend fun instantiatePlugin() {

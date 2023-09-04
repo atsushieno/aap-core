@@ -45,7 +45,6 @@ namespace aap {
 
     public:
         OboeAudioDeviceIn(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels);
-        virtual ~OboeAudioDeviceIn() {}
 
         // required on Android platform
         bool isPermissionRequired() override { return true; }
@@ -67,7 +66,6 @@ namespace aap {
 
     public:
         OboeAudioDeviceOut(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels);
-        virtual ~OboeAudioDeviceOut() {}
 
         void startCallback() override { impl.startCallback(); }
 
@@ -85,14 +83,16 @@ namespace aap {
 
 aap::AudioDeviceIn *
 aap::OboeAudioDeviceManager::openDefaultInput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) {
-    assert(input == nullptr);
+    // FIXME: this should not be created twice
+    //assert(input == nullptr);
     input = std::make_shared<OboeAudioDeviceIn>(sampleRate, framesPerCallback, numChannels);
     return input.get();
 }
 
 aap::AudioDeviceOut *
 aap::OboeAudioDeviceManager::openDefaultOutput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) {
-    assert(output == nullptr);
+    // FIXME: this should not be created twice
+    //assert(output == nullptr);
     output = std::make_shared<OboeAudioDeviceOut>(sampleRate, framesPerCallback, numChannels);
     return output.get();
 }
@@ -118,6 +118,9 @@ aap::OboeAudioDevice::OboeAudioDevice(uint32_t sampleRate, uint32_t framesPerCal
 }
 
 aap::OboeAudioDevice::~OboeAudioDevice() noexcept {
+    aap_callback = nullptr;
+    if (stream != nullptr)
+        stream->stop(); // we cannot care about closing failure.
     free(oboe_buffer);
 }
 
@@ -132,7 +135,8 @@ void aap::OboeAudioDevice::startCallback() {
 }
 
 void aap::OboeAudioDevice::stopCallback() {
-    assert(stream != nullptr);
+    if (stream == nullptr)
+        return; // already released
     oboe::Result result = stream->stop();
     if (result != oboe::Result::OK)
         throw std::runtime_error(std::string{"Failed to stop Oboe stream: "} + oboe::convertToText(result));

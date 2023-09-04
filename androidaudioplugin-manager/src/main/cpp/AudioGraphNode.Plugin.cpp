@@ -1,4 +1,10 @@
 #include "AudioGraph.h"
+#include "AudioGraphNode.h"
+
+aap::AudioPluginNode::~AudioPluginNode() {
+    plugin->deactivate();
+    // The plugin is not disposed here; somewhere that instantiates the plugin should do the job.
+}
 
 bool aap::AudioPluginNode::shouldSkip() {
     return plugin == nullptr;

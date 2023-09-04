@@ -11,6 +11,8 @@ namespace aap {
     public:
         PluginPlayer(PluginPlayerConfiguration &configuration);
 
+        virtual ~PluginPlayer();
+
         SimpleLinearAudioGraph graph;
 
         void setAudioSource(uint8_t *data, int dataLength, const char *filename);

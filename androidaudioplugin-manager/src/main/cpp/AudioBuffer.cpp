@@ -4,10 +4,11 @@ aap::AudioBuffer::AudioBuffer(int32_t numChannels, int32_t framesPerCallback, in
     audio = choc::buffer::createChannelArrayBuffer(numChannels,
                                                    framesPerCallback,
                                                    []() { return (float) 0; });
+    assert(midiBufferSize > 0);
     audio.clear();
     midi_capacity = midiBufferSize;
-    midi_in = calloc(1, midiBufferSize);
-    midi_out = calloc(1, midiBufferSize);
+    midi_in = midiBufferSize > 0 ? calloc(1, midiBufferSize) : nullptr;
+    midi_out = midiBufferSize > 0 ? calloc(1, midiBufferSize) : nullptr;
 }
 
 aap::AudioBuffer::~AudioBuffer() {

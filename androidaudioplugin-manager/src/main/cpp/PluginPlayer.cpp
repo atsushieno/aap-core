@@ -6,6 +6,10 @@ aap::PluginPlayer::PluginPlayer(aap::PluginPlayerConfiguration &pluginPlayerConf
                                 graph(configuration.getSampleRate(), configuration.getFramesPerCallback(), configuration.getChannelCount()) {
 }
 
+aap::PluginPlayer::~PluginPlayer() {
+    graph.pauseProcessing();
+}
+
 void aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
     graph.setAudioSource(data, dataLength, filename);
 }

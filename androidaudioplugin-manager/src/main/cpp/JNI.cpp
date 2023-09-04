@@ -38,8 +38,7 @@ Java_org_androidaudioplugin_manager_PluginPlayer_createNewPluginPlayer(JNIEnv *e
                                                                        jint sampleRate,
                                                                        jint framesPerCallback,
                                                                        jint channelCount) {
-    // FIXME: store framesPerCalback somewhere. We use irrelevant value.
-    aap::PluginPlayerConfiguration configuration{sampleRate, 1024, channelCount};
+    aap::PluginPlayerConfiguration configuration{sampleRate, framesPerCallback, channelCount};
     return (jlong) (void*) new aap::PluginPlayer(configuration);
 }
 
@@ -47,7 +46,9 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_deletePluginPlayer(JNIEnv *env, jobject thiz,
                                                                     jlong native) {
-    delete (aap::PluginPlayer*) native;
+    auto player = (aap::PluginPlayer*) native;
+    player->pauseProcessing();
+    delete player;
 }
 
 extern "C"

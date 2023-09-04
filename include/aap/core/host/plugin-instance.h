@@ -134,8 +134,9 @@ namespace aap {
         }
 
         void deactivate() {
-            if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE)
-                return;
+            if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE ||
+                instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+                    return;
             assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
 
             plugin->deactivate(plugin);

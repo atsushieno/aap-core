@@ -18,7 +18,7 @@ namespace aap {
         AudioGraphNode(AudioGraph* ownerGraph) : graph(ownerGraph) {}
 
     public:
-
+        virtual ~AudioGraphNode() {}
         virtual bool shouldSkip() { return false; }
         virtual void start() = 0;
         virtual void pause() = 0;
@@ -46,6 +46,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 input(input) {
         }
+        virtual ~AudioDeviceInputNode();
 
         AudioDeviceIn* getDevice() { return input; }
 
@@ -78,6 +79,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 output(output) {
         }
+        virtual ~AudioDeviceOutputNode();
 
         AudioDeviceOut* getDevice() { return output; }
 
@@ -94,6 +96,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 plugin(plugin) {
         }
+        virtual ~AudioPluginNode();
 
         void setPlugin(RemotePluginInstance* instance) { plugin = instance; }
 
@@ -106,13 +109,14 @@ namespace aap {
     class AudioDataSourceNode : public AudioGraphNode {
         bool active{false};
         bool playing{false};
-        AudioBuffer audio_data;
+        std::unique_ptr<AudioBuffer> audio_data{nullptr};
         NanoSleepLock data_source_mutex{};
 
         int32_t current_frame_offset{0};
 
     public:
         explicit AudioDataSourceNode(AudioGraph* ownerGraph);
+        virtual ~AudioDataSourceNode();
 
         void start() override;
         void pause() override;
@@ -120,7 +124,7 @@ namespace aap {
         virtual bool shouldConsumeButBypass() { return playing && !active; }
         void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
 
-        bool hasData() { return current_frame_offset < audio_data.audio.getNumFrames(); };
+        bool hasData() { return audio_data != nullptr && current_frame_offset < audio_data->audio.getNumFrames(); };
 
         void setPlaying(bool newPlayingState);
 

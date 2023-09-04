@@ -3,6 +3,11 @@
 #include <android/trace.h>
 #endif
 
+aap::SimpleLinearAudioGraph::~SimpleLinearAudioGraph() {
+    for (auto node : nodes)
+        node->pause(); // and leave destructors do the job
+}
+
 void aap::SimpleLinearAudioGraph::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     struct timespec timeSpecBegin{}, timeSpecEnd{};
 #if ANDROID

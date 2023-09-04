@@ -6,6 +6,10 @@
 #include <audio/choc_AudioFileFormat_FLAC.h>
 #include <audio/choc_SincInterpolator.h>
 
+aap::AudioDeviceInputNode::~AudioDeviceInputNode() {
+    getDevice()->stopCallback();
+}
+
 void aap::AudioDeviceInputNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     // copy current audio input data into `audioData`
     getDevice()->read(audioData, consumer_position, numFrames);
@@ -32,6 +36,10 @@ bool aap::AudioDeviceInputNode::shouldSkip() {
 }
 
 //--------
+
+aap::AudioDeviceOutputNode::~AudioDeviceOutputNode() {
+    getDevice()->stopCallback();
+}
 
 void aap::AudioDeviceOutputNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
     // copy `audioData` into current audio output buffer
@@ -68,7 +76,7 @@ public:
 
 aap::AudioDataSourceNode::AudioDataSourceNode(aap::AudioGraph *ownerGraph) :
         AudioGraphNode(ownerGraph),
-        audio_data(ownerGraph->getChannelsInAudioBus(), ownerGraph->getFramesPerCallback()) {
+        audio_data(std::make_unique<aap::AudioBuffer>(ownerGraph->getChannelsInAudioBus(), ownerGraph->getFramesPerCallback())) {
 }
 
 bool aap::AudioDataSourceNode::shouldSkip() {
@@ -98,7 +106,7 @@ void aap::AudioDataSourceNode::setPlaying(bool newPlayingState) {
 
 int32_t aap::AudioDataSourceNode::read(AudioBuffer *dst, int32_t numFrames) {
 
-    uint32_t size = std::min(audio_data.audio.getNumFrames() - current_frame_offset,
+    uint32_t size = std::min(audio_data->audio.getNumFrames() - current_frame_offset,
                              (uint32_t) numFrames);
     if (size <= 0)
         return 0;
@@ -113,7 +121,7 @@ int32_t aap::AudioDataSourceNode::read(AudioBuffer *dst, int32_t numFrames) {
 
         choc::buffer::FrameRange range{(uint32_t) current_frame_offset, current_frame_offset + size};
         choc::buffer::copyRemappingChannels(dst->audio.getStart(size),
-                                            audio_data.audio.getFrameRange(range));
+                                            audio_data->audio.getFrameRange(range));
         current_frame_offset += size;
         return size;
     }
@@ -142,13 +150,18 @@ bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, con
             // resample
             auto durationInSeconds = 1.0 * props.numFrames / props.sampleRate;
             auto targetFrames = (int32_t) (durationInSeconds * graph->getSampleRate());
-            audio_data = AudioBuffer{(int32_t) props.numChannels, targetFrames};
-            choc::interpolation::sincInterpolate(audio_data.audio, tmpData.audio);
+            audio_data = std::make_unique<AudioBuffer>((int32_t) props.numChannels, targetFrames);
+            choc::interpolation::sincInterpolate(audio_data->audio, tmpData.audio);
 
             return true;
         }
     }
 
     return false;
+}
+
+aap::AudioDataSourceNode::~AudioDataSourceNode() {
+    playing = false;
+    active = false;
 }
 
