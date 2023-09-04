@@ -30,7 +30,7 @@ android {
     }
     buildTypes {
         debug {
-            packagingOptions {
+            packaging {
                 jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
@@ -39,7 +39,7 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    packagingOptions {
+    packaging {
         resources {
             excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
         }
