@@ -25,7 +25,7 @@ CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG
 
 ALL_ABIS=("x86" "x86_64" "armeabi-v7a" "arm64-v8a")
 
-ALL_APPS=("samples/aaphostsample2" "samples/aaphostsample" "samples/aapbarebonepluginsample" "samples/aapinstrumentsample" "samples/aapxssample")
+ALL_APPS=("samples/aaphostsample" "samples/aapbarebonepluginsample" "samples/aapinstrumentsample" "samples/aapxssample")
 
 for sample in "${ALL_APPS[@]}"; do
   echo "APP: $sample"
@@ -40,8 +40,10 @@ for sample in "${ALL_APPS[@]}"; do
     mkdir -p $SAMPLE_RES/$a
     cp -R asan-wrap-bugfixed.sh $SAMPLE_RES/$a/wrap.sh
     dos2unix $SAMPLE_RES/$a/wrap.sh
+    chmod +x $SAMPLE_RES/$a/wrap.sh
   done
 
+  chmod +x $CLANG_LIB/linux/libclang_rt.asan-*.so
   cp $CLANG_LIB/linux/libclang_rt.asan-i686*.so $SAMPLE/jniLibs/x86
   cp $CLANG_LIB/linux/libclang_rt.asan-x86_64*.so $SAMPLE/jniLibs/x86_64
   cp $CLANG_LIB/linux/libclang_rt.asan-arm*.so $SAMPLE/jniLibs/armeabi-v7a
