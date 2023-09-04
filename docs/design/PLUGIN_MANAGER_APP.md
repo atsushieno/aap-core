@@ -50,10 +50,6 @@ Next time `AudioDeviceIn` platform audio callback happens, the audio buffer may 
 
 Similarly, data sent to `AudioDeviceOutNode` will be stored within the node and is supposed to be written to the platform audio buffer, in the platform-specific format (`OboeAudioDeviceOut` does the task). The node itself does not directly writes out to `AudioDeviceOut` - it is the audio callback which is supposed to do the job.
 
-#### Ring Buffers
-
-Since `AudioDeviceIn` and `AudioDeviceOut` involves audio buffering and there might be need for buffering in case more than one audio-in callbacks happen while waiting for one audio-out callback and data may flush out, we store AAP audio inputs (converted from the platform audio inputs) into a ring buffer, for each device.
-
 #### Audio Recoring Permission
 
 One thing to note is that audio inputs needs to be explicitly enabled. In `PluginPlayer` case, it is triggered by `RECORD_AUDIO` permission checker - if it is permitted then `PluginPlayer.enableAudioRecorder()` is invoked, which in turn enables the Oboe input callback.
@@ -73,6 +69,11 @@ The audio config changes (not to confuse with Android device config changes such
 
 Rebuilding `PluginPlayer` involves state saving and restoring of the plugin.
 
+### TODOs (but not in priority)
+
+#### Ring Buffers
+
+Since `AudioDeviceIn` and `AudioDeviceOut` involves audio buffering and there might be need for buffering in case more than one audio-in callbacks happen while waiting for one audio-out callback and data may flush out, we store AAP audio inputs (converted from the platform audio inputs) into a ring buffer, for each device.
 
 ### External Dependencies
 
@@ -82,3 +83,7 @@ We use Tracktion/choc for a few utilities:
 - audio file decoding and resampling
 
 It is somewhat risky to depend on it because choc API is not stable (it's like using Skia), but we can keep using a fixed version if we find upgrades problematic.
+
+## androidaudioplugin-ui-compose-app
+
+This module contains the Activity and GUI part of the manager. It is written in Jetpack Compose and reuses the default Native UI (it can also launch the Web UI and the Native UI, so it should not be confused with them).
