@@ -156,7 +156,12 @@ namespace aap {
         struct timespec last_aap_process_time{0, 0};
 
     public:
-        MidiSourceNode(AudioGraph* ownerGraph, RemotePluginInstance* instance, int32_t sampleRate, int32_t audioNumFramesPerCallback, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
+        MidiSourceNode(AudioGraph* ownerGraph,
+                       RemotePluginInstance* instance,
+                       int32_t sampleRate,
+                       int32_t audioNumFramesPerCallback,
+                       int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2,
+                       int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
         virtual ~MidiSourceNode();
 

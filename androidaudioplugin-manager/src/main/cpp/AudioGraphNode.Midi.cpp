@@ -4,10 +4,11 @@ aap::MidiSourceNode::MidiSourceNode(AudioGraph* ownerGraph,
                                     RemotePluginInstance* instance,
                                     int32_t sampleRate,
                                     int32_t audioNumFramesPerCallback,
+                                    int32_t initialMidiProtocol,
                                     int32_t internalBufferSize) :
         AudioGraphNode(ownerGraph),
         capacity(internalBufferSize),
-        translator(instance, internalBufferSize),
+        translator(instance, internalBufferSize, initialMidiProtocol),
         sample_rate(sampleRate),
         aap_frame_size(audioNumFramesPerCallback) {
     buffer = (uint8_t*) calloc(1, internalBufferSize);
