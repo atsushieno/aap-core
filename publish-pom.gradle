@@ -9,7 +9,6 @@ android {
 }
 
 afterEvaluate {
-
     tasks.register('javadocJar', Jar) {
         archiveClassifier.set('javadoc')
     }
@@ -18,6 +17,10 @@ afterEvaluate {
         from android.sourceSets.main.kotlin.srcDirs
         archiveClassifier.set('sources')
     }
+    /* https://stackoverflow.com/questions/76565326/task-generatemetadatafileforreleasepublication-uses-this-output-of-task-androids
+    afterEvaluate {
+        generateMetadataFileForReleasePublication.dependsOn sourceJar
+    }*/
 
     publishing {
         repositories {
