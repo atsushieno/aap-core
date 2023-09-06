@@ -9,7 +9,7 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
-#include "utility.h"
+#include "../aap_midi2_helper.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/parameters-service.h"
 #include "../extensions/presets-service.h"

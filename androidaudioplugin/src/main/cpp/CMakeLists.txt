@@ -53,6 +53,7 @@ target_compile_definitions (androidaudioplugin
 target_include_directories (androidaudioplugin
 		PRIVATE
 		"../../../../include/"
+		"../../../../external/cmidi2"
 		)
 
 if (ANDROID)

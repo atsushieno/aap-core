@@ -26,12 +26,12 @@ typedef struct AAPMidiBufferHeader {
 // messages in SysEx8 format. (see issue #73 for some background)
 //
 // The SysEx8 UMP packets consist of multiple UMP packets, which are like
-// `[5g sz pc 7E]  [7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [value-size]  [..value..]`, where -
+// `[5g sz si 7E]  [7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [value-size]  [..value..]`, where -
 //   - g : UMP group
 //   - sz : UMP status and size, always 1F
-//   - pc : UMP packet format, 00 or 01 depending on the size
+//   - si : stream Id, always 00. AAP MIDI sysex8 does not have to support simultaneous sysex8 streams.
 //   - co-de : AAP sysex8 code. Always 00-01 for realtime extension controls.
-//   - ext-flag : reserved; it may be used once we started supporting something like
+//   - ext : extension flag, reserved as 00; it may be used once we started supporting something like
 //     "local extension index" (LV2 URID alike).
 //   - re-se-rv-ed : reserved, always 00 00 00 00.
 //   - uri-size: string length for extension URI, in 4 bytes
@@ -68,10 +68,10 @@ typedef struct AAPMidiBufferHeader {
 // and not injected.
 //
 // The sysex8 as parameter change UMP consists of a single UMP packet (i.e. 16 bits) and
-// looks like `[5g sz pc 7E]  [7F co-de ch]  [k. n. idx.]  [value...]`, where -
+// looks like `[5g sz si 7E]  [7F co-de ch]  [k. n. idx.]  [value...]`, where -
 //   - g : UMP group
 //   - sz : status and size, always 0F
-//   - pc : packet, always 00
+//   - si : stream Id, always 00. AAP MIDI sysex8 does not have to support simultaneous sysex8 streams.
 //   - ch : channel, 00-0F
 //   - co-de : AAP sysex8 code. Always 00-00 for AAP parameter changes.
 //   - k. : key for per-note parameter change, 00-7F

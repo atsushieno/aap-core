@@ -48,6 +48,7 @@ typedef struct aap_buffer_t {
 
 /* The length of any plugin is limited to this number. */
 const int32_t AAP_MAX_PLUGIN_ID_SIZE = 1024;
+const int32_t AAP_MAX_EXTENSION_URI_SIZE = 1024;
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;
