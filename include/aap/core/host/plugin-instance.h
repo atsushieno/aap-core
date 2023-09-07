@@ -6,6 +6,8 @@
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"
 #include "plugin-host.h"
+#include "../aap_midi2_helper.h"
+#include "aap/core/AAPXSMidi2Processor.h"
 
 #if ANDROID
 #include <android/trace.h>
@@ -29,6 +31,8 @@ namespace aap {
 
         NanoSleepLock event_input_buffer_mutex{};
 
+        void merge_event_inputs(void *mergeTmp, int32_t mergeBufSize, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance);
+
     protected:
         int instance_id{-1};
         PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
@@ -50,6 +54,8 @@ namespace aap {
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
 
+        // do nothing at client
+        virtual void processAAPXSSysEx8Input() {};
     public:
 
         virtual ~PluginInstance();
@@ -182,7 +188,8 @@ namespace aap {
         LocalPluginInstanceStandardExtensionsImpl standards;
         aap_host_plugin_info_extension_t host_plugin_info{};
         aap_host_parameters_extension_t host_parameters_extension{};
-        bool process_requested{false};
+        bool process_requested_to_host{false};
+        AAPXSMidi2Processor aapxs_midi2_processor{};
 
         static aap_plugin_info_t
         get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
@@ -211,6 +218,7 @@ namespace aap {
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
+        void processAAPXSSysEx8Input() override;
 
     public:
         LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId,
@@ -272,7 +280,7 @@ namespace aap {
         }
 
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override {
-            process_requested = false;
+            process_requested_to_host = false;
             PluginInstance::process(frameCount, timeoutInNanoseconds);
         }
 

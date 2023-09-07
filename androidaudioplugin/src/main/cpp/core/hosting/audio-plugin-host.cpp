@@ -9,13 +9,13 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
-#include "../aap_midi2_helper.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "../extensions/parameters-service.h"
 #include "../extensions/presets-service.h"
 #include "../extensions/midi-service.h"
 #include "../extensions/port-config-service.h"
 #include "aap/core/host/plugin-instance.h"
+#include "aap/core/AAPXSMidi2Processor.h"
 
 
 #define AAP_HOST_TAG "AAP_HOST"
@@ -511,12 +511,18 @@ void PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  
 	}
 #endif
 
+    // merge input from UI with the host's MIDI inputs
 	if (std::unique_lock<NanoSleepLock> tryLock(event_input_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
 		merge_event_inputs(event_midi2_input_buffer_merged, event_midi2_input_buffer_size,
 						   event_midi2_input_buffer, event_midi2_input_buffer_offset,
 						   getAudioPluginBuffer(), this);
 		event_midi2_input_buffer_offset = 0;
 	}
+
+	// retrieve AAPXS SysEx8 requests if any.
+	processAAPXSSysEx8Input();
+
+	// now we can pass the input to the plugin.
 	plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
 
 #if ANDROID
@@ -527,6 +533,23 @@ void PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  
 		ATrace_endSection();
 	}
 #endif
+}
+
+void aap::PluginInstance::merge_event_inputs(void *mergeTmp, int32_t mergeBufSize, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance) {
+    if (eventInputsSize == 0)
+        return;
+    for (int i = 0; i < instance->getNumPorts(); i++) {
+        auto port = instance->getPort(i);
+        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
+            auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
+            size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeBufSize,
+                                                        (cmidi2_ump*) eventInputs, (size_t) eventInputsSize,
+                                                        (cmidi2_ump*) mbh + 1, (size_t) mbh->length);
+            mbh->length = newSize;
+            memcpy(mbh + 1, mergeTmp, newSize);
+            return;
+        }
+    }
 }
 
 AndroidAudioPluginHost* RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -635,6 +658,13 @@ LocalPluginInstance::LocalPluginInstance(PluginHost *host,
           standards(this) {
 	shared_memory_store = new ServicePluginSharedMemoryStore();
     instance_id = instanceId;
+
+    aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
+        auto aapxsInstance = aapxsServiceInstances.get(context->uri, true);
+        // We need to copy extension data buffer before calling it.
+        memcpy(aapxsInstance->data, context->data, context->dataSize);
+        controlExtension(context->uri, *(int32_t*) (context->data));
+    });
 }
 
 AndroidAudioPluginHost* LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -710,10 +740,22 @@ void LocalPluginInstance::notify_parameters_changed(aap_host_parameters_extensio
 }
 
 void LocalPluginInstance::requestProcessToHost() {
-	if (process_requested)
+	if (process_requested_to_host)
 		return;
-	process_requested = true;
+	process_requested_to_host = true;
 	((PluginService*) host)->requestProcessToHost(instance_id);
+}
+
+void LocalPluginInstance::processAAPXSSysEx8Input() {
+    for (auto i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
+            port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
+            continue;
+        auto aapBuffer = getAudioPluginBuffer();
+        void* data = aapBuffer->get_buffer(*aapBuffer, i);
+        aapxs_midi2_processor.process(data);
+    }
 }
 
 //----
@@ -733,4 +775,33 @@ void RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientI
 	auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
 	thisObj->sendExtensionMessage(clientInstance->uri, opcode);
 }
+
+// AAPXSMidi2Processor
+
+AAPXSMidi2Processor::AAPXSMidi2Processor() {
+    midi2_aapxs_data_buffer = (uint8_t*) calloc(1, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+    midi2_aapxs_conversion_helper_buffer = (uint8_t*) calloc(1, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+    aap_midi2_aapxs_parse_context_prepare(&aapxs_parse_context,
+                                          midi2_aapxs_data_buffer,
+                                          midi2_aapxs_conversion_helper_buffer,
+                                          AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+}
+
+AAPXSMidi2Processor::~AAPXSMidi2Processor() {
+    if (midi2_aapxs_data_buffer)
+        free(midi2_aapxs_data_buffer);
+    if (midi2_aapxs_conversion_helper_buffer)
+        free(midi2_aapxs_conversion_helper_buffer);
+}
+
+void AAPXSMidi2Processor::process(void* buffer) {
+    auto mbh = (AAPMidiBufferHeader *) buffer;
+    void* data = mbh + 1;
+    CMIDI2_UMP_SEQUENCE_FOREACH(data, mbh->length, iter) {
+        auto umpSize = mbh->length - ((uint8_t*) iter - (uint8_t*) data);
+        if (aap_midi2_parse_aapxs_sysex8(&aapxs_parse_context, iter, umpSize))
+            call_extension(&aapxs_parse_context);
+    }
+}
+
 } // namespace

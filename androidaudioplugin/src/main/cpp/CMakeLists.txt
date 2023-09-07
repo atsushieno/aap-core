@@ -4,6 +4,7 @@ project(androidaudioplugin LANGUAGES CXX)
 
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
+	"core/hosting/aap_midi2_helper.cpp"
 	"core/hosting/audio-plugin-host.cpp"
 	"core/hosting/plugin-client-system.cpp"
 	"core/hosting/plugin-connections.cpp"
@@ -53,7 +54,7 @@ target_compile_definitions (androidaudioplugin
 target_include_directories (androidaudioplugin
 		PRIVATE
 		"../../../../include/"
-		"../../../../external/cmidi2"
+		"../../../../external/cmidi2/"
 		)
 
 if (ANDROID)
