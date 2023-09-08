@@ -1,10 +1,20 @@
+#include "aap/core/aap_midi2_helper.h"
 #include "AAPMidiEventTranslator.h"
 
 aap::AAPMidiEventTranslator::AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize, int32_t initialMidiProtocol) :
         instance(instance),
         midi_buffer_size(midiBufferSize),
+        conversion_helper_buffer_size(AAP_MAX_EXTENSION_URI_SIZE + AAP_MAX_EXTENSION_DATA_SIZE + 16),
         receiver_midi_protocol(initialMidiProtocol) {
     translation_buffer = (uint8_t*) calloc(1, midi_buffer_size);
+    conversion_helper_buffer = (uint8_t*) calloc(1, conversion_helper_buffer_size);
+}
+
+aap::AAPMidiEventTranslator::~AAPMidiEventTranslator() {
+    if (translation_buffer)
+        free(translation_buffer);
+    if (conversion_helper_buffer)
+        free(conversion_helper_buffer);
 }
 
 int32_t aap::AAPMidiEventTranslator::translateMidiEvent(uint8_t * bytes, int32_t length) {
@@ -63,10 +73,23 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                 break;
         }
         if (presetIndex >= 0) {
-            // FIXME: this should not trigger non-RT extension event, but rather, generate an
-            //  extension SysEx8 (TBD as per issue #73) and send it so that it can be processed
-            //  in RT-safe manner as well as in sample accurate manner.
-            instance->getStandardExtensions().setCurrentPresetIndex(presetIndex);
+            if (instance->getInstanceState() == aap::PluginInstantiationState::PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+                auto aapxsInstance = instance->getAAPXSManager()->getInstanceFor(
+                        AAP_PRESETS_EXTENSION_URI);
+                auto size = aap_midi2_generate_aapxs_sysex8(
+                        (uint32_t *) (translation_buffer + translatedIndex),
+                        (midi_buffer_size - translatedIndex) / 4,
+                        conversion_helper_buffer,
+                        conversion_helper_buffer_size,
+                        0,
+                        AAP_PRESETS_EXTENSION_URI,
+                        (const uint8_t *) aapxsInstance->data,
+                        aapxsInstance->data_size);
+                translatedIndex += size;
+            }
+            else
+                // Trigger non-RT extension event at inactive state.
+                instance->getStandardExtensions().setCurrentPresetIndex(presetIndex);
         }
         // If a translated AAP parameter change message is detected, then output sysex8.
         if (parameterIndex < 0) {

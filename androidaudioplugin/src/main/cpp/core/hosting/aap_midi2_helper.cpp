@@ -1,6 +1,10 @@
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/core/host/plugin-instance.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static uint32_t aapMidi2ExtensionHelperGetUInt32(uint8_t* dst) {
     if (cmidi2_util_is_platform_little_endian())
         return dst[0] + (dst[1] << 8) + (dst[2] << 16) + (dst[1] << 24);
@@ -27,17 +31,17 @@ static void* aapMidi2ExtensionInvokeHelperSysEx8Forge(uint64_t data1, uint64_t d
         return (void*) true;
 }
 
-bool aapMidi2GenerateAAPXSSysEx8(uint32_t* dst,
-                                 size_t dstSizeInInt,
-                                 uint8_t* conversionHelperBuffer,
-                                 size_t conversionHelperBufferSize,
-                                 uint8_t group,
-                                 const char* uri,
-                                 const uint8_t* data,
-                                 size_t dataSize) {
+size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
+                                       size_t dstSizeInInt,
+                                       uint8_t* conversionHelperBuffer,
+                                       size_t conversionHelperBufferSize,
+                                       uint8_t group,
+                                       const char* uri,
+                                       const uint8_t* data,
+                                       size_t dataSize) {
     size_t required = 16 + strlen(uri) + 4 + dataSize * sizeof(uint32_t);
     if (dstSizeInInt < required || conversionHelperBufferSize < required)
-        return false;
+        return 0;
 
     uint8_t* sysex = conversionHelperBuffer;
     uint8_t* ptr = sysex;
@@ -69,7 +73,7 @@ bool aapMidi2GenerateAAPXSSysEx8(uint32_t* dst,
     cmidi2_ump_sysex8_process(group, sysex, ptr - sysex, 0,
                               aapMidi2ExtensionInvokeHelperSysEx8Forge, &forge);
 
-    return true;
+    return forge.offset;
 }
 
 cmidi2_ump_binary_read_state* sysex8_binary_reader_helper_select_stream(uint8_t targetStreamId, void* context) {
@@ -124,3 +128,6 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
     return true;
 }
 
+#ifdef __cplusplus
+} // extern "C"
+#endif

@@ -7,6 +7,9 @@
 #include <stddef.h>
 #include <string.h>
 
+/* it *may* be used on some public API. Not comprehensive. */
+#define AAP_PUBLIC_API __attribute__((__visibility__("default")))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,6 +52,11 @@ typedef struct aap_buffer_t {
 /* The length of any plugin is limited to this number. */
 const int32_t AAP_MAX_PLUGIN_ID_SIZE = 1024;
 const int32_t AAP_MAX_EXTENSION_URI_SIZE = 1024;
+/*
+ * Maximum transferable AAPXS data size (either as Binder Parcelable or as MIDI2 SysEx8).
+ * Anything that goes beyond this size in total should be passed via shared memory.
+ */
+const int32_t AAP_MAX_EXTENSION_DATA_SIZE = 1024;
 
 /* forward declarations */
 struct AndroidAudioPluginFactory;

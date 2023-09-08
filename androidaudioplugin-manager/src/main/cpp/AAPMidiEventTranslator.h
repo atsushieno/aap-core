@@ -12,6 +12,10 @@ namespace aap {
         // used when we need MIDI1<->UMP translation.
         uint8_t* translation_buffer{nullptr};
         int32_t midi_buffer_size;
+
+        uint8_t* conversion_helper_buffer{nullptr};
+        int32_t conversion_helper_buffer_size;
+
         // MIDI protocol type of the messages it receives via JNI
         int32_t receiver_midi_protocol;
         int32_t current_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
@@ -20,6 +24,7 @@ namespace aap {
 
     public:
         AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
+        ~AAPMidiEventTranslator();
 
         int32_t translateMidiEvent(uint8_t *data, int32_t length);
 
