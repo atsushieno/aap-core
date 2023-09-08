@@ -1,6 +1,7 @@
 #ifndef AAP_CORE_AAPXSMIDI2PROCESSOR_H
 #define AAP_CORE_AAPXSMIDI2PROCESSOR_H
 
+#include <functional>
 #include "../android-audio-plugin.h"
 #include "aap_midi2_helper.h"
 

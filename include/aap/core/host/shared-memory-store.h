@@ -1,6 +1,7 @@
 #ifndef AAP_CORE_SHARED_MEMORY_EXTENSION_H
 #define AAP_CORE_SHARED_MEMORY_EXTENSION_H
 
+#include <sys/mman.h>
 #include "audio-plugin-host.h"
 
 namespace aap {
