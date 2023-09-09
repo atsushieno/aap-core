@@ -78,3 +78,7 @@ void aap::AudioPluginNode::pause() {
     plugin->deactivate();
 }
 
+void aap::AudioPluginNode::setPresetIndex(int index) {
+    plugin->getStandardExtensions().setCurrentPresetIndex(index);
+}
+

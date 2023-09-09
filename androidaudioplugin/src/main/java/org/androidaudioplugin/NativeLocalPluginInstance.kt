@@ -12,6 +12,12 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
 
     fun addEventUmpInput(data: ByteBuffer, size: Int) = addEventUmpInput(service.native, instanceId, data, size)
 
+    // FIXME: we should probably generalize extension features, instead of defining functions and properties for all.
+    fun getPresetCount() = getPresetCount(service.native, instanceId)
+
+    fun getPresetName(index: Int) = getPresetName(service.native, instanceId, index)
+    fun setPresetIndex(index: Int) = setPresetIndex(service.native, instanceId, index)
+
     companion object {
         @JvmStatic
         private external fun getPluginId(nativeService: Long, instanceId: Int): String
@@ -27,5 +33,13 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
 
         @JvmStatic
         private external fun addEventUmpInput(nativeService: Long, instanceId: Int, data: ByteBuffer, size: Int)
+
+        // FIXME: we should probably generalize extension features, instead of defining functions and properties for all.
+        @JvmStatic
+        private external fun getPresetCount(nativeService: Long, instanceId: Int) : Int
+        @JvmStatic
+        private external fun getPresetName(nativeService: Long, instanceId: Int, index: Int) : String
+        @JvmStatic
+        private external fun setPresetIndex(nativeService: Long, instanceId: Int, index: Int)
     }
 }

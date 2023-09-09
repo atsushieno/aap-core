@@ -102,6 +102,10 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         pluginPlayer.playPreloadedAudio()
     }
 
+    fun setPresetIndex(index: Int) {
+        pluginPlayer.setPresetIndex(index)
+    }
+
     fun setParameterValue(parameterId: UInt, value: Float) {
         pluginPlayer.setParameterValue(parameterId, value)
     }

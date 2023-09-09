@@ -116,7 +116,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
             if (uiScope == null) {
                 LaunchedEffect(scope) {
                     // FIXME: pass appropriate sizes here
-                    surfaceUIScope = SurfaceControlUIScope.create(scope, 1000, 750)
+                    surfaceUIScope = SurfaceControlUIScope.create(scope, 1000, 800)
                 }
             } else {
                 // We can call this composable only after we create the SurfaceControl client.

@@ -43,6 +43,7 @@ import org.androidaudioplugin.ui.compose.PluginViewScopeParameterImpl
 import org.androidaudioplugin.ui.compose.PluginViewScopePort
 import org.androidaudioplugin.ui.compose.PluginViewScopePortImpl
 import org.androidaudioplugin.ui.compose.PluginViewScopePreset
+import org.androidaudioplugin.ui.compose.PluginViewScopePresetImpl
 import org.androidaudioplugin.ui.web.WebUIHostHelper
 
 internal class RemotePluginViewScopeImpl(
@@ -65,11 +66,9 @@ internal class RemotePluginViewScopeImpl(
 
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
     override val presetCount: Int
-        get() = TODO("Not yet implemented")
+        get() = instance.getPresetCount()
 
-    override fun getPreset(index: Int): PluginViewScopePreset {
-        TODO("Not yet implemented")
-    }
+    override fun getPreset(index: Int): PluginViewScopePreset = PluginViewScopePresetImpl(index, instance.getPresetName(index))
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -121,6 +120,7 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
             parameters[index] = value.toDouble()
             scope.setParameterValue(index.toUInt(), value)
                             },
+        onPresetChange = { index -> scope.setPresetIndex(index) },
         onNoteOn = { note, _ -> scope.setNoteState(note, true) },
         onNoteOff = { note, _ ->  scope.setNoteState(note, false) },
         onExpression = {origin, note, value -> scope.processExpression(origin, note, value) })

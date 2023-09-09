@@ -59,6 +59,7 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                             instance.addEventUmpInput(paramChangeBuffer, ump.size * 4)
                             parameters[index] = value.toDouble()
                         },
+                        onPresetChange = { index -> instance.setPresetIndex(index) },
                         onNoteOn = { note, details -> onMidi2Note(0x90, note, details) },
                         onNoteOff = { note, details -> onMidi2Note(0x80, note, details) }
                     )

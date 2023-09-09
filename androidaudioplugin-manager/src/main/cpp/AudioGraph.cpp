@@ -80,3 +80,7 @@ aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(int32_t sampleRate, uint32_t
 void aap::SimpleLinearAudioGraph::enableAudioRecorder() {
     input.setPermissionGranted();
 }
+
+void aap::SimpleLinearAudioGraph::setPresetIndex(int index) {
+    plugin.setPresetIndex(index);
+}

@@ -182,7 +182,7 @@ fun PluginDetails(plugin: PluginInformation, viewModel: PluginListViewModel) {
                     showSurfaceUIState = !showSurfaceUIState
                     if (showSurfaceUIState) {
                         if (!surfaceUICreatedState || AudioPluginSurfaceControlClient.alwaysReconnectSurfaceControl) {
-                            previewState.connectSurfaceControlUI(1000, 750)
+                            previewState.connectSurfaceControlUI(1000, 800)
                             surfaceUICreatedState = true
                         }
                         previewState.showSurfaceGui()

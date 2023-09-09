@@ -91,4 +91,9 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
             else Ump(UmpFactory.midi2NoteOff(0, 0, note, 0, velocity16, 0))
         addMidiEvent(ump)
     }
+
+    // non-MIDI events
+    fun setPresetIndex(index: Int) = setPresetIndexNative(native, index)
+
+    private external fun setPresetIndexNative(native: Long, index: Int)
 }

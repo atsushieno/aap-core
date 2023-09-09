@@ -30,3 +30,7 @@ void
 aap::PluginPlayer::addMidiEvents(uint8_t *data, int32_t dataLength, uint64_t timestampInNanoseconds) {
     graph.addMidiEvent(data, dataLength, timestampInNanoseconds);
 }
+
+void aap::PluginPlayer::setPresetIndex(int index) {
+    graph.setPresetIndex(index);
+}

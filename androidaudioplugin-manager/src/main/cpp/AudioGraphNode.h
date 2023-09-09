@@ -104,6 +104,9 @@ namespace aap {
         void pause() override;
         bool shouldSkip() override;
         void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
+
+        // FIXME: this should be generalized to invoke arbitrary extension functions.
+        void setPresetIndex(int index);
     };
 
     class AudioDataSourceNode : public AudioGraphNode {

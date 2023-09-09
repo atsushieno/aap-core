@@ -19,14 +19,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -111,12 +116,12 @@ class PluginViewScopeImpl(
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
 
     override val presetCount: Int
-        get() = TODO("Not yet implemented")
+        get() = instance.getPresetCount()
 
-    override fun getPreset(index: Int): PluginViewScopePreset {
-        TODO("Not yet implemented")
-    }
+    override fun getPreset(index: Int): PluginViewScopePreset = PluginViewScopePresetImpl(index, instance.getPresetName(index))
 }
+
+class PluginViewScopePresetImpl(override val index: Int, override val name: String) : PluginViewScopePreset
 
 class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
     override val id: Int
@@ -159,6 +164,7 @@ fun PluginViewScope.PluginView(
     onParameterChange: (Int, Float) -> Unit,
     onNoteOn: (Int, Long) -> Unit = { _,_ -> },
     onNoteOff: (Int, Long) -> Unit = { _,_ -> },
+    onPresetChange: (Int) -> Unit,
     onExpression: (DiatonicKeyboardNoteExpressionOrigin, Int, Float) -> Unit = { _,_,_ -> }) {
 
     // Keyboard controllers
@@ -197,7 +203,28 @@ fun PluginViewScope.PluginView(
     )
 
     // preset list, if any
-
+    var currentPresetName by remember { mutableStateOf("-- Presets --") }
+    var presetListExpanded by remember { mutableStateOf(false) }
+    Button(onClick = { presetListExpanded = true }) {
+        Text(currentPresetName, color = LocalContentColor.current)
+    }
+    DropdownMenu(
+        modifier = modifier,
+        expanded = presetListExpanded,
+        onDismissRequest = { presetListExpanded = false }) {
+        DropdownMenuItem(text = { Text("(Cancel)", color = LocalContentColor.current) },
+            onClick = { presetListExpanded = false }
+        )
+        (0 until presetCount).map { getPreset(it) }.forEachIndexed { index, preset ->
+            DropdownMenuItem(text = { Text(preset.name, color = LocalContentColor.current) },
+                onClick = {
+                    currentPresetName = preset.name
+                    onPresetChange(index)
+                    presetListExpanded = false
+                }
+            )
+        }
+    }
 
     // parameter list
     LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {
@@ -244,24 +271,4 @@ fun PluginViewScope.PluginView(
             }
         }
     }
-    
-    /* FIXME: we'd like to show them too, but the space is too limited.
-    LazyColumn(modifier.height(100.dp)) {
-        items(portCount) { index ->
-            val port = getPort(index)
-            Row {
-                Text(port.name, Modifier.width(120.dp), fontWeight = FontWeight.Bold)
-                Text(when (port.content) {
-                    PortInformation.PORT_CONTENT_TYPE_AUDIO -> "audio"
-                    PortInformation.PORT_CONTENT_TYPE_MIDI2 -> "midi2"
-                    else -> "other"
-                })
-                Text(when (port.direction) {
-                    PortInformation.PORT_DIRECTION_INPUT -> "in"
-                    PortInformation.PORT_DIRECTION_OUTPUT -> "out"
-                    else -> "?"
-                })
-            }
-        }
-    }*/
 }

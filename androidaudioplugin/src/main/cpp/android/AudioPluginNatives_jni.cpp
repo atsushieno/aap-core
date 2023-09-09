@@ -568,3 +568,38 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNI
 	memcpy(dst, src, size);
 }
 
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getPresetCount(JNIEnv*,
+                                                                     jclass ,
+                                                                     jlong nativeService,
+                                                                     jint instanceId) {
+    auto service = (aap::PluginService *) (void *) nativeService;
+    auto instance = service->getInstanceById(instanceId);
+    return (jint) instance->getStandardExtensions().getPresetCount();
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getPresetName(JNIEnv* env,
+                                                                     jclass ,
+                                                                     jlong nativeService,
+                                                                     jint instanceId,
+                                                                     jint index) {
+    auto service = (aap::PluginService *) (void *) nativeService;
+    auto instance = service->getInstanceById(instanceId);
+    std::string name = instance->getStandardExtensions().getPresetName(index);
+    return env->NewStringUTF(name.c_str());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_setPresetIndex(JNIEnv *env,
+                                                                    jclass clazz,
+                                                                    jlong nativeService,
+                                                                    jint instanceId, jint index) {
+    auto service = (aap::PluginService *) (void *) nativeService;
+    auto instance = service->getInstanceById(instanceId);
+    instance->getStandardExtensions().setCurrentPresetIndex(index);
+}

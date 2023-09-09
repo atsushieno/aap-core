@@ -62,6 +62,8 @@ namespace aap {
         void pauseProcessing();
 
         void enableAudioRecorder();
+
+        void setPresetIndex(int index);
     };
 
     // Not planned to implement so far.

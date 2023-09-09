@@ -24,6 +24,8 @@ namespace aap {
         void pauseProcessing();
 
         void enableAudioRecorder();
+
+        void setPresetIndex(int index);
     };
 }
 
