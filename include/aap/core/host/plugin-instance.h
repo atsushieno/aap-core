@@ -54,51 +54,34 @@ namespace aap {
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
 
-        // do nothing at client
-        virtual void processAAPXSSysEx8Input() {};
-    public:
+        // port configuration functions
+        void setupPortConfigDefaults();
+        void setupPortsViaMetadata();
 
+        // This function should be invoked every time this instance is about to call the plugin's `process()`.
+        // When this instance's `process()` is invoked, it parses the input passed from the client
+        //  (via MIDI2 buffer) and if it found any AAPXS SysEx8 calls, then it dispatches the
+        //  extension request to the actual `plugin`.
+        //
+        // Do nothing at client.
+        virtual void processAAPXSSysEx8Input() {};
+
+    public:
         virtual ~PluginInstance();
 
         virtual int32_t getInstanceId() = 0;
 
-        inline PluginSharedMemoryStore *getSharedMemoryStore() { return shared_memory_store; }
+        PluginSharedMemoryStore *getSharedMemoryStore() { return shared_memory_store; }
 
         // It may or may not be shared memory buffer.
         aap_buffer_t *getAudioPluginBuffer();
 
-        const PluginInformation *getPluginInformation() {
-            return pluginInfo;
-        }
+        const PluginInformation *getPluginInformation() { return pluginInfo; }
 
         void completeInstantiation();
 
         // common to both service and client.
-        void startPortConfiguration() {
-            configured_ports = std::make_unique < std::vector < PortInformation >> ();
-
-            /* FIXME: enable this once we fix configurePorts() for service.
-            // Add mandatory system common ports
-            PortInformation core_midi_in{-1, "System Common Host-To-Plugin", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-            PortInformation core_midi_out{-2, "System Common Plugin-To-Host", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
-            PortInformation core_midi_rt{-3, "System Realtime (HtP)", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-            configured_ports->emplace_back(core_midi_in);
-            configured_ports->emplace_back(core_midi_out);
-            configured_ports->emplace_back(core_midi_rt);
-            */
-        }
-
-        void setupPortConfigDefaults();
-
-        // This means that there was no configured ports by extensions.
-        void setupPortsViaMetadata() {
-            if (are_ports_configured)
-                return;
-            are_ports_configured = true;
-
-            for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
-                configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
-        }
+        void startPortConfiguration();
 
         void scanParametersAndBuildList();
 
@@ -130,27 +113,9 @@ namespace aap {
 
         aap::PluginInstantiationState getInstanceState() { return instantiation_state; }
 
-        void activate() {
-            if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
-                return;
-            assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+        void activate();
 
-            plugin->activate(plugin);
-            instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
-        }
-
-        void deactivate() {
-            if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE ||
-                instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED)
-                    return;
-            assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
-
-            plugin->deactivate(plugin);
-            instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
-        }
-
-        const char* remote_trace_name = "AAP::RemotePluginInstance_process";
-        const char* local_trace_name = "AAP::LocalPluginInstance_process";
+        void deactivate();
 
         virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds);
 
@@ -196,25 +161,8 @@ namespace aap {
 
         static void notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
 
-        inline static void *
-        internalGetExtension(AndroidAudioPluginHost *host, const char *uri) {
-            if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-                auto instance = (LocalPluginInstance *) host->context;
-                instance->host_plugin_info.get = get_plugin_info;
-                return &instance->host_plugin_info;
-            }
-            if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
-                auto instance = (LocalPluginInstance *) host->context;
-                instance->host_parameters_extension.notify_parameters_changed = notify_parameters_changed;
-                return &instance->host_parameters_extension;
-            }
-            return nullptr;
-        }
-
-        inline static void internalRequestProcess(AndroidAudioPluginHost *host) {
-            auto instance = (LocalPluginInstance *) host->context;
-            instance->requestProcessToHost();
-        }
+        static void* internalGetExtension(AndroidAudioPluginHost *host, const char *uri);
+        static void internalRequestProcess(AndroidAudioPluginHost *host);
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
@@ -228,33 +176,13 @@ namespace aap {
 
         int32_t getInstanceId() override { return instance_id; }
 
-        void confirmPorts() {
-            // FIXME: implementation is feature parity with client side so far, but it should be based on port config negotiation.
-            auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
-            if (ext != nullptr) {
-                // configure ports using port-config extension.
-
-                // FIXME: implement
-
-            } else if (pluginInfo->getNumDeclaredPorts() == 0)
-                setupPortConfigDefaults();
-            else
-                setupPortsViaMetadata();
-        }
+        void confirmPorts();
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
         // unlike client host side, this function is invoked for each `addExtension()` Binder call,
         // which is way simpler.
-        AAPXSServiceInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1) {
-            const char *uri = aapxsServiceInstances.addOrGetUri(feature->uri);
-            assert(aapxsServiceInstances.get(uri) == nullptr);
-            if (dataSize < 0)
-                dataSize = feature->shared_memory_size;
-            aapxsServiceInstances.add(uri, std::make_unique<AAPXSServiceInstance>(
-                    AAPXSServiceInstance{this, uri, getInstanceId(), nullptr, dataSize}));
-            return aapxsServiceInstances.get(uri);
-        }
+        AAPXSServiceInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1);
 
         AAPXSServiceInstance *getInstanceFor(const char *uri) {
             auto ret = aapxsServiceInstances.get(uri);
@@ -381,8 +309,6 @@ namespace aap {
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance
     class RemoteAAPXSManager : public AAPXSClientInstanceManager {
         RemotePluginInstance *owner;
-
-    protected:
 
         static void staticSendExtensionMessage(AAPXSClientInstance *clientInstance, int32_t opcode);
 

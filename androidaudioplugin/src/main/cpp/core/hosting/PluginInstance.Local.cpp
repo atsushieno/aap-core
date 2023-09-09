@@ -33,6 +33,50 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
     return &plugin_host_facade;
 }
 
+void *
+aap::LocalPluginInstance::internalGetExtension(AndroidAudioPluginHost *host, const char *uri) {
+    if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
+        auto instance = (LocalPluginInstance *) host->context;
+        instance->host_plugin_info.get = get_plugin_info;
+        return &instance->host_plugin_info;
+    }
+    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
+        auto instance = (LocalPluginInstance *) host->context;
+        instance->host_parameters_extension.notify_parameters_changed = notify_parameters_changed;
+        return &instance->host_parameters_extension;
+    }
+    return nullptr;
+}
+
+void aap::LocalPluginInstance::internalRequestProcess(AndroidAudioPluginHost *host) {
+    auto instance = (LocalPluginInstance *) host->context;
+    instance->requestProcessToHost();
+}
+
+void aap::LocalPluginInstance::confirmPorts() {
+    // FIXME: implementation is feature parity with client side so far, but it should be based on port config negotiation.
+    auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
+    if (ext != nullptr) {
+        // configure ports using port-config extension.
+
+        // FIXME: implement
+
+    } else if (pluginInfo->getNumDeclaredPorts() == 0)
+        setupPortConfigDefaults();
+    else
+        setupPortsViaMetadata();
+}
+
+AAPXSServiceInstance* aap::LocalPluginInstance::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
+    const char *uri = aapxsServiceInstances.addOrGetUri(feature->uri);
+    assert(aapxsServiceInstances.get(uri) == nullptr);
+    if (dataSize < 0)
+        dataSize = feature->shared_memory_size;
+    aapxsServiceInstances.add(uri, std::make_unique<AAPXSServiceInstance>(
+            AAPXSServiceInstance{this, uri, getInstanceId(), nullptr, dataSize}));
+    return aapxsServiceInstances.get(uri);
+}
+
 // plugin-info host extension implementation.
 static uint32_t plugin_info_port_get_index(aap_plugin_info_port_t* port) { return ((aap::PortInformation*) port->context)->getIndex(); }
 static const char* plugin_info_port_get_name(aap_plugin_info_port_t* port) { return ((aap::PortInformation*) port->context)->getName(); }

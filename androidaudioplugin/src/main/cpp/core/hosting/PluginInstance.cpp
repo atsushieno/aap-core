@@ -76,6 +76,31 @@ void aap::PluginInstance::setupPortConfigDefaults() {
     configured_ports->emplace_back(audio_out_r);
 }
 
+
+// This means that there was no configured ports by extensions.
+void aap::PluginInstance::setupPortsViaMetadata() {
+    if (are_ports_configured)
+        return;
+    are_ports_configured = true;
+
+    for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
+        configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
+}
+
+void aap::PluginInstance::startPortConfiguration() {
+    configured_ports = std::make_unique < std::vector < PortInformation >> ();
+
+    /* FIXME: enable this once we fix configurePorts() for service.
+    // Add mandatory system common ports
+    PortInformation core_midi_in{-1, "System Common Host-To-Plugin", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    PortInformation core_midi_out{-2, "System Common Plugin-To-Host", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+    PortInformation core_midi_rt{-3, "System Realtime (HtP)", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    configured_ports->emplace_back(core_midi_in);
+    configured_ports->emplace_back(core_midi_out);
+    configured_ports->emplace_back(core_midi_rt);
+    */
+}
+
 void aap::PluginInstance::scanParametersAndBuildList() {
     assert(!cached_parameters);
 
@@ -105,6 +130,26 @@ void aap::PluginInstance::scanParametersAndBuildList() {
     }
 }
 
+void aap::PluginInstance::activate() {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
+        return;
+    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+
+    plugin->activate(plugin);
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
+}
+
+void aap::PluginInstance::deactivate() {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE ||
+        instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+        return;
+    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
+
+    plugin->deactivate(plugin);
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+}
+
+
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
     const std::lock_guard<NanoSleepLock> lock{event_input_buffer_mutex};
     if (event_midi2_input_buffer_offset + size > event_midi2_input_buffer_size)
@@ -113,6 +158,9 @@ void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
            input, size);
     event_midi2_input_buffer_offset += size;
 }
+
+const char* remote_trace_name = "AAP::RemotePluginInstance_process";
+const char* local_trace_name = "AAP::LocalPluginInstance_process";
 
 void aap::PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  {
     struct timespec timeSpecBegin{}, timeSpecEnd{};
