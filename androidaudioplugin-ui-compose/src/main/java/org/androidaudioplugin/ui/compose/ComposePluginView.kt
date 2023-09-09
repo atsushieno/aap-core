@@ -57,6 +57,13 @@ interface PluginViewScope {
     fun getParameter(index: Int): PluginViewScopeParameter
     val portCount: Int
     fun getPort(index: Int): PluginViewScopePort
+    val presetCount: Int
+    fun getPreset(index: Int) : PluginViewScopePreset
+}
+
+interface PluginViewScopePreset {
+    val name: String
+    val index: Int
 }
 
 interface PluginViewScopePort {
@@ -102,6 +109,13 @@ class PluginViewScopeImpl(
         get() = instance.getPortCount()
 
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
+
+    override val presetCount: Int
+        get() = TODO("Not yet implemented")
+
+    override fun getPreset(index: Int): PluginViewScopePreset {
+        TODO("Not yet implemented")
+    }
 }
 
 class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
@@ -181,6 +195,9 @@ fun PluginViewScope.PluginView(
             onExpression(origin, note, data)
         }
     )
+
+    // preset list, if any
+
 
     // parameter list
     LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {

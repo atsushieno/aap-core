@@ -59,10 +59,10 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     fun addMidiEvent(ump: Ump) = addMidiEvents(ump.toPlatformNativeBytes())
 
-    fun addMidiEvents(bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset) =
-        addMidiEventNative(native, bytes, offset, length)
+    fun addMidiEvents(bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset, timestampInNanoseconds: Long = 0) =
+        addMidiEventsNative(native, bytes, offset, length, timestampInNanoseconds)
 
-    private external fun addMidiEventNative(native: Long, bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset)
+    private external fun addMidiEventsNative(native: Long, bytes: ByteArray, offset: Int = 0, length: Int, timestampInNanoseconds: Long)
 
     fun setParameterValue(parameterId: UInt, value: Float) {
         val ints = UmpHelper.aapUmpSysex8Parameter(parameterId, value)

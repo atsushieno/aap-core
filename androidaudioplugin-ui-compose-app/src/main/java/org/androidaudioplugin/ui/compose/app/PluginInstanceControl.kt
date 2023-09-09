@@ -42,6 +42,7 @@ import org.androidaudioplugin.ui.compose.PluginViewScopeParameter
 import org.androidaudioplugin.ui.compose.PluginViewScopeParameterImpl
 import org.androidaudioplugin.ui.compose.PluginViewScopePort
 import org.androidaudioplugin.ui.compose.PluginViewScopePortImpl
+import org.androidaudioplugin.ui.compose.PluginViewScopePreset
 import org.androidaudioplugin.ui.web.WebUIHostHelper
 
 internal class RemotePluginViewScopeImpl(
@@ -63,6 +64,12 @@ internal class RemotePluginViewScopeImpl(
         get() = instance.getPortCount()
 
     override fun getPort(index: Int): PluginViewScopePort = PluginViewScopePortImpl(instance.getPort(index))
+    override val presetCount: Int
+        get() = TODO("Not yet implemented")
+
+    override fun getPreset(index: Int): PluginViewScopePreset {
+        TODO("Not yet implemented")
+    }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)

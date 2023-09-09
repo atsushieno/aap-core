@@ -21,13 +21,14 @@ Java_org_androidaudioplugin_manager_PluginPlayer_loadAudioResourceNative(JNIEnv 
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventNative(JNIEnv *env, jobject thiz,
-                                                                    jlong player, jbyteArray bytes,
-                                                                    jint offset, jint length) {
+Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventsNative(JNIEnv *env, jobject thiz,
+                                                                     jlong player, jbyteArray bytes,
+                                                                     jint offset, jint length,
+                                                                     jlong timestampInNanoseconds) {
     jboolean isDataCopy{false};
     auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
-    // timeout would not be reliable from non-RT language environment...
-    ((aap::PluginPlayer*) player)->graph.addMidiEvent(data + offset, length, 0);
+    // timeout would not be reliable from non-RT language environment though...
+    ((aap::PluginPlayer*) player)->addMidiEvents(data + offset, length, timestampInNanoseconds);
     if (isDataCopy)
         free((void*) data);
 }
