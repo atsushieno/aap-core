@@ -106,8 +106,10 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         pluginPlayer.setPresetIndex(index)
     }
 
-    fun setParameterValue(parameterId: UInt, value: Float) {
-        pluginPlayer.setParameterValue(parameterId, value)
+    fun setParameterValue(index: Int, value: Float) {
+        val ins = instance
+        if (ins != null)
+            pluginPlayer.setParameterValue(ins.getParameter(index).id.toUInt(), value)
     }
 
     fun processExpression(origin: DiatonicKeyboardNoteExpressionOrigin, note: Int, value: Float) {

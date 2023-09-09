@@ -118,7 +118,7 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
     pluginViewScope.PluginView(getParameterValue = { parameters[it].toFloat() },
         onParameterChange = { index, value ->
             parameters[index] = value.toDouble()
-            scope.setParameterValue(index.toUInt(), value)
+            scope.setParameterValue(index, value)
                             },
         onPresetChange = { index -> scope.setPresetIndex(index) },
         onNoteOn = { note, _ -> scope.setNoteState(note, true) },
