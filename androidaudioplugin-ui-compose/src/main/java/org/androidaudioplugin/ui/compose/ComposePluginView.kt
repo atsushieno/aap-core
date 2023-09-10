@@ -38,6 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -207,25 +210,53 @@ fun PluginViewScope.PluginView(
     // preset list, if any
     var currentPresetName by remember { mutableStateOf("-- Presets --") }
     var presetListExpanded by remember { mutableStateOf(false) }
-    Button(onClick = { presetListExpanded = true }) {
-        Text(currentPresetName, color = LocalContentColor.current)
-    }
-    DropdownMenu(
-        modifier = modifier,
-        expanded = presetListExpanded,
-        onDismissRequest = { presetListExpanded = false }) {
-        DropdownMenuItem(text = { Text("(Cancel)", color = LocalContentColor.current) },
-            onClick = { presetListExpanded = false }
-        )
-        (0 until presetCount).map { getPreset(it) }.forEachIndexed { index, preset ->
-            DropdownMenuItem(text = { Text(preset.name, color = LocalContentColor.current) },
-                onClick = {
-                    currentPresetName = preset.name
-                    onPresetChange(index)
-                    presetListExpanded = false
-                }
-            )
+    if (LocalView.current.height > 1000) {
+        Button(onClick = { presetListExpanded = true }) {
+            Text(currentPresetName, color = LocalContentColor.current)
         }
+        DropdownMenu(
+            modifier = modifier,
+            expanded = presetListExpanded,
+            onDismissRequest = { presetListExpanded = false }) {
+            DropdownMenuItem(text = { Text("(Cancel)", color = LocalContentColor.current) },
+                onClick = { presetListExpanded = false }
+            )
+            (0 until presetCount).map { getPreset(it) }.forEachIndexed { index, preset ->
+                DropdownMenuItem(text = { Text(preset.name, color = LocalContentColor.current) },
+                    onClick = {
+                        currentPresetName = preset.name
+                        onPresetChange(index)
+                        presetListExpanded = false
+                    }
+                )
+            }
+        }
+    } else {
+        var presetIndexValue by remember { mutableStateOf(0f) }
+        var presetIndex by remember { mutableStateOf(presetIndexValue.toInt()) }
+        val presets = (0 until presetCount).map { getPreset(it) }
+        // a dirty hack to show the matching enum value from current value.
+        // (cannot be "the nearest enum" as we round it.)
+        // FIXME: we would need semantic definition for matching.
+        val getMatchedPreset = { f:Float -> if (f.toInt() == presetCount) presets.last() else presets[f.toInt()] }
+        ImageStripKnob(
+            drawableResId = R.drawable.bright_life,
+            value = presetIndexValue,
+            valueRange = 0.toFloat() .. presets.size.toFloat() - 0.1f,
+            tooltip = {
+                val preset = presets[presetIndex]
+                Text(if (preset.name.length > 9) preset.name.take(8) + ".." else preset.name,
+                    fontSize = 12.sp,
+                    color = Color.Gray)
+            },
+            onValueChange = {
+                presetIndexValue = it
+                if (presetIndexValue.toInt() != presetIndex) {
+                    presetIndex = presetIndexValue.toInt()
+                    onPresetChange(presetIndex)
+                }
+            }
+        )
     }
 
     // parameter list
