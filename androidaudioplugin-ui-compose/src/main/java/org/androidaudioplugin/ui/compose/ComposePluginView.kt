@@ -31,11 +31,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -176,7 +178,7 @@ fun PluginViewScope.PluginView(
     // This looks hacky, but it is done for compact yet touchable UI parts.
     val noteOnStates = remember { List(128) { 0L }.toMutableStateList() }
     var exprMode by remember { mutableStateOf(false) }
-    var octave by remember { mutableStateOf(4) }
+    var octave by remember { mutableIntStateOf(4) }
     Row {
         Row(Modifier.clickable { exprMode = !exprMode }) {
             Text("[", fontSize = 18.sp)
@@ -207,7 +209,65 @@ fun PluginViewScope.PluginView(
         }
     )
 
+    PresetSelector(modifier, onPresetChange)
+
+    // parameter list
+    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {
+        items(parameterCount) { index ->
+            val para = getParameter(index)
+            Row {
+                // Here I use Badge. It is useful when we have to show lengthy parameter name.
+                Badge(
+                    Modifier
+                        .width(100.dp)
+                        .padding(5.dp, 0.dp)) {
+                    Text("${para.id}: ${para.name}")
+                }
+                if (para.getEnumerationCount() > 0) {
+                    val enums = (0 until para.getEnumerationCount()).map { para.getEnumeration(it) }.sortedBy { it.value }
+                    val minValue = enums.minBy { it.value }.value
+                    val maxValue = enums.maxBy { it.value }.value
+                    // a dirty hack to show the matching enum value from current value.
+                    // (cannot be "the nearest enum" as we round it.)
+                    // FIXME: we would need semantic definition for matching.
+                    val getMatchedEnum = { f:Float -> enums.lastOrNull { it.value <= f } ?: enums.first() }
+                    val v = getParameterValue(index)
+                    ImageStripKnob(
+                        drawableResId = R.drawable.bright_life,
+                        value = v,
+                        valueRange = minValue.toFloat() .. maxValue.toFloat(),
+                        tooltip = {
+                            val en = getMatchedEnum(v)
+                            Text(if (en.name.length > 9) en.name.take(8) + ".." else en.name,
+                                fontSize = 12.sp,
+                                color = Color.Gray)
+                        },
+                        onValueChange = { onParameterChange(index, it) }
+                    )
+                } else {
+                    ImageStripKnob(
+                        drawableResId = R.drawable.bright_life,
+                        value = getParameterValue(index),
+                        valueRange = para.valueRange.start.toFloat()..para.valueRange.endInclusive.toFloat(),
+                        tooltip = { DefaultKnobTooltip(showTooltip = true, value = knobValue) },
+                        onValueChange = { onParameterChange(index, it) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PluginViewScope.PresetSelector(
+    modifier: Modifier = Modifier,
+    onPresetChange: (presetIndex: Int) -> Unit = {}
+) {
     // preset list, if any
+    if (presetCount == 0)
+        return
+
     var currentPresetName by remember { mutableStateOf("-- Presets --") }
     var presetListExpanded by remember { mutableStateOf(false) }
     if (LocalView.current.height > 1000) {
@@ -232,76 +292,23 @@ fun PluginViewScope.PluginView(
             }
         }
     } else {
-        var presetIndexValue by remember { mutableStateOf(0f) }
-        var presetIndex by remember { mutableStateOf(presetIndexValue.toInt()) }
+        var presetIndexValue by remember { mutableFloatStateOf(0f) }
+        var presetIndex by remember { mutableIntStateOf(presetIndexValue.toInt()) }
         val presets = (0 until presetCount).map { getPreset(it) }
-        // a dirty hack to show the matching enum value from current value.
-        // (cannot be "the nearest enum" as we round it.)
-        // FIXME: we would need semantic definition for matching.
-        val getMatchedPreset = { f:Float -> if (f.toInt() == presetCount) presets.last() else presets[f.toInt()] }
-        ImageStripKnob(
-            drawableResId = R.drawable.bright_life,
-            value = presetIndexValue,
-            valueRange = 0.toFloat() .. presets.size.toFloat() - 0.1f,
-            tooltip = {
-                val preset = presets[presetIndex]
-                Text(if (preset.name.length > 9) preset.name.take(8) + ".." else preset.name,
-                    fontSize = 12.sp,
-                    color = Color.Gray)
-            },
-            onValueChange = {
-                presetIndexValue = it
-                if (presetIndexValue.toInt() != presetIndex) {
-                    presetIndex = presetIndexValue.toInt()
-                    onPresetChange(presetIndex)
+        Row {
+            ImageStripKnob(
+                drawableResId = R.drawable.bright_life,
+                value = presetIndexValue,
+                valueRange = 0.toFloat()..presets.size.toFloat() - 0.1f,
+                onValueChange = {
+                    presetIndexValue = it
+                    if (presetIndexValue.toInt() != presetIndex) {
+                        presetIndex = presetIndexValue.toInt()
+                        onPresetChange(presetIndex)
+                    }
                 }
-            }
-        )
-    }
-
-    // parameter list
-    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {
-        items(parameterCount) { index ->
-            val para = getParameter(index)
-            Row {
-                // Here I use Badge. It is useful when we have to show lengthy parameter name.
-                Badge(
-                    Modifier
-                        .width(100.dp)
-                        .padding(5.dp, 0.dp)) {
-                    Text("${para.id}: ${para.name}")
-                }
-                if (para.getEnumerationCount() > 0) {
-                    val enums = (0 until para.getEnumerationCount()).map { para.getEnumeration(it) }.sortedBy { it.value }
-                    val minValue = enums.minBy { it.value }.value
-                    val maxValue = enums.maxBy { it.value }.value
-                    // a dirty hack to show the matching enum value from current value.
-                    // (cannot be "the nearest enum" as we round it.)
-                    // FIXME: we would need semantic definition for matching.
-                    val getMatchedEnum = { f:Float -> enums.last { it.value <= f } }
-                    val v = getParameterValue(index)
-                    ImageStripKnob(
-                        drawableResId = R.drawable.bright_life,
-                        value = v,
-                        valueRange = minValue.toFloat() .. maxValue.toFloat(),
-                        tooltip = {
-                            val en = getMatchedEnum(v)
-                            Text(if (en.name.length > 9) en.name.take(8) + ".." else en.name,
-                                fontSize = 12.sp,
-                                color = Color.Gray)
-                        },
-                        onValueChange = { onParameterChange(index, it) }
-                    )
-                } else {
-                    ImageStripKnob(
-                        drawableResId = R.drawable.bright_life,
-                        value = getParameterValue(index),
-                        valueRange = para.valueRange.start.toFloat()..para.valueRange.endInclusive.toFloat(),
-                        tooltip = { DefaultKnobTooltip(showTooltip = true, value = knobValue) },
-                        onValueChange = { onParameterChange(index, it) }
-                    )
-                }
-            }
+            )
+            Text(modifier = Modifier.align(Alignment.CenterVertically).padding(10.dp, 0.dp), text = presets[presetIndex].name)
         }
     }
 }
