@@ -65,7 +65,7 @@ aap::SimpleLinearAudioGraph::SimpleLinearAudioGraph(int32_t sampleRate, uint32_t
         output(this, AudioDeviceManager::getInstance()->openDefaultOutput(sampleRate, framesPerCallback, channelsInAudioBus)),
         plugin(this, nullptr),
         audio_data(this),
-        midi_input(this, nullptr, sampleRate, framesPerCallback, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
+        midi_input(this, nullptr, sampleRate, framesPerCallback, CMIDI2_PROTOCOL_TYPE_MIDI2, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE),
         midi_output(this, AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE) {
     nodes.emplace_back(&input);
     nodes.emplace_back(&audio_data);
