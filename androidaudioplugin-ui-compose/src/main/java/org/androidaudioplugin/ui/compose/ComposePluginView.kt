@@ -59,7 +59,7 @@ import kotlin.math.abs
 interface PluginViewScope {
     val pluginName: String
     val parameterCount: Int
-    fun getParameter(index: Int): PluginViewScopeParameter
+    fun getParameter(parameterIndex: Int): PluginViewScopeParameter
     val portCount: Int
     fun getPort(index: Int): PluginViewScopePort
     val presetCount: Int
@@ -78,6 +78,8 @@ interface PluginViewScopePort {
 }
 
 interface PluginViewScopeParameter {
+    // We explicitly have it here so that it is not to be confused with index on the parameter list on the UI.
+    val parameterIndex: Int
     val id: Int
     val name: String
     val value: Double
@@ -97,7 +99,7 @@ interface PluginViewScopeEnumeration {
 class PluginViewScopeImpl(
     val context: Context,
     val instance: NativeLocalPluginInstance,
-    val parameters: List<Double>)
+    val parameters: Map<Int,Double>)
     : PluginViewScope {
 
     private val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(context).plugins.first { it.pluginId == instance.getPluginId() }
@@ -108,7 +110,7 @@ class PluginViewScopeImpl(
     override val parameterCount: Int
         get() = instance.getParameterCount()
 
-    override fun getParameter(index: Int): PluginViewScopeParameter = PluginViewScopeParameterImpl(instance.getParameter(index), parameters[index])
+    override fun getParameter(parameterIndex: Int): PluginViewScopeParameter = PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex] ?: 0.0)
 
     override val portCount: Int
         get() = instance.getPortCount()
@@ -123,7 +125,7 @@ class PluginViewScopeImpl(
 
 class PluginViewScopePresetImpl(override val index: Int, override val name: String) : PluginViewScopePreset
 
-class PluginViewScopeParameterImpl(private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
+class PluginViewScopeParameterImpl(override val parameterIndex: Int, private val info: ParameterInformation, private val parameterValue: Double) : PluginViewScopeParameter {
     override val id: Int
         get() = info.id
     override val name: String
@@ -160,12 +162,12 @@ class PluginViewScopePortImpl(private val info: PortInformation) : PluginViewSco
 @Composable
 fun PluginViewScope.PluginView(
     modifier: Modifier = Modifier,
-    getParameterValue: (Int) -> Float,
-    onParameterChange: (Int, Float) -> Unit,
-    onNoteOn: (Int, Long) -> Unit = { _,_ -> },
-    onNoteOff: (Int, Long) -> Unit = { _,_ -> },
-    onPresetChange: (Int) -> Unit,
-    onExpression: (DiatonicKeyboardNoteExpressionOrigin, Int, Float) -> Unit = { _,_,_ -> }) {
+    getParameterValue: (parameterIndex: Int) -> Float,
+    onParameterChange: (parameterIndex: Int, value: Float) -> Unit,
+    onNoteOn: (note: Int, options: Long) -> Unit = { _,_ -> },
+    onNoteOff: (note: Int, options: Long) -> Unit = { _,_ -> },
+    onPresetChange: (presetIndex: Int) -> Unit,
+    onExpression: (origin: DiatonicKeyboardNoteExpressionOrigin, note: Int, value: Float) -> Unit = { _,_,_ -> }) {
 
     // Keyboard controllers
     // This looks hacky, but it is done for compact yet touchable UI parts.

@@ -59,7 +59,8 @@ internal class RemotePluginViewScopeImpl(
     override val parameterCount: Int
         get() = instance.getParameterCount()
 
-    override fun getParameter(index: Int): PluginViewScopeParameter = PluginViewScopeParameterImpl(instance.getParameter(index), parameters[index])
+    override fun getParameter(parameterIndex: Int): PluginViewScopeParameter =
+        PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex] ?: 0.0)
 
     override val portCount: Int
         get() = instance.getPortCount()

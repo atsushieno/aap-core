@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.runtime.toMutableStateMap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import org.androidaudioplugin.AudioPluginViewFactory
@@ -31,9 +32,9 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
     private val composeView = ComposeView(context)
     private val instance = NativePluginService(pluginId).getInstance(instanceId)
     private val parameters = (0 until instance.getParameterCount())
-        .map { instance.getParameter(it).defaultValue }
-        .toMutableStateList()
-    private val scope = PluginViewScopeImpl(context, instance, parameters.toList())
+        .map { it to instance.getParameter(it).defaultValue }
+        .toMutableStateMap()
+    private val scope = PluginViewScopeImpl(context, instance, parameters)
     private val paramChangeBuffer = ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder()) // 16 should be fine as of V3 protocol
 
     init {
@@ -51,13 +52,13 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                 Column(Modifier.background(MaterialTheme.colorScheme.background)
                     .fillMaxSize(1f)) {
                     scope.PluginView(
-                        getParameterValue = { index -> parameters[index].toFloat() },
-                        onParameterChange = { index, value ->
-                            val ump = UmpHelper.aapUmpSysex8Parameter(instance.getParameter(index).id.toUInt(), value)
+                        getParameterValue = { parameterIndex -> (parameters.toMap()[parameterIndex] ?: 0.0).toFloat() },
+                        onParameterChange = { parameterIndex, value ->
+                            val ump = UmpHelper.aapUmpSysex8Parameter(instance.getParameter(parameterIndex).id.toUInt(), value)
                             paramChangeBuffer.clear()
                             paramChangeBuffer.asIntBuffer().put(ump.toIntArray())
                             instance.addEventUmpInput(paramChangeBuffer, ump.size * 4)
-                            parameters[index] = value.toDouble()
+                            parameters[parameterIndex] = value.toDouble()
                         },
                         onPresetChange = { index -> instance.setPresetIndex(index) },
                         onNoteOn = { note, details -> onMidi2Note(0x90, note, details) },
