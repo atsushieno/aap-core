@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.toMutableStateMap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
@@ -52,7 +51,7 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                 Column(Modifier.background(MaterialTheme.colorScheme.background)
                     .fillMaxSize(1f)) {
                     scope.PluginView(
-                        getParameterValue = { parameterIndex -> (parameters.toMap()[parameterIndex] ?: 0.0).toFloat() },
+                        getParameterValue = { parameterIndex -> (parameters.toMap()[parameterIndex] ?: instance.getParameter(parameterIndex).defaultValue).toFloat() },
                         onParameterChange = { parameterIndex, value ->
                             val ump = UmpHelper.aapUmpSysex8Parameter(instance.getParameter(parameterIndex).id.toUInt(), value)
                             paramChangeBuffer.clear()
