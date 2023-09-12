@@ -11,7 +11,8 @@ set (androidaudioplugin-manager_SOURCES
 		OboeAudioDeviceManager.cpp
 		VirtualAudioDeviceManager.cpp
 		AudioGraph.cpp
-		AudioGraphNode.cpp
+		AudioGraphNode.AudioDevice.cpp
+		AudioGraphNode.DataSource.cpp
 		AudioGraphNode.Plugin.cpp
 		AudioGraphNode.Midi.cpp
 		AAPMidiEventTranslator.cpp
