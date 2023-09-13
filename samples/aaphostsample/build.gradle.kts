@@ -18,7 +18,7 @@ android {
     }
     buildTypes {
         debug {
-            packaging {
+            packagingOptions {
                 jniLibs.keepDebugSymbols.add("**/*.so")
             }
         }
@@ -27,7 +27,7 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    packaging {
+    packagingOptions {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }

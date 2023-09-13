@@ -26,7 +26,7 @@ android {
 
     buildTypes {
         debug {
-            packaging.jniLibs.keepDebugSymbols.add("**/*.so")
+            packagingOptions.jniLibs.keepDebugSymbols.add("**/*.so")
             externalNativeBuild {
                 cmake {
                     cppFlags ("-Werror")
@@ -59,7 +59,7 @@ android {
         }
     }
     // https://github.com/google/prefab/issues/127
-    packaging.jniLibs.excludes.add("**/libc++_shared.so")
+    packagingOptions.jniLibs.excludes.add("**/libc++_shared.so")
 
     lint {
         disable.add("EnsureInitializerMetadata")

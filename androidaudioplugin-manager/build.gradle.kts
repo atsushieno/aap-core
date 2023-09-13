@@ -24,7 +24,7 @@ android {
 
     buildTypes {
         debug {
-            packaging.jniLibs.keepDebugSymbols.add("**/*.so")
+            packagingOptions.jniLibs.keepDebugSymbols.add("**/*.so")
             externalNativeBuild {
                 cmake {
                     // we cannot error out cmidi2.h as we don't compile cmidi2_test.h
@@ -53,7 +53,7 @@ android {
         }
     }
     // https://github.com/google/prefab/issues/127
-    packaging {
+    packagingOptions {
         jniLibs.excludes.add("**/libc++_shared.so")
         jniLibs.excludes.add("**/libandroidaudioplugin.so") // package it separately
     }
