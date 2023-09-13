@@ -78,7 +78,23 @@ void aap::AudioPluginNode::pause() {
     plugin->deactivate();
 }
 
-void aap::AudioPluginNode::setPresetIndex(int index) {
-    plugin->getStandardExtensions().setCurrentPresetIndex(index);
+const int32_t OPCODE_SET_PRESET_INDEX = 4;
+uint32_t set_preset_sysex8[32];
+uint8_t set_preset_helper[128];
+void aap::AudioPluginNode::setPresetIndex(int32_t index) {
+    if (plugin->getInstanceState() == aap::PluginInstantiationState::PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        // FIXME: this is a temporary implementation until we have valid UMP wrapper around AAPXSClientService.
+        memset(set_preset_sysex8, 0, 128);
+        int32_t data[]{OPCODE_SET_PRESET_INDEX, index};
+        size_t size = aap_midi2_generate_aapxs_sysex8(
+                set_preset_sysex8, 32,
+                set_preset_helper, 128,
+                0,
+                AAP_PRESETS_EXTENSION_URI,
+                (uint8_t*) data, sizeof(int32_t) * 2);
+        plugin->addEventUmpInput((void*) set_preset_sysex8, size);
+    }
+    else
+        plugin->getStandardExtensions().setCurrentPresetIndex(index);
 }
 

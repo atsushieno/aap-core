@@ -39,7 +39,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
                                        const uint8_t* data,
                                        size_t dataSize) {
     size_t required = 16 + strlen(uri) + 4 + dataSize * sizeof(uint32_t);
-    if (dstSizeInInt < required || conversionHelperBufferSize < required)
+    if (dstSizeInInt * sizeof(int32_t) < required || conversionHelperBufferSize < required)
         return 0;
 
     uint8_t* sysex = conversionHelperBuffer;
@@ -68,7 +68,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
 
     // write sysex data to dst.
     cmidi2_ump_forge forge;
-    cmidi2_ump_forge_init(&forge, dst, dstSizeInInt);
+    cmidi2_ump_forge_init(&forge, dst, dstSizeInInt * sizeof(int32_t));
     cmidi2_ump_sysex8_process(group, sysex, ptr - sysex, 0,
                               aapMidi2ExtensionInvokeHelperSysEx8Forge, &forge);
 
@@ -107,21 +107,19 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
 
     uint8_t* data = state.data;
     // Check if this sysex8 is Universal SysEx, and contains code field for AAPXS
-    if (data[3] != 0x7E || data[4] != 0x7F || data[5] != 0 || data[6] != 1)
+    if (data[0] != 0x7E || data[1] != 0x7F || data[2] != 0 || data[3] != 1)
         return false;
 
     // filling in results...
-    context->group = data[0];
-
-    size_t uriSize = aapMidi2ExtensionHelperGetUInt32(data + 12);
-    if (state.dataSize < 20 + uriSize)
+    size_t uriSize = aapMidi2ExtensionHelperGetUInt32(data + 9);
+    if (state.dataSize < 17 + uriSize)
         return false;
-    memcpy(context->uri, data + 16, uriSize);
+    memcpy(context->uri, data + 13, uriSize);
 
-    size_t dataSize = aapMidi2ExtensionHelperGetUInt32(data + 16 + uriSize);
-    if (state.dataSize < 20 + uriSize + dataSize)
+    size_t dataSize = aapMidi2ExtensionHelperGetUInt32(data + 13 + uriSize);
+    if (state.dataSize < 17 + uriSize + dataSize)
         return false;
-    memcpy(context->data, data + 16 + uriSize, dataSize);
+    memcpy(context->data, data + 17 + uriSize, dataSize);
     context->dataSize = dataSize;
 
     return true;
