@@ -2,7 +2,9 @@
 #define AAP_CORE_AAPMIDIEVENTTRANSLATOR_H
 
 #include <aap/core/host/plugin-instance.h>
+#ifndef CMIDI2_H_INCLUDED // it is only a workaround to avoid reference resolution failure at aap-juce-* repos.
 #include <cmidi2.h>
+#endif
 #include "LocalDefinitions.h"
 
 namespace aap {

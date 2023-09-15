@@ -5,7 +5,11 @@
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-but-set-variable"
+
+#ifndef CMIDI2_H_INCLUDED // it is only a workaround to avoid reference resolution failure at aap-juce-* repos.
 #include <cmidi2.h>
+#endif
+
 #pragma clang diagnostic pop
 #include "aap/android-audio-plugin.h"
 

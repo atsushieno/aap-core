@@ -5,7 +5,9 @@
 #include "AAPMidiEventTranslator.h"
 #include <aap/core/host/plugin-instance.h>
 #include <aap/unstable/utility.h>
+#ifndef CMIDI2_H_INCLUDED // it is only a workaround to avoid reference resolution failure at aap-juce-* repos.
 #include <cmidi2.h>
+#endif
 
 namespace aap {
     class AudioGraph;
