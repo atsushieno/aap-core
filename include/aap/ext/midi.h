@@ -22,20 +22,24 @@ typedef struct AAPMidiBufferHeader {
 //
 // This MIDI extension assumes these two behaviors:
 //
-// (1) In real-time mode, an AAP host sends extension operations as Universal System Exclusive
+// (1) AAPXS SysEx8: in real-time mode, AAP host sends extension operations as Universal System Exclusive
 // messages in SysEx8 format. (see issue #73 for some background)
 //
-// The SysEx8 UMP packets consist of multiple UMP packets, which are like
-// `[5g sz si 7E]  [7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [value-size]  [..value..]`, where -
+// The SysEx8 UMP packets consist of multiple UMP packets, whose data part (after `5g sz si`) looks like:
+//
+//   `7E  7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [opcode]  [value-size]  [..value..]`
+//
+// where -
 //   - g : UMP group
 //   - sz : UMP status and size, always 1F
 //   - si : stream Id, always 00. AAP MIDI sysex8 does not have to support simultaneous sysex8 streams.
 //   - co-de : AAP sysex8 code. Always 00-01 for realtime extension controls.
-//   - ext : extension flag, reserved as 00; it may be used once we started supporting something like
+//   - ext-flag : extension flag, reserved as 00; it may be used once we started supporting something like
 //     "local extension index" (LV2 URID alike).
 //   - re-se-rv-ed : reserved, always 00 00 00 00.
 //   - uri-size: string length for extension URI, in 4 bytes
 //   - uri: string URI in escaped ASCII format, split and padded by 13 bytes (modulo padded as 0)
+//   - opcode : same as the opcode in AAPXS (4 bytes)
 //   - value-size: binary length for value in 4 bytes
 //   - value: serialized extension message binary, just like it is sent through Binder.
 //

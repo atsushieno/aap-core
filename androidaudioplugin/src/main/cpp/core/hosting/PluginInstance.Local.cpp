@@ -21,9 +21,8 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
         auto aapxsInstance = aapxsServiceInstances.get(context->uri, false);
         // We need to copy extension data buffer before calling it.
-        // FIXME: https://github.com/atsushieno/aap-core/issues/175
-        memcpy(aapxsInstance->data, ((int32_t*) context->data) + 1, context->dataSize - sizeof(int32_t));
-        controlExtension(context->uri, *(int32_t*) (context->data));
+        memcpy(aapxsInstance->data, (int32_t*) context->data, context->dataSize);
+        controlExtension(context->uri, context->opcode);
     });
 }
 

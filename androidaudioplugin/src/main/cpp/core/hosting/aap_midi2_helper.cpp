@@ -36,6 +36,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
                                        size_t conversionHelperBufferSize,
                                        uint8_t group,
                                        const char* uri,
+                                       int32_t opcode,
                                        const uint8_t* data,
                                        size_t dataSize) {
     size_t required = 16 + strlen(uri) + 4 + dataSize * sizeof(uint32_t);
@@ -59,6 +60,10 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
     ptr += sizeof(uint32_t);
     memcpy(ptr, uri, strSize);
     ptr += strSize;
+
+    // opcode
+    aapMidi2ExtensionHelperPutUInt32(ptr, (uint32_t) opcode);
+    ptr += sizeof(uint32_t);
 
     // dataSize and data
     aapMidi2ExtensionHelperPutUInt32(ptr, dataSize);
@@ -102,7 +107,7 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
     // > `[5g sz si 7E]  [7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [value-size]  [..value..]`
 
     // Check if it is long enough to contain the expected data...
-    if (state.dataSize < 20)
+    if (state.dataSize < 24)
         return false;
 
     uint8_t* data = state.data;
@@ -116,10 +121,12 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
         return false;
     memcpy(context->uri, data + 13, uriSize);
 
-    size_t dataSize = aapMidi2ExtensionHelperGetUInt32(data + 13 + uriSize);
-    if (state.dataSize < 17 + uriSize + dataSize)
+    context->opcode = aapMidi2ExtensionHelperGetUInt32(data + 13 + uriSize);
+
+    size_t dataSize = aapMidi2ExtensionHelperGetUInt32(data + 17 + uriSize);
+    if (state.dataSize < 21 + uriSize + dataSize)
         return false;
-    memcpy(context->data, data + 17 + uriSize, dataSize);
+    memcpy(context->data, data + 21 + uriSize, dataSize);
     context->dataSize = dataSize;
 
     return true;

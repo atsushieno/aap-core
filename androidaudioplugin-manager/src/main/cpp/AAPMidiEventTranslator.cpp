@@ -27,6 +27,7 @@ int32_t aap::AAPMidiEventTranslator::translateMidiEvent(uint8_t * bytes, int32_t
     return length;
 }
 
+const int32_t OPCODE_SET_PRESET_INDEX = 4; // FIXME: this should probably be exposed by the AAPXS implementation
 
 size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length) {
     int32_t translatedIndex = 0;
@@ -83,6 +84,7 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                         conversion_helper_buffer_size,
                         0,
                         AAP_PRESETS_EXTENSION_URI,
+                        OPCODE_SET_PRESET_INDEX,
                         (const uint8_t *) aapxsInstance->data,
                         aapxsInstance->data_size);
                 translatedIndex += size;
