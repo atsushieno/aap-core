@@ -15,7 +15,8 @@ aap::MidiSourceNode::MidiSourceNode(AudioGraph* ownerGraph,
 }
 
 aap::MidiSourceNode::~MidiSourceNode() {
-    free(buffer);
+    if (buffer)
+        free(buffer);
 }
 
 void aap::MidiSourceNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
@@ -24,14 +25,12 @@ void aap::MidiSourceNode::processAudio(AudioBuffer *audioData, int32_t numFrames
     if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
         auto srcBuffer = (AAPMidiBufferHeader*) buffer;
         if (srcBuffer->length)
-            memcpy(dstBuffer + 1, srcBuffer + 1, srcBuffer->length);
-        dstBuffer->length = srcBuffer->length;
+            memcpy(dstBuffer, srcBuffer, sizeof(AAPMidiBufferHeader) + srcBuffer->length);
         srcBuffer->length = 0;
     } else {
         // failed to acquire lock; we do not send anything this time.
         dstBuffer->length = 0;
     }
-    dstBuffer->time_options = 0; // reserved in MIDI2 mode
 }
 
 void aap::MidiSourceNode::addMidiEvent(uint8_t *bytes, int32_t length, int64_t timestampInNanoseconds) {
@@ -108,13 +107,23 @@ aap::MidiDestinationNode::MidiDestinationNode(AudioGraph* ownerGraph, int32_t in
 }
 
 aap::MidiDestinationNode::~MidiDestinationNode() {
-    free(buffer);
+    if (buffer)
+        free(buffer);
 }
 
 void aap::MidiDestinationNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
-    auto mbh = (AAPMidiBufferHeader *) audioData->midi_out;
-    if (mbh->length > 0)
-        memcpy(buffer, audioData->midi_out, sizeof(AAPMidiBufferHeader) + mbh->length);
+    // MIDI event might be being consumed, so we wait a bit using "almost-spin" lock (uses nano-sleep).
+    if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
+        auto srcBuffer = (AAPMidiBufferHeader*) audioData->midi_out;
+        auto dstBuffer = (AAPMidiBufferHeader*) buffer;
+        if (srcBuffer->length) {
+            memcpy(dstBuffer + 1, srcBuffer + 1, srcBuffer->length);
+            dstBuffer->length += srcBuffer->length;
+        }
+        srcBuffer->length = 0;
+    } else {
+        // failed to acquire lock; we skip copying and keep source length.
+    }
 }
 
 void aap::MidiDestinationNode::start() {
