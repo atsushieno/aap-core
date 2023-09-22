@@ -3,10 +3,6 @@
 
 namespace aap {
 
-int32_t getMidiSettingsFromLocalConfig(std::string pluginId) {
-    return AAPJniFacade::getInstance()->getMidiSettingsFromLocalConfig(pluginId);
-}
-
 // ----------------------------------
 
 std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)

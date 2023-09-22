@@ -96,18 +96,7 @@ public:
 
     // invoked by AudioPluginService
     void onInvoked(AndroidAudioPlugin* plugin, AAPXSServiceInstance *extensionInstance,
-                   int32_t opcode) override {
-        switch (opcode) {
-            case OPCODE_GET_MAPPING_POLICY:
-                auto len = *(int32_t*) extensionInstance->data;
-                assert(len < AAP_MAX_PLUGIN_ID_SIZE);
-                char* pluginId = (char*) calloc(len + 1, 1);
-                strncpy(pluginId, (const char*) ((int32_t*) extensionInstance->data + 1), len);
-                *((int32_t*) extensionInstance->data) = getMidiSettingsFromLocalConfig(pluginId);
-                return;
-        }
-        assert(false); // should not happen
-    }
+                   int32_t opcode) override;
 };
 
 
