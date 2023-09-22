@@ -71,7 +71,7 @@ public:
 
     void* getServiceHandleForConnectedPlugin(std::string pluginId);
 
-    void* getServiceHandleForConnectedService(std::string pluginId);
+    [[maybe_unused]] void* getServiceHandleForConnectedService(std::string pluginId);
 };
 
 }

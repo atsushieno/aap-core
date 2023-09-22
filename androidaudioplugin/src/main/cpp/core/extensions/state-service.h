@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include "aap/android-audio-plugin.h"
-#include "aap/unstable/aapxs.h"
+#include "aap/aapxs.h"
 #include "aap/ext/state.h"
 #include "aap/unstable/logging.h"
 #include "aap/core/host/audio-plugin-host.h" // FIXME: we should eliminate dependency on types from this header.

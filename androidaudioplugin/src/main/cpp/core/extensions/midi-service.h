@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include "aap/android-audio-plugin.h"
-#include "aap/unstable/aapxs.h"
+#include "aap/aapxs.h"
 #include "aap/ext/midi.h"
 #include "aap/unstable/logging.h"
 #include "aap/core/aapxs/extension-service.h"

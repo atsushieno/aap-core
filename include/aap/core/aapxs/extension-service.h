@@ -6,7 +6,7 @@
 #include <vector>
 #include <map>
 #include <cassert>
-#include "aap/unstable/aapxs.h"
+#include "aap/aapxs.h"
 #include "aap/unstable/logging.h"
 #include "../plugin-information.h"
 #include "aap/android-audio-plugin.h"

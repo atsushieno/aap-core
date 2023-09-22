@@ -10,10 +10,7 @@
 extern "C" {
 #endif
 #include <stdint.h>
-#include "../android-audio-plugin.h"
-
-struct AAPXSFeature;
-struct AAPXSClientInstance;
+#include "android-audio-plugin.h"
 
 /**
  * The public extension API surface that represents a service extension instance, for plugin extension service implementors.
@@ -40,10 +37,6 @@ typedef struct {
 
 // ---------------------------------------------------
 
-typedef void (*aapxs_client_extension_message_t) (
-        struct AAPXSClientInstance* aapxsClientInstance,
-        int32_t opcode);
-
 typedef struct AAPXSClientInstance {
     /** Custom context that AAP framework may assign.
      * In libandroidaudioplugin it is RemotePluginInstance. It may be different on other implementations.
@@ -65,7 +58,7 @@ typedef struct AAPXSClientInstance {
     int32_t data_size;
 
     /** The function to actually send extension() request. */
-    aapxs_client_extension_message_t extension_message;
+    void (*extension_message) (struct AAPXSClientInstance* aapxsClientInstance, int32_t opcode);
 } AAPXSClientInstance;
 
 // ---------------------------------------------------
@@ -81,16 +74,6 @@ typedef struct AAPXSProxyContext {
     void *aapxs_context;
     void *extension;
 } AAPXSProxyContext;
-
-typedef void (*aapxs_feature_on_invoked_t) (
-        struct AAPXSFeature* feature,
-        AndroidAudioPlugin* plugin,
-        AAPXSServiceInstance* extension,
-        int32_t opcode);
-
-typedef AAPXSProxyContext (*aapxs_feature_as_proxy_t) (
-        struct AAPXSFeature* feature,
-        AAPXSClientInstance* extension);
 
 /**
  * The entrypoint for AAP extension service feature.
@@ -113,13 +96,16 @@ typedef struct AAPXSFeature {
      * Plugin (service) has direct (in-memory) access to the extension, but arguments are the ones
      * deserialized by the implementation of the extension, not the ones in the host memory space.
      */
-    aapxs_feature_on_invoked_t on_invoked;
+    void (*on_invoked) (struct AAPXSFeature* feature,
+            AndroidAudioPlugin* plugin,
+            AAPXSServiceInstance* extension,
+            int32_t opcode);
     /**
      * Implemented by the extension developer.
      * Called by AAP framework (client part) to return the extension proxy to the extension.
      * Client application has access to the extension service only through the extension API via the proxy.
      */
-    aapxs_feature_as_proxy_t as_proxy;
+    AAPXSProxyContext (*as_proxy) (struct AAPXSFeature* feature, AAPXSClientInstance* extension);
 
     /** True if get_extension() must return non-null implementation. */
     bool is_implementation_mandatory;
