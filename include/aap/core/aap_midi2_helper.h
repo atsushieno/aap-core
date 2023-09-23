@@ -20,6 +20,8 @@ extern "C" {
 
 #define AAP_MIDI2_AAPXS_DATA_MAX_SIZE 1024
 
+uint32_t aap_midi2_aapxs_get_request_id(uint8_t* ump);
+
 /**
  * Turns AAPXS extension invocation buffer into MIDI2 UMP.
  *
@@ -44,6 +46,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t *dst,
                                               uint8_t *conversionHelperBuffer,
                                               size_t conversionHelperBufferSize,
                                               uint8_t group,
+                                              uint32_t requestId,
                                               const char *uri,
                                               int32_t opcode,
                                               const uint8_t *data,
@@ -51,6 +54,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t *dst,
 
 struct aap_midi2_aapxs_parse_context {
     uint8_t group;
+    uint32_t request_id;
     char uri[AAP_MAX_EXTENSION_URI_SIZE]; // must be null-terminated
     int32_t opcode;
     uint8_t *data; // buffer must be allocated by the parsing host

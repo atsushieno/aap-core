@@ -304,6 +304,9 @@ namespace aap {
         // Note that the SurfaceView needs to have a valid display ID by the time.
         // These steps will have to be done separately, because each of them will involve UI loop.
         void connectRemoteNativeView(int32_t width, int32_t height);
+
+        // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
+        uint32_t aapxsSysEx8RequestSerial();
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance

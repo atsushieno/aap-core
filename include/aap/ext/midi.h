@@ -27,7 +27,7 @@ typedef struct AAPMidiBufferHeader {
 //
 // The SysEx8 UMP packets consist of multiple UMP packets, whose data part (after `5g sz si`) looks like:
 //
-//   `7E  7F co-de ext-flag]  [re-se-rv-ed]  [uri-size]  [..uri..]  [opcode]  [value-size]  [..value..]`
+//   `7E  7F co-de ext-flag]  [reqId]  [uri-size]  [..uri..]  [opcode]  [value-size]  [..value..]`
 //
 // where -
 //   - g : UMP group
@@ -36,7 +36,7 @@ typedef struct AAPMidiBufferHeader {
 //   - co-de : AAP sysex8 code. Always 00-01 for realtime extension controls.
 //   - ext-flag : extension flag, reserved as 00; it may be used once we started supporting something like
 //     "local extension index" (LV2 URID alike).
-//   - re-se-rv-ed : reserved, always 00 00 00 00.
+//   - reqId : request Id (32bit), assured to be unique within a connected session.
 //   - uri-size: string length for extension URI, in 4 bytes
 //   - uri: string URI in escaped ASCII format, split and padded by 13 bytes (modulo padded as 0)
 //   - opcode : same as the opcode in AAPXS (4 bytes)

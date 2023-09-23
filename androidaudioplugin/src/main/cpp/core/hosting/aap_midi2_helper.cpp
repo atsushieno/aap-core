@@ -22,6 +22,10 @@ static void aapMidi2ExtensionHelperPutUInt32(uint8_t* dst, uint32_t value) {
         *((uint32_t*) dst) = value;
 }
 
+uint32_t aap_midi2_aapxs_get_request_id(uint8_t* ump) {
+    return aapMidi2ExtensionHelperGetUInt32(ump + 8);
+}
+
 static void* aapMidi2ExtensionInvokeHelperSysEx8Forge(uint64_t data1, uint64_t data2, size_t index, void* context) {
     auto forge = (cmidi2_ump_forge*) context;
     if (cmidi2_ump_forge_add_packet_128(forge, data1, data2))
@@ -35,6 +39,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
                                        uint8_t* conversionHelperBuffer,
                                        size_t conversionHelperBufferSize,
                                        uint8_t group,
+                                       uint32_t requestId,
                                        const char* uri,
                                        int32_t opcode,
                                        const uint8_t* data,
@@ -48,11 +53,12 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
     uint8_t sysexStart[] {
         0x7Eu, 0x7Fu, // universal sysex
         0, 1, // code
-        0, // extension flags
-        0, 0, 0, 0 // reserved
+        0 // extension flags
         };
     memcpy(ptr, sysexStart, sizeof(sysexStart));
     ptr += sizeof(sysexStart);
+    aapMidi2ExtensionHelperPutUInt32(ptr, requestId);
+    ptr += sizeof(uint32_t);
 
     // uri_size and uri
     size_t strSize = strlen(uri);
@@ -116,6 +122,9 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
         return false;
 
     // filling in results...
+    size_t requestId = aapMidi2ExtensionHelperGetUInt32(data + 5);
+    context->request_id = requestId;
+
     size_t uriSize = aapMidi2ExtensionHelperGetUInt32(data + 9);
     if (state.dataSize < 17 + uriSize)
         return false;

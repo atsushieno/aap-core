@@ -114,6 +114,11 @@ void aap::RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t h
 #endif
 }
 
+uint32_t aapxs_request_id_serial{0};
+uint32_t aap::RemotePluginInstance::aapxsSysEx8RequestSerial() {
+    return aapxs_request_id_serial++;
+}
+
 //----
 
 aap::RemotePluginInstance::RemotePluginNativeUIController::RemotePluginNativeUIController(RemotePluginInstance* owner) {

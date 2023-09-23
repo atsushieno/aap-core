@@ -90,6 +90,7 @@ void aap::AudioPluginNode::setPresetIndex(int32_t index) {
                 set_preset_sysex8, 32,
                 set_preset_helper, 128,
                 0,
+                plugin->aapxsSysEx8RequestSerial(),
                 AAP_PRESETS_EXTENSION_URI,
                 OPCODE_SET_PRESET_INDEX,
                 (uint8_t*) data, sizeof(int32_t));
