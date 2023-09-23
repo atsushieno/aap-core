@@ -129,6 +129,8 @@ namespace aap::midi {
 
         int32_t processAudioIO(void *audioData, int32_t numFrames);
 
+        inline int32_t getChannelCount() { return channel_count; }
+
         inline int32_t getAAPFrameSize() { return aap_frame_size; }
     };
 }

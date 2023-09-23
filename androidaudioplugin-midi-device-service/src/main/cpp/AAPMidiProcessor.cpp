@@ -26,7 +26,7 @@ namespace aap::midi {
         //  so we still call plugin process() within the callback.
 
         // FIXME: I don't think we need this ring buffer anymore but removing this still resulted in audio glitches.
-        if (zix_ring_read_space(aap_input_ring_buffer) < numFrames * sizeof(float)) {
+        if (zix_ring_read_space(aap_input_ring_buffer) < numFrames * channel_count * sizeof(float)) {
 
 #if ANDROID
             struct timespec timeSpecBegin{}, timeSpecEnd{};
@@ -63,7 +63,7 @@ namespace aap::midi {
             fillAudioOutput();
         }
 
-        zix_ring_read(aap_input_ring_buffer, audioData, numFrames * sizeof(float));
+        zix_ring_read(aap_input_ring_buffer, audioData, numFrames * channel_count * sizeof(float));
 
         // FIXME: can we terminate it when it goes quiet?
         return AudioCallbackResult::Continue;

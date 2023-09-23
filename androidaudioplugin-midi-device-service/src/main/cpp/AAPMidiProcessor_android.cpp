@@ -13,9 +13,7 @@ int32_t AAPMidiProcessorOboePAL::setupStream() {
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
         ->setSharingMode(oboe::SharingMode::Exclusive)
         ->setFormat(oboe::AudioFormat::Float)
-        // FIXME: this is incorrect. It should be possible to process stereo outputs from the MIDI synths
-        // but need to figure out why it fails to generate valid outputs for the target device.
-        ->setChannelCount(1) // channel_count);
+        ->setChannelCount(owner->getChannelCount())
         ->setChannelConversionAllowed(false)
         ->setFramesPerDataCallback(owner->getAAPFrameSize())
         ->setContentType(oboe::ContentType::Music)
