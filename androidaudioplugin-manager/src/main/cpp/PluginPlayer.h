@@ -8,12 +8,14 @@ namespace aap {
     class PluginPlayer {
         PluginPlayerConfiguration configuration;
 
+        SimpleLinearAudioGraph graph;
+
     public:
         PluginPlayer(PluginPlayerConfiguration &configuration);
 
         virtual ~PluginPlayer();
 
-        SimpleLinearAudioGraph graph;
+        SimpleLinearAudioGraph& getGraph() { return graph; }
 
         void setAudioSource(uint8_t *data, int32_t dataLength, const char *filename);
 

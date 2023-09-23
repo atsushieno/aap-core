@@ -38,6 +38,7 @@ namespace aap {
         MidiSourceNode midi_input;
         MidiDestinationNode midi_output;
         std::vector<AudioGraphNode*> nodes{};
+        bool is_processing{false};
 
         static void audio_callback(void* callbackContext, AudioBuffer* audioData, int32_t numFrames) {
             ((SimpleLinearAudioGraph*) callbackContext)->processAudio(audioData, numFrames);
@@ -56,6 +57,8 @@ namespace aap {
         void addMidiEvent(uint8_t *data, int32_t dataLength, int64_t timestampInNanoseconds);
 
         void playAudioData();
+
+        bool isProcessing() { return is_processing; }
 
         void startProcessing();
 

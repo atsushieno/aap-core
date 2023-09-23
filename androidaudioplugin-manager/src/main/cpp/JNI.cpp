@@ -70,7 +70,7 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_playPreloadedAudioNative(JNIEnv *env, jobject thiz,
                                                                           jlong player) {
-    ((aap::PluginPlayer*) player)->graph.playAudioData();
+    ((aap::PluginPlayer*) player)->getGraph().playAudioData();
 }
 
 extern "C"
@@ -80,7 +80,7 @@ Java_org_androidaudioplugin_manager_PluginPlayer_setPluginNative(JNIEnv *env, jo
                                                                  jint instanceId) {
     auto client = (aap::PluginClient*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
-    ((aap::PluginPlayer*) player)->graph.setPlugin((aap::RemotePluginInstance*) instance);
+    ((aap::PluginPlayer*) player)->getGraph().setPlugin((aap::RemotePluginInstance*) instance);
 }
 
 extern "C"

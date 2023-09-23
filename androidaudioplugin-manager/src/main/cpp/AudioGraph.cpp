@@ -50,11 +50,17 @@ void aap::SimpleLinearAudioGraph::playAudioData() {
 }
 
 void aap::SimpleLinearAudioGraph::startProcessing() {
+    if (isProcessing())
+        return;
+    is_processing = true;
     for (auto node : nodes)
         node->start();
 }
 
 void aap::SimpleLinearAudioGraph::pauseProcessing() {
+    if (!isProcessing())
+        return;
+    is_processing = false;
     for (auto node : nodes)
         node->pause();
 }
