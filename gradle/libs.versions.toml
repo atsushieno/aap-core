@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.7.8-pre"
-aap-lv2 = "0.2.8-pre"
+aap-core = "0.7.8"
+aap-lv2 = "0.2.8"
 
 accompanist-drawablepainter = "0.30.1"
 accompanist-permissions = "0.30.1"
