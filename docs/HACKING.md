@@ -16,15 +16,15 @@ AAP instrument plugins can be extended to work as a virtual MIDI device service 
 
 There used to be `aap-midi-device-service` sample application ([#149](https://github.com/atsushieno/aap-core/issues/149)).
 
-### androidaudioplugin-ui-compose
+### androidaudioplugin-ui-compose-app
 
-`androidaudioplugin-ui-compose` module contains `PluginListActivity` which can be used as a launcher activity by any audio plugin application.
+`androidaudioplugin-ui-compose-app` module contains `PluginManagerActivity` which can be used as a launcher activity by any audio plugin application.
 
-It lists the plugins within the package, and when selected it can perform applying it to either some MIDI sequence or some wave inputs.
+It lists the plugins within the package, and when selected it provides MIDI messaging via the keyboard, or apply effects to some audio source (to be extended, but fixed to a file so far).
 
 The UI is based on Jetpack Compose.
 
-(It depends on `androidaudioplugin-samples-host-engine` internal component to provide in-app plugin preview (tryout) feature which will be rewritten at some stage.)
+It depends on `androidaudioplugin-manager` internal component to provide "plugin player" feature (we may have more features, or move everything into this ui-compose-app aar).
 
 It is also used by samples/aaphostsample that lists **all** plugins on the system.
 
