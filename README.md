@@ -110,7 +110,9 @@ In `androidaudioplugin-midi-device-service` module, there are some sources copie
 
 aapinstrumentsample also imports [true-grue/ayumi](https://github.com/true-grue/ayumi) which is distributed under the MIT License.
 
-aap-miid-device-service also imports the following code:
+androidaudioplugin-midi-device-service also imports the following code:
 
 - [google/oboe](https://github.com/google/oboe) which is released under Apache V2 License.
 - [g200kg/webaudio-controls](https://github.com/g200kg/webaudio-controls/) which is released under Apache V2 License.
+
+androidaudioplugin-manager imports [Tracktion/choc](https://github.com/Tracktion/choc/) which is released unde the ISC license.
