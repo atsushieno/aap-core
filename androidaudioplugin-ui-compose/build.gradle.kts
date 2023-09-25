@@ -46,8 +46,6 @@ apply { from ("../publish-pom.gradle") }
 
 dependencies {
     implementation (project(":androidaudioplugin"))
-    implementation (project(":androidaudioplugin-samples-host-engine"))
-    implementation (project(":androidaudioplugin-ui-web"))
     implementation (libs.compose.audio.controls)
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)

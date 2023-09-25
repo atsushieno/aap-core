@@ -47,8 +47,9 @@ Experimental Web UI bits that may or may not be used in the future. To be docume
       - `android` - Android specific public API (regarding NdkBinder etc.)
 - `androidaudioplugin` plugin framework and service implementation
 - `androidaudioplugin-midi-device-service` MidiDeviceService implementation that receives MIDI inputs and sends to the AAP instrument.
-- `androidaudioplugin-samples-host-engine` implements a plugin preview sample application that is also used as the default plugin preview template.
-- `androidaudioplugin-ui-compose` implements the UI part of plugin preview template, based on the module above.
+- `androidaudioplugin-manager` implements a plugin player and potentially any non-UI code that is used by plugin manager UI activity.
+- `androidaudioplugin-ui-compose` implements the default native UI.
+- `androidaudioplugin-ui-compose-app` implements plugin manager UI activity that lets you to play with a plugin, by MIDI keyboard for instruments, or audio sources for effects. It is used by each plugin application as well as `aaphostsample`.
 - `samples`
   - `aaphostsample` - sample host app - follows the same AGP-modules structure
   - `aapbarebonepluginsample` - sample plugin project, which can be used as a template. Audio processing part is no-op.

@@ -54,7 +54,6 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
-    implementation (project(":androidaudioplugin-samples-host-engine"))
     implementation (project(":androidaudioplugin-ui-compose-app"))
     androidTestImplementation (project(":androidaudioplugin-testing"))
 
