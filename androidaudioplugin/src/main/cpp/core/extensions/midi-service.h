@@ -48,8 +48,8 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
             return *((enum aap_midi_mapping_policy *) aapxsInstance->data);
         }
 
-        void clientInvokePluginExtension(int32_t opcode, int32_t dataSize) {
-            owner->clientInvokePluginExtension(aapxsInstance, dataSize, opcode);
+        void clientInvokePluginExtension(int32_t opcode, int32_t messageSize) {
+            owner->clientInvokePluginExtension(aapxsInstance, messageSize, opcode);
         }
 
         AAPXSProxyContext asProxy() {

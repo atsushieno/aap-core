@@ -58,7 +58,7 @@ typedef struct AAPXSClientInstance {
     int32_t data_size;
 
     /** The function to actually send extension() request. */
-    void (*extension_message) (struct AAPXSClientInstance* aapxsClientInstance, int32_t dataSize, int32_t opcode);
+    void (*extension_message) (struct AAPXSClientInstance* aapxsClientInstance, int32_t messageSize, int32_t opcode);
 } AAPXSClientInstance;
 
 // ---------------------------------------------------

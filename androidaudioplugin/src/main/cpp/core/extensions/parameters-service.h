@@ -57,8 +57,8 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
             aapxsInstance = clientInstance;
         }
 
-        void clientInvokePluginExtension(int32_t opcode, int32_t dataSize) {
-            owner->clientInvokePluginExtension(aapxsInstance, dataSize, opcode);
+        void clientInvokePluginExtension(int32_t opcode, int32_t messageSize) {
+            owner->clientInvokePluginExtension(aapxsInstance, messageSize, opcode);
         }
 
         int32_t getParameterCount() {

@@ -23,8 +23,8 @@ public:
     /** Optionally override this for additional termination and resource releases */
     virtual void terminate() {}
 
-    void clientInvokePluginExtension(AAPXSClientInstance* clientInstance, int32_t dataSize, int32_t opcode) {
-        clientInstance->extension_message(clientInstance, dataSize, opcode);
+    void clientInvokePluginExtension(AAPXSClientInstance* clientInstance, int32_t messageSize, int32_t opcode) {
+        clientInstance->extension_message(clientInstance, messageSize, opcode);
     }
 
     virtual AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) = 0;

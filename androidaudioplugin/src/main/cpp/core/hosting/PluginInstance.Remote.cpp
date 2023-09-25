@@ -48,14 +48,15 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     return &plugin_host_facade;
 }
 
-void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t dataSize, int32_t opcode) {
+void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode) {
     auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
+
     // Here we have to get a native plugin instance and send extension message.
     // It is kind af annoying because we used to implement Binder-specific part only within the
     // plugin API (binder-client-as-plugin.cpp)...
     // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
     // assign its implementation details that handle Binder messaging as a std::function.
-    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), dataSize, opcode);
+    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), messageSize, opcode);
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount) {
@@ -140,19 +141,19 @@ void aap::RemotePluginInstance::RemotePluginNativeUIController::hide() {
 
 //----
 
-AAPXSClientInstance* aap::RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) {
+AAPXSClientInstance* aap::RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataCapacity) {
     const char* uri = aapxsClientInstances.addOrGetUri(feature->uri);
     assert (aapxsClientInstances.get(uri) == nullptr);
-    if (dataSize < 0)
-        dataSize = feature->shared_memory_size;
-    aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->instance_id, nullptr, dataSize}));
+    if (dataCapacity < 0)
+        dataCapacity = feature->shared_memory_size;
+    aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->instance_id, nullptr, dataCapacity}));
     auto ret = aapxsClientInstances.get(uri);
     ret->extension_message = staticSendExtensionMessage;
     return ret;
 }
 
-void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t dataSize, int32_t opcode) {
+void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t messageSize, int32_t opcode) {
     auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
-    thisObj->sendExtensionMessage(clientInstance->uri, dataSize, opcode);
+    thisObj->sendExtensionMessage(clientInstance->uri, messageSize, opcode);
 }
 
