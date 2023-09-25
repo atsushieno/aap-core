@@ -5,6 +5,7 @@ project(androidaudioplugin LANGUAGES CXX)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
 	"core/hosting/AAPXSMidi2Processor.cpp"
+	"core/hosting/PluginInformation.cpp"
 	"core/hosting/PluginInstance.cpp"
 	"core/hosting/PluginInstance.Local.cpp"
 	"core/hosting/PluginInstance.Remote.cpp"
