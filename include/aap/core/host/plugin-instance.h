@@ -279,13 +279,13 @@ namespace aap {
         void configurePorts();
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-        std::function<void(const char *, int32_t, int32_t)> send_extension_message_impl;
+        std::function<void(const char * uri, int32_t instanceId, int32_t dataSize, int32_t opcode)> send_extension_message_impl;
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
         AAPXSClientInstanceManager *getAAPXSManager() { return aapxs_manager.get(); }
 
-        void sendExtensionMessage(const char *uri, int32_t opcode);
+        void sendExtensionMessage(const char *uri, int32_t dataSize, int32_t opcode);
 
         StandardExtensions &getStandardExtensions() override { return standards; }
 
@@ -313,7 +313,7 @@ namespace aap {
     class RemoteAAPXSManager : public AAPXSClientInstanceManager {
         RemotePluginInstance *owner;
 
-        static void staticSendExtensionMessage(AAPXSClientInstance *clientInstance, int32_t opcode);
+        static void staticSendExtensionMessage(AAPXSClientInstance *clientInstance, int32_t dataSize, int32_t opcode);
 
     public:
         RemoteAAPXSManager(RemotePluginInstance *owner)

@@ -48,14 +48,14 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     return &plugin_host_facade;
 }
 
-void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t opcode) {
+void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t dataSize, int32_t opcode) {
     auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
     // Here we have to get a native plugin instance and send extension message.
     // It is kind af annoying because we used to implement Binder-specific part only within the
     // plugin API (binder-client-as-plugin.cpp)...
     // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
     // assign its implementation details that handle Binder messaging as a std::function.
-    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), opcode);
+    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), dataSize, opcode);
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount) {
@@ -151,8 +151,8 @@ AAPXSClientInstance* aap::RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *f
     return ret;
 }
 
-void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t opcode) {
+void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t dataSize, int32_t opcode) {
     auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
-    thisObj->sendExtensionMessage(clientInstance->uri, opcode);
+    thisObj->sendExtensionMessage(clientInstance->uri, dataSize, opcode);
 }
 

@@ -57,18 +57,18 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
             aapxsInstance = clientInstance;
         }
 
-        void clientInvokePluginExtension(int32_t opcode) {
-            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+        void clientInvokePluginExtension(int32_t opcode, int32_t dataSize) {
+            owner->clientInvokePluginExtension(aapxsInstance, dataSize, opcode);
         }
 
         int32_t getParameterCount() {
-            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 0);
             return *((int32_t *) aapxsInstance->data);
         }
 
         aap_parameter_info_t getParameter(int32_t index) {
             *((int32_t *) aapxsInstance->data) = index;
-            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PARAMETER);
+            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PARAMETER, sizeof(int32_t));
             aap_parameter_info_t ret;
             memcpy(&ret, aapxsInstance->data, sizeof(ret));
             return ret;
@@ -77,20 +77,20 @@ class ParametersPluginClientExtension : public PluginClientExtensionImplBase {
         double getParameterProperty(int32_t parameterId, int32_t propertyId) {
             *((int32_t *) aapxsInstance->data) = parameterId;
             *((int32_t *) aapxsInstance->data + 1) = propertyId;
-            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PROPERTY);
+            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_PROPERTY, sizeof(int32_t) * 2);
             return *(double *) aapxsInstance->data;
         }
 
         int32_t getEnumerationCount(int32_t parameterId) {
             *((int32_t *) aapxsInstance->data) = parameterId;
-            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT);
+            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT, sizeof(int32_t));
             return *((int32_t *) aapxsInstance->data);
         }
 
         aap_parameter_enum_t getEnumeration(int32_t parameterId, int32_t enumIndex) {
             *((int32_t *) aapxsInstance->data) = parameterId;
             *((int32_t *) aapxsInstance->data + 1) = enumIndex;
-            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_ENUMERATION);
+            clientInvokePluginExtension(OPCODE_PARAMETERS_GET_ENUMERATION, sizeof(int32_t) * 2);
             aap_parameter_enum_t ret;
             memcpy(&ret, aapxsInstance->data, sizeof(ret));
             return ret;

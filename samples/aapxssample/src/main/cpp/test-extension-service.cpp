@@ -50,8 +50,10 @@ int32_t proxy_foo (example_test_extension_t* test, AndroidAudioPlugin* plugin, i
     auto aapxs = (AAPXSClientInstance*) test->context;
     // set `input` at the very beginning of the shared data pointer.
     *(int32_t*) aapxs->data = input;
+    // Regarding dataSize, we take one int32_t parameter (`input`)
+    int32_t dataSize = sizeof(int32_t);
     // send the request using AAPXSClient->extension_message().
-    aapxs->extension_message(aapxs, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
+    aapxs->extension_message(aapxs, dataSize, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
     // retrieve the return value from the very beginning of the shared data pointer.
     return *(int32_t*) aapxs->data;
 }
@@ -65,7 +67,7 @@ void proxy_bar (example_test_extension_t* test, AndroidAudioPlugin* plugin, char
     // then copy the string into the shared buffer
     strncpy((char*) aapxs->data + sizeof(int32_t), msg, len);
     // send the request using AAPXSClient->extension_message().
-    aapxs->extension_message(aapxs, AAPXS_EXAMPLE_TEST_OPCODE_BAR);
+    aapxs->extension_message(aapxs, len + sizeof(int32_t), AAPXS_EXAMPLE_TEST_OPCODE_BAR);
     // no need to retrieve
 }
 

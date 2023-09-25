@@ -49,7 +49,7 @@ class StatePluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         void clientInvokePluginExtension(int32_t opcode) {
-            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+            owner->clientInvokePluginExtension(aapxsInstance, *((int32_t *) aapxsInstance->data), opcode);
         }
 
         size_t getStateSize() {

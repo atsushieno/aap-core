@@ -44,12 +44,12 @@ class MidiPluginClientExtension : public PluginClientExtensionImplBase {
             *((int32_t*) aapxsInstance->data) = len;
             strcpy((char*) ((int32_t*) aapxsInstance->data + 1), pluginId);
             ((char *)aapxsInstance->data) [sizeof(int32_t) + len] = 0;
-            clientInvokePluginExtension(OPCODE_GET_MAPPING_POLICY);
+            clientInvokePluginExtension(OPCODE_GET_MAPPING_POLICY, sizeof(int32_t) + len + 1);
             return *((enum aap_midi_mapping_policy *) aapxsInstance->data);
         }
 
-        void clientInvokePluginExtension(int32_t opcode) {
-            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+        void clientInvokePluginExtension(int32_t opcode, int32_t dataSize) {
+            owner->clientInvokePluginExtension(aapxsInstance, dataSize, opcode);
         }
 
         AAPXSProxyContext asProxy() {

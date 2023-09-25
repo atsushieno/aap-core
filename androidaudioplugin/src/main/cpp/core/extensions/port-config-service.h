@@ -44,7 +44,7 @@ class PortConfigPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         void clientInvokePluginExtension(int32_t opcode) {
-            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+            owner->clientInvokePluginExtension(aapxsInstance, *((int32_t *) aapxsInstance->data), opcode);
         }
 
         void getOptions(aap_port_config_t* destination) {

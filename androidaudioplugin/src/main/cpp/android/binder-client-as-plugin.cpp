@@ -188,9 +188,9 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         auto instance = (aap::RemotePluginInstance *) host->context;
 		instance->setInstanceId(ctx->instance_id);
 
-        // It is a nasty workaround to not expose Binder back to RemotePluginInstance; we set a callable function for them here.
+        // It is a nasty workaround to not expose Binder back to platform-agnostic aap::RemotePluginInstance; we set a callable function for them here.
         instance->send_extension_message_impl = [ctx](const char* uri,
-                                                      int32_t instanceId, int32_t opcode) {
+                                                      int32_t instanceId, int32_t dataSize, int32_t opcode) {
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
                 auto stat = ctx->getProxy()->extension(instanceId, uri, opcode);
                 if (!stat.isOk()) {

@@ -65,18 +65,18 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
 
         }
 
-        void clientInvokePluginExtension(int32_t opcode) {
-            owner->clientInvokePluginExtension(aapxsInstance, opcode);
+        void clientInvokePluginExtension(int32_t opcode, int32_t dataSize) {
+            owner->clientInvokePluginExtension(aapxsInstance, dataSize, opcode);
         }
 
         int32_t getPresetCount() {
-            clientInvokePluginExtension(OPCODE_GET_PRESET_COUNT);
+            clientInvokePluginExtension(OPCODE_GET_PRESET_COUNT, 0);
             return *((int32_t *) aapxsInstance->data);
         }
 
         int32_t getPresetDataSize(int32_t index) {
             *((int32_t *) aapxsInstance->data) = index;
-            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA_SIZE);
+            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA_SIZE, sizeof(int32_t));
             return *((int32_t *) aapxsInstance->data);
         }
 
@@ -86,7 +86,7 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
             // - 4..7 : bool skip binary or not
             *((int32_t *) aapxsInstance->data) = index;
             *((int32_t *) aapxsInstance->data + 1) = skipBinary ? 1 : 0;
-            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA);
+            clientInvokePluginExtension(OPCODE_GET_PRESET_DATA, sizeof(int32_t) * 2);
             // response (offset-range: content)
             // - 0..3 : data size
             // - 4..259 : name (fixed length char buffer)
@@ -98,13 +98,13 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
         }
 
         int32_t getPresetIndex() {
-            clientInvokePluginExtension(OPCODE_GET_PRESET_INDEX);
+            clientInvokePluginExtension(OPCODE_GET_PRESET_INDEX, 0);
             return *((int32_t *) aapxsInstance->data);
         }
 
         void setPresetIndex(int32_t index) {
             *((int32_t *) aapxsInstance->data) = index;
-            clientInvokePluginExtension(OPCODE_SET_PRESET_INDEX);
+            clientInvokePluginExtension(OPCODE_SET_PRESET_INDEX, sizeof(int32_t));
         }
 
         AAPXSProxyContext asProxy() {
