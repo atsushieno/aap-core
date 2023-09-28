@@ -8,6 +8,7 @@
 #include "plugin-host.h"
 #include "../aap_midi2_helper.h"
 #include "aap/core/AAPXSMidi2Processor.h"
+#include "aap/core/AAPXSMidi2ClientSession.h"
 
 #if ANDROID
 #include <android/trace.h>
@@ -29,11 +30,10 @@ namespace aap {
 
         AndroidAudioPluginFactory *plugin_factory;
 
-        NanoSleepLock event_input_buffer_mutex{};
-
-        void merge_event_inputs(void *mergeTmp, int32_t mergeBufSize, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance);
-
     protected:
+        NanoSleepLock ump_sequence_merger_mutex{};
+        void merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance);
+
         int instance_id{-1};
         PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
         bool are_ports_configured{false};
@@ -42,10 +42,12 @@ namespace aap {
         const PluginInformation *pluginInfo;
         std::unique_ptr <std::vector<PortInformation>> configured_ports{nullptr};
         std::unique_ptr <std::vector<ParameterInformation>> cached_parameters{nullptr};
-        void* event_midi2_input_buffer{nullptr};
-        void* event_midi2_input_buffer_merged{nullptr};
-        int32_t event_midi2_input_buffer_size{0};
-        int32_t event_midi2_input_buffer_offset{0};
+        // for client, it collects event inputs and AAPXS SysEx8 UMPs
+        // for service, it collects AAPXS SysEx8 UMPs (can be put multiple async results)
+        void* event_midi2_buffer{nullptr};
+        void* event_midi2_merge_buffer{nullptr};
+        int32_t event_midi2_buffer_size{0};
+        int32_t event_midi2_buffer_offset{0};
 
         PluginInstance(const PluginInformation *pluginInformation,
                        AndroidAudioPluginFactory *loadedPluginFactory,
@@ -57,14 +59,6 @@ namespace aap {
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
-
-        // This function should be invoked every time this instance is about to call the plugin's `process()`.
-        // When this instance's `process()` is invoked, it parses the input passed from the client
-        //  (via MIDI2 buffer) and if it found any AAPXS SysEx8 calls, then it dispatches the
-        //  extension request to the actual `plugin`.
-        //
-        // Do nothing at client.
-        virtual void processAAPXSSysEx8Input() {};
 
     public:
         virtual ~PluginInstance();
@@ -117,7 +111,7 @@ namespace aap {
 
         void deactivate();
 
-        virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds);
+        virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) = 0;
 
         virtual StandardExtensions &getStandardExtensions() = 0;
 
@@ -128,6 +122,7 @@ namespace aap {
 
         // Event controller (GUI) support
         void addEventUmpInput(void* input, int32_t size);
+        void addEventUmpOutput(void* input, int32_t size);
     };
 
 /**
@@ -166,7 +161,6 @@ namespace aap {
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
-        void processAAPXSSysEx8Input() override;
 
     public:
         LocalPluginInstance(PluginHost *host, AAPXSRegistry *aapxsRegistry, int32_t instanceId,
@@ -192,7 +186,8 @@ namespace aap {
 
         StandardExtensions &getStandardExtensions() override { return standards; }
 
-        // It is invoked by AudioPluginInterfaceImpl, and supposed to dispatch request to extension service
+        // It is invoked by AudioPluginInterfaceImpl and AAPXSMidi2Processor callback,
+        // and supposed to dispatch request to extension service
         void controlExtension(const std::string &uri, int32_t opcode) {
             auto aapxsInstance = getInstanceFor(uri.c_str());
             auto feature = aapxs_registry->getByUri(uri.c_str());
@@ -207,10 +202,7 @@ namespace aap {
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
 
-        void process(int32_t frameCount, int32_t timeoutInNanoseconds) override {
-            process_requested_to_host = false;
-            PluginInstance::process(frameCount, timeoutInNanoseconds);
-        }
+        void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 
         void requestProcessToHost();
     };
@@ -247,6 +239,7 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         RemotePluginInstanceStandardExtensionsImpl standards;
         std::unique_ptr<AAPXSClientInstanceManager> aapxs_manager;
+        AAPXSMidi2ClientSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
 
         friend class RemoteAAPXSManager;
@@ -290,6 +283,8 @@ namespace aap {
         StandardExtensions &getStandardExtensions() override { return standards; }
 
         void prepare(int frameCount) override;
+
+        void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 
         RemotePluginNativeUIController* getNativeUIController() { return native_ui_controller.get(); }
 

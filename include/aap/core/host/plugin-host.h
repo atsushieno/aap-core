@@ -55,7 +55,7 @@ namespace aap {
         int32_t event_midi2_input_buffer_size{4096};
 
     public:
-        PluginHost(PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry = nullptr);
+        PluginHost(PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry = nullptr, int32_t eventMidi2InputBufferSize = 4096);
 
         virtual ~PluginHost() {}
 

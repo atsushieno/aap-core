@@ -23,11 +23,40 @@ void aap::AAPXSMidi2Processor::process(void* buffer) {
     void* data = mbh + 1;
     CMIDI2_UMP_SEQUENCE_FOREACH(data, mbh->length, iter) {
         auto umpSize = mbh->length - ((uint8_t*) iter - (uint8_t*) data);
-        if (aap_midi2_parse_aapxs_sysex8(&aapxs_parse_context, iter, umpSize))
+        if (aap_midi2_parse_aapxs_sysex8(&aapxs_parse_context, iter, umpSize)) {
             call_extension(&aapxs_parse_context);
 
-        // FIXME: should we remove those extension bytes from the UMP buffer?
-        //  It is going to be extraneous to the plugin.
+            auto ump = (cmidi2_ump*) iter;
+            ump += 4;
+            while (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_SYSEX8_MDS &&
+                    cmidi2_ump_get_status_code(ump) < CMIDI2_SYSEX_END)
+                ump += 4;
+            iter = (uint8_t*) ump;
+        }
+
+        // FIXME: should we remove those AAPXS SysEx8 bytes from the UMP buffer?
+        //  It is going to be extraneous to the rest of the plugin processing.
     }
 }
 
+
+void aap::AAPXSMidi2Processor::addReply(
+        void (*addMidi2Event)(AAPXSMidi2Processor * processor, void *userData, int32_t messageSize),
+        void* addMidi2EventUserData,
+        int32_t group,
+        int32_t requestId,
+        AAPXSServiceInstance *aapxsInstance,
+        int32_t messageSize,
+        int32_t opcode) {
+    size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) midi2_aapxs_data_buffer,
+                                                  AAP_MIDI2_AAPXS_DATA_MAX_SIZE / sizeof(int32_t),
+                                                  (uint8_t*) midi2_aapxs_conversion_helper_buffer,
+                                                  AAP_MIDI2_AAPXS_DATA_MAX_SIZE,
+                                                  group,
+                                                  requestId,
+                                                  aapxsInstance->uri,
+                                                  opcode,
+                                                  (uint8_t*) aapxsInstance->data,
+                                                  messageSize);
+    addMidi2Event(this, addMidi2EventUserData, size);
+}

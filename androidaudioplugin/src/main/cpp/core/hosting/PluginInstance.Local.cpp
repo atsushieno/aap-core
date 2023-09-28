@@ -3,6 +3,13 @@
 
 #define LOG_TAG "AAP.Local.Instance"
 
+
+void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2Processor* processor, void* context, int32_t messageSize) {
+    auto instance = (aap::LocalPluginInstance *) context;
+    instance->addEventUmpOutput(processor->midi2_aapxs_data_buffer, messageSize);
+}
+
+
 aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
                                          AAPXSRegistry *aapxsRegistry,
                                          int32_t instanceId,
@@ -23,6 +30,17 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->data, (int32_t*) context->data, context->dataSize);
         controlExtension(context->uri, context->opcode);
+
+        // FIXME: this should be called only at the *end* of controlExtension()
+        //  which should be asynchronously handled.
+        aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
+                                       this,
+                                       context->group,
+                                       context->request_id,
+                                       aapxsInstance,
+                                       context->dataSize,
+                                       context->opcode
+                                       );
     });
 }
 
@@ -149,7 +167,20 @@ void aap::LocalPluginInstance::requestProcessToHost() {
     ((PluginService*) host)->requestProcessToHost(instance_id);
 }
 
-void aap::LocalPluginInstance::processAAPXSSysEx8Input() {
+const char* local_trace_name = "AAP::LocalPluginInstance_process";
+void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+    process_requested_to_host = false;
+
+    struct timespec timeSpecBegin{}, timeSpecEnd{};
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        ATrace_beginSection(local_trace_name);
+        clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+    }
+#endif
+
+    // retrieve AAPXS SysEx8 requests and start extension calls, if any.
+    // (might be synchronously done)
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
         auto port = getPort(i);
         if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
@@ -159,4 +190,24 @@ void aap::LocalPluginInstance::processAAPXSSysEx8Input() {
         void* data = aapBuffer->get_buffer(*aapBuffer, i);
         aapxs_midi2_processor.process(data);
     }
+
+    plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+
+    // before sending back to host, merge AAPXS SysEx8 UMPs from async extension calls
+    // into the plugin's MIDI output buffer.
+    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
+        merge_ump_sequences(AAP_PORT_DIRECTION_OUTPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
+                            event_midi2_buffer, event_midi2_buffer_offset,
+                            getAudioPluginBuffer(), this);
+        event_midi2_buffer_offset = 0;
+    }
+
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+        ATrace_setCounter(local_trace_name,
+                          (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+        ATrace_endSection();
+    }
+#endif
 }

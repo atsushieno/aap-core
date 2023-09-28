@@ -14,8 +14,14 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           client(client),
           aapxs_registry(aapxsRegistry),
           standards(this),
-          aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)) {
+          aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
+          aapxs_session(eventMidi2InputBufferSize) {
     shared_memory_store = new ClientPluginSharedMemoryStore();
+
+    aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
+        auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
+        aapxsInstance->endAsyncCall(context);
+    });
 }
 
 void aap::RemotePluginInstance::configurePorts() {
@@ -48,15 +54,29 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     return &plugin_host_facade;
 }
 
+void aapxsSessionAddEventUmpInput(aap::AAPXSMidi2ClientSession* client, void* context, int32_t messageSize) {
+    auto instance = (aap::RemotePluginInstance *) context;
+    instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
+}
+
 void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode) {
     auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
 
-    // Here we have to get a native plugin instance and send extension message.
-    // It is kind af annoying because we used to implement Binder-specific part only within the
-    // plugin API (binder-client-as-plugin.cpp)...
-    // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
-    // assign its implementation details that handle Binder messaging as a std::function.
-    send_extension_message_impl(aapxsInstance->uri, getInstanceId(), messageSize, opcode);
+    // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
+    // otherwise it goes to the Binder route.
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        // aapxsInstance already contains binary data here, so we retrieve data from there.
+        int32_t group = 0; // will we have to give special semantics on it?
+        int32_t requestId = aapxsSysEx8RequestSerial();
+        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, aapxsInstance, messageSize,  opcode);
+    } else {
+        // Here we have to get a native plugin instance and send extension message.
+        // It is kind af annoying because we used to implement Binder-specific part only within the
+        // plugin API (binder-client-as-plugin.cpp)...
+        // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
+        // assign its implementation details that handle Binder messaging as a std::function.
+        send_extension_message_impl(aapxsInstance->uri, getInstanceId(), messageSize, opcode);
+    }
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount) {
@@ -120,6 +140,48 @@ uint32_t aap::RemotePluginInstance::aapxsSysEx8RequestSerial() {
     return aapxs_request_id_serial++;
 }
 
+void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+    const char* remote_trace_name = "AAP::RemotePluginInstance_process";
+    struct timespec timeSpecBegin{}, timeSpecEnd{};
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        ATrace_beginSection(remote_trace_name);
+        clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+    }
+#endif
+
+    // merge input from UI with the host's MIDI inputs
+    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
+        merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
+                            event_midi2_buffer, event_midi2_buffer_offset,
+                            getAudioPluginBuffer(), this);
+        event_midi2_buffer_offset = 0;
+    }
+
+    // now we can pass the input to the plugin.
+    plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+
+    // retrieve AAPXS SysEx8 replies if any.
+    for (auto i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
+            port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
+            continue;
+        auto aapBuffer = getAudioPluginBuffer();
+        void* data = aapBuffer->get_buffer(*aapBuffer, i);
+        aapxs_session.processReply(data);
+    }
+
+#if ANDROID
+    if (ATrace_isEnabled()) {
+        clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+        ATrace_setCounter(remote_trace_name,
+                          (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+        ATrace_endSection();
+    }
+#endif
+}
+
 //----
 
 aap::RemotePluginInstance::RemotePluginNativeUIController::RemotePluginNativeUIController(RemotePluginInstance* owner) {
@@ -156,4 +218,3 @@ void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* cl
     auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
     thisObj->sendExtensionMessage(clientInstance->uri, messageSize, opcode);
 }
-

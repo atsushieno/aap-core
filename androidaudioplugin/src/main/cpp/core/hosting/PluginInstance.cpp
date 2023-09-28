@@ -12,12 +12,12 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
           instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
           plugin(nullptr),
           pluginInfo(pluginInformation),
-          event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
+          event_midi2_buffer_size(eventMidi2InputBufferSize) {
     assert(pluginInformation);
     assert(loadedPluginFactory);
-    assert(event_midi2_input_buffer_size > 0);
-    event_midi2_input_buffer = calloc(1, event_midi2_input_buffer_size);
-    event_midi2_input_buffer_merged = calloc(1, event_midi2_input_buffer_size);
+    assert(event_midi2_buffer_size > 0);
+    event_midi2_buffer = calloc(1, event_midi2_buffer_size);
+    event_midi2_merge_buffer = calloc(1, event_midi2_buffer_size);
 }
 
 aap::PluginInstance::~PluginInstance() {
@@ -26,10 +26,10 @@ aap::PluginInstance::~PluginInstance() {
         plugin_factory->release(plugin_factory, plugin);
     plugin = nullptr;
     delete shared_memory_store;
-    if (event_midi2_input_buffer)
-        free(event_midi2_input_buffer);
-    if (event_midi2_input_buffer_merged)
-        free(event_midi2_input_buffer_merged);
+    if (event_midi2_buffer)
+        free(event_midi2_buffer);
+    if (event_midi2_merge_buffer)
+        free(event_midi2_merge_buffer);
 }
 
 aap_buffer_t* aap::PluginInstance::getAudioPluginBuffer() {
@@ -151,59 +151,34 @@ void aap::PluginInstance::deactivate() {
 
 
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
-    const std::lock_guard<NanoSleepLock> lock{event_input_buffer_mutex};
-    if (event_midi2_input_buffer_offset + size > event_midi2_input_buffer_size)
+    const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};
+    if (event_midi2_buffer_offset + size > event_midi2_buffer_size)
         return;
-    memcpy((uint8_t *) event_midi2_input_buffer + event_midi2_input_buffer_offset,
+    memcpy((uint8_t *) event_midi2_buffer + event_midi2_buffer_offset,
            input, size);
-    event_midi2_input_buffer_offset += size;
+    event_midi2_buffer_offset += size;
 }
 
-const char* remote_trace_name = "AAP::RemotePluginInstance_process";
-const char* local_trace_name = "AAP::LocalPluginInstance_process";
-
-void aap::PluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds)  {
-    struct timespec timeSpecBegin{}, timeSpecEnd{};
-#if ANDROID
-    if (ATrace_isEnabled()) {
-		ATrace_beginSection(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name);
-		clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
-	}
-#endif
-
-    // merge input from UI with the host's MIDI inputs
-    if (std::unique_lock<NanoSleepLock> tryLock(event_input_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
-        merge_event_inputs(event_midi2_input_buffer_merged, event_midi2_input_buffer_size,
-                           event_midi2_input_buffer, event_midi2_input_buffer_offset,
-                           getAudioPluginBuffer(), this);
-        event_midi2_input_buffer_offset = 0;
-    }
-
-    // retrieve AAPXS SysEx8 requests if any.
-    processAAPXSSysEx8Input();
-
-    // now we can pass the input to the plugin.
-    plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
-
-#if ANDROID
-    if (ATrace_isEnabled()) {
-		clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
-		ATrace_setCounter(this->pluginInfo->isOutProcess() ? remote_trace_name : local_trace_name,
-						  (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
-		ATrace_endSection();
-	}
-#endif
+void aap::PluginInstance::addEventUmpOutput(void *input, int32_t size) {
+    // unlike client side, we are not multithreaded during the audio processing,
+    // but multiple async extension calls may race, so lock here too.
+    const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};
+    if (event_midi2_buffer_offset + size > event_midi2_buffer_size)
+        return;
+    memcpy((uint8_t *) event_midi2_buffer + event_midi2_buffer_offset,
+           input, size);
+    event_midi2_buffer_offset += size;
 }
 
-void aap::PluginInstance::merge_event_inputs(void *mergeTmp, int32_t mergeBufSize, void* eventInputs, int32_t eventInputsSize, aap_buffer_t *buffer, PluginInstance* instance) {
-    if (eventInputsSize == 0)
+void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance) {
+    if (sequenceSize == 0)
         return;
     for (int i = 0; i < instance->getNumPorts(); i++) {
         auto port = instance->getPort(i);
-        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
+        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == portDirection) {
             auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
             size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeBufSize,
-                                                        (cmidi2_ump*) eventInputs, (size_t) eventInputsSize,
+                                                        (cmidi2_ump*) sequence, (size_t) sequenceSize,
                                                         (cmidi2_ump*) mbh + 1, (size_t) mbh->length);
             mbh->length = newSize;
             memcpy(mbh + 1, mergeTmp, newSize);

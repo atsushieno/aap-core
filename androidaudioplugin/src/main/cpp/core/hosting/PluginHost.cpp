@@ -49,9 +49,11 @@ void initializeStandardAAPXSRegistry() {
 }
 
 
-aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList, AAPXSRegistry* aapxsRegistry)
-        : plugin_list(contextPluginList)
-{
+aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
+                            AAPXSRegistry* aapxsRegistry,
+                            int32_t eventMidi2InputBufferSize)
+        : plugin_list(contextPluginList),
+          event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
     assert(contextPluginList);
 
     if (standard_aapxs_registry == nullptr)

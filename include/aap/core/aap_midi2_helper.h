@@ -33,6 +33,8 @@ uint32_t aap_midi2_aapxs_get_request_id(uint8_t* ump);
  * @param conversionHelperBuffer        the conversion buffer for temporary storage
  * @param conversionHelperBufferSize    the size of `conversionHelperBuffer`
  * @param group                         "group" field as in MIDI UMP
+ * @param requestId                     The requestId that should be unique within the instance,
+ *                                      correlated to the reply (for asynchronous UMP messaging).
  * @param uri                           the extension URI (must be null terminated)
  * @param opcode                        the AAPXS opcode for the context operation
  * @param data                          the extension invocation data
