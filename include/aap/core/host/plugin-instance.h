@@ -207,6 +207,12 @@ namespace aap {
         void requestProcessToHost();
     };
 
+    typedef void(*aapxs_client_ipc_sender)(void* context,
+                          const char* uri,
+                          int32_t instanceId,
+                          int32_t messageSize,
+                          int32_t opcode);
+
     class RemotePluginInstance : public PluginInstance {
         class RemotePluginInstanceStandardExtensionsImpl
                 : public RemotePluginInstanceStandardExtensions {
@@ -248,6 +254,9 @@ namespace aap {
             return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
         }
 
+        /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
+        aapxs_client_ipc_sender ipc_send_extension_message_impl;
+
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
 
@@ -271,12 +280,13 @@ namespace aap {
         // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
         void configurePorts();
 
-        /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-        std::function<void(const char * uri, int32_t instanceId, int32_t messageSize, int32_t opcode)> send_extension_message_impl;
-
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
         AAPXSClientInstanceManager *getAAPXSManager() { return aapxs_manager.get(); }
+
+        void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
+            ipc_send_extension_message_impl = sender;
+        }
 
         void sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode);
 

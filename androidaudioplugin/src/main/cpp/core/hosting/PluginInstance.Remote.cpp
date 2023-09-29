@@ -19,8 +19,8 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
-        auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
-        aapxsInstance->endAsyncCall(context);
+        //auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
+        //aapxsInstance->endAsyncCall(context);
     });
 }
 
@@ -75,7 +75,7 @@ void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t me
         // plugin API (binder-client-as-plugin.cpp)...
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
-        send_extension_message_impl(aapxsInstance->uri, getInstanceId(), messageSize, opcode);
+        ipc_send_extension_message_impl(plugin->plugin_specific, aapxsInstance->uri, getInstanceId(), messageSize, opcode);
     }
 }
 
