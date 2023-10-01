@@ -10,6 +10,7 @@
 #include <aap/ext/plugin-info.h>
 #include <aap/ext/parameters.h>
 #include <aap/ext/gui.h>
+#include <assert.h>
 #include "cmidi2.h"
 
 extern "C" {
@@ -58,9 +59,15 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     auto context = (AyumiHandle*) plugin->plugin_specific;
     auto host = context->host;
 
-    auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host.get_extension(&host, AAP_PLUGIN_INFO_EXTENSION_URI);
-    if (pluginInfoExt != nullptr) {
-        auto info = pluginInfoExt->get(pluginInfoExt, &host, context->plugin_id.c_str());
+    aap_plugin_info_t info;
+    if (plugin->get_plugin_info) {
+        info = plugin->get_plugin_info(plugin, context->plugin_id.c_str());
+    } else {
+        auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host.get_extension(&host, AAP_PLUGIN_INFO_EXTENSION_URI);
+        if (pluginInfoExt != nullptr)
+            info = pluginInfoExt->get(pluginInfoExt, &host, context->plugin_id.c_str());
+    }
+    if (info.plugin_id != nullptr) {
         aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
         for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
             auto port = info.get_port(&info, i);
@@ -310,6 +317,16 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {
     context->active = false;
 }
 
+aap_plugin_info_t sample_plugin_get_plugin_info(AndroidAudioPlugin *plugin, const char* pluginId) {
+    auto* context = (AyumiHandle*) plugin->plugin_specific;
+    auto* hostExt = (aap_host_plugin_info_extension_t*) context->host.get_extension(&context->host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    assert(hostExt != nullptr);
+    aap_plugin_info_t ret = hostExt->get(hostExt, &context->host, context->plugin_id.c_str());
+    return ret;
+}
+
+// State extension
+
 size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
     // FIXME: implement
     return 0;
@@ -445,7 +462,8 @@ AndroidAudioPlugin *sample_plugin_new(
             sample_plugin_activate,
             sample_plugin_process,
             sample_plugin_deactivate,
-            sample_plugin_get_extension
+            sample_plugin_get_extension,
+            sample_plugin_get_plugin_info
     };
 }
 

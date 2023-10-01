@@ -18,7 +18,7 @@
 #include "aap/ext/presets.h"
 #include "aap/ext/state.h"
 #include "aap/ext/port-config.h"
-#include "aap/ext/plugin-info.h"
+#include "aap/plugin-meta-info.h"
 #include "plugin-connections.h"
 #include "plugin-instance.h"
 #include "../aapxs/extension-service.h"

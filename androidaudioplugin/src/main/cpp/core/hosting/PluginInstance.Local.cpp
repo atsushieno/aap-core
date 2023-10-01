@@ -120,7 +120,7 @@ static aap_plugin_info_parameter_t plugin_info_get_parameter(aap_plugin_info_t* 
 }
 
 aap_plugin_info_t aap::LocalPluginInstance::get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char* pluginId) {
-    auto instance = (LocalPluginInstance*) host->context;
+    auto* instance = (LocalPluginInstance*) host->context;
     aap_plugin_info_t ret{(void*) instance,
                           plugin_info_get_plugin_package_name,
                           plugin_info_get_plugin_local_name,
