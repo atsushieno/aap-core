@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "aap/ext/plugin-info.h"
+#include "aap/plugin-meta-info.h"
 
 #define AAP_PORT_URL "urn:org.androidaudioplugin.port"
 #define AAP_PORT_BASE AAP_PORT_URL "#"

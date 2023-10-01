@@ -6,6 +6,7 @@
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"
 #include "plugin-host.h"
+#include "aap/ext/plugin-info.h"
 #include "../aap_midi2_helper.h"
 #include "aap/core/AAPXSMidi2Processor.h"
 #include "aap/core/AAPXSMidi2ClientSession.h"

@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef AAP_CORE_H_INCLUDED
-#define AAP_CORE_H_INCLUDED
+#ifndef AAP_ANDROID_AUDIO_PLUGIN_H_INCLUDED
+#define AAP_ANDROID_AUDIO_PLUGIN_H_INCLUDED
 
 #include <stdint.h>
 #include <stddef.h>
@@ -21,6 +21,9 @@ extern "C" {
 #define RT_SAFE [[annotate("AAP_RT_SAFE")]]
 #define RT_UNSAFE [[annotate("AAP_RT_UNSAFE")]]
 #endif
+
+#include "plugin-meta-info.h"
+
 
 // FIXME: there should be some definition for this constant elsewhere
 #define DEFAULT_CONTROL_BUFFER_SIZE 8192
@@ -108,6 +111,10 @@ typedef void* (*aap_get_extension_func_t) (
         struct AndroidAudioPlugin *plugin,
         const char *uri);
 
+typedef aap_plugin_info_t (*get_plugin_info_func_t) (
+        struct AndroidAudioPlugin* plugin,
+        const char *pluginId);
+
 typedef struct AndroidAudioPlugin {
     /** Plugin can store plugin-specific data here.
      * Host should not alter it.
@@ -138,6 +145,11 @@ typedef struct AndroidAudioPlugin {
 
     /** Plugin has to implement this function to return any extension that the plugin supports. */
     aap_get_extension_func_t get_extension;
+
+    /** Plugin should implement this function to provide its metadata information, ports, and properties.
+     * If it is not implemented, hosts might still look for plugin-info extension and query host to retrieve them instead
+     * (transient behavior in the next few aap-core versions). */
+    get_plugin_info_func_t get_plugin_info;
 } AndroidAudioPlugin;
 
 typedef struct AndroidAudioPluginFactory {
@@ -155,4 +167,4 @@ typedef AndroidAudioPluginFactory* (*aap_factory_t) ();
 } // extern "C"
 #endif
 
-#endif /* AAP_CORE_H_INCLUDED */
+#endif /* AAP_ANDROID_AUDIO_PLUGIN_H_INCLUDED */
