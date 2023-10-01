@@ -5,8 +5,13 @@
 // parameters from the host that had parsed `aap_metadata.xml` and configured ports etc.
 // Those information items are not obviously known to plugin wrappers, including our own local host.
 //
-// IPC is not involved, as it is implemented at LocalPluginInstance. A local plugin host should be
+// IPC is not involved for `get()`, as it is implemented at LocalPluginInstance. A local plugin host should be
 // able to resolve all the plugin information items.
+//
+// It is prohibited for `notify_plugin_info_update()` to make changes to `plugin_package_name`,
+// `plugin_local_name`, `identifier_string` and `plugin_id`.
+// Host should treat such changes as an error and invalidate the plugin.
+// FIXME: rename `notify_plugin_info_update` to `notify_update`.
 
 #ifdef __cplusplus
 extern "C" {
