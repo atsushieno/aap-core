@@ -19,8 +19,11 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
-        //auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
-        //aapxsInstance->endAsyncCall(context);
+        auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
+        if (aapxsInstance->handle_extension_reply)
+            aapxsInstance->handle_extension_reply(aapxsInstance, context->dataSize, context->opcode, context->request_id);
+        else
+            aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
     });
 }
 
@@ -76,6 +79,15 @@ void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t me
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
         ipc_send_extension_message_impl(plugin->plugin_specific, aapxsInstance->uri, getInstanceId(), messageSize, opcode);
+    }
+}
+
+void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t messageSize,
+                                                      int32_t opcode, int32_t requestId) {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        // FIXME: implement
+    } else {
+        // nothing to do when non-realtime mode; extension functions are called synchronously.
     }
 }
 
@@ -169,7 +181,9 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
             continue;
         auto aapBuffer = getAudioPluginBuffer();
         void* data = aapBuffer->get_buffer(*aapBuffer, i);
+        // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.processReply(data);
+        ((AAPMidiBufferHeader*) data)->length = 0;
     }
 
 #if ANDROID
@@ -211,10 +225,18 @@ AAPXSClientInstance* aap::RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *f
     aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->instance_id, nullptr, dataCapacity}));
     auto ret = aapxsClientInstances.get(uri);
     ret->extension_message = staticSendExtensionMessage;
+    ret->handle_extension_reply = staticProcessExtensionReply;
     return ret;
 }
 
 void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t messageSize, int32_t opcode) {
     auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
     thisObj->sendExtensionMessage(clientInstance->uri, messageSize, opcode);
+}
+
+void
+aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *clientInstance, int32_t messageSize,
+                                            int32_t opcode, int32_t requestId) {
+    auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
+    thisObj->processExtensionReply(clientInstance->uri, messageSize, opcode, requestId);
 }

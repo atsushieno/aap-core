@@ -290,6 +290,7 @@ namespace aap {
         }
 
         void sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode);
+        void processExtensionReply(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
 
         StandardExtensions &getStandardExtensions() override { return standards; }
 
@@ -320,6 +321,7 @@ namespace aap {
         RemotePluginInstance *owner;
 
         static void staticSendExtensionMessage(AAPXSClientInstance *clientInstance, int32_t dataSize, int32_t opcode);
+        static void staticProcessExtensionReply(AAPXSClientInstance *clientInstance, int32_t dataSize, int32_t opcode, int32_t requestId);
 
     public:
         RemoteAAPXSManager(RemotePluginInstance *owner)

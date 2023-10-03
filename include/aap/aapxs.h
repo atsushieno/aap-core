@@ -37,6 +37,12 @@ typedef struct {
 
 // ---------------------------------------------------
 
+/**
+ * An instantiated AAPXS helper for a client.
+ * It is implemented by AAP framework.
+ * In libandroidaudioplugin reference implementation, it is `AAPXSClientInstanceManager` that manages
+ * the instances of this struct.
+ */
 typedef struct AAPXSClientInstance {
     /** Custom context that AAP framework may assign.
      * In libandroidaudioplugin it is RemotePluginInstance. It may be different on other implementations.
@@ -57,8 +63,16 @@ typedef struct AAPXSClientInstance {
     /** The size of `data`, if it provides non-null pointer. */
     int32_t data_size;
 
-    /** The function to actually send extension() request. */
+    /**
+     * Do send the extension() request (either send via Binder, or add AAPXS SysEx8 to the MIDI2 channel buffer)
+     *
+     * Can be used for either synchronous or asynchronous calls.
+     */
+     // FIXME: rename this to `send_extension_request`
     void (*extension_message) (struct AAPXSClientInstance* aapxsClientInstance, int32_t messageSize, int32_t opcode);
+
+    /** Handle the reply */
+    void (*handle_extension_reply) (struct AAPXSClientInstance* aapxsClientInstance, int32_t messageSize, int32_t opcode, int32_t requestId);
 } AAPXSClientInstance;
 
 // ---------------------------------------------------
@@ -97,9 +111,9 @@ typedef struct AAPXSFeature {
      * deserialized by the implementation of the extension, not the ones in the host memory space.
      */
     void (*on_invoked) (struct AAPXSFeature* feature,
-            AndroidAudioPlugin* plugin,
-            AAPXSServiceInstance* extension,
-            int32_t opcode);
+                        AndroidAudioPlugin* plugin,
+                        AAPXSServiceInstance* extension,
+                        int32_t opcode);
     /**
      * Implemented by the extension developer.
      * Called by AAP framework (client part) to return the extension proxy to the extension.
