@@ -149,7 +149,7 @@ typedef struct AndroidAudioPlugin {
     /** Plugin should implement this function to provide its metadata information, ports, and properties.
      * If it is not implemented, hosts might still look for plugin-info extension and query host to retrieve them instead
      * (transient behavior in the next few aap-core versions). */
-    get_plugin_info_func_t get_plugin_info;
+    aap_plugin_info_t (*get_plugin_info) (AndroidAudioPlugin* plugin);
 } AndroidAudioPlugin;
 
 typedef struct AndroidAudioPluginFactory {

@@ -61,7 +61,7 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
 
     aap_plugin_info_t info;
     if (plugin->get_plugin_info) {
-        info = plugin->get_plugin_info(plugin, context->plugin_id.c_str());
+        info = plugin->get_plugin_info(plugin);
     } else {
         auto pluginInfoExt = (aap_host_plugin_info_extension_t*) host.get_extension(&host, AAP_PLUGIN_INFO_EXTENSION_URI);
         if (pluginInfoExt != nullptr)
@@ -317,7 +317,7 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {
     context->active = false;
 }
 
-aap_plugin_info_t sample_plugin_get_plugin_info(AndroidAudioPlugin *plugin, const char* pluginId) {
+aap_plugin_info_t sample_plugin_get_plugin_info(AndroidAudioPlugin *plugin) {
     auto* context = (AyumiHandle*) plugin->plugin_specific;
     auto* hostExt = (aap_host_plugin_info_extension_t*) context->host.get_extension(&context->host, AAP_PLUGIN_INFO_EXTENSION_URI);
     assert(hostExt != nullptr);
