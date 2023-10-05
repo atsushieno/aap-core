@@ -159,17 +159,6 @@ void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
     event_midi2_buffer_offset += size;
 }
 
-void aap::PluginInstance::addEventUmpOutput(void *input, int32_t size) {
-    // unlike client side, we are not multithreaded during the audio processing,
-    // but multiple async extension calls may race, so lock here too.
-    const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};
-    if (event_midi2_buffer_offset + size > event_midi2_buffer_size)
-        return;
-    memcpy((uint8_t *) event_midi2_buffer + event_midi2_buffer_offset,
-           input, size);
-    event_midi2_buffer_offset += size;
-}
-
 void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance) {
     if (sequenceSize == 0)
         return;

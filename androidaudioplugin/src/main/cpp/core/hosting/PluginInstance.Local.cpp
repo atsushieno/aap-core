@@ -9,7 +9,6 @@ void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2Processor* processor, void* 
     instance->addEventUmpOutput(processor->midi2_aapxs_data_buffer, messageSize);
 }
 
-
 aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
                                          AAPXSRegistry *aapxsRegistry,
                                          int32_t instanceId,
@@ -24,6 +23,8 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
           standards(this) {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
+    aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
+    aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
 
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
         auto aapxsInstance = aapxsServiceInstances.get(context->uri, false);
@@ -42,6 +43,13 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
                                        context->opcode
                                        );
     });
+}
+
+aap::LocalPluginInstance::~LocalPluginInstance() {
+    if (aapxs_out_midi2_buffer)
+        free(aapxs_out_midi2_buffer);
+    if (aapxs_out_merge_buffer)
+        free(aapxs_out_merge_buffer);
 }
 
 AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -167,6 +175,17 @@ void aap::LocalPluginInstance::requestProcessToHost() {
     ((PluginService*) host)->requestProcessToHost(instance_id);
 }
 
+void aap::LocalPluginInstance::addEventUmpOutput(void *input, int32_t size) {
+    // unlike client side, we are not multithreaded during the audio processing,
+    // but multiple async extension calls may race, so lock here too.
+    const std::lock_guard<NanoSleepLock> lock{aapxs_out_merger_mutex_out};
+    if (aapxs_out_midi2_buffer_offset + size > event_midi2_buffer_size)
+        return;
+    memcpy((uint8_t *) aapxs_out_midi2_buffer + aapxs_out_midi2_buffer_offset,
+           input, size);
+    aapxs_out_midi2_buffer_offset += size;
+}
+
 const char* local_trace_name = "AAP::LocalPluginInstance_process";
 void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
     process_requested_to_host = false;
@@ -179,6 +198,14 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
     }
 #endif
 
+    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
+        // merge input from native UI into the host's MIDI inputs
+        merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
+                            event_midi2_buffer, event_midi2_buffer_offset,
+                            getAudioPluginBuffer(), this);
+        event_midi2_buffer_offset = 0;
+    }
+
     // retrieve AAPXS SysEx8 requests and start extension calls, if any.
     // (might be synchronously done)
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
@@ -187,7 +214,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
             continue;
         auto aapBuffer = getAudioPluginBuffer();
-        void* data = aapBuffer->get_buffer(*aapBuffer, i);
+        void *data = aapBuffer->get_buffer(*aapBuffer, i);
         aapxs_midi2_processor.process(data);
     }
 
@@ -195,11 +222,11 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
     // before sending back to host, merge AAPXS SysEx8 UMPs from async extension calls
     // into the plugin's MIDI output buffer.
-    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
-        merge_ump_sequences(AAP_PORT_DIRECTION_OUTPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
-                            event_midi2_buffer, event_midi2_buffer_offset,
+    if (std::unique_lock<NanoSleepLock> tryLock(aapxs_out_merger_mutex_out, std::try_to_lock); tryLock.owns_lock()) {
+        merge_ump_sequences(AAP_PORT_DIRECTION_OUTPUT, aapxs_out_merge_buffer, event_midi2_buffer_size,
+                            aapxs_out_midi2_buffer, aapxs_out_midi2_buffer_offset,
                             getAudioPluginBuffer(), this);
-        event_midi2_buffer_offset = 0;
+        aapxs_out_midi2_buffer_offset = 0;
     }
 
 #if ANDROID

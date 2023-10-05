@@ -121,9 +121,9 @@ namespace aap {
             return 0;
         }
 
-        // Event controller (GUI) support
+        // It is used by both local and remote plugin instance
+        // (UI events for local, host UI interaction etc. for remote)
         void addEventUmpInput(void* input, int32_t size);
-        void addEventUmpOutput(void* input, int32_t size);
     };
 
 /**
@@ -150,7 +150,12 @@ namespace aap {
         aap_host_plugin_info_extension_t host_plugin_info{};
         aap_host_parameters_extension_t host_parameters_extension{};
         bool process_requested_to_host{false};
+
         AAPXSMidi2Processor aapxs_midi2_processor{};
+        NanoSleepLock aapxs_out_merger_mutex_out{};
+        void* aapxs_out_midi2_buffer{nullptr};
+        void* aapxs_out_merge_buffer{nullptr};
+        int32_t aapxs_out_midi2_buffer_offset{0};
 
         static aap_plugin_info_t
         get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
@@ -168,6 +173,7 @@ namespace aap {
                             const PluginInformation *pluginInformation,
                             AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
                             int32_t eventMidi2InputBufferSize);
+        virtual ~LocalPluginInstance();
 
         int32_t getInstanceId() override { return instance_id; }
 
@@ -202,6 +208,8 @@ namespace aap {
             plugin->prepare(plugin, getAudioPluginBuffer());
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
+
+        void addEventUmpOutput(void* input, int32_t size);
 
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 

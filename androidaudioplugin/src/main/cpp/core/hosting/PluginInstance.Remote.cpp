@@ -162,7 +162,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
     }
 #endif
 
-    // merge input from UI with the host's MIDI inputs
+    // merge input from AAPXS SysEx8 into the host's MIDI inputs
     if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
         merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
                             event_midi2_buffer, event_midi2_buffer_offset,
