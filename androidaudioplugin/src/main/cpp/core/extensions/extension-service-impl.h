@@ -14,8 +14,7 @@ namespace aap {
  */
 class PluginClientExtensionImplBase {
 
-public:
-    virtual ~PluginClientExtensionImplBase() {}
+protected:
 
     /** Optionally override this for additional initialization and resource acquisition */
     virtual void initialize() {}
@@ -23,9 +22,13 @@ public:
     /** Optionally override this for additional termination and resource releases */
     virtual void terminate() {}
 
+    /** Synchronous version of the extension caller. */
     void clientInvokePluginExtension(AAPXSClientInstance* clientInstance, int32_t messageSize, int32_t opcode) {
         clientInstance->extension_message(clientInstance, messageSize, opcode);
     }
+
+public:
+    virtual ~PluginClientExtensionImplBase() {}
 
     virtual AAPXSProxyContext asProxy(AAPXSClientInstance *clientInstance) = 0;
 };
