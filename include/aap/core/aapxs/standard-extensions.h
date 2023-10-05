@@ -117,7 +117,7 @@ public:
     int32_t getMidiMappingPolicy(std::string pluginId) {
         return withMidiExtension(0, [&](aap_midi_extension_t* ext, AndroidAudioPlugin* plugin) {
             if (ext && ext->get_mapping_policy)
-                return (int32_t) ext->get_mapping_policy(ext, plugin, pluginId.c_str());
+                return (int32_t) ext->get_mapping_policy(ext, plugin);
             else
                 return (int32_t) AAP_PARAMETERS_MAPPING_POLICY_SYSEX8;
         });
