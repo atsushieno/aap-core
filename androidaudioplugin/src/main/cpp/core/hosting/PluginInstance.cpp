@@ -170,7 +170,8 @@ void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, 
                                                         (cmidi2_ump*) sequence, (size_t) sequenceSize,
                                                         (cmidi2_ump*) mbh + 1, (size_t) mbh->length);
             mbh->length = newSize;
-            memcpy(mbh + 1, mergeTmp, newSize);
+            if (newSize > 0)
+                memcpy(mbh + 1, mergeTmp, newSize);
             return;
         }
     }
