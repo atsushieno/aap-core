@@ -264,8 +264,12 @@ fun PluginViewScope.PresetSelector(
     modifier: Modifier = Modifier,
     onPresetChange: (presetIndex: Int) -> Unit = {}
 ) {
+    // FIXME: we need to reflect the changes caused by `notify_presets_update()` in
+    //  the presets host extension.
+    val numPresets by remember { mutableIntStateOf(presetCount) }
+
     // preset list, if any
-    if (presetCount == 0)
+    if (numPresets == 0)
         return
 
     var currentPresetName by remember { mutableStateOf("-- Presets --") }
