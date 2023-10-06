@@ -32,10 +32,10 @@ void aap::AudioPluginNode::processAudio(AudioBuffer *audioData, int32_t numFrame
                 currentChannelInAudioData++;
                 break;
             case AAP_CONTENT_TYPE_MIDI2: {
-                size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
-                                           audioData->midi_capacity);
-                memcpy(aapBuffer->get_buffer(*aapBuffer, i), (const void *) audioData->midi_in,
-                       midiSize);
+                auto mbh = (AAPMidiBufferHeader*) audioData->midi_in;
+                size_t midiSize = std::min((int32_t) (sizeof(AAPMidiBufferHeader) + mbh->length),
+                                           std::min(aapBuffer->get_buffer_size(*aapBuffer, i), audioData->midi_capacity));
+                memcpy(aapBuffer->get_buffer(*aapBuffer, i), (const void *) audioData->midi_in, midiSize);
                 break;
             }
             default:
