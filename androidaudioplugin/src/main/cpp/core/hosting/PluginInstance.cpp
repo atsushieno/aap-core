@@ -168,7 +168,7 @@ void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, 
             auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
             size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeBufSize,
                                                         (cmidi2_ump*) sequence, (size_t) sequenceSize,
-                                                        (cmidi2_ump*) mbh + 1, (size_t) mbh->length);
+                                                        (cmidi2_ump*) (mbh + 1), (size_t) mbh->length);
             mbh->length = newSize;
             if (newSize > 0)
                 memcpy(mbh + 1, mergeTmp, newSize);
