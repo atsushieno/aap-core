@@ -160,6 +160,13 @@ void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char 
 	return ctx->host.get_extension(&ctx->host, uri);
 }
 
+aap_plugin_info_t aap_client_as_plugin_get_plugin_info(AndroidAudioPlugin *plugin)
+{
+    auto ctx = (AAPClientContext*) plugin->plugin_specific;
+    auto hostExt = (aap_host_plugin_info_extension_t*) ctx->host.get_extension(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
+    return hostExt->get(hostExt, &ctx->host, ctx->unique_id);
+}
+
 void aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           const char* uri,
                                                           int32_t instanceId,
@@ -241,7 +248,8 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_activate,
 		aap_client_as_plugin_process,
 		aap_client_as_plugin_deactivate,
-		aap_client_as_plugin_get_extension
+		aap_client_as_plugin_get_extension,
+		aap_client_as_plugin_get_plugin_info
 		};
 }
 

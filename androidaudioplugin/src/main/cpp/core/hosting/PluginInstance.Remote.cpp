@@ -53,7 +53,7 @@ void aap::RemotePluginInstance::configurePorts() {
 
 AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension = RemotePluginInstance::staticGetExtension;
+    plugin_host_facade.get_extension = RemotePluginInstance::internalGetHostExtension;
     return &plugin_host_facade;
 }
 
@@ -194,6 +194,16 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         ATrace_endSection();
     }
 #endif
+}
+
+void *
+aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri)  {
+    if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
+        auto instance = (RemotePluginInstance *) host->context;
+        instance->host_plugin_info.get = get_plugin_info;
+        return &instance->host_plugin_info;
+    }
+    return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
 }
 
 //----

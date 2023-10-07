@@ -99,6 +99,10 @@ typedef struct AAPXSFeature {
     /** The extension URI. */
     const char *uri;
 
+    /**
+     * AAPXS implementor's context. Only AAPXS developer should assign it and reference it.
+     * It should be host implementation agnostic (e.g. no reference to aap::RemotePluginInstance)
+     */
     void *context;
 
     /** The size of required shared memory that we allocate and use between host client and plugin service. */

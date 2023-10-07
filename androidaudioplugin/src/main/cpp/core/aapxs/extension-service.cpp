@@ -1,5 +1,6 @@
 
 #include "aap/core/aapxs/extension-service.h"
+#include "aap/ext/plugin-info.h"
 
 namespace aap {
 

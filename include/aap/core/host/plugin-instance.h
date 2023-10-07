@@ -35,6 +35,10 @@ namespace aap {
         NanoSleepLock ump_sequence_merger_mutex{};
         void merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance);
 
+        aap_host_plugin_info_extension_t host_plugin_info{};
+        static aap_plugin_info_t
+        get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
+
         int instance_id{-1};
         PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
         bool are_ports_configured{false};
@@ -147,7 +151,6 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         AAPXSInstanceMap <AAPXSServiceInstance> aapxsServiceInstances;
         LocalPluginInstanceStandardExtensionsImpl standards;
-        aap_host_plugin_info_extension_t host_plugin_info{};
         aap_host_parameters_extension_t host_parameters_extension{};
         bool process_requested_to_host{false};
 
@@ -157,12 +160,9 @@ namespace aap {
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
 
-        static aap_plugin_info_t
-        get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
-
         static void notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
 
-        static void* internalGetExtension(AndroidAudioPluginHost *host, const char *uri);
+        static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri);
         static void internalRequestProcess(AndroidAudioPluginHost *host);
 
     protected:
@@ -259,9 +259,7 @@ namespace aap {
 
         friend class RemoteAAPXSManager;
 
-        static void* staticGetExtension(AndroidAudioPluginHost* host, const char* uri) {
-            return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
-        }
+        static void* internalGetHostExtension(AndroidAudioPluginHost* host, const char* uri);
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
         aapxs_client_ipc_sender ipc_send_extension_message_impl;

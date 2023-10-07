@@ -58,7 +58,7 @@ typedef const char* (*get_string_plugin_property_func)(aap_plugin_info_t* plugin
 typedef aap_plugin_info_parameter_t (*get_plugin_info_get_parameter_func)(aap_plugin_info_t* plugin, uint32_t port);
 typedef aap_plugin_info_port_t (*get_plugin_info_get_port_func)(aap_plugin_info_t* plugin, uint32_t port);
 
-struct aap_plugin_info_t {
+typedef struct aap_plugin_info_t {
     void *context;
     get_string_plugin_property_func plugin_package_name;
     get_string_plugin_property_func plugin_local_name;
@@ -73,7 +73,7 @@ struct aap_plugin_info_t {
     get_plugin_info_get_port_func get_port;
     get_uint32_plugin_property_func get_parameter_count;
     get_plugin_info_get_parameter_func get_parameter;
-};
+} aap_plugin_info_t;
 
 #ifdef __cplusplus
 }
