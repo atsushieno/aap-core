@@ -227,7 +227,7 @@ namespace aap::midi {
         for (int i = 0; i < client->getInstanceCount(); i++) {
             auto instance = client->getInstanceByIndex(i);
             if (instance->getPluginInformation()->isInstrument())
-                return instance->getStandardExtensions().getMidiMappingPolicy(instance->getPluginInformation()->getPluginID());
+                return instance->getStandardExtensions().getMidiMappingPolicy();
         }
         return 0;
     }

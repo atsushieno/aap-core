@@ -114,7 +114,7 @@ public:
         });
     }
 
-    int32_t getMidiMappingPolicy(std::string pluginId) {
+    int32_t getMidiMappingPolicy() {
         return withMidiExtension(0, [&](aap_midi_extension_t* ext, AndroidAudioPlugin* plugin) {
             if (ext && ext->get_mapping_policy)
                 return (int32_t) ext->get_mapping_policy(ext, plugin);
