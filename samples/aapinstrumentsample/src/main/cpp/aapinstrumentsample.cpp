@@ -347,28 +347,36 @@ aap_state_extension_t state_extension{nullptr,
 };
 
 // Preset support
+
+typedef struct preset_t {
+    // a persistent ID.
+    // It should be usable forever across instancing if it is not a user preset.
+    // It does not have to match the preset "index"; the index is just an index within the collection.
+    // Unlike index, there can be skipped numbers.
+    int32_t id{0};
+
+    // preset name, might not be unique even within a plugin
+    char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
+
+    void* data;
+    int32_t data_size;
+} preset_t;
+
 uint8_t preset_data[][3] {{10}, {20}, {30}};
 
-aap_preset_t presets[3] {
+preset_t presets[3] {
     {0, "preset1", preset_data[0], sizeof(preset_data[0])},
     {1, "preset2", preset_data[1], sizeof(preset_data[1])},
     {2, "preset3", preset_data[2], sizeof(preset_data[2])}
 };
 
 int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/) {
-    return sizeof(presets) / sizeof(aap_preset_t);
+    return sizeof(presets) / sizeof(preset_t);
 }
 
-int32_t sample_plugin_get_preset_data_size(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index) {
-    return presets[index].data_size; // just for testing, no actual content.
-}
-
-void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, bool skipContent, aap_preset_t* preset) {
-    preset->index = index;
+void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, aap_preset_t* preset) {
+    preset->id = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
-    preset->data_size = presets[index].data_size;
-    if (!skipContent && preset->data_size > 0)
-        memcpy(preset->data, presets[index].data, preset->data_size);
 }
 
 int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
@@ -383,8 +391,8 @@ void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPl
 }
 
 aap_presets_extension_t presets_extension{nullptr,
+                                          nullptr,
                                           sample_plugin_get_preset_count,
-                                          sample_plugin_get_preset_data_size,
                                           sample_plugin_get_preset,
                                           sample_plugin_get_preset_index,
                                           sample_plugin_set_preset_index};

@@ -66,8 +66,9 @@ But the change is too drastic. Could we just ask host developers assign a new th
 
 Another option was to have different set of extension functions for plugins and hosts e.g. plugins implement those sync functions, and hosts implement those async functions. That would minimize the effort at both sides (AAPXS developers are responsible anyways), but that is still looking like a bloated changes.
 
-They led to the current consequence of the API (change post-0.7.8) to add `callback` argument. If it is without result handling, everything is still synchronized and the call to the extension funciton should immediately return the default value (like `0`) if it is not completed i.e. asynchronously processed.
+They led to the current consequence of the API (change post-0.7.8) to add `aapxs_callback` field in each `*_extension_t` struct. If each extension function is invoked without the callback, that means the host expects it as synchronous and the call to the extension funciton should immediately return the default value (like `0`). If it did not return the correct result, then it is either regarded as a failure or the host does not care about the result.
 
+(Adding `callback` argument to each `RT_UNSAFE` functions could be an option too, but instead of adding more arguments and dare to change the function signature, we could add the function pointer field which will be thread safe anyways.)
 
 
 ## external references

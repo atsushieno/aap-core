@@ -109,7 +109,7 @@ public:
     {
         return withPresetsExtension/*<std::string>*/("", [&](aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
             aap_preset_t result;
-            ext->get_preset(ext, plugin, index, true, &result);
+            ext->get_preset(ext, plugin, index, &result);
             return std::string{result.name};
         });
     }

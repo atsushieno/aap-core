@@ -8,11 +8,9 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include "stdint.h"
 
-#define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v2"
+#define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v3"
 
 /*
-
-  FIXME: this description mentions v3, but it is still v2!
 
   AAP Presets extension is to provide the plugin-defined or user-defined set of State binaries
   (see State extension for details).
@@ -53,23 +51,32 @@ extern "C" {
 #define AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH 256
 
 typedef struct aap_preset_t {
-    // As detailed above, it is not a persistent index; valid only within an instantiated object.
-    int32_t index{0};
+    // a persistent ID.
+    // It should be usable forever across instancing if it is not a user preset.
+    // It does not have to match the preset "index"; the index is just an index within the collection.
+    // Unlike index, there can be skipped numbers.
+    int32_t id{0};
+
+    // preset name, might not be unique even within a plugin
     char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
-    void *data;
-    int32_t data_size;
 } aap_preset_t;
 
 typedef struct aap_presets_extension_t {
+    // AAPXS context, only AAPXS developer touches it.
+    // Plugin and host developers should treat it as a reserved field and assign NULL.
     void* aapxs_context;
-    RT_UNSAFE int32_t (*get_preset_count) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
-    RT_UNSAFE int32_t (*get_preset_data_size) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
-    RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, bool skipBinary, aap_preset_t *preset);
-    RT_UNSAFE int32_t (*get_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
+    // AAPXS callback function, only AAPXS developer touches it.
+    // Plugin and host developers should treat it as a reserved field and assign NULL.
+    aapxs_completion_callback aapxs_callback;
+
+    RT_SAFE int32_t (*get_preset_count) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
+    RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset);
+    RT_SAFE int32_t (*get_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
     RT_UNSAFE void (*set_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
 } aap_presets_extension_t;
 
 typedef struct aap_presets_host_extension_t {
+    RT_UNSAFE void (*notify_preset_loaded) (aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host);
     RT_UNSAFE void (*notify_presets_update) (aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host);
 } aap_presets_host_extension_t;
 
