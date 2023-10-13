@@ -32,7 +32,7 @@ void PresetsPluginServiceExtension::onInvoked(AndroidAudioPlugin* plugin, AAPXSS
             // - 4..7 : bool skip binary or not
             aap_preset_t preset;
             int32_t index = *((int32_t *) extensionInstance->data);
-            ext->get_preset(ext, plugin, index, &preset);
+            ext->get_preset(ext, plugin, index, &preset, nullptr, nullptr); // we can pass null callback as plugins implement it in synchronous way
             // response (offset-range: content)
             // - 0..3 : stable ID
             // - 4..259 : name (fixed length char buffer)

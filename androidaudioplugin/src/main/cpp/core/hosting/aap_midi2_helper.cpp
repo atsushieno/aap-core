@@ -129,6 +129,8 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
     if (state.dataSize < 17 + uriSize)
         return false;
     memcpy(context->uri, data + 13, uriSize);
+    if (uriSize < AAP_MAX_EXTENSION_URI_SIZE)
+        context->uri[uriSize] = 0;
 
     context->opcode = aapMidi2ExtensionHelperGetUInt32(data + 13 + uriSize);
 

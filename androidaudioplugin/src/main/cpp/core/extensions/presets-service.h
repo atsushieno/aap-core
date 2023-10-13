@@ -28,16 +28,12 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
 
         aap_presets_extension_t proxy{};
 
-        static void internalDispatchAAPXSCallback(void* ext, AndroidAudioPlugin* plugin, int32_t requestId) {
-            return ((Instance *) ((aap_presets_extension_t*) ext)->aapxs_context)->dispatchAAPXSCallback(plugin, requestId);
-        }
-
         static int32_t internalGetPresetCount(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
             return ((Instance *) ext->aapxs_context)->getPresetCount();
         }
 
-        static void internalGetPreset(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset) {
-            ((Instance *) ext->aapxs_context)->getPreset(index, preset);
+        static void internalGetPreset(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset, aapxs_completion_callback callback, void* callbackContext) {
+            ((Instance *) ext->aapxs_context)->getPreset(index, preset, callback, callbackContext);
         }
 
         static int32_t internalGetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
@@ -66,16 +62,12 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
             owner->clientInvokePluginExtension(aapxsInstance, messageSize, opcode);
         }
 
-        void dispatchAAPXSCallback(AndroidAudioPlugin* plugin, int32_t requestId) {
-            // FIXME: implement
-        }
-
         int32_t getPresetCount() {
             clientInvokePluginExtension(OPCODE_GET_PRESET_COUNT, 0);
             return *((int32_t *) aapxsInstance->data);
         }
 
-        void getPreset(int32_t index, aap_preset_t *result) {
+        void getPreset(int32_t index, aap_preset_t *result, aapxs_completion_callback callback, void* callbackContext) {
             // request (offset-range: content)
             // - 0..3 : int32_t index
             *((int32_t *) aapxsInstance->data) = index;
@@ -85,6 +77,8 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
             // - 4..259 : name (fixed length char buffer)
             result->id = *((int32_t *) aapxsInstance->data);
             strncpy(result->name, (const char *) ((uint8_t *) aapxsInstance->data + sizeof(int32_t)), AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
+            // FIXME: we need to pass those arguments
+            callback(callbackContext, nullptr, 0);
         }
 
         int32_t getPresetIndex() {
@@ -99,7 +93,6 @@ class PresetsPluginClientExtension : public PluginClientExtensionImplBase {
 
         AAPXSProxyContext asProxy() {
             proxy.aapxs_context = this;
-            proxy.aapxs_callback = internalDispatchAAPXSCallback;
             proxy.get_preset_count = internalGetPresetCount;
             proxy.get_preset = internalGetPreset;
             proxy.get_preset_index = internalGetPresetIndex;

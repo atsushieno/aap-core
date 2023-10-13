@@ -374,7 +374,7 @@ int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudi
     return sizeof(presets) / sizeof(preset_t);
 }
 
-void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, aap_preset_t* preset) {
+void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, aap_preset_t* preset, aapxs_completion_callback, void*) {
     preset->id = index;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
 }
@@ -391,7 +391,6 @@ void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPl
 }
 
 aap_presets_extension_t presets_extension{nullptr,
-                                          nullptr,
                                           sample_plugin_get_preset_count,
                                           sample_plugin_get_preset,
                                           sample_plugin_get_preset_index,

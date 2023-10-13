@@ -71,7 +71,10 @@ void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t me
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
         int32_t requestId = aapxsSysEx8RequestSerial();
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, aapxsInstance, messageSize,  opcode);
+        std::promise<int32_t> promise;
+        auto future = aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, aapxsInstance, messageSize,  opcode, std::move(promise));
+        // This is a synchronous function, so we have to wait for the result...
+        future.wait();
     } else {
         // Here we have to get a native plugin instance and send extension message.
         // It is kind af annoying because we used to implement Binder-specific part only within the
@@ -85,7 +88,8 @@ void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t me
 void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t messageSize,
                                                       int32_t opcode, int32_t requestId) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        // FIXME: implement
+        aapxs_session.promises[requestId].set_value(0);
+        aapxs_session.promises.erase(requestId);
     } else {
         // nothing to do when non-realtime mode; extension functions are called synchronously.
     }

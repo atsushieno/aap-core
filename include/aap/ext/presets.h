@@ -54,7 +54,7 @@ typedef struct aap_preset_t {
     // a persistent ID.
     // It should be usable forever across instancing if it is not a user preset.
     // It does not have to match the preset "index"; the index is just an index within the collection.
-    // Unlike index, there can be skipped numbers.
+    // Unlike index, there might be skipped numbers.
     int32_t id{0};
 
     // preset name, might not be unique even within a plugin
@@ -65,12 +65,9 @@ typedef struct aap_presets_extension_t {
     // AAPXS context, only AAPXS developer touches it.
     // Plugin and host developers should treat it as a reserved field and assign NULL.
     void* aapxs_context;
-    // AAPXS callback function, only AAPXS developer touches it.
-    // Plugin and host developers should treat it as a reserved field and assign NULL.
-    aapxs_completion_callback aapxs_callback;
 
     RT_SAFE int32_t (*get_preset_count) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
-    RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset);
+    RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset, aapxs_completion_callback aapxsCallback, void* callbackData);
     RT_SAFE int32_t (*get_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
     RT_UNSAFE void (*set_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
 } aap_presets_extension_t;

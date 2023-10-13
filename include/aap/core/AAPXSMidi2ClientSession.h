@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <functional>
+#include <map>
+#include <future>
 #include "aap/aapxs.h"
 #include "aap_midi2_helper.h"
 
@@ -23,13 +25,16 @@ namespace aap {
             handle_reply = handleReply;
         }
 
-        void addSession(void (*addMidi2Event)(AAPXSMidi2ClientSession *, void *, int32_t),
+        std::map<int32_t, std::promise<int>> promises{};
+
+        std::future<int32_t> addSession(void (*addMidi2Event)(AAPXSMidi2ClientSession *, void *, int32_t),
                         void* addMidi2EventUserData,
                         int32_t group,
                         int32_t requestId,
                         AAPXSClientInstance *aapxsInstance,
                         int32_t messageSize,
-                        int32_t opcode);
+                        int32_t opcode,
+                        std::promise<int32_t> promise);
 
         void processReply(void* buffer);
     };
