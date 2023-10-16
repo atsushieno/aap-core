@@ -6,7 +6,7 @@ extern "C" {
 
 static uint32_t aapMidi2ExtensionHelperGetUInt32(uint8_t* dst) {
     if (cmidi2_util_is_platform_little_endian())
-        return dst[0] + (dst[1] << 8) + (dst[2] << 16) + (dst[1] << 24);
+        return dst[0] + (dst[1] << 8) + (dst[2] << 16) + (dst[3] << 24);
     else
         return *((uint32_t*) dst);
 }
