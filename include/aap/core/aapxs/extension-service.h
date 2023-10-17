@@ -140,7 +140,7 @@ public:
      * for each supported extension, while leaving this function to determine what extensions to provide.
      * It is called at completeInstantiation() step, for each plugin instance.
      *
-     * Returns false if any error occured.
+     * Returns false if any error occurred.
      */
     [[nodiscard]] bool setupAAPXSInstances(std::function<void(AAPXSClientInstance*)> func);
 };

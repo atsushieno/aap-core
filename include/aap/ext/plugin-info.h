@@ -19,7 +19,7 @@ extern "C" {
 #define AAP_PLUGIN_INFO_EXTENSION_URI "urn://androidaudioplugin.org/extensions/plugin-info/v3"
 
 typedef struct aap_host_plugin_info_extension_t {
-    RT_UNSAFE aap_plugin_info_t (*get) (aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
+    aap_plugin_info_t (*get) (aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
 } aap_host_plugin_info_extension_t;
 
 #ifdef __cplusplus
