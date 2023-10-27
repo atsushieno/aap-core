@@ -21,7 +21,7 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
     // error handling
     var state = InstanceState.UNPREPARED
-    var proxyError: Exception? = null
+    private var proxyError: Exception? = null
 
     private fun runCatchingRemoteException(func: () -> Unit) {
         runCatchingRemoteException(Unit) {
@@ -126,6 +126,10 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         setPortBuffer(client, instanceId, portIndex, buffer, size)
     }
 
+    fun sendExtensionRequest(uri: String, opcode: Int, buffer: ByteBuffer, offset: Int, length: Int) = runCatchingRemoteException {
+        sendExtensionRequest(client, instanceId, uri, opcode, buffer, offset, length)
+    }
+
     companion object {
         fun create(pluginId: String, sampleRate: Int, nativeClient: Long) =
             NativeRemotePluginInstance(createRemotePluginInstance(pluginId, sampleRate, nativeClient), nativeClient)
@@ -165,6 +169,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
         @JvmStatic
         external fun setPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
+
+        external fun sendExtensionRequest(nativeClient: Long, instanceId: Int, uri: String, opcode: Int, buffer: ByteBuffer, offset: Int, length: Int)
 
         // Standard Extensions
 

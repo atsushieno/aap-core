@@ -568,6 +568,21 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setPortBuffer(JNI
 	memcpy(dst, src, size);
 }
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_00024Companion_sendExtensionRequest(
+        JNIEnv *env, jobject thiz, jlong nativeClient, jint instanceId, jstring uri,
+        jint opcode, jobject buffer, jint offset, jint length) {
+    auto client = (aap::PluginClient *) (void *) nativeClient;
+    auto instance = (aap::RemotePluginInstance*) client->getInstanceById(instanceId);
+    jboolean isCopy{false};
+    auto uriChars = env->GetStringUTFChars(uri, &isCopy);
+    auto src = (uint8_t*) env->GetDirectBufferAddress(buffer);
+    instance->sendExtensionRequest(uriChars, opcode, src + offset, length);
+    if (isCopy)
+        env->ReleaseStringChars(uri, (const jchar*) uriChars);
+}
+
 
 extern "C"
 JNIEXPORT jint JNICALL

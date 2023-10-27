@@ -18,6 +18,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/plugin-client-system.cpp"
 	"core/hosting/plugin-connections.cpp"
 	"core/aapxs/extension-service.cpp"
+	"core/aapxs/presets-aapxs.cpp"
 	"core/extensions/extension-service-impl.cpp"
 	"core/extensions/midi-service.cpp"
 	"core/extensions/presets-service.cpp"

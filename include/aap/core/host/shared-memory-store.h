@@ -2,7 +2,7 @@
 #define AAP_CORE_SHARED_MEMORY_EXTENSION_H
 
 #include <sys/mman.h>
-#include "audio-plugin-host.h"
+#include "plugin-instance.h"
 
 namespace aap {
     class AbstractPluginBuffer

@@ -10,6 +10,8 @@
 #include "../aap_midi2_helper.h"
 #include "aap/core/AAPXSMidi2Processor.h"
 #include "aap/core/AAPXSMidi2ClientSession.h"
+#include "aap/unstable/aapxs-vnext.h"
+#include "aap/core/aapxs/aapxs-runtime.h"
 
 #if ANDROID
 #include <android/trace.h>
@@ -320,6 +322,13 @@ namespace aap {
 
         // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
         uint32_t aapxsSysEx8RequestSerial();
+
+        // AAPXS vNext
+        void sendExtensionRequest(const char* uri, int32_t opcode, void* data, int32_t dataSize);
+        //AAPXSInstanceManager* getAAPXSManagerVNext();
+        AAPXSInitiatorInstance* getPluginAAPXSInstance(const char * uri);
+        AAPXSRecipientInstance* getHostAAPXSInstance(const char * uri);
+        AAPXSClientManager aapxs_client_manager;
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance

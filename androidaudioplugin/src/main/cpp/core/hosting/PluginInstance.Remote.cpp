@@ -254,3 +254,25 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
     auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
     thisObj->processExtensionReply(clientInstance->uri, messageSize, opcode, requestId);
 }
+
+void aap::RemotePluginInstance::sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
+    int32_t requestId = aapxsSysEx8RequestSerial();
+    auto aapxs = getPluginAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, requestId, opcode};
+    assert(aapxs->serialization->data_capacity >= dataSize);
+    memcpy(aapxs->serialization->data, data, dataSize);
+    aapxs->serialization->data_size = dataSize;
+    aapxs->send_aapxs_request(aapxs, &context);
+}
+
+AAPXSInitiatorInstance *aap::RemotePluginInstance::getPluginAAPXSInstance(const char *uri) {
+
+    // FIXME: implement
+    return nullptr;
+}
+
+AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(const char *uri) {
+    // FIXME: implement
+    return nullptr;
+}

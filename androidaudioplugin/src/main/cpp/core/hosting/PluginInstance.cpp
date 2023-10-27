@@ -1,3 +1,4 @@
+#include <jni.h>
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
 
@@ -236,4 +237,3 @@ aap_plugin_info_t aap::PluginInstance::get_plugin_info(aap_host_plugin_info_exte
                           plugin_info_get_parameter};
     return ret;
 }
-
