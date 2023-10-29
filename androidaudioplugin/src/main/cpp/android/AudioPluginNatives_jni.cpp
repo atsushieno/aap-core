@@ -578,7 +578,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_00024Companion_se
     jboolean isCopy{false};
     auto uriChars = env->GetStringUTFChars(uri, &isCopy);
     auto src = (uint8_t*) env->GetDirectBufferAddress(buffer);
-    instance->getAAPXSManagerVNext().sendExtensionRequest(uriChars, opcode, src + offset, length, instance->aapxsRequestIdSerial());
+    instance->getAAPXSDispatcher().sendExtensionRequest(uriChars, opcode, src + offset, length, instance->aapxsRequestIdSerial());
     if (isCopy)
         env->ReleaseStringChars(uri, (const jchar*) uriChars);
 }

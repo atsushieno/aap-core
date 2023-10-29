@@ -22,7 +22,7 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this),
           feature_registry(new AAPXSFeatureRegistryServiceImpl(this)),
-          instance_manager(AAPServiceDispatcher(feature_registry.get())) {
+          aapxs_dispatcher(AAPXSServiceDispatcher(feature_registry.get())) {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
@@ -184,33 +184,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 // ---- AAPXS v2
 
 // initialization
-void aap::LocalPluginInstance::setupAAPXSServiceInstance(aap::AAPXSServiceFeatureRegistry *registry,
-                                                         aap::AAPServiceDispatcher *serviceInstances,
-                                                         AAPXSSerializationContext *serialization) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
-        // host extensions
-        serviceInstances->addInitiator(populateAAPXSInitiatorInstance(serialization), f->uri);
-        // plugin extensions
-        serviceInstances->addRecipient(populateAAPXSRecipientInstance(serialization), f->uri);
-    });
-}
-
-AAPXSRecipientInstance
-aap::LocalPluginInstance::populateAAPXSRecipientInstance(AAPXSSerializationContext *serialization) {
-    AAPXSRecipientInstance instance{this,
-                                    serialization,
-                                    staticGetNewRequestId,
-                                    staticProcessIncomingAAPXSRequest,
-                                    staticSendAAPXSReply};
-    return instance;
-}
-
-AAPXSInitiatorInstance
-aap::LocalPluginInstance::populateAAPXSInitiatorInstance(AAPXSSerializationContext *serialization) {
-    AAPXSInitiatorInstance instance{this,
-                                    serialization,
-                                    staticGetNewRequestId,
-                                    staticSendHostAAPXSRequest,
-                                    staticProcessIncomingHostAAPXSReply};
-    return instance;
+void aap::LocalPluginInstance::setupAAPXSInstances(aap::AAPXSServiceFeatureRegistry *registry,
+                                                   AAPXSSerializationContext *serialization) {
+    aapxs_dispatcher.setupInstances(registry, serialization, staticGetNewRequestId, staticGetNewRequestId);
 }

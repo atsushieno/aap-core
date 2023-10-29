@@ -245,11 +245,11 @@ uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
 
 void
 aap::AAPXSFeatureRegistryClientImpl::setupClientInstances(
-        aap::AAPClientDispatcher *client, AAPXSSerializationContext* serialization) {
-    instance->setupAAPXSClientInstances(this, client, serialization);
+        aap::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) {
+    instance->setupAAPXSInstances(this, serialization);
 }
 
 void aap::AAPXSFeatureRegistryServiceImpl::setupServiceInstances(
-        aap::AAPServiceDispatcher *service, AAPXSSerializationContext* serialization) {
-    instance->setupAAPXSServiceInstance(this, service, serialization);
+        aap::AAPXSServiceDispatcher *service, AAPXSSerializationContext* serialization) {
+    instance->setupAAPXSInstances(this, serialization);
 }
