@@ -244,14 +244,14 @@ namespace aap {
         AAPXSRecipientInstance* getPluginAAPXSInstance(int32_t urid);
         AAPXSInitiatorInstance* getHostAAPXSInstance(int32_t urid);
 
-        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
-        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
-
         void setupAAPXSServiceInstance(AAPXSServiceFeatureRegistry *registry,
                                        AAPXSServiceInstanceManagerVNext *serviceInstances,
                                        AAPXSSerializationContext *serialization);
 
     private:
+        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
+        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
+
         std::unique_ptr<AAPXSFeatureRegistryServiceImpl> feature_registry;
         AAPXSServiceInstanceManagerVNext instance_manager;
         static inline void staticSendHostAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
@@ -372,9 +372,8 @@ namespace aap {
 
         // AAPXS v2
         void sendExtensionRequest(const char* uri, int32_t opcode, void* data, int32_t dataSize);
-
-        void processHostExtensionRequest(const char *uri, int32_t messageSize, int32_t opcode,
-                                         int32_t requestId);
+        void processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
+        void processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
         void sendHostExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
         //AAPXSInstanceManager* getAAPXSManagerVNext();
         AAPXSInitiatorInstance* getPluginAAPXSInstance(const char * uri);
@@ -382,15 +381,15 @@ namespace aap {
         AAPXSInitiatorInstance* getPluginAAPXSInstance(int32_t urid);
         AAPXSRecipientInstance* getHostAAPXSInstance(int32_t urid);
 
-        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
-        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
-
         // delegated implementation for AAPXSFeatureRegistryClientImpl
         void setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry,
                                        aap::AAPXSClientInstanceManagerVNext *clientInstances,
                                        AAPXSSerializationContext *serialization);
 
     private:
+        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
+        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
+
         std::unique_ptr<AAPXSFeatureRegistryClientImpl> feature_registry;
         AAPXSClientInstanceManagerVNext instance_manager;
         static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
@@ -400,7 +399,7 @@ namespace aap {
             ((RemotePluginInstance*) instance->host_context)->processExtensionReply(context->uri, context->serialization->data_size, context->opcode, context->request_id);
         }
         static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-            ((RemotePluginInstance*) instance->host_context)->processHostExtensionRequest(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+            ((RemotePluginInstance*) instance->host_context)->processHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
         }
         static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
             ((RemotePluginInstance*) instance->host_context)->sendHostExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);

@@ -181,11 +181,16 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 #endif
 }
 
+// ---- AAPXS v2
+
+// initialization
 void aap::LocalPluginInstance::setupAAPXSServiceInstance(aap::AAPXSServiceFeatureRegistry *registry,
                                                          aap::AAPXSServiceInstanceManagerVNext *serviceInstances,
                                                          AAPXSSerializationContext *serialization) {
     std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
+        // host extensions
         serviceInstances->addInitiator(populateAAPXSInitiatorInstance(serialization), f->uri);
+        // plugin extensions
         serviceInstances->addRecipient(populateAAPXSRecipientInstance(serialization), f->uri);
     });
 }
@@ -210,12 +215,41 @@ aap::LocalPluginInstance::populateAAPXSInitiatorInstance(AAPXSSerializationConte
     return instance;
 }
 
+// get by Uri/Urid
+AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(const char *uri) {
+    return &instance_manager.getPluginAAPXSByUri(uri);
+}
+
+AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(int32_t urid) {
+    return &instance_manager.getPluginAAPXSByUrid(urid);
+}
+
+AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(const char *uri) {
+    return &instance_manager.getHostAAPXSByUri(uri);
+}
+
+AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(int32_t urid) {
+    return &instance_manager.getHostAAPXSByUrid(urid);
+}
+
+// send/receive
 void aap::LocalPluginInstance::processExtensionRequest(const char *uri, int32_t messageSize,
                                                        int32_t opcode, int32_t requestId) {
     auto aapxs = getPluginAAPXSInstance(uri);
     assert(aapxs != nullptr);
     AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
     aapxs->process_incoming_aapxs_request(aapxs, &context);
+}
+
+void aap::LocalPluginInstance::sendExtensionReply(const char *uri, int32_t opcode, void *data,
+                                                  int32_t dataSize, int32_t requestId) {
+    auto aapxs = getPluginAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
+    assert(aapxs->serialization->data_capacity >= dataSize);
+    memcpy(aapxs->serialization->data, data, dataSize);
+    aapxs->serialization->data_size = dataSize;
+    aapxs->send_aapxs_reply(aapxs, &context);
 }
 
 void aap::LocalPluginInstance::sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
@@ -231,34 +265,8 @@ void aap::LocalPluginInstance::sendHostExtensionRequest(const char* uri, int32_t
 
 void aap::LocalPluginInstance::processHostExtensionReply(const char *uri, int32_t messageSize,
                                                          int32_t opcode, int32_t requestId) {
-    // FIXME: implement
-    //  should be almost the same as client plugin extension reply handler (that means, we need aapxs_session here too)
-    throw std::runtime_error("FIXME: implement");
-}
-
-void aap::LocalPluginInstance::sendExtensionReply(const char *uri, int32_t opcode, void *data,
-                                                       int32_t dataSize, int32_t requestId) {
-    auto aapxs = getPluginAAPXSInstance(uri);
+    auto aapxs = getHostAAPXSInstance(uri);
     assert(aapxs != nullptr);
     AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_reply(aapxs, &context);
-}
-
-AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(const char *uri) {
-    return &instance_manager.getPluginAAPXSByUri(uri);
-}
-
-AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(int32_t urid) {
-    return &instance_manager.getPluginAAPXSByUrid(urid);
-}
-
-AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(const char *uri) {
-    return &instance_manager.getHostAAPXSByUri(uri);
-}
-
-AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(int32_t urid) {
-    return &instance_manager.getHostAAPXSByUrid(urid);
+    aapxs->process_incoming_aapxs_reply(aapxs, &context);
 }

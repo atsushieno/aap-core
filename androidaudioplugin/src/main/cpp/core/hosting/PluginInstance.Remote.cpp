@@ -97,11 +97,6 @@ void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t m
     }
 }
 
-void aap::RemotePluginInstance::processHostExtensionRequest(const char *uri, int32_t messageSize,
-                                                      int32_t opcode, int32_t requestId) {
-    assert(false); // FIXME: implement
-}
-
 void aap::RemotePluginInstance::prepare(int frameCount) {
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
@@ -257,42 +252,18 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
     thisObj->processExtensionReply(clientInstance->uri, messageSize, opcode, requestId);
 }
 
-void aap::RemotePluginInstance::sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
-    int32_t requestId = aapxsRequestIdSerial();
-    auto aapxs = getPluginAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_request(aapxs, &context);
-}
+// ---- AAPXS v2
 
-void aap::RemotePluginInstance::sendHostExtensionReply(const char *uri, int32_t opcode, void *data,
-                                                       int32_t dataSize, int32_t requestId) {
-    auto aapxs = getHostAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_reply(aapxs, &context);
-}
-
-AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(const char *uri) {
-    return &instance_manager.getPluginAAPXSByUri(uri);
-}
-
-AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(int32_t urid) {
-    return &instance_manager.getPluginAAPXSByUrid(urid);
-}
-
-AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(const char *uri) {
-    return &instance_manager.getHostAAPXSByUri(uri);
-}
-
-AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(int32_t urid) {
-    return &instance_manager.getHostAAPXSByUrid(urid);
+// initialization
+void aap::RemotePluginInstance::setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry,
+                                                          aap::AAPXSClientInstanceManagerVNext *clientInstances,
+                                                          AAPXSSerializationContext *serialization) {
+    std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
+        // plugin extensions
+        clientInstances->addInitiator(populateAAPXSInitiatorInstance(serialization), f->uri);
+        // host extensions
+        clientInstances->addRecipient(populateAAPXSRecipientInstance(serialization), f->uri);
+    });
 }
 
 AAPXSInitiatorInstance aap::RemotePluginInstance::populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization) {
@@ -314,13 +285,56 @@ AAPXSRecipientInstance aap::RemotePluginInstance::populateAAPXSRecipientInstance
     return instance;
 }
 
-void
-aap::RemotePluginInstance::setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry, aap::AAPXSClientInstanceManagerVNext *clientInstances,
-                                                     AAPXSSerializationContext *serialization) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
-        // plugin extensions
-        clientInstances->addInitiator(populateAAPXSInitiatorInstance(serialization), f->uri);
-        // host extensions
-        clientInstances->addRecipient(populateAAPXSRecipientInstance(serialization), f->uri);
-    });
+// get by Uri/Urid
+AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(const char *uri) {
+    return &instance_manager.getPluginAAPXSByUri(uri);
+}
+
+AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(int32_t urid) {
+    return &instance_manager.getPluginAAPXSByUrid(urid);
+}
+
+AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(const char *uri) {
+    return &instance_manager.getHostAAPXSByUri(uri);
+}
+
+AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(int32_t urid) {
+    return &instance_manager.getHostAAPXSByUrid(urid);
+}
+
+// send/receive
+void aap::RemotePluginInstance::sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
+    int32_t requestId = aapxsRequestIdSerial();
+    auto aapxs = getPluginAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
+    assert(aapxs->serialization->data_capacity >= dataSize);
+    memcpy(aapxs->serialization->data, data, dataSize);
+    aapxs->serialization->data_size = dataSize;
+    aapxs->send_aapxs_request(aapxs, &context);
+}
+
+void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId) {
+    auto aapxs = getPluginAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
+    aapxs->process_incoming_aapxs_reply(aapxs, &context);
+}
+
+void aap::RemotePluginInstance::processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId) {
+    auto aapxs = getHostAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
+    aapxs->process_incoming_aapxs_request(aapxs, &context);
+}
+
+void aap::RemotePluginInstance::sendHostExtensionReply(const char *uri, int32_t opcode, void *data,
+                                                       int32_t dataSize, int32_t requestId) {
+    auto aapxs = getHostAAPXSInstance(uri);
+    assert(aapxs != nullptr);
+    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
+    assert(aapxs->serialization->data_capacity >= dataSize);
+    memcpy(aapxs->serialization->data, data, dataSize);
+    aapxs->serialization->data_size = dataSize;
+    aapxs->send_aapxs_reply(aapxs, &context);
 }
