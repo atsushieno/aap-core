@@ -17,7 +17,7 @@ typedef struct AAPXSRequestContext {
     void* callback_user_data;
     AAPXSSerializationContext* serialization;
     const char * uri;
-    int32_t request_id;
+    uint32_t request_id;
     int32_t opcode;
 } AAPXSRequestContext;
 
@@ -36,7 +36,7 @@ typedef struct AAPXSInitiatorInstance {
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer, for async implementation
     // - FIXME: this may become framework reference implementation
-    int32_t (*get_new_request_id) (AAPXSInitiatorInstance* instance);
+    uint32_t (*get_new_request_id) (AAPXSInitiatorInstance* instance);
 
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer
@@ -56,7 +56,7 @@ typedef struct AAPXSRecipientInstance {
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer, for async implementation
     // - FIXME: this may become framework reference implementation
-    int32_t (*get_new_request_id) (AAPXSRecipientInstance* instance);
+    uint32_t (*get_new_request_id) (AAPXSRecipientInstance* instance);
 
     // assigned by: AAPXS developer
     // invoked by: framework reference implementation

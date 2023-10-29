@@ -135,14 +135,14 @@ namespace aap {
         void addEventUmpInput(void* input, int32_t size);
 
         // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
-        uint32_t aapxsRequestIdSerial();
+        static uint32_t aapxsRequestIdSerial();
 
     protected:
         // AAPXS v2
-        static inline int32_t staticGetNewRequestId(AAPXSInitiatorInstance* instance) {
+        static inline uint32_t staticGetNewRequestId(AAPXSInitiatorInstance* instance) {
             return ((PluginInstance*) instance->host_context)->aapxsRequestIdSerial();
         }
-        static inline int32_t staticGetNewRequestId(AAPXSRecipientInstance * instance) {
+        static inline uint32_t staticGetNewRequestId(AAPXSRecipientInstance * instance) {
             return ((PluginInstance*) instance->host_context)->aapxsRequestIdSerial();
         }
     };
@@ -233,19 +233,9 @@ namespace aap {
         void requestProcessToHost();
 
         // AAPXS v2
-        void processExtensionRequest(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
-        void sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize);
-        void processHostExtensionReply(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
-        void sendExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
-
-        //AAPXSInstanceManager* getAAPXSManagerVNext();
-        AAPXSRecipientInstance* getPluginAAPXSInstance(const char * uri);
-        AAPXSInitiatorInstance* getHostAAPXSInstance(const char * uri);
-        AAPXSRecipientInstance* getPluginAAPXSInstance(int32_t urid);
-        AAPXSInitiatorInstance* getHostAAPXSInstance(int32_t urid);
-
+        AAPServiceDispatcher& getAAPXSManagerVNext() { return instance_manager; }
         void setupAAPXSServiceInstance(AAPXSServiceFeatureRegistry *registry,
-                                       AAPXSServiceInstanceManagerVNext *serviceInstances,
+                                       AAPServiceDispatcher *serviceInstances,
                                        AAPXSSerializationContext *serialization);
 
     private:
@@ -253,18 +243,22 @@ namespace aap {
         AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
 
         std::unique_ptr<AAPXSFeatureRegistryServiceImpl> feature_registry;
-        AAPXSServiceInstanceManagerVNext instance_manager;
+        AAPServiceDispatcher instance_manager;
         static inline void staticSendHostAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-            ((LocalPluginInstance*) instance->host_context)->sendHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size);
+            auto manager = ((LocalPluginInstance*) instance->host_context)->instance_manager;
+            manager.sendHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, aapxsRequestIdSerial());
         }
         static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-            ((LocalPluginInstance*) instance->host_context)->processExtensionRequest(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+            auto manager = ((LocalPluginInstance*) instance->host_context)->instance_manager;
+            manager.processExtensionRequest(context->uri, context->opcode, context->request_id);
         }
         static inline void staticProcessIncomingHostAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-            ((LocalPluginInstance*) instance->host_context)->processHostExtensionReply(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+            auto manager = ((LocalPluginInstance*) instance->host_context)->instance_manager;
+            manager.processHostExtensionReply(context->uri, context->opcode, context->request_id);
         }
         static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-            ((LocalPluginInstance*) instance->host_context)->sendExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+            auto manager = ((LocalPluginInstance*) instance->host_context)->instance_manager;
+            manager.sendExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
         }
     };
 
@@ -371,19 +365,10 @@ namespace aap {
         void connectRemoteNativeView(int32_t width, int32_t height);
 
         // AAPXS v2
-        void sendExtensionRequest(const char* uri, int32_t opcode, void* data, int32_t dataSize);
-        void processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
-        void processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
-        void sendHostExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
-        //AAPXSInstanceManager* getAAPXSManagerVNext();
-        AAPXSInitiatorInstance* getPluginAAPXSInstance(const char * uri);
-        AAPXSRecipientInstance* getHostAAPXSInstance(const char * uri);
-        AAPXSInitiatorInstance* getPluginAAPXSInstance(int32_t urid);
-        AAPXSRecipientInstance* getHostAAPXSInstance(int32_t urid);
-
+        inline AAPClientDispatcher& getAAPXSManagerVNext() { return instance_manager; }
         // delegated implementation for AAPXSFeatureRegistryClientImpl
         void setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry,
-                                       aap::AAPXSClientInstanceManagerVNext *clientInstances,
+                                       aap::AAPClientDispatcher *clientInstances,
                                        AAPXSSerializationContext *serialization);
 
     private:
@@ -391,18 +376,22 @@ namespace aap {
         AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
 
         std::unique_ptr<AAPXSFeatureRegistryClientImpl> feature_registry;
-        AAPXSClientInstanceManagerVNext instance_manager;
+        AAPClientDispatcher instance_manager;
         static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-            ((RemotePluginInstance*) instance->host_context)->sendExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size);
+            auto manager = ((RemotePluginInstance*) instance->host_context)->instance_manager;
+            manager.sendExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, aapxsRequestIdSerial());
         }
         static inline void staticProcessIncomingAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-            ((RemotePluginInstance*) instance->host_context)->processExtensionReply(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+            auto manager = ((RemotePluginInstance*) instance->host_context)->instance_manager;
+            manager.processExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
         }
         static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-            ((RemotePluginInstance*) instance->host_context)->processHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+            auto manager = ((RemotePluginInstance*) instance->host_context)->instance_manager;
+            manager.processHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
         }
         static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-            ((RemotePluginInstance*) instance->host_context)->sendHostExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+            auto manager = ((RemotePluginInstance*) instance->host_context)->instance_manager;
+            manager.sendHostExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
         }
     };
 
@@ -435,7 +424,7 @@ namespace aap {
     public:
         AAPXSFeatureRegistryClientImpl(RemotePluginInstance* instance) : instance(instance) {}
 
-        void setupClientInstances(aap::AAPXSClientInstanceManagerVNext *client, AAPXSSerializationContext* serialization) override;
+        void setupClientInstances(aap::AAPClientDispatcher *client, AAPXSSerializationContext* serialization) override;
     };
 
     class AAPXSFeatureRegistryServiceImpl : public AAPXSServiceFeatureRegistry {
@@ -443,7 +432,7 @@ namespace aap {
     public:
         AAPXSFeatureRegistryServiceImpl(LocalPluginInstance* instance) : instance(instance) {}
 
-        void setupServiceInstances(aap::AAPXSServiceInstanceManagerVNext *client, AAPXSSerializationContext* serialization) override;
+        void setupServiceInstances(aap::AAPServiceDispatcher *client, AAPXSSerializationContext* serialization) override;
     };
 }
 

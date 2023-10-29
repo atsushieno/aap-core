@@ -22,7 +22,7 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this),
           feature_registry(new AAPXSFeatureRegistryServiceImpl(this)),
-          instance_manager(AAPXSServiceInstanceManagerVNext(feature_registry.get())) {
+          instance_manager(AAPServiceDispatcher(feature_registry.get())) {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
@@ -185,7 +185,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
 // initialization
 void aap::LocalPluginInstance::setupAAPXSServiceInstance(aap::AAPXSServiceFeatureRegistry *registry,
-                                                         aap::AAPXSServiceInstanceManagerVNext *serviceInstances,
+                                                         aap::AAPServiceDispatcher *serviceInstances,
                                                          AAPXSSerializationContext *serialization) {
     std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
         // host extensions
@@ -213,60 +213,4 @@ aap::LocalPluginInstance::populateAAPXSInitiatorInstance(AAPXSSerializationConte
                                     staticSendHostAAPXSRequest,
                                     staticProcessIncomingHostAAPXSReply};
     return instance;
-}
-
-// get by Uri/Urid
-AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(const char *uri) {
-    return &instance_manager.getPluginAAPXSByUri(uri);
-}
-
-AAPXSRecipientInstance* aap::LocalPluginInstance::getPluginAAPXSInstance(int32_t urid) {
-    return &instance_manager.getPluginAAPXSByUrid(urid);
-}
-
-AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(const char *uri) {
-    return &instance_manager.getHostAAPXSByUri(uri);
-}
-
-AAPXSInitiatorInstance *aap::LocalPluginInstance::getHostAAPXSInstance(int32_t urid) {
-    return &instance_manager.getHostAAPXSByUrid(urid);
-}
-
-// send/receive
-void aap::LocalPluginInstance::processExtensionRequest(const char *uri, int32_t messageSize,
-                                                       int32_t opcode, int32_t requestId) {
-    auto aapxs = getPluginAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    aapxs->process_incoming_aapxs_request(aapxs, &context);
-}
-
-void aap::LocalPluginInstance::sendExtensionReply(const char *uri, int32_t opcode, void *data,
-                                                  int32_t dataSize, int32_t requestId) {
-    auto aapxs = getPluginAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_reply(aapxs, &context);
-}
-
-void aap::LocalPluginInstance::sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
-    int32_t requestId = aapxsRequestIdSerial();
-    auto aapxs = getHostAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_request(aapxs, &context);
-}
-
-void aap::LocalPluginInstance::processHostExtensionReply(const char *uri, int32_t messageSize,
-                                                         int32_t opcode, int32_t requestId) {
-    auto aapxs = getHostAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    aapxs->process_incoming_aapxs_reply(aapxs, &context);
 }

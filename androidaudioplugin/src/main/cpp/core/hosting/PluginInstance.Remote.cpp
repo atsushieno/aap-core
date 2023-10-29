@@ -17,7 +17,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new AAPXSFeatureRegistryClientImpl(this)),
-          instance_manager(AAPXSClientInstanceManagerVNext(feature_registry.get())) {
+          instance_manager(AAPClientDispatcher(feature_registry.get())) {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
@@ -256,7 +256,7 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
 
 // initialization
 void aap::RemotePluginInstance::setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry,
-                                                          aap::AAPXSClientInstanceManagerVNext *clientInstances,
+                                                          aap::AAPClientDispatcher *clientInstances,
                                                           AAPXSSerializationContext *serialization) {
     std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
         // plugin extensions
@@ -283,58 +283,4 @@ AAPXSRecipientInstance aap::RemotePluginInstance::populateAAPXSRecipientInstance
                                     staticProcessIncomingAAPXSRequest,
                                     staticSendAAPXSReply};
     return instance;
-}
-
-// get by Uri/Urid
-AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(const char *uri) {
-    return &instance_manager.getPluginAAPXSByUri(uri);
-}
-
-AAPXSInitiatorInstance* aap::RemotePluginInstance::getPluginAAPXSInstance(int32_t urid) {
-    return &instance_manager.getPluginAAPXSByUrid(urid);
-}
-
-AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(const char *uri) {
-    return &instance_manager.getHostAAPXSByUri(uri);
-}
-
-AAPXSRecipientInstance *aap::RemotePluginInstance::getHostAAPXSInstance(int32_t urid) {
-    return &instance_manager.getHostAAPXSByUrid(urid);
-}
-
-// send/receive
-void aap::RemotePluginInstance::sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize) {
-    int32_t requestId = aapxsRequestIdSerial();
-    auto aapxs = getPluginAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_request(aapxs, &context);
-}
-
-void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId) {
-    auto aapxs = getPluginAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    aapxs->process_incoming_aapxs_reply(aapxs, &context);
-}
-
-void aap::RemotePluginInstance::processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId) {
-    auto aapxs = getHostAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    aapxs->process_incoming_aapxs_request(aapxs, &context);
-}
-
-void aap::RemotePluginInstance::sendHostExtensionReply(const char *uri, int32_t opcode, void *data,
-                                                       int32_t dataSize, int32_t requestId) {
-    auto aapxs = getHostAAPXSInstance(uri);
-    assert(aapxs != nullptr);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs->serialization, uri, requestId, opcode};
-    assert(aapxs->serialization->data_capacity >= dataSize);
-    memcpy(aapxs->serialization->data, data, dataSize);
-    aapxs->serialization->data_size = dataSize;
-    aapxs->send_aapxs_reply(aapxs, &context);
 }

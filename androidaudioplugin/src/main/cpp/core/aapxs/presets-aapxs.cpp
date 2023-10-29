@@ -107,7 +107,7 @@ void aap::PresetsClientAAPXS::getPresetIntCallback(void* callbackContext, Androi
 int32_t aap::PresetsClientAAPXS::callIntPresetFunction(int32_t opcode) {
     // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
     std::promise<int32_t> promise{};
-    int32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
+    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     auto future = promise.get_future();
     WithPromise<PresetsClientAAPXS, int32_t> callbackData{this, &promise};
     AAPXSRequestContext request{getPresetIntCallback, &callbackData, serialization, AAP_PRESETS_EXTENSION_URI, requestId, opcode};
@@ -135,7 +135,7 @@ void aap::PresetsClientAAPXS::getPresetCallback(void* callbackContext, AndroidAu
 
 void aap::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {
     std::promise<int32_t> promise{};
-    int32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
+    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     auto future = promise.get_future();
     WithPromise<PresetsClientAAPXS, int32_t> callbackData{this, &promise};
     AAPXSRequestContext request{getPresetCallback, &callbackData, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_GET_PRESET_DATA};
@@ -154,7 +154,7 @@ void aap::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {
 
 void aap::PresetsClientAAPXS::setPresetIndex(int32_t index) {
     // we do not wait for the result, so no promise<T> involved
-    int32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
+    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     AAPXSRequestContext request{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_GET_PRESET_DATA};
 
     *(int32_t*) (serialization->data) = index;
@@ -164,13 +164,13 @@ void aap::PresetsClientAAPXS::setPresetIndex(int32_t index) {
 // Strongly-typed service implementation
 
 void aap::PresetsServiceAAPXS::notifyPresetLoaded() {
-    int32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
+    uint32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
     AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_LOADED};
     recipientInstance->process_incoming_aapxs_request(recipientInstance, &context);
 }
 
 void aap::PresetsServiceAAPXS::notifyPresetsUpdated() {
-    int32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
+    uint32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
     AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_UPDATED};
     recipientInstance->process_incoming_aapxs_request(recipientInstance, &context);
 }

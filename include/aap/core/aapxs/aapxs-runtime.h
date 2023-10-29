@@ -105,13 +105,13 @@ namespace aap {
     class AAPXSClientFeatureRegistry;
     class AAPXSServiceFeatureRegistry;
 
-    class AAPXSClientInstanceManagerVNext {
+    class AAPClientDispatcher {
         //AAPXSFeatureRegistry* registry;
         AAPXSInitiatorInstanceMap initiators{};
         AAPXSRecipientInstanceMap recipients{};
 
     public:
-        AAPXSClientInstanceManagerVNext(AAPXSClientFeatureRegistry* registry);
+        AAPClientDispatcher(AAPXSClientFeatureRegistry* registry);
 
         inline void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
@@ -120,14 +120,19 @@ namespace aap {
         inline AAPXSInitiatorInstance& getPluginAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
         inline AAPXSRecipientInstance& getHostAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
         inline AAPXSRecipientInstance& getHostAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
+
+        void sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, uint32_t requestId);
+        void processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, uint32_t requestId);
+        void sendHostExtensionReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
     };
 
-    class AAPXSServiceInstanceManagerVNext {
+    class AAPServiceDispatcher {
         AAPXSInitiatorInstanceMap initiators{};
         AAPXSRecipientInstanceMap recipients{};
 
     public:
-        AAPXSServiceInstanceManagerVNext(AAPXSServiceFeatureRegistry* registry);
+        AAPServiceDispatcher(AAPXSServiceFeatureRegistry* registry);
 
         void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
@@ -136,16 +141,21 @@ namespace aap {
         AAPXSRecipientInstance& getPluginAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
         AAPXSInitiatorInstance& getHostAAPXSByUri(const char* uri) { return initiators.getByUri(uri); }
         AAPXSInitiatorInstance& getHostAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
+
+        void processExtensionRequest(const char *uri, int32_t opcode, uint32_t requestId);
+        void sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void processHostExtensionReply(const char *uri, int32_t opcode, uint32_t requestId);
+        void sendExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, uint32_t requestId);
     };
 
     class AAPXSClientFeatureRegistry : public AAPXSFeatureMapVNext<AAPXSFeatureVNext*> {
     public:
-        virtual void setupClientInstances(aap::AAPXSClientInstanceManagerVNext *client, AAPXSSerializationContext* serialization) = 0;
+        virtual void setupClientInstances(aap::AAPClientDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };
 
     class AAPXSServiceFeatureRegistry : public AAPXSFeatureMapVNext<AAPXSFeatureVNext*> {
     public:
-        virtual void setupServiceInstances(aap::AAPXSServiceInstanceManagerVNext *client, AAPXSSerializationContext* serialization) = 0;
+        virtual void setupServiceInstances(aap::AAPServiceDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };
 }
 
