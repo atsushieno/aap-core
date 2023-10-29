@@ -16,10 +16,12 @@ typedef struct AAPXSRequestContext {
     aapxs_completion_callback callback;
     void* callback_user_data;
     AAPXSSerializationContext* serialization;
+    const char * uri;
     int32_t request_id;
     int32_t opcode;
 } AAPXSRequestContext;
 
+// Stores audio processing shared memory buffers (could be used without binder)
 typedef struct AAPXSProxyContextVNext {
     const char* uri;
     void* extension;
@@ -28,6 +30,7 @@ typedef struct AAPXSProxyContextVNext {
 
 // client instance for plugin extension API, and service instance for host extension API
 typedef struct AAPXSInitiatorInstance {
+    void* host_context;
     AAPXSSerializationContext* serialization;
 
     // assigned by: framework reference implementation
@@ -47,6 +50,7 @@ typedef struct AAPXSInitiatorInstance {
 
 // service instance for plugin extension API, and client instance for host extension API
 typedef struct AAPXSRecipientInstance {
+    void* host_context;
     AAPXSSerializationContext* serialization;
 
     // assigned by: framework reference implementation

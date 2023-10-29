@@ -23,6 +23,9 @@ namespace aap {
     class PluginHost;
     class PluginClient;
 
+    class AAPXSFeatureRegistryClientImpl;
+    class AAPXSFeatureRegistryServiceImpl;
+
 /**
  * The common basis for client RemotePluginInstance and service LocalPluginInstance.
  *
@@ -130,6 +133,18 @@ namespace aap {
         // It is used by both local and remote plugin instance
         // (UI events for local, host UI interaction etc. for remote)
         void addEventUmpInput(void* input, int32_t size);
+
+        // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
+        uint32_t aapxsRequestIdSerial();
+
+    protected:
+        // AAPXS v2
+        static inline int32_t staticGetNewRequestId(AAPXSInitiatorInstance* instance) {
+            return ((PluginInstance*) instance->host_context)->aapxsRequestIdSerial();
+        }
+        static inline int32_t staticGetNewRequestId(AAPXSRecipientInstance * instance) {
+            return ((PluginInstance*) instance->host_context)->aapxsRequestIdSerial();
+        }
     };
 
 /**
@@ -216,6 +231,41 @@ namespace aap {
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 
         void requestProcessToHost();
+
+        // AAPXS v2
+        void processExtensionRequest(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
+        void sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize);
+        void processHostExtensionReply(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
+        void sendExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
+
+        //AAPXSInstanceManager* getAAPXSManagerVNext();
+        AAPXSRecipientInstance* getPluginAAPXSInstance(const char * uri);
+        AAPXSInitiatorInstance* getHostAAPXSInstance(const char * uri);
+        AAPXSRecipientInstance* getPluginAAPXSInstance(int32_t urid);
+        AAPXSInitiatorInstance* getHostAAPXSInstance(int32_t urid);
+
+        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
+        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
+
+        void setupAAPXSServiceInstance(AAPXSServiceFeatureRegistry *registry,
+                                       AAPXSServiceInstanceManagerVNext *serviceInstances,
+                                       AAPXSSerializationContext *serialization);
+
+    private:
+        std::unique_ptr<AAPXSFeatureRegistryServiceImpl> feature_registry;
+        AAPXSServiceInstanceManagerVNext instance_manager;
+        static inline void staticSendHostAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+            ((LocalPluginInstance*) instance->host_context)->sendHostExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size);
+        }
+        static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+            ((LocalPluginInstance*) instance->host_context)->processExtensionRequest(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+        }
+        static inline void staticProcessIncomingHostAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+            ((LocalPluginInstance*) instance->host_context)->processHostExtensionReply(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+        }
+        static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+            ((LocalPluginInstance*) instance->host_context)->sendExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+        }
     };
 
     typedef void(*aapxs_client_ipc_sender)(void* context,
@@ -320,15 +370,41 @@ namespace aap {
         // These steps will have to be done separately, because each of them will involve UI loop.
         void connectRemoteNativeView(int32_t width, int32_t height);
 
-        // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
-        uint32_t aapxsSysEx8RequestSerial();
-
-        // AAPXS vNext
+        // AAPXS v2
         void sendExtensionRequest(const char* uri, int32_t opcode, void* data, int32_t dataSize);
+
+        void processHostExtensionRequest(const char *uri, int32_t messageSize, int32_t opcode,
+                                         int32_t requestId);
+        void sendHostExtensionReply(const char* uri, int32_t opcode, void* data, int32_t dataSize, int32_t requestId);
         //AAPXSInstanceManager* getAAPXSManagerVNext();
         AAPXSInitiatorInstance* getPluginAAPXSInstance(const char * uri);
         AAPXSRecipientInstance* getHostAAPXSInstance(const char * uri);
-        AAPXSClientManager aapxs_client_manager;
+        AAPXSInitiatorInstance* getPluginAAPXSInstance(int32_t urid);
+        AAPXSRecipientInstance* getHostAAPXSInstance(int32_t urid);
+
+        AAPXSInitiatorInstance populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization);
+        AAPXSRecipientInstance populateAAPXSRecipientInstance(AAPXSSerializationContext* serialization);
+
+        // delegated implementation for AAPXSFeatureRegistryClientImpl
+        void setupAAPXSClientInstances(aap::AAPXSClientFeatureRegistry *registry,
+                                       aap::AAPXSClientInstanceManagerVNext *clientInstances,
+                                       AAPXSSerializationContext *serialization);
+
+    private:
+        std::unique_ptr<AAPXSFeatureRegistryClientImpl> feature_registry;
+        AAPXSClientInstanceManagerVNext instance_manager;
+        static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+            ((RemotePluginInstance*) instance->host_context)->sendExtensionRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size);
+        }
+        static inline void staticProcessIncomingAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+            ((RemotePluginInstance*) instance->host_context)->processExtensionReply(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+        }
+        static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+            ((RemotePluginInstance*) instance->host_context)->processHostExtensionRequest(context->uri, context->serialization->data_size, context->opcode, context->request_id);
+        }
+        static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+            ((RemotePluginInstance*) instance->host_context)->sendHostExtensionReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+        }
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance
@@ -355,6 +431,21 @@ namespace aap {
         AAPXSClientInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) override;
     };
 
+    class AAPXSFeatureRegistryClientImpl : public AAPXSClientFeatureRegistry {
+        RemotePluginInstance* instance;
+    public:
+        AAPXSFeatureRegistryClientImpl(RemotePluginInstance* instance) : instance(instance) {}
+
+        void setupClientInstances(aap::AAPXSClientInstanceManagerVNext *client, AAPXSSerializationContext* serialization) override;
+    };
+
+    class AAPXSFeatureRegistryServiceImpl : public AAPXSServiceFeatureRegistry {
+        LocalPluginInstance* instance;
+    public:
+        AAPXSFeatureRegistryServiceImpl(LocalPluginInstance* instance) : instance(instance) {}
+
+        void setupServiceInstances(aap::AAPXSServiceInstanceManagerVNext *client, AAPXSSerializationContext* serialization) override;
+    };
 }
 
 #endif //AAP_CORE_AUDIO_PLUGIN_INSTANCE_H

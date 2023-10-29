@@ -237,3 +237,19 @@ aap_plugin_info_t aap::PluginInstance::get_plugin_info(aap_host_plugin_info_exte
                           plugin_info_get_parameter};
     return ret;
 }
+
+uint32_t aapxs_request_id_serial{0};
+uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
+    return aapxs_request_id_serial++;
+}
+
+void
+aap::AAPXSFeatureRegistryClientImpl::setupClientInstances(
+        aap::AAPXSClientInstanceManagerVNext *client, AAPXSSerializationContext* serialization) {
+    instance->setupAAPXSClientInstances(this, client, serialization);
+}
+
+void aap::AAPXSFeatureRegistryServiceImpl::setupServiceInstances(
+        aap::AAPXSServiceInstanceManagerVNext *service, AAPXSSerializationContext* serialization) {
+    instance->setupAAPXSServiceInstance(this, service, serialization);
+}
