@@ -4,7 +4,7 @@
 #include "aap/core/aapxs/aapxs-runtime.h"
 
 void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_plugin_aapxs_request(
-        struct AAPXSFeatureVNext *feature, AAPXSRecipientInstance *aapxsInstance,
+        struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *context) {
     auto ext = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
     switch(context->opcode) {
@@ -57,7 +57,7 @@ void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_plugin_aapxs_reque
 }
 
 void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_host_aapxs_request(
-        struct AAPXSFeatureVNext *feature, AAPXSRecipientInstance *aapxsInstance,
+        struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *context) {
     auto ext = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
     switch(context->opcode) {
@@ -75,14 +75,14 @@ void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_host_aapxs_request
 }
 
 void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_plugin_aapxs_reply(
-        struct AAPXSFeatureVNext *feature, AAPXSInitiatorInstance *aapxsInstance,
+        struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
         request->callback(request->callback_user_data, plugin, request->request_id);
 }
 
 void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_host_aapxs_reply(
-        struct AAPXSFeatureVNext *feature, AAPXSInitiatorInstance *aapxsInstance,
+        struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *context) {
     //auto ext = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
     switch(context->opcode) {
@@ -95,7 +95,7 @@ void aap::AAPXSFeaturePresets::aapxs_presets_process_incoming_host_aapxs_reply(
     }
 }
 
-// Strongly-typed client implementation
+// Strongly-typed client implementation (plugin extension functions)
 
 void aap::PresetsClientAAPXS::getPresetIntCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
     auto callbackData = (WithPromise<aap::PresetsClientAAPXS, int32_t>*) callbackContext;
@@ -134,6 +134,7 @@ void aap::PresetsClientAAPXS::getPresetCallback(void* callbackContext, AndroidAu
 }
 
 void aap::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {
+    // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
     std::promise<int32_t> promise{};
     uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     auto future = promise.get_future();
@@ -161,16 +162,16 @@ void aap::PresetsClientAAPXS::setPresetIndex(int32_t index) {
     initiatorInstance->send_aapxs_request(initiatorInstance, &request);
 }
 
-// Strongly-typed service implementation
+// Strongly-typed service implementation (host extension functions)
 
 void aap::PresetsServiceAAPXS::notifyPresetLoaded() {
-    uint32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
+    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_LOADED};
-    recipientInstance->process_incoming_aapxs_request(recipientInstance, &context);
+    initiatorInstance->send_aapxs_request(initiatorInstance, &context);
 }
 
 void aap::PresetsServiceAAPXS::notifyPresetsUpdated() {
-    uint32_t requestId = recipientInstance->get_new_request_id(recipientInstance);
+    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
     AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_UPDATED};
-    recipientInstance->process_incoming_aapxs_request(recipientInstance, &context);
+    initiatorInstance->send_aapxs_request(initiatorInstance, &context);
 }

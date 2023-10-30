@@ -27,8 +27,9 @@ std::future<int32_t> aap::AAPXSMidi2ClientSession::addSession(
         void* addMidi2EventUserData,
         int32_t group,
         int32_t requestId,
-        AAPXSClientInstance *aapxsInstance,
-        int32_t messageSize,
+        const char* uri,
+        void* data,
+        int32_t dataSize,
         int32_t opcode,
         std::promise<int32_t> promise) {
     size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) aapxs_rt_midi_buffer,
@@ -37,10 +38,10 @@ std::future<int32_t> aap::AAPXSMidi2ClientSession::addSession(
                                                   midi_buffer_size,
                                                   group,
                                                   requestId,
-                                                  aapxsInstance->uri,
+                                                  uri,
                                                   opcode,
-                                                  (uint8_t*) aapxsInstance->data,
-                                                  messageSize);
+                                                  (uint8_t*) data,
+                                                  dataSize);
     addMidi2Event(this, addMidi2EventUserData, size);
     promises[requestId] = std::move(promise);
     return promises[requestId].get_future();

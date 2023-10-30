@@ -23,7 +23,7 @@ namespace aap {
     protected:
         AAPXSFeatureImpl() {}
     public:
-        virtual AAPXSFeatureVNext* asPublic() = 0;
+        virtual AAPXSDefinition* asPublic() = 0;
 
         template<typename T>
         static T correlate(AAPXSRequestContext request, std::function<std::future<T>(std::promise<T> promiseInner)> registerCallback, std::function<T()> getResult) {
@@ -41,37 +41,37 @@ namespace aap {
             : public AAPXSFeatureImpl {
 
         static void aapxs_presets_process_incoming_plugin_aapxs_request(
-                struct AAPXSFeatureVNext* feature,
+                struct AAPXSDefinition* feature,
                 AAPXSRecipientInstance* aapxsInstance,
                 AndroidAudioPlugin* plugin,
                 AAPXSRequestContext* context);
         static void aapxs_presets_process_incoming_host_aapxs_request(
-                struct AAPXSFeatureVNext* feature,
+                struct AAPXSDefinition* feature,
                 AAPXSRecipientInstance* aapxsInstance,
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* context);
         static void aapxs_presets_process_incoming_plugin_aapxs_reply(
-                struct AAPXSFeatureVNext* feature,
+                struct AAPXSDefinition* feature,
                 AAPXSInitiatorInstance* aapxsInstance,
                 AndroidAudioPlugin* plugin,
                 AAPXSRequestContext* context);
         static void aapxs_presets_process_incoming_host_aapxs_reply(
-                struct AAPXSFeatureVNext* feature,
+                struct AAPXSDefinition* feature,
                 AAPXSInitiatorInstance* aapxsInstance,
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* context);
 
-        AAPXSFeatureVNext aapxs_presets{AAP_PRESETS_EXTENSION_URI,
-                                        nullptr,
-                                        PRESETS_SHARED_MEMORY_SIZE,
-                                        aapxs_presets_process_incoming_plugin_aapxs_request,
-                                        aapxs_presets_process_incoming_host_aapxs_request,
-                                        aapxs_presets_process_incoming_plugin_aapxs_reply,
-                                        aapxs_presets_process_incoming_host_aapxs_reply
+        AAPXSDefinition aapxs_presets{AAP_PRESETS_EXTENSION_URI,
+                                      nullptr,
+                                      PRESETS_SHARED_MEMORY_SIZE,
+                                      aapxs_presets_process_incoming_plugin_aapxs_request,
+                                      aapxs_presets_process_incoming_host_aapxs_request,
+                                      aapxs_presets_process_incoming_plugin_aapxs_reply,
+                                      aapxs_presets_process_incoming_host_aapxs_reply
         };
 
     public:
-        AAPXSFeatureVNext * asPublic() override {
+        AAPXSDefinition * asPublic() override {
             return &aapxs_presets;
         }
     };
@@ -96,12 +96,12 @@ namespace aap {
     };
 
     class PresetsServiceAAPXS {
-        AAPXSRecipientInstance *recipientInstance;
+        AAPXSInitiatorInstance *initiatorInstance;
         AAPXSSerializationContext *serialization;
 
     public:
-        PresetsServiceAAPXS(AAPXSRecipientInstance* instance, AAPXSSerializationContext* serialization)
-                : recipientInstance(instance), serialization(serialization) {
+        PresetsServiceAAPXS(AAPXSInitiatorInstance* instance, AAPXSSerializationContext* serialization)
+                : initiatorInstance(instance), serialization(serialization) {
         }
 
         void notifyPresetLoaded();

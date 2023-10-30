@@ -3,148 +3,100 @@
 #include "aap/core/aapxs/aapxs-runtime.h"
 
 aap::AAPXSClientDispatcher::AAPXSClientDispatcher(
-        aap::AAPXSClientFeatureRegistry *registry) /*: registry(registry)*/ {
+        aap::AAPXSDefinitionClientRegistry *registry) /*: registry(registry)*/ {
 }
 
 aap::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
-        aap::AAPXSServiceFeatureRegistry *registry) {
+        aap::AAPXSDefinitionServiceRegistry *registry) {
 }
 
 // Client setup
-void aap::AAPXSClientDispatcher::setupInstances(aap::AAPXSClientFeatureRegistry *registry,
+
+void aap::AAPXSClientDispatcher::setupInstances(aap::AAPXSDefinitionClientRegistry *registry,
                                                 AAPXSSerializationContext *serialization,
-                                                initiator_get_new_request_id_func initiatorGetNewRequestId,
-                                                recipient_get_new_request_id_func recipientGetNewRequestId) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
+                                                aap::aapxs_initiator_send_func sendAAPXSRequest,
+                                                aap::aapxs_initiator_receive_func processIncomingAAPXSReply,
+                                                aap::aapxs_recipient_receive_func processIncomingAAPXSRequest,
+                                                aap::aapxs_recipient_send_func sendAAPXSReply,
+                                                aap::initiator_get_new_request_id_func initiatorGetNewRequestId,
+                                                aap::recipient_get_new_request_id_func recipientGetNewRequestId) {
+    std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition* f) {
         // plugin extensions
-        addInitiator(populateAAPXSInitiatorInstance(serialization, initiatorGetNewRequestId), f->uri);
+        addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, processIncomingAAPXSReply, initiatorGetNewRequestId), f->uri);
         // host extensions
-        addRecipient(populateAAPXSRecipientInstance(serialization, recipientGetNewRequestId), f->uri);
+        addRecipient(populateAAPXSRecipientInstance(serialization, processIncomingAAPXSRequest, sendAAPXSReply, recipientGetNewRequestId), f->uri);
     });
 }
 
-AAPXSInitiatorInstance aap::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(AAPXSSerializationContext* serialization, initiator_get_new_request_id_func getNewRequestId) {
+AAPXSInitiatorInstance aap::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
+        AAPXSSerializationContext* serialization,
+        aap::aapxs_initiator_send_func sendAAPXSRequest,
+        aap::aapxs_initiator_receive_func processIncomingAAPXSReply,
+        initiator_get_new_request_id_func getNewRequestId) {
     AAPXSInitiatorInstance instance{this,
                                     serialization,
                                     getNewRequestId,
-                                    staticSendAAPXSRequest,
-                                    staticProcessIncomingAAPXSReply};
+                                    sendAAPXSRequest,
+                                    processIncomingAAPXSReply};
     return instance;
 }
 
-AAPXSRecipientInstance aap::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
-        AAPXSSerializationContext *serialization, recipient_get_new_request_id_func getNewRequestId) {
+AAPXSRecipientInstance
+aap::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
+        AAPXSSerializationContext *serialization,
+        aap::aapxs_recipient_receive_func processIncomingAapxsRequest,
+        aap::aapxs_recipient_send_func sendAapxsReply,
+        aap::recipient_get_new_request_id_func getNewRequestId) {
     AAPXSRecipientInstance instance{this,
                                     serialization,
                                     getNewRequestId,
-                                    staticProcessIncomingAAPXSRequest,
-                                    staticSendAAPXSReply};
+                                    processIncomingAapxsRequest,
+                                    sendAapxsReply};
     return instance;
 }
 
-// Client send/receive
-void
-aap::AAPXSClientDispatcher::sendExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto aapxs = getPluginAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, newRequestId, opcode};
-    assert(aapxs.serialization->data_capacity >= dataSize);
-    memcpy(aapxs.serialization->data, data, dataSize);
-    aapxs.serialization->data_size = dataSize;
-    aapxs.send_aapxs_request(&aapxs, &context);
-}
+// Service setup
 
-void
-aap::AAPXSClientDispatcher::processExtensionReply(const char *uri, int32_t opcode, void* data, int32_t dataSize, uint32_t requestId) {
-    auto aapxs = getPluginAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    aapxs.process_incoming_aapxs_reply(&aapxs, &context);
-}
-
-void
-aap::AAPXSClientDispatcher::processHostExtensionRequest(const char *uri, int32_t opcode, void* data, int32_t dataSize, uint32_t requestId) {
-    auto aapxs = getHostAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    aapxs.process_incoming_aapxs_request(&aapxs, &context);
-}
-
-void
-aap::AAPXSClientDispatcher::sendHostExtensionReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
-    auto aapxs = getHostAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    assert(aapxs.serialization->data_capacity >= dataSize);
-    memcpy(aapxs.serialization->data, data, dataSize);
-    aapxs.serialization->data_size = dataSize;
-    aapxs.send_aapxs_reply(&aapxs, &context);
-}
-
-// Service send/receive
-
-// setup
-void aap::AAPXSServiceDispatcher::setupInstances(aap::AAPXSServiceFeatureRegistry *registry,
+void aap::AAPXSServiceDispatcher::setupInstances(aap::AAPXSDefinitionServiceRegistry *registry,
                                                  AAPXSSerializationContext *serialization,
-                                                 initiator_get_new_request_id_func initiatorGetNewRequestId,
-                                                 recipient_get_new_request_id_func recipientGetNewRequestId) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSFeatureVNext* f) {
+                                                 aap::aapxs_initiator_send_func sendAAPXSRequest,
+                                                 aap::aapxs_initiator_receive_func processIncomingAAPXSReply,
+                                                 aap::aapxs_recipient_receive_func processIncomingAapxsRequest,
+                                                 aap::aapxs_recipient_send_func sendAapxsReply,
+                                                 aap::initiator_get_new_request_id_func initiatorGetNewRequestId,
+                                                 aap::recipient_get_new_request_id_func recipientGetNewRequestId) {
+    std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition* f) {
         // host extensions
-        addInitiator(populateAAPXSInitiatorInstance(serialization, initiatorGetNewRequestId), f->uri);
+        addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, processIncomingAAPXSReply, initiatorGetNewRequestId), f->uri);
         // plugin extensions
-        addRecipient(populateAAPXSRecipientInstance(serialization, recipientGetNewRequestId), f->uri);
+        addRecipient(populateAAPXSRecipientInstance(serialization, processIncomingAapxsRequest, sendAapxsReply, recipientGetNewRequestId), f->uri);
     });
 }
 
-
 AAPXSRecipientInstance
 aap::AAPXSServiceDispatcher::populateAAPXSRecipientInstance(
-        AAPXSSerializationContext *serialization, recipient_get_new_request_id_func getNewRequestId) {
+        AAPXSSerializationContext *serialization,
+        aap::aapxs_recipient_receive_func processIncomingAAPXSRequest,
+        aap::aapxs_recipient_send_func sendAAPXSReply,
+        recipient_get_new_request_id_func getNewRequestId) {
     AAPXSRecipientInstance instance{this,
                                     serialization,
                                     getNewRequestId,
-                                    staticProcessIncomingAAPXSRequest,
-                                    staticSendAAPXSReply};
+                                    processIncomingAAPXSRequest,
+                                    sendAAPXSReply};
     return instance;
 }
 
 AAPXSInitiatorInstance
 aap::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
-        AAPXSSerializationContext *serialization, initiator_get_new_request_id_func getNewRequestId) {
+        AAPXSSerializationContext *serialization,
+        aapxs_initiator_send_func sendHostAAPXSRequest,
+        aapxs_initiator_receive_func processIncomingHostAAPXSReply,
+        initiator_get_new_request_id_func getNewRequestId) {
     AAPXSInitiatorInstance instance{this,
                                     serialization,
                                     getNewRequestId,
-                                    staticSendHostAAPXSRequest,
-                                    staticProcessIncomingHostAAPXSReply};
+                                    sendHostAAPXSRequest,
+                                    processIncomingHostAAPXSReply};
     return instance;
-}
-
-// send/receive
-void
-aap::AAPXSServiceDispatcher::processExtensionRequest(const char *uri, int32_t opcode, uint32_t requestId) {
-    auto aapxs = getPluginAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    aapxs.process_incoming_aapxs_request(&aapxs, &context);
-}
-
-void
-aap::AAPXSServiceDispatcher::sendExtensionReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
-    auto aapxs = getPluginAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    assert(aapxs.serialization->data_capacity >= dataSize);
-    memcpy(aapxs.serialization->data, data, dataSize);
-    aapxs.serialization->data_size = dataSize;
-    aapxs.send_aapxs_reply(&aapxs, &context);
-}
-
-void
-aap::AAPXSServiceDispatcher::sendHostExtensionRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto aapxs = getHostAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, newRequestId, opcode};
-    assert(aapxs.serialization->data_capacity >= dataSize);
-    memcpy(aapxs.serialization->data, data, dataSize);
-    aapxs.serialization->data_size = dataSize;
-    aapxs.send_aapxs_request(&aapxs, &context);
-}
-
-void aap::AAPXSServiceDispatcher::processHostExtensionReply(const char *uri, int32_t opcode, uint32_t requestId) {
-    auto aapxs = getHostAAPXSByUri(uri);
-    AAPXSRequestContext context{nullptr, nullptr, aapxs.serialization, uri, requestId, opcode};
-    aapxs.process_incoming_aapxs_reply(&aapxs, &context);
 }

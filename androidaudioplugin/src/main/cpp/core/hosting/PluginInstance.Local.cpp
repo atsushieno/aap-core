@@ -21,7 +21,7 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
           aapxs_registry(aapxsRegistry),
           aapxsServiceInstances([&]() { return getPlugin(); }),
           standards(this),
-          feature_registry(new AAPXSFeatureRegistryServiceImpl(this)),
+          feature_registry(new AAPXSDefinitionServiceRegistryImpl(this)),
           aapxs_dispatcher(AAPXSServiceDispatcher(feature_registry.get())) {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
@@ -182,9 +182,49 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 }
 
 // ---- AAPXS v2
+static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+    ((aap::RemotePluginInstance*) instance->host_context)->sendAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+}
+static inline void staticProcessIncomingAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+    ((aap::RemotePluginInstance*) instance->host_context)->processAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+}
+static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+    ((aap::RemotePluginInstance*) instance->host_context)->processHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+}
+static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+    ((aap::RemotePluginInstance*) instance->host_context)->sendHostAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+}
 
-// initialization
-void aap::LocalPluginInstance::setupAAPXSInstances(aap::AAPXSServiceFeatureRegistry *registry,
-                                                   AAPXSSerializationContext *serialization) {
-    aapxs_dispatcher.setupInstances(registry, serialization, staticGetNewRequestId, staticGetNewRequestId);
+void aap::LocalPluginInstance::setupAAPXSInstances(aap::AAPXSDefinitionServiceRegistry *registry,
+                                                    AAPXSSerializationContext *serialization) {
+    aapxs_dispatcher.setupInstances(registry, serialization,
+                                    staticSendAAPXSRequest,
+                                    staticProcessIncomingAAPXSReply,
+                                    staticProcessIncomingAAPXSRequest,
+                                    staticSendAAPXSReply,
+                                    staticGetNewRequestId,
+                                    staticGetNewRequestId);
+}
+
+void
+aap::LocalPluginInstance::processAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+    // FIXME: implement correctly
+    controlExtension(uri, opcode);
+}
+void
+aap::LocalPluginInstance::sendAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
+    // FIXME: implement
+    throw std::runtime_error("FIXME: implement");
+}
+
+void
+aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
+    // FIXME: implement
+    throw std::runtime_error("FIXME: implement");
+}
+
+void
+aap::LocalPluginInstance::processHostAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+    // FIXME: implement
+    throw std::runtime_error("FIXME: implement");
 }

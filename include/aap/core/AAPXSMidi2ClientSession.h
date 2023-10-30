@@ -31,8 +31,9 @@ namespace aap {
                         void* addMidi2EventUserData,
                         int32_t group,
                         int32_t requestId,
-                        AAPXSClientInstance *aapxsInstance,
-                        int32_t messageSize,
+                        const char* uri,
+                        void* data,
+                        int32_t dataSize,
                         int32_t opcode,
                         std::promise<int32_t> promise);
 

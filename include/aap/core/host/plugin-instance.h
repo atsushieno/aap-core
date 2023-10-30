@@ -23,8 +23,8 @@ namespace aap {
     class PluginHost;
     class PluginClient;
 
-    class AAPXSFeatureRegistryClientImpl;
-    class AAPXSFeatureRegistryServiceImpl;
+    class AAPXSDefinitionClientRegistryImpl;
+    class AAPXSDefinitionServiceRegistryImpl;
 
 /**
  * The common basis for client RemotePluginInstance and service LocalPluginInstance.
@@ -235,10 +235,13 @@ namespace aap {
 
         // AAPXS v2
         AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        void setupAAPXSInstances(AAPXSServiceFeatureRegistry *registry,
-                                 AAPXSSerializationContext *serialization);
+        void setupAAPXSInstances(AAPXSDefinitionServiceRegistry *registry, AAPXSSerializationContext *serialization);
+        void processAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
+        void sendAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void processHostAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
     private:
-        std::unique_ptr<AAPXSFeatureRegistryServiceImpl> feature_registry;
+        std::unique_ptr<AAPXSDefinitionServiceRegistryImpl> feature_registry;
         AAPXSServiceDispatcher aapxs_dispatcher;
     };
 
@@ -347,11 +350,13 @@ namespace aap {
 
         // AAPXS v2
         inline AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        // delegated implementation for AAPXSFeatureRegistryClientImpl
-        void setupAAPXSInstances(aap::AAPXSClientFeatureRegistry *registry,
-                                 AAPXSSerializationContext *serialization);
+        void setupAAPXSInstances(aap::AAPXSDefinitionClientRegistry *registry, AAPXSSerializationContext *serialization);
+        void sendAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void processAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
+        void sendHostAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void processHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
     private:
-        std::unique_ptr<AAPXSFeatureRegistryClientImpl> feature_registry;
+        std::unique_ptr<AAPXSDefinitionClientRegistryImpl> feature_registry;
         AAPXSClientDispatcher aapxs_dispatcher;
     };
 
@@ -379,18 +384,18 @@ namespace aap {
         AAPXSClientInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) override;
     };
 
-    class AAPXSFeatureRegistryClientImpl : public AAPXSClientFeatureRegistry {
+    class AAPXSDefinitionClientRegistryImpl : public AAPXSDefinitionClientRegistry {
         RemotePluginInstance* instance;
     public:
-        AAPXSFeatureRegistryClientImpl(RemotePluginInstance* instance) : instance(instance) {}
+        AAPXSDefinitionClientRegistryImpl(RemotePluginInstance* instance) : instance(instance) {}
 
         void setupClientInstances(aap::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) override;
     };
 
-    class AAPXSFeatureRegistryServiceImpl : public AAPXSServiceFeatureRegistry {
+    class AAPXSDefinitionServiceRegistryImpl : public AAPXSDefinitionServiceRegistry {
         LocalPluginInstance* instance;
     public:
-        AAPXSFeatureRegistryServiceImpl(LocalPluginInstance* instance) : instance(instance) {}
+        AAPXSDefinitionServiceRegistryImpl(LocalPluginInstance* instance) : instance(instance) {}
 
         void setupServiceInstances(aap::AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) override;
     };
