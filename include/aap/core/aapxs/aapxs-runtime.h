@@ -46,7 +46,7 @@ namespace aap {
                 if (uri == uris[n])
                     return urids[i];
             for (size_t i = 1, n = uris.size(); i < n; i++)
-                if (!strcmp(uri, uris[n]))
+                if (uris[n] && !strcmp(uri, uris[n]))
                     return urids[i];
             return UNMAPPED_URID;
         }
@@ -81,12 +81,12 @@ namespace aap {
             uint8_t urid = urid_mapping.tryAdd(uri);
             items[urid] = feature;
         }
-        T& getByUri(const char* uri) {
+        T* getByUri(const char* uri) {
             uint8_t urid = urid_mapping.getUrid(uri);
-            return items[urid];
+            return &items[urid];
         }
-        T& getByUrid(uint8_t urid) {
-            return items[urid];
+        T* getByUrid(uint8_t urid) {
+            return &items[urid];
         }
 
         using container=std::vector<T>;
@@ -98,9 +98,6 @@ namespace aap {
         const_iterator begin() const { return items.begin(); }
         const_iterator end() const { return items.end(); }
     };
-
-    class AAPXSInitiatorInstanceMap : public AAPXSUridMapping<AAPXSInitiatorInstance> {};
-    class AAPXSRecipientInstanceMap : public AAPXSUridMapping<AAPXSRecipientInstance> {};
 
     class AAPXSDefinitionClientRegistry;
     class AAPXSDefinitionServiceRegistry;
@@ -114,8 +111,8 @@ namespace aap {
 
     class AAPXSDispatcher {
     protected:
-        AAPXSInitiatorInstanceMap initiators{};
-        AAPXSRecipientInstanceMap recipients{};
+        AAPXSUridMapping<AAPXSInitiatorInstance> initiators{};
+        AAPXSUridMapping<AAPXSRecipientInstance> recipients{};
 
         inline void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
@@ -125,70 +122,59 @@ namespace aap {
         AAPXSInitiatorInstance
         populateAAPXSInitiatorInstance(AAPXSSerializationContext *serialization,
                                        aapxs_initiator_send_func sendAAPXSRequest,
-                                       aapxs_initiator_receive_func processIncomingAAPXSReply,
                                        initiator_get_new_request_id_func getNewRequestId);
         AAPXSRecipientInstance
         populateAAPXSRecipientInstance(AAPXSSerializationContext *serialization,
-                                       aapxs_recipient_receive_func processIncomingAapxsRequest,
-                                       aapxs_recipient_send_func sendAapxsReply,
-                                       recipient_get_new_request_id_func recipientGetNewRequestId);
+                                       aapxs_recipient_send_func sendAapxsReply);
 
     public:
         AAPXSClientDispatcher(AAPXSDefinitionClientRegistry* registry);
 
-        inline AAPXSInitiatorInstance& getPluginAAPXSByUri(const char* uri) { return initiators.getByUri(uri); }
-        inline AAPXSInitiatorInstance& getPluginAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
-        inline AAPXSRecipientInstance& getHostAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
-        inline AAPXSRecipientInstance& getHostAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
+        inline AAPXSInitiatorInstance* getPluginAAPXSByUri(const char* uri) { return initiators.getByUri(uri); }
+        inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
+        inline AAPXSRecipientInstance* getHostAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
+        inline AAPXSRecipientInstance* getHostAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
 
         void
         setupInstances(AAPXSDefinitionClientRegistry *registry,
                        AAPXSSerializationContext *serialization,
                        aapxs_initiator_send_func sendAAPXSRequest,
                        aapxs_initiator_receive_func processIncomingAAPXSReply,
-                       aapxs_recipient_receive_func processIncomingAAPXSRequestFunc,
                        aapxs_recipient_send_func sendAAPXSReplyFunc,
-                       initiator_get_new_request_id_func initiatorGetNewRequestId,
-                       recipient_get_new_request_id_func recipientGetNewRequestId);
+                       initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
 
     class AAPXSServiceDispatcher : public AAPXSDispatcher {
         AAPXSInitiatorInstance populateAAPXSInitiatorInstance(
                 AAPXSSerializationContext* serialization,
                 aapxs_initiator_send_func sendHostAAPXSRequest,
-                aapxs_initiator_receive_func processIncomingHostAAPXSReply,
                 initiator_get_new_request_id_func getNewRequestId);
         AAPXSRecipientInstance populateAAPXSRecipientInstance(
                 AAPXSSerializationContext* serialization,
-                aap::aapxs_recipient_receive_func processIncomingAAPXSRequest,
-                aap::aapxs_recipient_send_func sendAAPXSReply,
-                recipient_get_new_request_id_func getNewRequestId);
+                aap::aapxs_recipient_send_func sendAAPXSReply);
 
     public:
         AAPXSServiceDispatcher(AAPXSDefinitionServiceRegistry* registry);
 
-        AAPXSRecipientInstance& getPluginAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
-        AAPXSRecipientInstance& getPluginAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
-        AAPXSInitiatorInstance& getHostAAPXSByUri(const char* uri) { return initiators.getByUri(uri); }
-        AAPXSInitiatorInstance& getHostAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
+        AAPXSRecipientInstance* getPluginAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
+        AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
+        AAPXSInitiatorInstance* getHostAAPXSByUri(const char* uri) { return initiators.getByUri(uri); }
+        AAPXSInitiatorInstance* getHostAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
 
         void
         setupInstances(AAPXSDefinitionServiceRegistry *registry,
                        AAPXSSerializationContext *serialization,
-                       aapxs_initiator_send_func sendAAPXSRequest,
-                       aapxs_initiator_receive_func processIncomingAAPXSReply,
-                       aapxs_recipient_receive_func processIncomingAapxsRequest,
                        aapxs_recipient_send_func sendAapxsReply,
-                       initiator_get_new_request_id_func initiatorGetNewRequestId,
-                       recipient_get_new_request_id_func recipientGetNewRequestId);
+                       aapxs_initiator_send_func sendAAPXSRequest,
+                       initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
 
-    class AAPXSDefinitionClientRegistry : public AAPXSUridMapping<AAPXSDefinition*> {
+    class AAPXSDefinitionClientRegistry : public AAPXSUridMapping<AAPXSDefinition> {
     public:
         virtual void setupClientInstances(aap::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };
 
-    class AAPXSDefinitionServiceRegistry : public AAPXSUridMapping<AAPXSDefinition*> {
+    class AAPXSDefinitionServiceRegistry : public AAPXSUridMapping<AAPXSDefinition> {
     public:
         virtual void setupServiceInstances(aap::AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };

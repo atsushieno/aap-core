@@ -59,11 +59,6 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     return &plugin_host_facade;
 }
 
-void aapxsSessionAddEventUmpInput(aap::AAPXSMidi2ClientSession* client, void* context, int32_t messageSize) {
-    auto instance = (aap::RemotePluginInstance *) context;
-    instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
-}
-
 void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode) {
     auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
 
@@ -76,7 +71,7 @@ void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t me
         std::promise<int32_t> promise;
         auto future = aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, aapxsInstance->data, messageSize,  opcode, std::move(promise));
         // This is a synchronous function, so we have to wait for the result...
-        future.wait();
+        future.value().wait();
     } else {
         // Here we have to get a native plugin instance and send extension message.
         // It is kind af annoying because we used to implement Binder-specific part only within the
@@ -254,13 +249,18 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
 
 // ---- AAPXS v2
 static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    ((aap::RemotePluginInstance*) instance->host_context)->sendAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+    ((aap::RemotePluginInstance *) instance->host_context)->sendPluginAAPXSRequest(context->uri,
+                                                                                   context->opcode,
+                                                                                   context->serialization->data,
+                                                                                   context->serialization->data_size,
+                                                                                   context->request_id);
 }
 static inline void staticProcessIncomingAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    ((aap::RemotePluginInstance*) instance->host_context)->processAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
-}
-static inline void staticProcessIncomingAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-    ((aap::RemotePluginInstance*) instance->host_context)->processHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+    ((aap::RemotePluginInstance *) instance->host_context)->processPluginAAPXSReply(context->uri,
+                                                                                    context->opcode,
+                                                                                    context->serialization->data,
+                                                                                    context->serialization->data_size,
+                                                                                    context->request_id);
 }
 static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
     ((aap::RemotePluginInstance*) instance->host_context)->sendHostAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
@@ -271,14 +271,12 @@ void aap::RemotePluginInstance::setupAAPXSInstances(aap::AAPXSDefinitionClientRe
     aapxs_dispatcher.setupInstances(registry, serialization,
                                     staticSendAAPXSRequest,
                                     staticProcessIncomingAAPXSReply,
-                                    staticProcessIncomingAAPXSRequest,
                                     staticSendAAPXSReply,
-                                    staticGetNewRequestId,
                                     staticGetNewRequestId);
 }
 
 void
-aap::RemotePluginInstance::sendAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
+aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
     auto aapxsInstance = aapxs_dispatcher.getPluginAAPXSByUri(uri);
 
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
@@ -286,10 +284,9 @@ aap::RemotePluginInstance::sendAAPXSRequest(const char* uri, int32_t opcode, voi
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
-        int32_t requestId = aapxsRequestIdSerial();
         std::promise<int32_t> promise;
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, aapxsInstance.serialization->data, dataSize, opcode, std::move(promise));
-        // This is an synchronous function, so we do not wait for the result.
+        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::move(promise));
+        // This is an asynchronous function, so we do not wait for the result.
     } else {
         // Here we have to get a native plugin instance and send extension message.
         // It is kind af annoying because we used to implement Binder-specific part only within the
@@ -301,7 +298,7 @@ aap::RemotePluginInstance::sendAAPXSRequest(const char* uri, int32_t opcode, voi
 }
 
 void
-aap::RemotePluginInstance::processAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+aap::RemotePluginInstance::processPluginAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         aapxs_session.promises[requestId].set_value(0);
         aapxs_session.promises.erase(requestId);
@@ -311,9 +308,18 @@ aap::RemotePluginInstance::processAAPXSReply(const char* uri, int32_t opcode, vo
 }
 
 void
-aap::RemotePluginInstance::sendHostAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    // FIXME: implement
-    throw std::runtime_error("FIXME: implement");
+aap::RemotePluginInstance::sendHostAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+    auto aapxsInstance = aapxs_dispatcher.getHostAAPXSByUri(uri);
+
+    // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
+    // otherwise it goes to the Binder route.
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        // aapxsInstance already contains binary data here, so we retrieve data from there.
+        int32_t group = 0; // will we have to give special semantics on it?
+        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::nullopt);
+    } else {
+        // it was done synchronously, nothing to do here
+    }
 }
 
 void

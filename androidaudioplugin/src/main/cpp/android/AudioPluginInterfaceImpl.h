@@ -65,9 +65,18 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
+    static void aapxs_host_ipc_sender_func(void* context,
+                                           const char* uri,
+                                           int32_t instanceId,
+                                           int32_t opcode) {
+        ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->hostExtension(instanceId, uri, opcode);
+    }
+
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,
                                      int32_t *_aidl_return) override {
         *_aidl_return = svc->createInstance(in_pluginId, in_sampleRate);
+        auto instance = svc->getLocalInstance(*_aidl_return);
+        instance->setIpcExtensionMessageSender(aapxs_host_ipc_sender_func);
         if (*_aidl_return < 0)
         return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                 AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
@@ -205,7 +214,7 @@ public:
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->controlExtension(in_uri, in_opcode);
+        instance->controlExtension(in_uri, in_opcode, 0); // no requestId is assigned for synchronous Binder calls.
         return ndk::ScopedAStatus::ok();
     }
 

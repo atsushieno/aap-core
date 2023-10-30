@@ -47,7 +47,9 @@ namespace aap {
     class PluginHost
     {
     protected:
+#if !USE_AAPXS_V2
         AAPXSRegistry* aapxs_registry{nullptr};
+#endif
         PluginListSnapshot* plugin_list{nullptr};
 
         std::vector<PluginInstance*> instances{};

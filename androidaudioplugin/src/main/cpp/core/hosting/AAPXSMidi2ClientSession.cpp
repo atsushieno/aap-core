@@ -22,7 +22,7 @@ aap::AAPXSMidi2ClientSession::~AAPXSMidi2ClientSession() {
         free(aapxs_rt_conversion_helper_buffer);
 }
 
-std::future<int32_t> aap::AAPXSMidi2ClientSession::addSession(
+std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
         void (*addMidi2Event)(AAPXSMidi2ClientSession * session, void *userData, int32_t messageSize),
         void* addMidi2EventUserData,
         int32_t group,
@@ -31,7 +31,7 @@ std::future<int32_t> aap::AAPXSMidi2ClientSession::addSession(
         void* data,
         int32_t dataSize,
         int32_t opcode,
-        std::promise<int32_t> promise) {
+        std::optional<std::promise<int32_t>> promise) {
     size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) aapxs_rt_midi_buffer,
                                                   midi_buffer_size / sizeof(int32_t),
                                                   (uint8_t*) aapxs_rt_conversion_helper_buffer,
@@ -43,8 +43,12 @@ std::future<int32_t> aap::AAPXSMidi2ClientSession::addSession(
                                                   (uint8_t*) data,
                                                   dataSize);
     addMidi2Event(this, addMidi2EventUserData, size);
-    promises[requestId] = std::move(promise);
-    return promises[requestId].get_future();
+    if (promise.has_value()) {
+        promises[requestId] = std::move(promise.value());
+        return promises[requestId].get_future();
+    }
+    else
+        return std::nullopt;
 }
 
 void aap::AAPXSMidi2ClientSession::processReply(void* buffer) {

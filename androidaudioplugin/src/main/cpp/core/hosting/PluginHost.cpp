@@ -50,7 +50,9 @@ void initializeStandardAAPXSRegistry() {
 
 
 aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
+#if !USE_AAPXS_V2
                             AAPXSRegistry* aapxsRegistry,
+#endif
                             int32_t eventMidi2InputBufferSize)
         : plugin_list(contextPluginList),
           event_midi2_input_buffer_size(eventMidi2InputBufferSize) {

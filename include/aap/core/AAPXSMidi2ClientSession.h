@@ -27,7 +27,7 @@ namespace aap {
 
         std::map<int32_t, std::promise<int>> promises{};
 
-        std::future<int32_t> addSession(void (*addMidi2Event)(AAPXSMidi2ClientSession *, void *, int32_t),
+        std::optional<std::future<int32_t>> addSession(void (*addMidi2Event)(AAPXSMidi2ClientSession *, void *, int32_t),
                         void* addMidi2EventUserData,
                         int32_t group,
                         int32_t requestId,
@@ -35,7 +35,7 @@ namespace aap {
                         void* data,
                         int32_t dataSize,
                         int32_t opcode,
-                        std::promise<int32_t> promise);
+                        std::optional<std::promise<int32_t>> promise);
 
         void processReply(void* buffer);
     };
