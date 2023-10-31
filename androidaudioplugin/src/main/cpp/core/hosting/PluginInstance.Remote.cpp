@@ -17,7 +17,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new AAPXSDefinitionClientRegistryImpl(this)),
-          aapxs_dispatcher(AAPXSClientDispatcher(feature_registry.get())) {
+          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get())) {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
@@ -255,22 +255,14 @@ static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPX
                                                                                    context->serialization->data_size,
                                                                                    context->request_id);
 }
-static inline void staticProcessIncomingAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    ((aap::RemotePluginInstance *) instance->host_context)->processPluginAAPXSReply(context->uri,
-                                                                                    context->opcode,
-                                                                                    context->serialization->data,
-                                                                                    context->serialization->data_size,
-                                                                                    context->request_id);
-}
 static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
     ((aap::RemotePluginInstance*) instance->host_context)->sendHostAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
-void aap::RemotePluginInstance::setupAAPXSInstances(aap::AAPXSDefinitionClientRegistry *registry,
+void aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry,
                                                     AAPXSSerializationContext *serialization) {
     aapxs_dispatcher.setupInstances(registry, serialization,
                                     staticSendAAPXSRequest,
-                                    staticProcessIncomingAAPXSReply,
                                     staticSendAAPXSReply,
                                     staticGetNewRequestId);
 }

@@ -23,7 +23,7 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           host(host),
           feature_registry(new AAPXSDefinitionServiceRegistryImpl(this)),
-          aapxs_dispatcher(AAPXSServiceDispatcher(feature_registry.get())),
+          aapxs_dispatcher(xs::AAPXSServiceDispatcher(feature_registry.get())),
           aapxs_host_session(eventMidi2InputBufferSize),
 #if !USE_AAPXS_V2
           aapxs_registry(aapxsRegistry),
@@ -200,7 +200,7 @@ static inline void staticSendAAPXSRequest(AAPXSRecipientInstance* instance, AAPX
     ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
-void aap::LocalPluginInstance::setupAAPXSInstances(aap::AAPXSDefinitionServiceRegistry *registry,
+void aap::LocalPluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry *registry,
                                                     AAPXSSerializationContext *serialization) {
     aapxs_dispatcher.setupInstances(registry, serialization,
                                     staticSendAAPXSRequest,

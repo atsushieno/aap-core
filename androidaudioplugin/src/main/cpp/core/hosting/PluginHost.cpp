@@ -50,6 +50,7 @@ void initializeStandardAAPXSRegistry() {
 
 
 aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
+                            xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry,
 #if !USE_AAPXS_V2
                             AAPXSRegistry* aapxsRegistry,
 #endif
@@ -60,6 +61,7 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
 
     if (standard_aapxs_registry == nullptr)
         initializeStandardAAPXSRegistry();
+    aapxs_definition_registry = aapxsDefinitionRegistry; // FIXME: replace null with standard extensions
     aapxs_registry = aapxsRegistry ? aapxsRegistry : standard_aapxs_registry.get();
 }
 

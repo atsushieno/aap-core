@@ -116,6 +116,6 @@ typedef struct AAPXSDefinition {
             AAPXSInitiatorInstance* aapxsInstance,
             AndroidAudioPluginHost* host,
             AAPXSRequestContext* context);
-} AAPXSFeatureVNext;
+} AAPXSDefinition;
 
 #endif //AAP_CORE_AAPXS_VNEXT_H

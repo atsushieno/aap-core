@@ -5,6 +5,7 @@
 #include <future>
 #include "aap/unstable/aapxs-vnext.h"
 #include "aap/ext/presets.h"
+#include "aap/core/aapxs/aapxs-runtime.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_PRESET_COUNT = 0;
@@ -18,27 +19,8 @@ const int32_t OPCODE_NOTIFY_PRESET_UPDATED = 1;
 
 const int32_t PRESETS_SHARED_MEMORY_SIZE = sizeof(aap_preset_t) + sizeof(int32_t);
 
-namespace aap {
-    class AAPXSFeatureImpl {
-    protected:
-        AAPXSFeatureImpl() {}
-    public:
-        virtual AAPXSDefinition* asPublic() = 0;
-
-        template<typename T>
-        static T correlate(AAPXSRequestContext request, std::function<std::future<T>(std::promise<T> promiseInner)> registerCallback, std::function<T()> getResult) {
-            std::promise<T> promiseOuter{};
-            std::function<void(std::promise<T>, T)> handleReply = [&](std::promise<T> promise, T result) {
-                promise.set_value(getResult());
-            };
-            std::future<T> f = registerCallback(handleReply, std::move(promiseOuter));
-            f.wait();
-            return f.get();
-        }
-    };
-
-    class AAPXSFeaturePresets
-            : public AAPXSFeatureImpl {
+namespace aap::xs {
+    class AAPXSDefinition_Presets : public AAPXSDefinitionWrapper {
 
         static void aapxs_presets_process_incoming_plugin_aapxs_request(
                 struct AAPXSDefinition* feature,
@@ -62,7 +44,7 @@ namespace aap {
                 AAPXSRequestContext* context);
 
         AAPXSDefinition aapxs_presets{AAP_PRESETS_EXTENSION_URI,
-                                      nullptr,
+                                      this,
                                       PRESETS_SHARED_MEMORY_SIZE,
                                       aapxs_presets_process_incoming_plugin_aapxs_request,
                                       aapxs_presets_process_incoming_host_aapxs_request,
@@ -71,8 +53,8 @@ namespace aap {
         };
 
     public:
-        AAPXSDefinition * asPublic() override {
-            return &aapxs_presets;
+        AAPXSDefinition& asPublic() override {
+            return aapxs_presets;
         }
     };
 

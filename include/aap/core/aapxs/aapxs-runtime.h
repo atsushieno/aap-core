@@ -10,7 +10,7 @@
 #include "../../unstable/aapxs-vnext.h"
 #include "../../android-audio-plugin.h"
 
-namespace aap {
+namespace aap::xs {
     template<typename T, typename R>
     struct WithPromise {
         T* context;
@@ -25,8 +25,7 @@ namespace aap {
         static const uint8_t UNMAPPED_URID = 0;
 
         UridMapping() {
-            urids.resize(UINT8_MAX);
-            uris.resize(UINT8_MAX);
+            uris.emplace_back("");
         }
 
         uint8_t tryAdd(const char* uri) {
@@ -34,8 +33,8 @@ namespace aap {
             auto existing = getUrid(uri);
             if (existing > 0)
                 return existing;
-            uris.emplace_back(uri);
             uint8_t urid = uris.size();
+            uris.emplace_back(uri);
             urids.emplace_back(urid);
             return urid;
         }
@@ -139,7 +138,6 @@ namespace aap {
         setupInstances(AAPXSDefinitionClientRegistry *registry,
                        AAPXSSerializationContext *serialization,
                        aapxs_initiator_send_func sendAAPXSRequest,
-                       aapxs_initiator_receive_func processIncomingAAPXSReply,
                        aapxs_recipient_send_func sendAAPXSReplyFunc,
                        initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
@@ -151,7 +149,7 @@ namespace aap {
                 initiator_get_new_request_id_func getNewRequestId);
         AAPXSRecipientInstance populateAAPXSRecipientInstance(
                 AAPXSSerializationContext* serialization,
-                aap::aapxs_recipient_send_func sendAAPXSReply);
+                aapxs_recipient_send_func sendAAPXSReply);
 
     public:
         AAPXSServiceDispatcher(AAPXSDefinitionServiceRegistry* registry);
@@ -169,14 +167,40 @@ namespace aap {
                        initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
 
-    class AAPXSDefinitionClientRegistry : public AAPXSUridMapping<AAPXSDefinition> {
+    class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {
+
     public:
-        virtual void setupClientInstances(aap::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) = 0;
+        AAPXSDefinitionRegistry();
+
+        static AAPXSDefinitionRegistry* getStandardExtensions();
     };
 
-    class AAPXSDefinitionServiceRegistry : public AAPXSUridMapping<AAPXSDefinition> {
+    class AAPXSDefinitionClientRegistry {
+        AAPXSDefinitionRegistry* registry;
     public:
-        virtual void setupServiceInstances(aap::AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) = 0;
+        AAPXSDefinitionClientRegistry(AAPXSDefinitionRegistry* registry = nullptr) : registry(registry ? registry : AAPXSDefinitionRegistry::getStandardExtensions()){}
+        virtual ~AAPXSDefinitionClientRegistry() {}
+
+        AAPXSDefinitionRegistry* items() { return registry; }
+        virtual void setupClientInstances(AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) = 0;
+    };
+
+    class AAPXSDefinitionServiceRegistry {
+        AAPXSDefinitionRegistry* registry;
+
+    public:
+        AAPXSDefinitionServiceRegistry(AAPXSDefinitionRegistry* registry = nullptr) : registry(registry ? registry : AAPXSDefinitionRegistry::getStandardExtensions()){}
+        virtual ~AAPXSDefinitionServiceRegistry() {}
+
+        AAPXSDefinitionRegistry* items() { return registry; }
+        virtual void setupServiceInstances(AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) = 0;
+    };
+
+    class AAPXSDefinitionWrapper {
+    protected:
+        AAPXSDefinitionWrapper() {}
+    public:
+        virtual AAPXSDefinition& asPublic() = 0;
     };
 }
 

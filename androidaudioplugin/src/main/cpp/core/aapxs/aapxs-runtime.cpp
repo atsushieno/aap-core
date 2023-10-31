@@ -2,23 +2,23 @@
 #include "aap/unstable/aapxs-vnext.h"
 #include "aap/core/aapxs/aapxs-runtime.h"
 
-aap::AAPXSClientDispatcher::AAPXSClientDispatcher(
-        aap::AAPXSDefinitionClientRegistry *registry) /*: registry(registry)*/ {
+aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(
+        AAPXSDefinitionClientRegistry *registry) /*: registry(registry)*/ {
 }
 
-aap::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
-        aap::AAPXSDefinitionServiceRegistry *registry) {
+aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
+        AAPXSDefinitionServiceRegistry *registry) {
 }
 
 // Client setup
 
-void aap::AAPXSClientDispatcher::setupInstances(aap::AAPXSDefinitionClientRegistry *registry,
+void aap::xs::AAPXSClientDispatcher::setupInstances(AAPXSDefinitionClientRegistry *registry,
                                                 AAPXSSerializationContext *serialization,
-                                                aap::aapxs_initiator_send_func sendAAPXSRequest,
-                                                aap::aapxs_initiator_receive_func processIncomingAAPXSReply,
-                                                aap::aapxs_recipient_send_func sendAAPXSReply,
-                                                aap::initiator_get_new_request_id_func initiatorGetNewRequestId) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
+                                                aapxs_initiator_send_func sendAAPXSRequest,
+                                                aapxs_recipient_send_func sendAAPXSReply,
+                                                initiator_get_new_request_id_func initiatorGetNewRequestId) {
+    auto items = registry->items();
+    std::for_each(items->begin(), items->end(), [&](AAPXSDefinition& f) {
         // plugin extensions
         addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // host extensions
@@ -26,9 +26,9 @@ void aap::AAPXSClientDispatcher::setupInstances(aap::AAPXSDefinitionClientRegist
     });
 }
 
-AAPXSInitiatorInstance aap::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
+AAPXSInitiatorInstance aap::xs::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
         AAPXSSerializationContext* serialization,
-        aap::aapxs_initiator_send_func sendAAPXSRequest,
+        aapxs_initiator_send_func sendAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {
     AAPXSInitiatorInstance instance{this,
                                     serialization,
@@ -38,9 +38,9 @@ AAPXSInitiatorInstance aap::AAPXSClientDispatcher::populateAAPXSInitiatorInstanc
 }
 
 AAPXSRecipientInstance
-aap::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
+aap::xs::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
         AAPXSSerializationContext *serialization,
-        aap::aapxs_recipient_send_func sendAapxsReply) {
+        aapxs_recipient_send_func sendAapxsReply) {
     AAPXSRecipientInstance instance{this,
                                     serialization,
                                     sendAapxsReply};
@@ -49,12 +49,13 @@ aap::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
 
 // Service setup
 
-void aap::AAPXSServiceDispatcher::setupInstances(aap::AAPXSDefinitionServiceRegistry *registry,
+void aap::xs::AAPXSServiceDispatcher::setupInstances(AAPXSDefinitionServiceRegistry *registry,
                                                  AAPXSSerializationContext *serialization,
                                                  aapxs_recipient_send_func sendAapxsReply,
                                                  aapxs_initiator_send_func sendAAPXSRequest,
-                                                 aap::initiator_get_new_request_id_func initiatorGetNewRequestId) {
-    std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
+                                                 initiator_get_new_request_id_func initiatorGetNewRequestId) {
+    auto items = registry->items();
+    std::for_each(items->begin(), items->end(), [&](AAPXSDefinition& f) {
         // host extensions
         addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // plugin extensions
@@ -63,9 +64,9 @@ void aap::AAPXSServiceDispatcher::setupInstances(aap::AAPXSDefinitionServiceRegi
 }
 
 AAPXSRecipientInstance
-aap::AAPXSServiceDispatcher::populateAAPXSRecipientInstance(
+aap::xs::AAPXSServiceDispatcher::populateAAPXSRecipientInstance(
         AAPXSSerializationContext *serialization,
-        aap::aapxs_recipient_send_func sendAAPXSReply) {
+        aapxs_recipient_send_func sendAAPXSReply) {
     AAPXSRecipientInstance instance{this,
                                     serialization,
                                     sendAAPXSReply};
@@ -73,7 +74,7 @@ aap::AAPXSServiceDispatcher::populateAAPXSRecipientInstance(
 }
 
 AAPXSInitiatorInstance
-aap::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
+aap::xs::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
         AAPXSSerializationContext *serialization,
         aapxs_initiator_send_func sendHostAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {

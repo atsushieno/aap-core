@@ -1,4 +1,4 @@
-#include <jni.h>
+
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
 
@@ -254,11 +254,11 @@ void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2ClientSess
 
 void
 aap::AAPXSDefinitionClientRegistryImpl::setupClientInstances(
-        aap::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) {
+        xs::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) {
     instance->setupAAPXSInstances(this, serialization);
 }
 
 void aap::AAPXSDefinitionServiceRegistryImpl::setupServiceInstances(
-        aap::AAPXSServiceDispatcher *service, AAPXSSerializationContext* serialization) {
+        xs::AAPXSServiceDispatcher *service, AAPXSSerializationContext* serialization) {
     instance->setupAAPXSInstances(this, serialization);
 }
