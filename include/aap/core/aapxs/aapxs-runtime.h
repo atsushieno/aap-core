@@ -203,30 +203,30 @@ namespace aap::xs {
         virtual AAPXSDefinition& asPublic() = 0;
     };
 
-    class TypedClientAAPXS {
+    class TypedAAPXS {
         const char* uri;
     protected:
         AAPXSInitiatorInstance *aapxs_instance;
         AAPXSSerializationContext *serialization;
 
     public:
-        TypedClientAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+        TypedAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : uri(uri), aapxs_instance(initiatorInstance), serialization(serialization) {
         }
 
-        virtual ~TypedClientAAPXS() {}
+        virtual ~TypedAAPXS() {}
 
         // This must be visible to consuming code i.e. defined in this header file.
         template<typename T>
         static void getTypedCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
-            auto callbackData = (WithPromise<TypedClientAAPXS, T>*) callbackContext;
-            auto thiz = (TypedClientAAPXS*) callbackData->context;
+            auto callbackData = (WithPromise<TypedAAPXS, T>*) callbackContext;
+            auto thiz = (TypedAAPXS*) callbackData->context;
             T result = *(T*) (thiz->serialization->data);
             callbackData->promise->set_value(result);
         }
 
         static void getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
-            auto callbackData = (WithPromise<TypedClientAAPXS, int32_t>*) callbackContext;
+            auto callbackData = (WithPromise<TypedAAPXS, int32_t>*) callbackContext;
             callbackData->promise->set_value(0); // dummy result
         }
 
@@ -238,7 +238,7 @@ namespace aap::xs {
             std::promise<T> promise{};
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
-            WithPromise<TypedClientAAPXS, T> callbackData{this, &promise};
+            WithPromise<TypedAAPXS, T> callbackData{this, &promise};
             AAPXSRequestContext request{getTypedCallback<int32_t>, &callbackData, serialization, uri, requestId, opcode};
 
             aapxs_instance->send_aapxs_request(aapxs_instance, &request);
@@ -253,7 +253,7 @@ namespace aap::xs {
             std::promise<int32_t> promise{};
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
-            WithPromise<TypedClientAAPXS, int32_t> callbackData{this, &promise};
+            WithPromise<TypedAAPXS, int32_t> callbackData{this, &promise};
             AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, uri, requestId, opcode};
 
             aapxs_instance->send_aapxs_request(aapxs_instance, &request);

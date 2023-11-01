@@ -115,7 +115,5 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PARAMETERS_CHANGED};
-    initiatorInstance->send_aapxs_request(initiatorInstance, &context);
+    callVoidFunctionSynchronously(OPCODE_NOTIFY_PARAMETERS_CHANGED);
 }

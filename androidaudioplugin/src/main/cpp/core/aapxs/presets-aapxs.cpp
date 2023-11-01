@@ -66,7 +66,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs
             ext->notify_preset_loaded(ext, host);
             aapxsInstance->send_aapxs_reply(aapxsInstance, context);
             break;
-        case OPCODE_NOTIFY_PRESET_UPDATED:
+        case OPCODE_NOTIFY_PRESETS_UPDATED:
             // no args, no return
             ext->notify_presets_update(ext, host);
             aapxsInstance->send_aapxs_reply(aapxsInstance, context);
@@ -89,7 +89,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs
         case OPCODE_NOTIFY_PRESET_LOADED:
             // nothing to handle
             break;
-        case OPCODE_NOTIFY_PRESET_UPDATED:
+        case OPCODE_NOTIFY_PRESETS_UPDATED:
             // nothing to handle
             break;
     }
@@ -128,13 +128,9 @@ void aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
 // Strongly-typed service implementation (host extension functions)
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetLoaded() {
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_LOADED};
-    initiatorInstance->send_aapxs_request(initiatorInstance, &context);
+    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESET_LOADED);
 }
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetsUpdated() {
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    AAPXSRequestContext context{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_NOTIFY_PRESET_UPDATED};
-    initiatorInstance->send_aapxs_request(initiatorInstance, &context);
+    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESETS_UPDATED);
 }

@@ -15,7 +15,7 @@ const int32_t OPCODE_SET_PRESET_INDEX = 3;
 
 // host extension opcodes
 const int32_t OPCODE_NOTIFY_PRESET_LOADED = -1;
-const int32_t OPCODE_NOTIFY_PRESET_UPDATED = -2;
+const int32_t OPCODE_NOTIFY_PRESETS_UPDATED = -2;
 
 const int32_t PRESETS_SHARED_MEMORY_SIZE = sizeof(aap_preset_t) + sizeof(int32_t);
 
@@ -58,10 +58,10 @@ namespace aap::xs {
         }
     };
 
-    class PresetsClientAAPXS : public TypedClientAAPXS {
+    class PresetsClientAAPXS : public TypedAAPXS {
     public:
         PresetsClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
-                : TypedClientAAPXS(AAP_PRESETS_EXTENSION_URI, initiatorInstance, serialization) {
+                : TypedAAPXS(AAP_PRESETS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
         int32_t getPresetCount();
@@ -70,13 +70,10 @@ namespace aap::xs {
         void setPresetIndex(int32_t index);
     };
 
-    class PresetsServiceAAPXS {
-        AAPXSInitiatorInstance *initiatorInstance;
-        AAPXSSerializationContext *serialization;
-
+    class PresetsServiceAAPXS : public TypedAAPXS {
     public:
-        PresetsServiceAAPXS(AAPXSInitiatorInstance* instance, AAPXSSerializationContext* serialization)
-                : initiatorInstance(instance), serialization(serialization) {
+        PresetsServiceAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : TypedAAPXS(AAP_PRESETS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
         void notifyPresetLoaded();

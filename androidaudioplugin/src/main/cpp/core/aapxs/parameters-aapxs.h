@@ -58,10 +58,10 @@ namespace aap::xs {
         }
     };
 
-    class ParametersClientAAPXS : public TypedClientAAPXS {
+    class ParametersClientAAPXS : public TypedAAPXS {
     public:
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
-                : TypedClientAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
+                : TypedAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
         int32_t getParameterCount();
@@ -71,13 +71,10 @@ namespace aap::xs {
         aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex);
     };
 
-    class ParametersServiceAAPXS {
-        AAPXSInitiatorInstance *initiatorInstance;
-        AAPXSSerializationContext *serialization;
-
+    class ParametersServiceAAPXS : public TypedAAPXS {
     public:
-        ParametersServiceAAPXS(AAPXSInitiatorInstance* instance, AAPXSSerializationContext* serialization)
-                : initiatorInstance(instance), serialization(serialization) {
+        ParametersServiceAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : TypedAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
         void notifyParametersChanged();
