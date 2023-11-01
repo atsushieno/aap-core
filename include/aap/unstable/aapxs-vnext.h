@@ -67,7 +67,7 @@ typedef struct AAPXSRecipientInstance {
  *
  * This type provides a handful of handler functions to deal with AAPXS requests and replies, for
  * both the "plugin extension" and the "host extension".
- * They are implemented and assigned by each AAPXS implementation, and invoked by the host framework
+ * They are implemented by each AAPXS implementation, and invoked by the host framework
  * (reference implementation) that would delegate to each strongly-typed AAPXS function (which is
  * hidden behind `aapxs_context` opaque pointer).
  */
@@ -85,9 +85,9 @@ typedef struct AAPXSDefinition {
      */
     int32_t data_capacity;
 
-    /** Invoked when a plugin extension request has arrived at the service.
-     * Assigned by the host framework (reference implementation).
-     * Invoked by each AAPXS implementation.
+    /**
+     * Invoked by host (reference implementation) when a plugin extension request has arrived at the service
+     * and the service identified which AAPXS handles it.
      *
      * The parameter `definition` provides access to aapxs_context to help AAPXS developers encapsulate the implementation details.
      *

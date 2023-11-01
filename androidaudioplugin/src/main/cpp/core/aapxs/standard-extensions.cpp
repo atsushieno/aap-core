@@ -1,5 +1,6 @@
 
 #include "presets-aapxs.h"
+#include "parameters-aapxs.h"
 
 aap::xs::AAPXSDefinition_Presets presets;
 

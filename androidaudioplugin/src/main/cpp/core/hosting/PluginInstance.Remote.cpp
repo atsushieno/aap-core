@@ -269,15 +269,13 @@ void aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientReg
 
 void
 aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto aapxsInstance = aapxs_dispatcher.getPluginAAPXSByUri(uri);
-
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
         std::promise<int32_t> promise;
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::move(promise));
+        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, data, dataSize, opcode, std::move(promise));
         // This is an asynchronous function, so we do not wait for the result.
     } else {
         // Here we have to get a native plugin instance and send extension message.
@@ -301,14 +299,12 @@ aap::RemotePluginInstance::processPluginAAPXSReply(const char* uri, int32_t opco
 
 void
 aap::RemotePluginInstance::sendHostAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
-    auto aapxsInstance = aapxs_dispatcher.getHostAAPXSByUri(uri);
-
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::nullopt);
+        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, data, dataSize, opcode, std::nullopt);
     } else {
         // it was done synchronously, nothing to do here
     }
