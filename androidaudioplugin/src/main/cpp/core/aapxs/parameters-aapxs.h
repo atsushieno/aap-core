@@ -26,22 +26,22 @@ namespace aap::xs {
                 struct AAPXSDefinition* feature,
                 AAPXSRecipientInstance* aapxsInstance,
                 AndroidAudioPlugin* plugin,
-                AAPXSRequestContext* context);
+                AAPXSRequestContext* request);
         static void aapxs_parameters_process_incoming_host_aapxs_request(
                 struct AAPXSDefinition* feature,
                 AAPXSRecipientInstance* aapxsInstance,
                 AndroidAudioPluginHost* host,
-                AAPXSRequestContext* context);
+                AAPXSRequestContext* request);
         static void aapxs_parameters_process_incoming_plugin_aapxs_reply(
                 struct AAPXSDefinition* feature,
                 AAPXSInitiatorInstance* aapxsInstance,
                 AndroidAudioPlugin* plugin,
-                AAPXSRequestContext* context);
+                AAPXSRequestContext* request);
         static void aapxs_parameters_process_incoming_host_aapxs_reply(
                 struct AAPXSDefinition* feature,
                 AAPXSInitiatorInstance* aapxsInstance,
                 AndroidAudioPluginHost* host,
-                AAPXSRequestContext* context);
+                AAPXSRequestContext* request);
 
         AAPXSDefinition aapxs_parameters{AAP_PARAMETERS_EXTENSION_URI,
                                       this,

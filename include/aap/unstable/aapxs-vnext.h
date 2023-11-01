@@ -65,6 +65,8 @@ typedef struct AAPXSRecipientInstance {
  * Each AAPXS needs to provide an instance of this type so that host framework (reference
  * implementation) can register at its AAPXS map.
  *
+ * Instance of this type must be copyable.
+ *
  * This type provides a handful of handler functions to deal with AAPXS requests and replies, for
  * both the "plugin extension" and the "host extension".
  * They are implemented by each AAPXS implementation, and invoked by the host framework
@@ -94,28 +96,28 @@ typedef struct AAPXSDefinition {
      * @param definition The containing AAPXSDefinition.
      * @param aapxsInstance
      * @param plugin The target plugin
-     * @param context The request context that provides access to data, opcode, request ID, etc.
+     * @param request The request context that provides access to data, opcode, request ID, etc.
      */
     void (*process_incoming_plugin_aapxs_request) (
             struct AAPXSDefinition* definition,
             AAPXSRecipientInstance* aapxsInstance,
             AndroidAudioPlugin* plugin,
-            AAPXSRequestContext* context);
+            AAPXSRequestContext* request);
     void (*process_incoming_host_aapxs_request) (
             struct AAPXSDefinition* definition,
             AAPXSRecipientInstance* aapxsInstance,
             AndroidAudioPluginHost* host,
-            AAPXSRequestContext* context);
+            AAPXSRequestContext* request);
     void (*process_incoming_plugin_aapxs_reply) (
             struct AAPXSDefinition* definition,
             AAPXSInitiatorInstance* aapxsInstance,
             AndroidAudioPlugin* plugin,
-            AAPXSRequestContext* context);
+            AAPXSRequestContext* request);
     void (*process_incoming_host_aapxs_reply) (
             struct AAPXSDefinition* definition,
             AAPXSInitiatorInstance* aapxsInstance,
             AndroidAudioPluginHost* host,
-            AAPXSRequestContext* context);
+            AAPXSRequestContext* request);
 } AAPXSDefinition;
 
 #endif //AAP_CORE_AAPXS_VNEXT_H

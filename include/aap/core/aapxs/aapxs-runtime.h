@@ -17,6 +17,13 @@ namespace aap::xs {
         std::promise<R>* promise;
     };
 
+    /**
+     * Implements URI-to-int mappings for RT-safe URI indication, similar to LV2 URID.
+     *
+     * In this version, the value range is 1..255.
+     *
+     * The integer `0` is reserved as UNMAPPED (used when the mapped URID is not found).
+     */
     class UridMapping {
         std::vector<uint8_t> urids{};
         std::vector<const char*> uris{};
@@ -26,6 +33,7 @@ namespace aap::xs {
 
         UridMapping() {
             uris.emplace_back("");
+            urids.emplace_back(0);
         }
 
         uint8_t tryAdd(const char* uri) {
@@ -45,7 +53,7 @@ namespace aap::xs {
                 if (uri == uris[n])
                     return urids[i];
             for (size_t i = 1, n = uris.size(); i < n; i++)
-                if (uris[n] && !strcmp(uri, uris[n]))
+                if (uris[i] && !strcmp(uri, uris[i]))
                     return urids[i];
             return UNMAPPED_URID;
         }
@@ -171,6 +179,7 @@ namespace aap::xs {
 
     public:
         AAPXSDefinitionRegistry();
+        AAPXSDefinitionRegistry(std::vector<AAPXSDefinition> items);
 
         static AAPXSDefinitionRegistry* getStandardExtensions();
     };
@@ -218,14 +227,14 @@ namespace aap::xs {
 
         // This must be visible to consuming code i.e. defined in this header file.
         template<typename T>
-        static void getTypedCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
+        static void getTypedCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
             auto callbackData = (WithPromise<TypedAAPXS, T>*) callbackContext;
             auto thiz = (TypedAAPXS*) callbackData->context;
             T result = *(T*) (thiz->serialization->data);
             callbackData->promise->set_value(result);
         }
 
-        static void getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
+        static void getVoidCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
             auto callbackData = (WithPromise<TypedAAPXS, int32_t>*) callbackContext;
             callbackData->promise->set_value(0); // dummy result
         }

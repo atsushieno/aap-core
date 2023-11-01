@@ -115,7 +115,7 @@ public:
         std::promise<std::string> promise;
     };
 
-    static void getPresetCallback(void* context, AndroidAudioPlugin* plugin, int32_t requestId) {
+    static void getPresetCallback(void* context, void* pluginOrHost, int32_t requestId) {
         auto pw = (PromiseWrapper*) context;
         pw->promise.set_value(pw->preset->name);
     }
