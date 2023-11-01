@@ -72,9 +72,12 @@ typedef void (*aap_host_request_process_func_t) (struct AndroidAudioPluginHost* 
 
 /**
  * Represents a host from plugin's perspective.
- * AAP client host is supposed to provide it (aap::PluginClient does so).
+ * AAP client host is supposed to provide it (aap::PluginInstance does so).
  * Note that it is not to represent a comprehensive host that manages multiple instances, but
  * to provide minimum information that is exposed to plugin.
+ *
+ * The context should be capable of resolving the target plugin instance within the host so that
+ * a host extension function should not have to provide `AndroidAudioPlugin` or "instance ID".
  */
 typedef struct AndroidAudioPluginHost {
     void *context;

@@ -15,7 +15,7 @@ const int32_t OPCODE_PARAMETERS_GET_ENUMERATION_COUNT = 4;
 const int32_t OPCODE_PARAMETERS_GET_ENUMERATION = 5;
 
 // host extension opcodes
-const int32_t OPCODE_NOTIFY_PARAMETERS_CHANGED = 0;
+const int32_t OPCODE_NOTIFY_PARAMETERS_CHANGED = -1;
 
 const int32_t PARAMETERS_SHARED_MEMORY_SIZE = sizeof(aap_parameter_info_t); // it is the expected max size in v2.1 extension.
 

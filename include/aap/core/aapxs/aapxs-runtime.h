@@ -225,8 +225,14 @@ namespace aap::xs {
             callbackData->promise->set_value(result);
         }
 
+        static void getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
+            auto callbackData = (WithPromise<TypedClientAAPXS, int32_t>*) callbackContext;
+            callbackData->promise->set_value(0); // dummy result
+        }
+
         // This must be visible to consuming code i.e. defined in this header file.
-        // FIXME: use spinlock for RT-safe extension functions, which means there should be another RT-safe version of this function.
+        // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
+        //  which means there should be another RT-safe version of this function.
         template<typename T>
         T callTypedFunctionSynchronously(int32_t opcode) {
             std::promise<T> promise{};
@@ -241,8 +247,19 @@ namespace aap::xs {
             return future.get();
         }
 
-        static void getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-        void callVoidFunctionSynchronously(int32_t opcode);
+        // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
+        //  which means there should be another RT-safe version of this function.
+        void callVoidFunctionSynchronously(int32_t opcode) {
+            std::promise<int32_t> promise{};
+            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+            auto future = promise.get_future();
+            WithPromise<TypedClientAAPXS, int32_t> callbackData{this, &promise};
+            AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, uri, requestId, opcode};
+
+            aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+
+            future.wait();
+        }
     };
 }
 

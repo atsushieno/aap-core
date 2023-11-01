@@ -21,17 +21,20 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
             } else {
                 memset(aapxsInstance->serialization->data, 0, sizeof(aap_parameter_info_t));
             }
+            aapxsInstance->send_aapxs_reply(aapxsInstance, context);
             break;
         case OPCODE_PARAMETERS_GET_PROPERTY: {
             int32_t parameterId = *((int32_t *) aapxsInstance->serialization->data);
             int32_t propertyId = *((int32_t *) aapxsInstance->serialization->data + 1);
             *((double *) aapxsInstance->serialization->data) =
                     ext != nullptr && ext->get_parameter_property ? ext->get_parameter_property(ext, plugin, parameterId, propertyId): 0.0;
+            aapxsInstance->send_aapxs_reply(aapxsInstance, context);
             break;
         }
         case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT: {
             int32_t parameterId = *((int32_t *) aapxsInstance->serialization->data);
             *((int32_t *) aapxsInstance->serialization->data) = ext != nullptr && ext->get_enumeration_count ? ext->get_enumeration_count(ext, plugin, parameterId) : 0;
+            aapxsInstance->send_aapxs_reply(aapxsInstance, context);
             break;
         }
         case OPCODE_PARAMETERS_GET_ENUMERATION:
@@ -43,6 +46,10 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
             } else {
                 memset(aapxsInstance->serialization->data, 0, sizeof(aap_parameter_enum_t));
             }
+            aapxsInstance->send_aapxs_reply(aapxsInstance, context);
+            break;
+        default:
+            // FIXME: log warning?
             break;
     }
 }
@@ -50,8 +57,16 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *context) {
-    // FIXME: implement
-    assert(false);
+    auto ext = (aap_host_parameters_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
+    switch (context->opcode) {
+        case OPCODE_NOTIFY_PARAMETERS_CHANGED:
+            ext->notify_parameters_changed(ext, host);
+            aapxsInstance->send_aapxs_reply(aapxsInstance, context);
+            break;
+        default:
+            // FIXME: log warning?
+            break;
+    }
 }
 
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plugin_aapxs_reply(

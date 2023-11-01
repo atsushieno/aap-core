@@ -14,8 +14,8 @@ const int32_t OPCODE_GET_PRESET_INDEX = 2;
 const int32_t OPCODE_SET_PRESET_INDEX = 3;
 
 // host extension opcodes
-const int32_t OPCODE_NOTIFY_PRESET_LOADED = 0;
-const int32_t OPCODE_NOTIFY_PRESET_UPDATED = 1;
+const int32_t OPCODE_NOTIFY_PRESET_LOADED = -1;
+const int32_t OPCODE_NOTIFY_PRESET_UPDATED = -2;
 
 const int32_t PRESETS_SHARED_MEMORY_SIZE = sizeof(aap_preset_t) + sizeof(int32_t);
 

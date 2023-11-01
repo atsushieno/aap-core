@@ -189,7 +189,7 @@ namespace aap {
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
 
-        static void notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host, AndroidAudioPlugin *plugin);
+        AAPXS_V1_DEPRECATED static void notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host);
 
         static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri);
         static void internalRequestProcess(AndroidAudioPluginHost *host);

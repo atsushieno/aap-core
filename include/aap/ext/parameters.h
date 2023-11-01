@@ -94,11 +94,10 @@ typedef struct aap_parameters_extension_t {
 } aap_parameters_extension_t;
 
 typedef struct aap_host_parameters_extension_t {
+    void* aapxs_context;
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host (it will need to refresh the list anyways).
-    // FIXME: the `host` argument could be replaced with ext->plugin_context
-    // FIXME: the `plugin` argument could be represented by something else e.g. instanceID.
-    RT_SAFE void (*notify_parameters_changed) (aap_host_parameters_extension_t* ext, AndroidAudioPluginHost* host, AndroidAudioPlugin *plugin);
+    RT_SAFE void (*notify_parameters_changed) (aap_host_parameters_extension_t* ext, AndroidAudioPluginHost* host);
 } aap_host_parameters_extension_t;
 
 #ifdef __cplusplus

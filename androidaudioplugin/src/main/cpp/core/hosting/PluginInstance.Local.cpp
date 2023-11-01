@@ -112,8 +112,7 @@ AAPXSServiceInstance* aap::LocalPluginInstance::setupAAPXSInstance(AAPXSFeature 
     return aapxsServiceInstances.get(uri);
 }
 
-void aap::LocalPluginInstance::notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host,
-                                                    AndroidAudioPlugin *plugin) {
+void aap::LocalPluginInstance::notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host) {
     assert(false); // FIXME: implement
 }
 
