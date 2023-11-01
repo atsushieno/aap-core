@@ -97,55 +97,22 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs
 
 // Strongly-typed client implementation (plugin extension functions)
 
-void aap::xs::PresetsClientAAPXS::getPresetIntCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
-    auto callbackData = (WithPromise<PresetsClientAAPXS, int32_t>*) callbackContext;
-    auto thiz = (PresetsClientAAPXS*) callbackData->context;
-    int32_t result = *(int32_t*) (thiz->serialization->data);
-    callbackData->promise->set_value(result);
-}
-
-int32_t aap::xs::PresetsClientAAPXS::callIntPresetFunction(int32_t opcode) {
-    // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
-    std::promise<int32_t> promise{};
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    auto future = promise.get_future();
-    WithPromise<PresetsClientAAPXS, int32_t> callbackData{this, &promise};
-    AAPXSRequestContext request{getPresetIntCallback, &callbackData, serialization, AAP_PRESETS_EXTENSION_URI, requestId, opcode};
-
-    initiatorInstance->send_aapxs_request(initiatorInstance, &request);
-
-    future.wait();
-    return future.get();
-}
-
 int32_t aap::xs::PresetsClientAAPXS::getPresetCount() {
-    return callIntPresetFunction(OPCODE_GET_PRESET_COUNT);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_PRESET_COUNT);
 }
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetIndex() {
-    return callIntPresetFunction(OPCODE_GET_PRESET_INDEX);
-}
-
-void aap::xs::PresetsClientAAPXS::getPresetCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
-    auto callbackData = (WithPromise<PresetsClientAAPXS, int32_t>*) callbackContext;
-    auto thiz = (PresetsClientAAPXS*) callbackData->context;
-    int32_t result = *(int32_t*) (thiz->serialization->data);
-    callbackData->promise->set_value(result);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_PRESET_INDEX);
 }
 
 void aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {
-    // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
-    std::promise<int32_t> promise{};
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    auto future = promise.get_future();
-    WithPromise<PresetsClientAAPXS, int32_t> callbackData{this, &promise};
-    AAPXSRequestContext request{getPresetCallback, &callbackData, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_GET_PRESET_DATA};
-
+    // request
+    // - 0..3: index
     *(int32_t*) (serialization->data) = index;
-    initiatorInstance->send_aapxs_request(initiatorInstance, &request);
 
-    future.wait();
-    // response (offset-range: content)
+    callVoidFunctionSynchronously(OPCODE_GET_PRESET_DATA);
+
+    // response
     // - 0..3 : stable ID
     // - 4..259 : name (fixed length char buffer)
     preset.id = *((int32_t *) serialization->data);
@@ -154,12 +121,8 @@ void aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset)
 }
 
 void aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
-    // we do not wait for the result, so no promise<T> involved
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    AAPXSRequestContext request{nullptr, nullptr, serialization, AAP_PRESETS_EXTENSION_URI, requestId, OPCODE_GET_PRESET_DATA};
-
     *(int32_t*) (serialization->data) = index;
-    initiatorInstance->send_aapxs_request(initiatorInstance, &request);
+    callVoidFunctionSynchronously(OPCODE_SET_PRESET_INDEX);
 }
 
 // Strongly-typed service implementation (host extension functions)

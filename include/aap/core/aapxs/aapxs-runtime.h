@@ -202,6 +202,48 @@ namespace aap::xs {
     public:
         virtual AAPXSDefinition& asPublic() = 0;
     };
+
+    class TypedClientAAPXS {
+        const char* uri;
+    protected:
+        AAPXSInitiatorInstance *aapxs_instance;
+        AAPXSSerializationContext *serialization;
+
+    public:
+        TypedClientAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : uri(uri), aapxs_instance(initiatorInstance), serialization(serialization) {
+        }
+
+        virtual ~TypedClientAAPXS() {}
+
+        // This must be visible to consuming code i.e. defined in this header file.
+        template<typename T>
+        static void getTypedCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
+            auto callbackData = (WithPromise<TypedClientAAPXS, T>*) callbackContext;
+            auto thiz = (TypedClientAAPXS*) callbackData->context;
+            T result = *(T*) (thiz->serialization->data);
+            callbackData->promise->set_value(result);
+        }
+
+        // This must be visible to consuming code i.e. defined in this header file.
+        // FIXME: use spinlock for RT-safe extension functions, which means there should be another RT-safe version of this function.
+        template<typename T>
+        T callTypedFunctionSynchronously(int32_t opcode) {
+            std::promise<T> promise{};
+            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+            auto future = promise.get_future();
+            WithPromise<TypedClientAAPXS, T> callbackData{this, &promise};
+            AAPXSRequestContext request{getTypedCallback<int32_t>, &callbackData, serialization, uri, requestId, opcode};
+
+            aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+
+            future.wait();
+            return future.get();
+        }
+
+        static void getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
+        void callVoidFunctionSynchronously(int32_t opcode);
+    };
 }
 
 #endif //AAP_CORE_AAPXS_RUNTIME_H

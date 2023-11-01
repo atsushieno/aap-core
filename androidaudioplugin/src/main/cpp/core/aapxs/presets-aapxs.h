@@ -58,19 +58,12 @@ namespace aap::xs {
         }
     };
 
-    class PresetsClientAAPXS {
-        AAPXSInitiatorInstance *initiatorInstance;
-        AAPXSSerializationContext *serialization;
-
-        static void getPresetIntCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-        static void getPresetCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-
+    class PresetsClientAAPXS : public TypedClientAAPXS {
     public:
         PresetsClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
-                : initiatorInstance(initiatorInstance), serialization(serialization) {
+                : TypedClientAAPXS(AAP_PRESETS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
-        int32_t callIntPresetFunction(int32_t opcode);
         int32_t getPresetCount();
         void getPreset(int32_t index, aap_preset_t& preset);
         int32_t getPresetIndex();

@@ -84,3 +84,21 @@ aap::xs::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
                                     sendHostAAPXSRequest};
     return instance;
 }
+
+void aap::xs::TypedClientAAPXS::getVoidCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId) {
+    auto callbackData = (WithPromise<TypedClientAAPXS, int32_t>*) callbackContext;
+    callbackData->promise->set_value(0); // dummy result
+}
+
+void aap::xs::TypedClientAAPXS::callVoidFunctionSynchronously(int32_t opcode) {
+    // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
+    std::promise<int32_t> promise{};
+    uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+    auto future = promise.get_future();
+    WithPromise<TypedClientAAPXS, int32_t> callbackData{this, &promise};
+    AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, uri, requestId, opcode};
+
+    aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+
+    future.wait();
+}

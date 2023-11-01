@@ -58,22 +58,12 @@ namespace aap::xs {
         }
     };
 
-    class ParametersClientAAPXS {
-        AAPXSInitiatorInstance *initiatorInstance;
-        AAPXSSerializationContext *serialization;
-
-        template<typename T>
-        static void getParameterTypedCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-        static void getParameterCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-        static void getEnumerationCallback(void* callbackContext, AndroidAudioPlugin* plugin, int32_t requestId);
-
+    class ParametersClientAAPXS : public TypedClientAAPXS {
     public:
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
-                : initiatorInstance(initiatorInstance), serialization(serialization) {
+                : TypedClientAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
-        template<typename T>
-        T callTypedParametersFunction(int32_t opcode);
         int32_t getParameterCount();
         aap_parameter_info_t getParameter(int32_t index);
         double getProperty(int32_t index, int32_t propertyId);

@@ -70,56 +70,33 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host
 
 // AAPXSParametersClient
 
-template<typename T>
-void aap::xs::ParametersClientAAPXS::getParameterTypedCallback(void *callbackContext,
-                                                             AndroidAudioPlugin *plugin,
-                                                             int32_t requestId) {
-    auto callbackData = (WithPromise<ParametersClientAAPXS, T>*) callbackContext;
-    auto thiz = (ParametersClientAAPXS*) callbackData->context;
-    T result = *(T*) (thiz->serialization->data);
-    callbackData->promise->set_value(result);
-}
-
-template<typename T>
-T aap::xs::ParametersClientAAPXS::callTypedParametersFunction(int32_t opcode) {
-    // FIXME: use spinlock instead of std::promise and std::future, as getPresetCount() and getPresetIndex() must be RT_SAFE.
-    std::promise<T> promise{};
-    uint32_t requestId = initiatorInstance->get_new_request_id(initiatorInstance);
-    auto future = promise.get_future();
-    WithPromise<ParametersClientAAPXS, T> callbackData{this, &promise};
-    AAPXSRequestContext request{getParameterTypedCallback<T>, &callbackData, serialization, AAP_PARAMETERS_EXTENSION_URI, requestId, opcode};
-
-    initiatorInstance->send_aapxs_request(initiatorInstance, &request);
-
-    future.wait();
-    return future.get();
-}
-
 int32_t aap::xs::ParametersClientAAPXS::getParameterCount() {
-    return callTypedParametersFunction<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
 aap_parameter_info_t aap::xs::ParametersClientAAPXS::getParameter(int32_t index) {
     *((int32_t*) serialization->data) = index;
-    return callTypedParametersFunction<aap_parameter_info_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<aap_parameter_info_t>(
+            OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
 double aap::xs::ParametersClientAAPXS::getProperty(int32_t index, int32_t propertyId) {
     *((int32_t*) serialization->data) = index;
     *((int32_t*) serialization->data + 1) = propertyId;
-    return callTypedParametersFunction<double>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<double>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationCount(int32_t index) {
     *((int32_t*) serialization->data) = index;
-    return callTypedParametersFunction<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
 aap_parameter_enum_t
 aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex) {
     *((int32_t*) serialization->data) = index;
     *((int32_t*) serialization->data + 1) = enumIndex;
-    return callTypedParametersFunction<aap_parameter_enum_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<aap_parameter_enum_t>(
+            OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {
