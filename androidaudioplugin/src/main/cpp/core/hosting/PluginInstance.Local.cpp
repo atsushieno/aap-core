@@ -9,17 +9,18 @@ void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2Processor* processor, void* 
     instance->addEventUmpOutput(processor->midi2_aapxs_data_buffer, messageSize);
 }
 
-aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
+aap::LocalPluginInstance::LocalPluginInstance(
+        PluginHost *host,
 #if USE_AAPXS_V2
-                                         AAPXSDefinitionServiceRegistry *aapxsRegistry,
+        xs::AAPXSDefinitionRegistry *aapxsRegistry,
 #else
-                                         AAPXSRegistry *aapxsRegistry,
+        AAPXSRegistry *aapxsRegistry,
 #endif
-                                         int32_t instanceId,
-                                         const PluginInformation* pluginInformation,
-                                         AndroidAudioPluginFactory* loadedPluginFactory,
-                                         int32_t sampleRate,
-                                         int32_t eventMidi2InputBufferSize)
+        int32_t instanceId,
+        const PluginInformation* pluginInformation,
+        AndroidAudioPluginFactory* loadedPluginFactory,
+        int32_t sampleRate,
+        int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           host(host),
           feature_registry(new AAPXSDefinitionServiceRegistryImpl(this)),
@@ -28,14 +29,20 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
 #if !USE_AAPXS_V2
           aapxs_registry(aapxsRegistry),
 #endif
-          aapxsServiceInstances([&]() { return getPlugin(); }),
-          standards(this) {
+          aapxsServiceInstances([&]() { return getPlugin(); })
+#if !USE_AAPXS_V2
+          ,standards(this)
+#endif
+          {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
     aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
 
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
+#if USE_AAPXS_V2
+        // FIXME: implement
+#else
         auto aapxsInstance = aapxsServiceInstances.get(context->uri, false);
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->data, (int32_t*) context->data, context->dataSize);
@@ -51,6 +58,7 @@ aap::LocalPluginInstance::LocalPluginInstance(PluginHost *host,
                                        context->dataSize,
                                        context->opcode
                                        );
+#endif
     });
 }
 
@@ -70,6 +78,11 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 
 void *
 aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
+#if USE_AAPXS_V2
+    // FIXME: implement
+    assert(false);
+    return nullptr;
+#else
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         auto instance = (LocalPluginInstance *) host->context;
         instance->host_plugin_info.get = get_plugin_info;
@@ -81,6 +94,7 @@ aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host,
         return &instance->host_parameters_extension;
     }
     return nullptr;
+#endif
 }
 
 void aap::LocalPluginInstance::internalRequestProcess(AndroidAudioPluginHost *host) {
@@ -233,7 +247,7 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
 
 void aap::LocalPluginInstance::controlExtension(const std::string &uri, int32_t opcode, uint32_t requestId)  {
 #if USE_AAPXS_V2
-    auto def = feature_registry->getByUri(uri.c_str());
+    auto def = feature_registry.get()->items()->getByUri(uri.c_str());
     assert(def != nullptr);
     auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
     AAPXSRequestContext context{nullptr, nullptr, instance->serialization, uri.c_str(), requestId, opcode};

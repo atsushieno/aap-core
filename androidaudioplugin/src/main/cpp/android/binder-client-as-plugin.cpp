@@ -213,6 +213,10 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         // It is a nasty workaround to not expose Binder back to platform-agnostic aap::RemotePluginInstance; we set a callable function for them here.
         instance->setIpcExtensionMessageSender(aap_client_as_plugin_send_extension_message_delegate);
 
+#if USE_AAPXS_V2
+        // FIXME: implement
+        assert(false);
+#else
         // Set up shared memory FDs for plugin extension services.
         // We make use of plugin metadata that should list up required and optional extensions.
         if (!instance->getAAPXSManager()->setupAAPXSInstances([&](AAPXSClientInstance *ext) {
@@ -240,6 +244,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             }
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
+#endif
     }
 
 	return new AndroidAudioPlugin {

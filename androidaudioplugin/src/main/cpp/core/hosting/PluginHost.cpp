@@ -62,12 +62,16 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
     if (standard_aapxs_registry == nullptr)
         initializeStandardAAPXSRegistry();
     aapxs_definition_registry = aapxsDefinitionRegistry; // FIXME: replace null with standard extensions
+#if !USE_AAPXS_V2
     aapxs_registry = aapxsRegistry ? aapxsRegistry : standard_aapxs_registry.get();
+#endif
 }
 
+#if !USE_AAPXS_V2
 AAPXSFeature* aap::PluginHost::getExtensionFeature(const char* uri) {
     return aapxs_registry->getByUri(uri);
 }
+#endif
 
 void aap::PluginHost::destroyInstance(PluginInstance* instance)
 {
@@ -120,7 +124,13 @@ aap::PluginInstance* aap::PluginHost::instantiateLocalPlugin(const PluginInforma
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "aap::PluginHost: AAP factory entrypoint function %s could not instantiate a plugin.", entrypoint.c_str());
         return nullptr;
     }
-    auto instance = new LocalPluginInstance(this, aapxs_registry, localInstanceIdSerial++,
+    auto instance = new LocalPluginInstance(this,
+#if USE_AAPXS_V2
+                                            aapxs_definition_registry,
+#else
+                                            aapxs_registry,
+#endif
+                                            localInstanceIdSerial++,
                                             descriptor, pluginFactory, sampleRate, event_midi2_input_buffer_size);
     instances.emplace_back(instance);
     return instance;

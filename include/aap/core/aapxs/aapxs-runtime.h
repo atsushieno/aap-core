@@ -110,11 +110,8 @@ namespace aap::xs {
     class AAPXSDefinitionServiceRegistry;
 
     typedef uint32_t (*initiator_get_new_request_id_func) (AAPXSInitiatorInstance* instance);
-    typedef uint32_t (*recipient_get_new_request_id_func) (AAPXSRecipientInstance* instance);
     typedef void (*aapxs_initiator_send_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
-    typedef void (*aapxs_initiator_receive_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
     typedef void (*aapxs_recipient_send_func) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
-    typedef void (*aapxs_recipient_receive_func) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
 
     class AAPXSDispatcher {
     protected:

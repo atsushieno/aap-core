@@ -72,7 +72,11 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
             assert (pluginFactory != nullptr);
-            auto instance = new RemotePluginInstance(this, aapxs_registry, descriptor, pluginFactory,
+            auto instance = new RemotePluginInstance(this,
+#if !USE_AAPXS_V2
+                                                     aapxs_registry,
+#endif
+                                                     descriptor, pluginFactory,
                                                      sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
             instance->completeInstantiation();

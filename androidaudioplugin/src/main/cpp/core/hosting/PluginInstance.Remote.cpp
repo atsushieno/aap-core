@@ -5,16 +5,20 @@
 #define LOG_TAG "AAP.Remote.Instance"
 
 aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
+#if !USE_AAPXS_V2
                                                 AAPXSRegistry* aapxsRegistry,
+#endif
                                                 const PluginInformation* pluginInformation,
                                                 AndroidAudioPluginFactory* loadedPluginFactory,
                                                 int32_t sampleRate,
                                                 int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           client(client),
+#if !USE_AAPXS_V2
           aapxs_registry(aapxsRegistry),
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
+#endif
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new AAPXSDefinitionClientRegistryImpl(this)),
           aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get())) {
@@ -199,7 +203,13 @@ aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
+#if USE_AAPXS_V2
+    // FIXME: implement
+    assert(false);
+    return nullptr;
+#else
     return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
+#endif
 }
 
 //----
