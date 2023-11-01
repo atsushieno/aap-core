@@ -18,7 +18,7 @@ const int32_t OPCODE_GET_MAPPING_POLICY = 0;
 const int32_t MIDI_SHARED_MEMORY_SIZE = AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t);
 
 namespace aap::xs {
-    class AAPXSDefinition_State : public AAPXSDefinitionWrapper {
+    class AAPXSDefinition_Midi : public AAPXSDefinitionWrapper {
 
         static void aapxs_midi_process_incoming_plugin_aapxs_request(
                 struct AAPXSDefinition* feature,
