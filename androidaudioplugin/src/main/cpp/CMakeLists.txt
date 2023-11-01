@@ -19,6 +19,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/plugin-connections.cpp"
 	"core/aapxs/extension-service.cpp"
 	"core/aapxs/aapxs-runtime.cpp"
+	"core/aapxs/midi-aapxs.cpp"
 	"core/aapxs/parameters-aapxs.cpp"
 	"core/aapxs/presets-aapxs.cpp"
 	"core/aapxs/state-aapxs.cpp"
