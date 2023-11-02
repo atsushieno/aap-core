@@ -1,5 +1,5 @@
 
-#include "parameters-aapxs.h"
+#include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
 #include "aap/core/aapxs/aapxs-runtime.h"
 

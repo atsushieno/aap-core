@@ -1,5 +1,5 @@
 
-#include "midi-aapxs.h"
+#include "aap/core/aapxs/midi-aapxs.h"
 #include "../AAPJniFacade.h"
 
 #if USE_AAPXS_V2

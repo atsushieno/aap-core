@@ -1,8 +1,5 @@
 
-#include "presets-aapxs.h"
-#include "parameters-aapxs.h"
-#include "state-aapxs.h"
-#include "midi-aapxs.h"
+#include "aap/core/aapxs/standard-extensions-v2.h"
 
 aap::xs::AAPXSDefinition_Midi midi;
 aap::xs::AAPXSDefinition_Parameters parameters;

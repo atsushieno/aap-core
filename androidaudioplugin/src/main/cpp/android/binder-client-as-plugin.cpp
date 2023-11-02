@@ -214,8 +214,34 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         instance->setIpcExtensionMessageSender(aap_client_as_plugin_send_extension_message_delegate);
 
 #if USE_AAPXS_V2
-        // FIXME: implement
-        assert(false);
+        // Set up shared memory FDs for plugin extension services.
+        // We make use of plugin metadata that should list up required and optional extensions.
+        if (!instance->setupAAPXSInstances(instance->getAAPXSRegistry(), [&](const char* uri, AAPXSSerializationContext *serialization) {
+            // create asharedmem and add as an extension FD, keep it until it is destroyed.
+            auto fd = ASharedMemory_create(nullptr, serialization->data_size);
+            auto shm = instance->getSharedMemoryStore();
+            serialization->data = shm->addExtensionFD(fd, serialization->data_size);
+
+            if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+                ndk::ScopedFileDescriptor sfd{dup(fd)};
+                auto stat = ctx->getProxy()->addExtension(ctx->instance_id, uri, sfd, serialization->data_size);
+                if (!stat.isOk()) {
+                    aap_bcap_log_error_with_details("addExtension() failed", stat);
+                    ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+                }
+            }
+            return ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        }))
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+
+        if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+            status = ctx->getProxy()->endCreate(ctx->instance_id);
+            if (!status.isOk()) {
+                aap_bcap_log_error_with_details("endCreate() failed", status);
+                ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+            }
+            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
+        }
 #else
         // Set up shared memory FDs for plugin extension services.
         // We make use of plugin metadata that should list up required and optional extensions.

@@ -4,6 +4,7 @@
 
 #include <mutex>
 #include "aap/core/aapxs/standard-extensions.h"
+#include "aap/core/aapxs/standard-extensions-v2.h"
 #include "aap/unstable/utility.h"
 #include "plugin-host.h"
 #include "aap/ext/plugin-info.h"
@@ -22,9 +23,6 @@ namespace aap {
     class PluginSharedMemoryStore;
     class PluginHost;
     class PluginClient;
-
-    class AAPXSDefinitionClientRegistryImpl;
-    class AAPXSDefinitionServiceRegistryImpl;
 
 /**
  * The common basis for client RemotePluginInstance and service LocalPluginInstance.
@@ -123,7 +121,9 @@ namespace aap {
 
         virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) = 0;
 
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+        virtual xs::StandardExtensions &getStandardExtensions() = 0;
+#else
         virtual StandardExtensions &getStandardExtensions() = 0;
 #endif
 
@@ -173,11 +173,12 @@ namespace aap {
         };
 
         PluginHost *host;
-        std::unique_ptr<AAPXSDefinitionServiceRegistryImpl> feature_registry;
-        xs::AAPXSServiceDispatcher aapxs_dispatcher;
         AAPXSMidi2ClientSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+        std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
+        xs::AAPXSServiceDispatcher aapxs_dispatcher;
+#else
         AAPXS_V1_DEPRECATED AAPXSRegistry *aapxs_registry;
 #endif
         AAPXS_V1_DEPRECATED AAPXSInstanceMap <AAPXSServiceInstance> aapxsServiceInstances;
@@ -233,7 +234,10 @@ namespace aap {
             return ret;
         }
 
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+        aap::xs::ServiceStandardExtensions standards;
+        xs::ServiceStandardExtensions &getStandardExtensions() override { return standards; }
+#else
         AAPXS_V1_DEPRECATED StandardExtensions &getStandardExtensions() override { return standards; }
 #endif
 
@@ -257,8 +261,10 @@ namespace aap {
 
 
         // AAPXS v2
+#if USE_AAPXS_V2
         xs::AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        void setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry *registry, AAPXSSerializationContext *serialization);
+        void setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry *registry);
+#endif
         void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
 
@@ -326,7 +332,9 @@ namespace aap {
         // The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
         // (binder-client-as-plugin does so, and desktop implementation should do so too.)
         RemotePluginInstance(PluginClient* client,
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+                             xs::AAPXSDefinitionRegistry *aapxsRegistry,
+#else
                              AAPXSRegistry *aapxsRegistry,
 #endif
                              const PluginInformation *pluginInformation,
@@ -379,15 +387,25 @@ namespace aap {
 
 
         // AAPXS v2
+#if USE_AAPXS_V2
+    private:
+        std::unique_ptr<xs::AAPXSDefinitionClientRegistry> feature_registry;
+        xs::AAPXSClientDispatcher aapxs_dispatcher;
+        xs::ClientStandardExtensions standards;
+    public:
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        void setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, AAPXSSerializationContext *serialization);
+        bool setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
+#endif
         void sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void processPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
         void sendHostAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void processHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
-    private:
-        std::unique_ptr<AAPXSDefinitionClientRegistryImpl> feature_registry;
-        xs::AAPXSClientDispatcher aapxs_dispatcher;
+
+#if USE_AAPXS_V2
+        xs::AAPXSDefinitionClientRegistry* getAAPXSRegistry();
+
+        xs::StandardExtensions &getStandardExtensions() override { return standards; }
+#endif
     };
 
     // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance
@@ -414,22 +432,6 @@ namespace aap {
 #endif
 
         AAPXSClientInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) override;
-    };
-
-    class AAPXSDefinitionClientRegistryImpl : public xs::AAPXSDefinitionClientRegistry {
-        RemotePluginInstance* instance;
-    public:
-        AAPXSDefinitionClientRegistryImpl(RemotePluginInstance* instance) : instance(instance) {}
-
-        void setupClientInstances(xs::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) override;
-    };
-
-    class AAPXSDefinitionServiceRegistryImpl : public xs::AAPXSDefinitionServiceRegistry {
-        LocalPluginInstance* instance;
-    public:
-        AAPXSDefinitionServiceRegistryImpl(LocalPluginInstance* instance) : instance(instance) {}
-
-        void setupServiceInstances(xs::AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) override;
     };
 }
 

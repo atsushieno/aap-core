@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <cstdint>
 #include <vector>
+#include <map>
 #include <future>
 #include "../../unstable/aapxs-vnext.h"
 #include "../../android-audio-plugin.h"
@@ -122,7 +123,11 @@ namespace aap::xs {
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
     };
 
+    // Created per plugin instance.
     class AAPXSClientDispatcher : public AAPXSDispatcher {
+        AAPXSDefinitionClientRegistry* registry;
+        std::map<uint8_t, std::unique_ptr<AAPXSSerializationContext>> serialization_store{};
+
         AAPXSInitiatorInstance
         populateAAPXSInitiatorInstance(AAPXSSerializationContext *serialization,
                                        aapxs_initiator_send_func sendAAPXSRequest,
@@ -139,15 +144,20 @@ namespace aap::xs {
         inline AAPXSRecipientInstance* getHostAAPXSByUri(const char* uri) { return recipients.getByUri(uri); }
         inline AAPXSRecipientInstance* getHostAAPXSByUrid(uint8_t urid) { return recipients.getByUrid(urid); };
 
-        void
-        setupInstances(AAPXSDefinitionClientRegistry *registry,
-                       AAPXSSerializationContext *serialization,
+        bool
+        setupInstances(std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester,
                        aapxs_initiator_send_func sendAAPXSRequest,
                        aapxs_recipient_send_func sendAAPXSReplyFunc,
                        initiator_get_new_request_id_func initiatorGetNewRequestId);
+
+        AAPXSSerializationContext *getSerialization(const char *uri);
     };
 
+    // Created per plugin instance.
     class AAPXSServiceDispatcher : public AAPXSDispatcher {
+        AAPXSDefinitionServiceRegistry *registry;
+        std::map<uint8_t, std::unique_ptr<AAPXSSerializationContext>> serialization_store{};
+
         AAPXSInitiatorInstance populateAAPXSInitiatorInstance(
                 AAPXSSerializationContext* serialization,
                 aapxs_initiator_send_func sendHostAAPXSRequest,
@@ -165,9 +175,7 @@ namespace aap::xs {
         AAPXSInitiatorInstance* getHostAAPXSByUrid(uint8_t urid) { return initiators.getByUrid(urid); };
 
         void
-        setupInstances(AAPXSDefinitionServiceRegistry *registry,
-                       AAPXSSerializationContext *serialization,
-                       aapxs_recipient_send_func sendAapxsReply,
+        setupInstances(aapxs_recipient_send_func sendAapxsReply,
                        aapxs_initiator_send_func sendAAPXSRequest,
                        initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
@@ -188,7 +196,6 @@ namespace aap::xs {
         virtual ~AAPXSDefinitionClientRegistry() {}
 
         AAPXSDefinitionRegistry* items() { return registry; }
-        virtual void setupClientInstances(AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };
 
     class AAPXSDefinitionServiceRegistry {
@@ -199,7 +206,6 @@ namespace aap::xs {
         virtual ~AAPXSDefinitionServiceRegistry() {}
 
         AAPXSDefinitionRegistry* items() { return registry; }
-        virtual void setupServiceInstances(AAPXSServiceDispatcher *client, AAPXSSerializationContext* serialization) = 0;
     };
 
     class AAPXSDefinitionWrapper {

@@ -23,15 +23,18 @@ aap::LocalPluginInstance::LocalPluginInstance(
         int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           host(host),
-          feature_registry(new AAPXSDefinitionServiceRegistryImpl(this)),
-          aapxs_dispatcher(xs::AAPXSServiceDispatcher(feature_registry.get())),
           aapxs_host_session(eventMidi2InputBufferSize),
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+          feature_registry(new xs::AAPXSDefinitionServiceRegistry(aapxsRegistry)),
+          aapxs_dispatcher(xs::AAPXSServiceDispatcher(feature_registry.get())),
+#else
           aapxs_registry(aapxsRegistry),
 #endif
-          aapxsServiceInstances([&]() { return getPlugin(); })
-#if !USE_AAPXS_V2
-          ,standards(this)
+          aapxsServiceInstances([&]() { return getPlugin(); }),
+#if USE_AAPXS_V2
+          standards(plugin)
+#else
+          standards(this)
 #endif
           {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
@@ -42,6 +45,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
 #if USE_AAPXS_V2
         // FIXME: implement
+        throw std::runtime_error("Implement");
 #else
         auto aapxsInstance = aapxsServiceInstances.get(context->uri, false);
         // We need to copy extension data buffer before calling it.
@@ -202,6 +206,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 }
 
 // ---- AAPXS v2
+#if USE_AAPXS_V2
 static inline void staticSendAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
     ((aap::LocalPluginInstance *) instance->host_context)->sendPluginAAPXSReply(context->uri,
                                                                                 context->opcode,
@@ -213,10 +218,8 @@ static inline void staticSendAAPXSRequest(AAPXSRecipientInstance* instance, AAPX
     ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
-void aap::LocalPluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry *registry,
-                                                    AAPXSSerializationContext *serialization) {
-    aapxs_dispatcher.setupInstances(registry, serialization,
-                                    staticSendAAPXSRequest,
+void aap::LocalPluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry* registry) {
+    aapxs_dispatcher.setupInstances(staticSendAAPXSRequest,
                                     staticSendAAPXSReply,
                                     staticGetNewRequestId);
 }
@@ -244,6 +247,7 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
         ipc_send_extension_message_impl(plugin->plugin_specific, uri, getInstanceId(), opcode);
     }
 }
+#endif
 
 void aap::LocalPluginInstance::controlExtension(const std::string &uri, int32_t opcode, uint32_t requestId)  {
 #if USE_AAPXS_V2

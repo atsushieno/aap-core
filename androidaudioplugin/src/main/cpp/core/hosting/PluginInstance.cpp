@@ -249,16 +249,3 @@ void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2ClientSess
     auto instance = (aap::RemotePluginInstance *) context;
     instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
 }
-
-// AAPXS v2
-
-void
-aap::AAPXSDefinitionClientRegistryImpl::setupClientInstances(
-        xs::AAPXSClientDispatcher *client, AAPXSSerializationContext* serialization) {
-    instance->setupAAPXSInstances(this, serialization);
-}
-
-void aap::AAPXSDefinitionServiceRegistryImpl::setupServiceInstances(
-        xs::AAPXSServiceDispatcher *service, AAPXSSerializationContext* serialization) {
-    instance->setupAAPXSInstances(this, serialization);
-}

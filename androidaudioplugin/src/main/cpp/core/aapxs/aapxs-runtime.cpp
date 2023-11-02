@@ -2,28 +2,32 @@
 #include "aap/unstable/aapxs-vnext.h"
 #include "aap/core/aapxs/aapxs-runtime.h"
 
-aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(
-        AAPXSDefinitionClientRegistry *registry) /*: registry(registry)*/ {
-}
-
-aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
-        AAPXSDefinitionServiceRegistry *registry) {
-}
-
 // Client setup
 
-void aap::xs::AAPXSClientDispatcher::setupInstances(AAPXSDefinitionClientRegistry *registry,
-                                                AAPXSSerializationContext *serialization,
-                                                aapxs_initiator_send_func sendAAPXSRequest,
-                                                aapxs_recipient_send_func sendAAPXSReply,
-                                                initiator_get_new_request_id_func initiatorGetNewRequestId) {
+aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(
+        AAPXSDefinitionClientRegistry *registry) : registry(registry) {
+}
+
+bool aap::xs::AAPXSClientDispatcher::setupInstances(std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester,
+                                                    aapxs_initiator_send_func sendAAPXSRequest,
+                                                    aapxs_recipient_send_func sendAAPXSReply,
+                                                    initiator_get_new_request_id_func initiatorGetNewRequestId) {
     auto items = registry->items();
-    std::for_each(items->begin(), items->end(), [&](AAPXSDefinition& f) {
+    if (!std::all_of(items->begin(), items->end(), [&](AAPXSDefinition& f) {
+        int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
+        // allocate SerializationContext
+        auto serialization = std::make_unique<AAPXSSerializationContext>();
+        serialization_store[urid] = std::move(serialization);
+        if (!sharedMemoryAllocatingRequester(f.uri, serialization.get()))
+            return false;
         // plugin extensions
-        addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
+        addInitiator(populateAAPXSInitiatorInstance(serialization.get(), sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // host extensions
-        addRecipient(populateAAPXSRecipientInstance(serialization, sendAAPXSReply), f.uri);
-    });
+        addRecipient(populateAAPXSRecipientInstance(serialization.get(), sendAAPXSReply), f.uri);
+        return true;
+    }))
+        return false;
+    return true;
 }
 
 AAPXSInitiatorInstance aap::xs::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
@@ -47,19 +51,30 @@ aap::xs::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
     return instance;
 }
 
+AAPXSSerializationContext *aap::xs::AAPXSClientDispatcher::getSerialization(const char *uri) {
+    auto& shm = serialization_store[registry->items()->getUridMapping()->getUrid(uri)];
+    return shm ? shm.get() : nullptr;
+}
+
 // Service setup
 
-void aap::xs::AAPXSServiceDispatcher::setupInstances(AAPXSDefinitionServiceRegistry *registry,
-                                                 AAPXSSerializationContext *serialization,
-                                                 aapxs_recipient_send_func sendAapxsReply,
-                                                 aapxs_initiator_send_func sendAAPXSRequest,
-                                                 initiator_get_new_request_id_func initiatorGetNewRequestId) {
+aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
+        AAPXSDefinitionServiceRegistry *registry) : registry(registry) {
+}
+
+void aap::xs::AAPXSServiceDispatcher::setupInstances(aapxs_recipient_send_func sendAapxsReply,
+                                                     aapxs_initiator_send_func sendAAPXSRequest,
+                                                     initiator_get_new_request_id_func initiatorGetNewRequestId) {
     auto items = registry->items();
     std::for_each(items->begin(), items->end(), [&](AAPXSDefinition& f) {
+        int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
+        // allocate SerializationContext
+        auto serialization = std::make_unique<AAPXSSerializationContext>();
+        serialization_store[urid] = std::move(serialization);
         // host extensions
-        addInitiator(populateAAPXSInitiatorInstance(serialization, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
+        addInitiator(populateAAPXSInitiatorInstance(serialization.get(), sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // plugin extensions
-        addRecipient(populateAAPXSRecipientInstance(serialization, sendAapxsReply), f.uri);
+        addRecipient(populateAAPXSRecipientInstance(serialization.get(), sendAapxsReply), f.uri);
     });
 }
 

@@ -73,7 +73,9 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
 #endif
             assert (pluginFactory != nullptr);
             auto instance = new RemotePluginInstance(this,
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+                                        aapxs_definition_registry,
+#else
                                                      aapxs_registry,
 #endif
                                                      descriptor, pluginFactory,

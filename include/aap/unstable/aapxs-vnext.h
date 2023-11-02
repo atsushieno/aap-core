@@ -13,6 +13,7 @@
 #include <cstdint>
 #include "aap/android-audio-plugin.h"
 
+// Created per extension per instance
 typedef struct AAPXSSerializationContext {
     void* data;
     size_t data_size;

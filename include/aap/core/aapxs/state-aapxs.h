@@ -4,9 +4,9 @@
 
 #include <functional>
 #include <future>
-#include "aap/unstable/aapxs-vnext.h"
-#include "aap/ext/state.h"
-#include "aap/core/aapxs/aapxs-runtime.h"
+#include "../../unstable/aapxs-vnext.h"
+#include "../../ext/state.h"
+#include "aapxs-runtime.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_STATE_SIZE = 0;

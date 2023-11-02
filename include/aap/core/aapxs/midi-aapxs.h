@@ -5,9 +5,9 @@
 
 #include <functional>
 #include <future>
-#include "aap/unstable/aapxs-vnext.h"
-#include "aap/ext/midi.h"
-#include "aap/core/aapxs/aapxs-runtime.h"
+#include "../../unstable/aapxs-vnext.h"
+#include "../../ext/midi.h"
+#include "aapxs-runtime.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_MAPPING_POLICY = 0;

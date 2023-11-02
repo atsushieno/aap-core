@@ -5,7 +5,9 @@
 #define LOG_TAG "AAP.Remote.Instance"
 
 aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+                                                xs::AAPXSDefinitionRegistry *aapxsRegistry,
+#else
                                                 AAPXSRegistry* aapxsRegistry,
 #endif
                                                 const PluginInformation* pluginInformation,
@@ -19,9 +21,13 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           standards(this),
           aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
 #endif
-          aapxs_session(eventMidi2InputBufferSize),
-          feature_registry(new AAPXSDefinitionClientRegistryImpl(this)),
-          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get())) {
+          aapxs_session(eventMidi2InputBufferSize)
+#if USE_AAPXS_V2
+          ,feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
+          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get())),
+          standards(&aapxs_dispatcher)
+#endif
+          {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
@@ -258,6 +264,7 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
 }
 
 // ---- AAPXS v2
+#if USE_AAPXS_V2
 static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
     ((aap::RemotePluginInstance *) instance->host_context)->sendPluginAAPXSRequest(context->uri,
                                                                                    context->opcode,
@@ -269,13 +276,14 @@ static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSR
     ((aap::RemotePluginInstance*) instance->host_context)->sendHostAAPXSReply(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
-void aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry,
-                                                    AAPXSSerializationContext *serialization) {
-    aapxs_dispatcher.setupInstances(registry, serialization,
+bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry,
+                                                    std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester) {
+    return aapxs_dispatcher.setupInstances(sharedMemoryAllocatingRequester,
                                     staticSendAAPXSRequest,
                                     staticSendAAPXSReply,
                                     staticGetNewRequestId);
 }
+#endif
 
 void
 aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
@@ -325,3 +333,9 @@ aap::RemotePluginInstance::processHostAAPXSRequest(const char* uri, int32_t opco
     // FIXME: implement
     throw std::runtime_error("FIXME: implement");
 }
+
+#if USE_AAPXS_V2
+aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegistry() {
+    return feature_registry.get();
+}
+#endif
