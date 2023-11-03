@@ -30,11 +30,9 @@ aap::LocalPluginInstance::LocalPluginInstance(
 #else
           aapxs_registry(aapxsRegistry),
 #endif
-          aapxsServiceInstances([&]() { return getPlugin(); }),
-#if USE_AAPXS_V2
-          standards(plugin)
-#else
-          standards(this)
+          aapxsServiceInstances([&]() { return getPlugin(); })
+#if !USE_AAPXS_V2
+          ,standards(this)
 #endif
           {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
@@ -206,7 +204,12 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 }
 
 // ---- AAPXS v2
+
 #if USE_AAPXS_V2
+void aap::LocalPluginInstance::setupAAPXS() {
+    standards = std::make_unique<xs::ServiceStandardExtensions>(plugin);
+}
+
 static inline void staticSendAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
     ((aap::LocalPluginInstance *) instance->host_context)->sendPluginAAPXSReply(context->uri,
                                                                                 context->opcode,

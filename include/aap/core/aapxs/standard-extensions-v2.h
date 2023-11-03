@@ -6,6 +6,7 @@
 #include "parameters-aapxs.h"
 #include "state-aapxs.h"
 #include "midi-aapxs.h"
+#include "gui-aapxs.h"
 
 namespace aap::xs {
     class StandardExtensions {
@@ -45,6 +46,13 @@ namespace aap::xs {
             memcpy(tmp_state.data, stateToLoad, dataSize);
             setState(tmp_state);
         }
+
+        // Gui
+        virtual aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) = 0;
+        virtual int32_t showGui(aap_gui_instance_id guiInstanceId) = 0;
+        virtual int32_t hideGui(aap_gui_instance_id guiInstanceId) = 0;
+        virtual int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) = 0;
+        virtual int32_t destroyGui(aap_gui_instance_id guiInstanceId) = 0;
     };
 
     class ClientStandardExtensions : public StandardExtensions {
@@ -52,13 +60,15 @@ namespace aap::xs {
         ParametersClientAAPXS parameters;
         PresetsClientAAPXS presets;
         StateClientAAPXS state;
+        GuiClientAAPXS gui;
 
     public:
         ClientStandardExtensions(AAPXSClientDispatcher* dispatcher) :
                 midi(dispatcher->getPluginAAPXSByUri(AAP_MIDI_EXTENSION_URI), dispatcher->getSerialization(AAP_MIDI_EXTENSION_URI)),
                 parameters(dispatcher->getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI), dispatcher->getSerialization(AAP_PARAMETERS_EXTENSION_URI)),
                 presets(dispatcher->getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI), dispatcher->getSerialization(AAP_PRESETS_EXTENSION_URI)),
-                state(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI)) {
+                state(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI)),
+                gui(dispatcher->getPluginAAPXSByUri(AAP_GUI_EXTENSION_URI), dispatcher->getSerialization(AAP_GUI_EXTENSION_URI)) {
         }
 
         // MIDI
@@ -90,6 +100,13 @@ namespace aap::xs {
             return stateToSave;
         }
         void setState(aap_state_t& stateToLoad) override { return state.setState(stateToLoad); }
+
+        // Gui
+        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui.createGui(pluginId, instanceId, audioPluginView); }
+        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui.showGui(guiInstanceId); }
+        int32_t hideGui(aap_gui_instance_id guiInstanceId) override { return gui.hideGui(guiInstanceId); }
+        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui.resizeGui(guiInstanceId, width, height); }
+        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { return gui.destroyGui(guiInstanceId); }
     };
 
     class ServiceStandardExtensions : public StandardExtensions {
@@ -98,6 +115,7 @@ namespace aap::xs {
         aap_parameters_extension_t* parameters;
         aap_presets_extension_t* presets;
         aap_state_extension_t* state;
+        aap_gui_extension_t* gui;
 
     public:
         ServiceStandardExtensions(AndroidAudioPlugin* plugin) : plugin(plugin) {
@@ -135,6 +153,13 @@ namespace aap::xs {
             return stateToSave;
         }
         void setState(aap_state_t& stateToLoad) override { state->set_state(state, plugin, &stateToLoad); }
+
+        // Gui
+        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView); }
+        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui->show(gui, plugin, guiInstanceId); }
+        int32_t hideGui(aap_gui_instance_id guiInstanceId) override { gui->hide(gui, plugin, guiInstanceId); return 0; }
+        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui->resize(gui, plugin, guiInstanceId, width, height); }
+        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { gui->destroy(gui, plugin, guiInstanceId); return 0; }
     };
 
     class ServiceStandardHostExtensions {

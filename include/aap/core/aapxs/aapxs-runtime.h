@@ -51,7 +51,7 @@ namespace aap::xs {
         uint8_t getUrid(const char* uri) {
             // starts from 1, as 0 is "unmapped"
             for (size_t i = 1, n = uris.size(); i < n; i++)
-                if (uri == uris[n])
+                if (uri == uris[i])
                     return urids[i];
             for (size_t i = 1, n = uris.size(); i < n; i++)
                 if (uris[i] && !strcmp(uri, uris[i]))
@@ -62,7 +62,7 @@ namespace aap::xs {
         const char* getUri(uint8_t urid) {
             // starts from 1, as 0 is "unmapped"
             for (size_t i = 1, n = urids.size(); i < n; i++)
-                if (urid == urids[n])
+                if (urid == urids[i])
                     return uris[i];
             return nullptr;
         }
@@ -70,27 +70,27 @@ namespace aap::xs {
 
     template <typename T>
     class AAPXSUridMapping {
-        UridMapping urid_mapping{};
+        UridMapping* urid_mapping;
         std::vector<T> items{};
         bool frozen{false};
 
     public:
-        AAPXSUridMapping() {
+        AAPXSUridMapping(UridMapping *mapping) : urid_mapping(mapping) {
             items.resize(UINT8_MAX);
         }
         virtual ~AAPXSUridMapping() {}
 
-        UridMapping* getUridMapping() { return &urid_mapping; }
+        UridMapping* getUridMapping() { return urid_mapping; }
 
         inline void freezeFeatureSet() { frozen = true; }
         inline bool isFrozen() { return frozen; }
 
         void add(T feature, const char* uri) {
-            uint8_t urid = urid_mapping.tryAdd(uri);
+            uint8_t urid = urid_mapping->getUrid(uri);
             items[urid] = feature;
         }
         T* getByUri(const char* uri) {
-            uint8_t urid = urid_mapping.getUrid(uri);
+            uint8_t urid = urid_mapping->getUrid(uri);
             return &items[urid];
         }
         T* getByUrid(uint8_t urid) {
@@ -116,8 +116,12 @@ namespace aap::xs {
 
     class AAPXSDispatcher {
     protected:
-        AAPXSUridMapping<AAPXSInitiatorInstance> initiators{};
-        AAPXSUridMapping<AAPXSRecipientInstance> recipients{};
+        AAPXSUridMapping<AAPXSInitiatorInstance> initiators;
+        AAPXSUridMapping<AAPXSRecipientInstance> recipients;
+
+        AAPXSDispatcher(UridMapping* mapping)
+                : initiators(mapping), recipients(mapping) {
+        }
 
         inline void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
@@ -181,10 +185,10 @@ namespace aap::xs {
     };
 
     class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {
+        std::unique_ptr<UridMapping> mapping;
 
     public:
-        AAPXSDefinitionRegistry();
-        AAPXSDefinitionRegistry(std::vector<AAPXSDefinition> items);
+        AAPXSDefinitionRegistry(std::unique_ptr<UridMapping> mapping = std::make_unique<UridMapping>(), std::vector<AAPXSDefinition> items = {});
 
         static AAPXSDefinitionRegistry* getStandardExtensions();
     };

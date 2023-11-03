@@ -4,8 +4,8 @@
 
 // Client setup
 
-aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(
-        AAPXSDefinitionClientRegistry *registry) : registry(registry) {
+aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionClientRegistry *registry)
+        : AAPXSDispatcher(registry->items()->getUridMapping()), registry(registry) {
 }
 
 bool aap::xs::AAPXSClientDispatcher::setupInstances(std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester,
@@ -17,13 +17,13 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(std::function<bool(const cha
         int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
-        serialization_store[urid] = std::move(serialization);
         if (!sharedMemoryAllocatingRequester(f.uri, serialization.get()))
             return false;
         // plugin extensions
         addInitiator(populateAAPXSInitiatorInstance(serialization.get(), sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // host extensions
         addRecipient(populateAAPXSRecipientInstance(serialization.get(), sendAAPXSReply), f.uri);
+        serialization_store[urid] = std::move(serialization);
         return true;
     }))
         return false;
@@ -58,8 +58,8 @@ AAPXSSerializationContext *aap::xs::AAPXSClientDispatcher::getSerialization(cons
 
 // Service setup
 
-aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(
-        AAPXSDefinitionServiceRegistry *registry) : registry(registry) {
+aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionServiceRegistry *registry)
+        : AAPXSDispatcher(registry->items()->getUridMapping()), registry(registry) {
 }
 
 void aap::xs::AAPXSServiceDispatcher::setupInstances(aapxs_recipient_send_func sendAapxsReply,

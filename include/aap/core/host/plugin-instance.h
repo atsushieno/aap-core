@@ -64,6 +64,8 @@ namespace aap {
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
 
+        virtual void setupAAPXS() {}
+
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
@@ -235,8 +237,10 @@ namespace aap {
         }
 
 #if USE_AAPXS_V2
-        aap::xs::ServiceStandardExtensions standards;
-        xs::ServiceStandardExtensions &getStandardExtensions() override { return standards; }
+        std::unique_ptr<aap::xs::ServiceStandardExtensions> standards{nullptr};
+        xs::ServiceStandardExtensions &getStandardExtensions() override { return *standards; }
+
+        void setupAAPXS() override;
 #else
         AAPXS_V1_DEPRECATED StandardExtensions &getStandardExtensions() override { return standards; }
 #endif

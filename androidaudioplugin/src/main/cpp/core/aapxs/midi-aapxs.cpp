@@ -2,13 +2,9 @@
 #include "aap/core/aapxs/midi-aapxs.h"
 #include "../AAPJniFacade.h"
 
-#if USE_AAPXS_V2
-int32_t getMidiSettingsFromLocalConfig(std::string pluginId) {
+int32_t getMidiSettingsFromLocalConfig2(std::string pluginId) {
     return aap::AAPJniFacade::getInstance()->getMidiSettingsFromLocalConfig(pluginId);
 }
-#else
-extern int32_t getMidiSettingsFromLocalConfig(std::string pluginId);
-#endif
 
 void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
@@ -19,7 +15,7 @@ void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_req
             assert(len < AAP_MAX_PLUGIN_ID_SIZE);
             char *pluginId = (char *) calloc(len + 1, 1);
             strncpy(pluginId, (const char *) ((int32_t *) request->serialization->data + 1), len);
-            *((int32_t *) request->serialization->data) = getMidiSettingsFromLocalConfig(pluginId);
+            *((int32_t *) request->serialization->data) = getMidiSettingsFromLocalConfig2(pluginId);
             break;
     }
 }
