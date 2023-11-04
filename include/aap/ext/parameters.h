@@ -93,12 +93,12 @@ typedef struct aap_parameters_extension_t {
     RT_UNSAFE aap_parameter_enum_t (*get_enumeration) (aap_parameters_extension_t* ext, AndroidAudioPlugin *plugin, int32_t parameterId, int32_t enumIndex);
 } aap_parameters_extension_t;
 
-typedef struct aap_host_parameters_extension_t {
+typedef struct aap_parameters_host_extension_t {
     void* aapxs_context;
     // Notifies host that parameter layout is being changed.
     // THe actual parameter list needs to be queried by host (it will need to refresh the list anyways).
-    RT_SAFE void (*notify_parameters_changed) (aap_host_parameters_extension_t* ext, AndroidAudioPluginHost* host);
-} aap_host_parameters_extension_t;
+    RT_SAFE void (*notify_parameters_changed) (aap_parameters_host_extension_t* ext, AndroidAudioPluginHost* host);
+} aap_parameters_host_extension_t;
 
 #ifdef __cplusplus
 } // extern "C"

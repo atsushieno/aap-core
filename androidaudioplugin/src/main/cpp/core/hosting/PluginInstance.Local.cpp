@@ -128,7 +128,7 @@ AAPXSServiceInstance* aap::LocalPluginInstance::setupAAPXSInstance(AAPXSFeature 
     return aapxsServiceInstances.get(uri);
 }
 
-void aap::LocalPluginInstance::notify_parameters_changed(aap_host_parameters_extension_t* ext, AndroidAudioPluginHost *host) {
+void aap::LocalPluginInstance::notify_parameters_changed(aap_parameters_host_extension_t* ext, AndroidAudioPluginHost *host) {
     assert(false); // FIXME: implement
 }
 
@@ -221,8 +221,16 @@ static inline void staticSendAAPXSRequest(AAPXSRecipientInstance* instance, AAPX
     ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
-void aap::LocalPluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionServiceRegistry* registry) {
-    aapxs_dispatcher.setupInstances(staticSendAAPXSRequest,
+void aap::LocalPluginInstance::setupAAPXSInstances() {
+    auto store = getSharedMemoryStore();
+    auto func = [&](const char* uri, AAPXSSerializationContext* serialization) {
+        auto index = store->getExtensionUriToIndexMap()[uri];
+        serialization->data = store->getExtensionBuffer(index);
+        serialization->data_capacity = store->getExtensionBufferCapacity(index);
+    };
+    aapxs_dispatcher.setupInstances(this,
+                                    func,
+                                    staticSendAAPXSRequest,
                                     staticSendAAPXSReply,
                                     staticGetNewRequestId);
 }

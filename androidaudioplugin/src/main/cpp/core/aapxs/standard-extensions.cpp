@@ -5,6 +5,7 @@ aap::xs::AAPXSDefinition_Midi midi;
 aap::xs::AAPXSDefinition_Parameters parameters;
 aap::xs::AAPXSDefinition_Presets presets;
 aap::xs::AAPXSDefinition_State state;
+aap::xs::AAPXSDefinition_Gui gui;
 
 aap::xs::AAPXSDefinitionRegistry::AAPXSDefinitionRegistry(
         std::unique_ptr<UridMapping> mapping,
@@ -20,7 +21,8 @@ aap::xs::AAPXSDefinitionRegistry standard_extensions{std::make_unique<aap::xs::U
     midi.asPublic(),
     parameters.asPublic(),
     presets.asPublic(),
-    state.asPublic()
+    state.asPublic(),
+    gui.asPublic()
 })};
 
 aap::xs::AAPXSDefinitionRegistry *aap::xs::AAPXSDefinitionRegistry::getStandardExtensions() {

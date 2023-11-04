@@ -3,7 +3,7 @@
 
 // The new 2023 version of AAPXS runtime - ABI compatibility.
 
-#define USE_AAPXS_V2 false
+#define USE_AAPXS_V2 true
 #if USE_AAPXS_V2
 #define AAPXS_V1_DEPRECATED [[deprecated("Remove use of it")]]
 #else
@@ -38,6 +38,9 @@ typedef struct AAPXSProxyContextVNext {
 
 // client instance for plugin extension API, and service instance for host extension API
 typedef struct AAPXSInitiatorInstance {
+    // owned by each AAPXS implementation
+    void* aapxs_context;
+    // owned by hosting implementation
     void* host_context;
     AAPXSSerializationContext* serialization;
 
@@ -53,6 +56,9 @@ typedef struct AAPXSInitiatorInstance {
 
 // service instance for plugin extension API, and client instance for host extension API
 typedef struct AAPXSRecipientInstance {
+    // owned by each AAPXS implementation
+    void* aapxs_context;
+    // owned by hosting implementation
     void* host_context;
     AAPXSSerializationContext* serialization;
 

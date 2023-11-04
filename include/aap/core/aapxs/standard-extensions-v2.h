@@ -10,7 +10,7 @@
 
 namespace aap::xs {
     class StandardExtensions {
-        aap_state_t tmp_state;
+        aap_state_t tmp_state{nullptr, 0};
     public:
         virtual ~StandardExtensions() {
             if (tmp_state.data)
@@ -167,13 +167,15 @@ namespace aap::xs {
         ParametersServiceAAPXS parameters;
         PresetsServiceAAPXS presets;
         StateServiceAAPXS state;
+        GuiServiceAAPXS gui;
 
     public:
         ServiceStandardHostExtensions(AAPXSServiceDispatcher* dispatcher, AAPXSSerializationContext* serialization) :
                 midi(dispatcher->getHostAAPXSByUri(AAP_MIDI_EXTENSION_URI), serialization),
                 parameters(dispatcher->getHostAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI), serialization),
                 presets(dispatcher->getHostAAPXSByUri(AAP_PRESETS_EXTENSION_URI), serialization),
-                state(dispatcher->getHostAAPXSByUri(AAP_STATE_EXTENSION_URI), serialization) {
+                state(dispatcher->getHostAAPXSByUri(AAP_STATE_EXTENSION_URI), serialization),
+                gui(dispatcher->getHostAAPXSByUri(AAP_GUI_EXTENSION_URI), serialization) {
         }
 
         // MIDI
@@ -186,6 +188,8 @@ namespace aap::xs {
         void notifyPresetsUpdated() { presets.notifyPresetsUpdated(); }
 
         // State
+
+        // GUI
     };
 }
 

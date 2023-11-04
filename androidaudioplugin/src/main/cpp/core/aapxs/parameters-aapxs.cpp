@@ -57,7 +57,7 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
-    auto ext = (aap_host_parameters_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
+    auto ext = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
     switch (request->opcode) {
         case OPCODE_NOTIFY_PARAMETERS_CHANGED:
             ext->notify_parameters_changed(ext, host);

@@ -73,6 +73,7 @@ typedef struct aap_presets_extension_t {
 } aap_presets_extension_t;
 
 typedef struct aap_presets_host_extension_t {
+    void* aapxs_context;
     void (*notify_preset_loaded) (aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host);
     void (*notify_presets_update) (aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host);
 } aap_presets_host_extension_t;

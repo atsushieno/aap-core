@@ -100,21 +100,13 @@ public:
 #if USE_AAPXS_V2
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
-
-        auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUri(in_uri.c_str());
-        if (aapxsInstance == nullptr) {
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_FEATURE_URI,
-                    (std::string{"The host requested plugin extension '"} + in_uri + "', but this plugin service does not support it.").c_str());
-        }
-        // FIXME: will we need it?
-        //aapxsInstance->plugin_instance_id = in_instanceID;
         if (in_size > 0) {
             auto shmExt = instance->getSharedMemoryStore();
             assert(shmExt != nullptr);
             auto fdRemote = in_sharedMemoryFD.get();
             auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
-            aapxsInstance->serialization->data = shmExt->addExtensionFD(dfd, in_size);
+            shmExt->addExtensionFD(dfd, in_size);
+            shmExt->getExtensionUriToIndexMap()[in_uri] = shmExt->getExtensionBufferCount() - 1;
         }
         return ndk::ScopedAStatus::ok();
 #else

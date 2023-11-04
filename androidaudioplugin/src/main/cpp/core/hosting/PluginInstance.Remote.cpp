@@ -24,8 +24,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           aapxs_session(eventMidi2InputBufferSize)
 #if USE_AAPXS_V2
           ,feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
-          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get())),
-          standards(&aapxs_dispatcher)
+          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get()))
 #endif
           {
     shared_memory_store = new ClientPluginSharedMemoryStore();
@@ -210,8 +209,7 @@ aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host
         return &instance->host_plugin_info;
     }
 #if USE_AAPXS_V2
-    // FIXME: implement
-    assert(false);
+    // FIXME: implement more host extensions
     return nullptr;
 #else
     return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
@@ -278,10 +276,11 @@ static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSR
 
 bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry,
                                                     std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester) {
-    return aapxs_dispatcher.setupInstances(sharedMemoryAllocatingRequester,
-                                    staticSendAAPXSRequest,
-                                    staticSendAAPXSReply,
-                                    staticGetNewRequestId);
+    return aapxs_dispatcher.setupInstances(this,
+                                           sharedMemoryAllocatingRequester,
+                                           staticSendAAPXSRequest,
+                                           staticSendAAPXSReply,
+                                           staticGetNewRequestId);
 }
 #endif
 
@@ -338,4 +337,9 @@ aap::RemotePluginInstance::processHostAAPXSRequest(const char* uri, int32_t opco
 aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegistry() {
     return feature_registry.get();
 }
+
+void aap::RemotePluginInstance::setupAAPXS() {
+    standards = std::make_unique<xs::ClientStandardExtensions>(&aapxs_dispatcher);
+}
+
 #endif

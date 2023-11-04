@@ -121,6 +121,10 @@ namespace aap {
         // When shms are locally allocated (PLUGIN_BUFFER_ORIGIN_LOCAL), then those buffers are locally calloc()-ed.
         // Otherwise they are just mmap()-ed and should not be freed by own.
         std::unique_ptr<SharedMemoryPluginBuffer> port_buffer{nullptr};
+#if USE_AAPXS_V2
+        std::map<std::string,int32_t> extension_uri_to_index{};
+#endif
+
     public:
         enum PluginMemoryAllocatorResult {
             PLUGIN_MEMORY_ALLOCATOR_SUCCESS,
@@ -213,6 +217,17 @@ namespace aap {
             assert(port_buffer); // make sure to call allocate*Buffer() first.
             return port_buffer->toPublicApi();
         }
+
+#if USE_AAPXS_V2
+        size_t getExtensionBufferCount() { return extension_buffer_sizes->size(); }
+        std::map<std::string,int32_t>& getExtensionUriToIndexMap() { return extension_uri_to_index; }
+        void* getExtensionBuffer(int index) {
+            return extension_buffers->at(index);
+        }
+        size_t getExtensionBufferCapacity(int index) {
+            return extension_buffer_sizes->at(index);
+        }
+#endif
     };
 
     class ClientPluginSharedMemoryStore : public PluginSharedMemoryStore {
