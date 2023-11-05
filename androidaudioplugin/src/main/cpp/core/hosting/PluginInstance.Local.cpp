@@ -80,16 +80,16 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 
 void *
 aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
-#if USE_AAPXS_V2
-    // FIXME: implement
-    assert(false);
-    return nullptr;
-#else
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         auto instance = (LocalPluginInstance *) host->context;
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
+#if USE_AAPXS_V2
+    // FIXME: implement
+    assert(false);
+    return nullptr;
+#else
     if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
         auto instance = (LocalPluginInstance *) host->context;
         instance->host_parameters_extension.notify_parameters_changed = notify_parameters_changed;
@@ -217,8 +217,8 @@ static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSR
                                                                                 context->serialization->data_size,
                                                                                 context->request_id);
 }
-static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+    return ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
 void aap::LocalPluginInstance::setupAAPXSInstances() {
@@ -238,12 +238,24 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
 }
 
 void
-aap::LocalPluginInstance::sendPluginAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    // FIXME: implement
-    throw std::runtime_error("FIXME: implement");
+aap::LocalPluginInstance::sendPluginAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(uri);
+        aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
+                                       this,
+                                       uri,
+                                       // should we support MIDI 2.0 group?
+                                       0,
+                                       requestId,
+                                       aapxsInstance->serialization->data,
+                                       dataSize,
+                                       opcode);
+    } else {
+        // it is synchronously handled at Binder IPC, nothing to process here.
+    }
 }
 
-void
+bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
     auto aapxsInstance = aapxs_dispatcher.getHostAAPXSByUri(uri);
 
@@ -255,9 +267,11 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
         std::promise<int32_t> promise;
         aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::move(promise));
         // This is an asynchronous function, so we do not wait for the result.
+        return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
         ipc_send_extension_message_func(ipc_send_extension_message_context, uri, getInstanceId(), opcode);
+        return false;
     }
 }
 #endif

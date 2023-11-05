@@ -51,7 +51,7 @@ typedef struct AAPXSInitiatorInstance {
 
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer
-    void (*send_aapxs_request) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
+    bool (*send_aapxs_request) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
 } AAPXSInitiatorInstance;
 
 // service instance for plugin extension API, and client instance for host extension API

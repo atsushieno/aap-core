@@ -26,8 +26,12 @@ namespace aap {
 
         void
         addReply(void (*addMidi2Event)(AAPXSMidi2Processor *, void *, int32_t),
-                 void *addMidi2EventUserData,
-                 int32_t group, int32_t requestId, AAPXSServiceInstance *aapxsInstance, int32_t messageSize,
+                 void* addMidi2EventUserData,
+                 const char* extensionUri,
+                 int32_t group,
+                 int32_t requestId,
+                 void* data,
+                 int32_t dataSize,
                  int32_t opcode);
     };
 }

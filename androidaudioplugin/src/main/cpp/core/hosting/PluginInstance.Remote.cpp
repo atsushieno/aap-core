@@ -263,8 +263,8 @@ aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *client
 
 // ---- AAPXS v2
 #if USE_AAPXS_V2
-static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    ((aap::RemotePluginInstance *) instance->host_context)->sendPluginAAPXSRequest(context->uri,
+static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+    return ((aap::RemotePluginInstance *) instance->host_context)->sendPluginAAPXSRequest(context->uri,
                                                                                    context->opcode,
                                                                                    context->serialization->data,
                                                                                    context->serialization->data_size,
@@ -284,7 +284,9 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientReg
 }
 #endif
 
-void
+// returns true if it is asynchronously invoked without waiting for result,
+// or false if it is synchronously completed.
+bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
@@ -294,6 +296,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcod
         std::promise<int32_t> promise;
         aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, data, dataSize, opcode, std::move(promise));
         // This is an asynchronous function, so we do not wait for the result.
+        return true;
     } else {
         // Here we have to get a native plugin instance and send extension message.
         // It is kind af annoying because we used to implement Binder-specific part only within the
@@ -301,6 +304,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(const char* uri, int32_t opcod
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
         ipc_send_extension_message_impl(plugin->plugin_specific, uri, getInstanceId(), dataSize, opcode);
+        return false;
     }
 }
 

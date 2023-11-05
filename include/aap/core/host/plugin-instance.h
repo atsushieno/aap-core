@@ -271,7 +271,7 @@ namespace aap {
         void setupAAPXSInstances();
 #endif
         void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
-        void sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        bool sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
 
         void setIpcExtensionMessageSender(aapxs_host_ipc_sender sender, void* context) {
             ipc_send_extension_message_func = sender;
@@ -406,7 +406,7 @@ namespace aap {
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         bool setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
 #endif
-        void sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        bool sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void processPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
         void sendHostAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void processHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);

@@ -111,7 +111,7 @@ namespace aap::xs {
     class AAPXSDefinitionServiceRegistry;
 
     typedef uint32_t (*initiator_get_new_request_id_func) (AAPXSInitiatorInstance* instance);
-    typedef void (*aapxs_initiator_send_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
+    typedef bool (*aapxs_initiator_send_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
     typedef void (*aapxs_recipient_send_func) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
 
     class AAPXSDispatcher {
@@ -253,6 +253,11 @@ namespace aap::xs {
             callbackData->promise->set_value(result);
         }
 
+        template<typename T>
+        static T getTypedResult(AAPXSSerializationContext* serialization) {
+            return *(T*) (serialization->data);
+        }
+
         static void getVoidCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
             auto callbackData = (WithPromise<TypedAAPXS, int32_t>*) callbackContext;
             callbackData->promise->set_value(0); // dummy result
@@ -267,12 +272,14 @@ namespace aap::xs {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
             WithPromise<TypedAAPXS, T> callbackData{this, &promise};
-            AAPXSRequestContext request{getTypedCallback<int32_t>, &callbackData, serialization, uri, requestId, opcode};
+            AAPXSRequestContext request{getTypedCallback<T>, &callbackData, serialization, uri, requestId, opcode};
 
-            aapxs_instance->send_aapxs_request(aapxs_instance, &request);
-
-            future.wait();
-            return future.get();
+            if (aapxs_instance->send_aapxs_request(aapxs_instance, &request)) {
+                future.wait();
+                return future.get();
+            }
+            else
+                return getTypedResult<T>(serialization);
         }
 
         // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
@@ -284,9 +291,8 @@ namespace aap::xs {
             WithPromise<TypedAAPXS, int32_t> callbackData{this, &promise};
             AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, uri, requestId, opcode};
 
-            aapxs_instance->send_aapxs_request(aapxs_instance, &request);
-
-            future.wait();
+            if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))
+                future.wait();
         }
     };
 }

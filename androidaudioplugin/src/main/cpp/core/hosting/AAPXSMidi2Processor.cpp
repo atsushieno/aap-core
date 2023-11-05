@@ -43,10 +43,11 @@ void aap::AAPXSMidi2Processor::process(void* buffer) {
 void aap::AAPXSMidi2Processor::addReply(
         void (*addMidi2Event)(AAPXSMidi2Processor * processor, void *userData, int32_t messageSize),
         void* addMidi2EventUserData,
+        const char* extensionUri,
         int32_t group,
         int32_t requestId,
-        AAPXSServiceInstance *aapxsInstance,
-        int32_t messageSize,
+        void* data,
+        int32_t dataSize,
         int32_t opcode) {
     size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) midi2_aapxs_data_buffer,
                                                   AAP_MIDI2_AAPXS_DATA_MAX_SIZE / sizeof(int32_t),
@@ -54,9 +55,9 @@ void aap::AAPXSMidi2Processor::addReply(
                                                   AAP_MIDI2_AAPXS_DATA_MAX_SIZE,
                                                   group,
                                                   requestId,
-                                                  aapxsInstance->uri,
+                                                  extensionUri,
                                                   opcode,
-                                                  (uint8_t*) aapxsInstance->data,
-                                                  messageSize);
+                                                  (uint8_t*) data,
+                                                  dataSize);
     addMidi2Event(this, addMidi2EventUserData, size);
 }
