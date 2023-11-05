@@ -218,13 +218,13 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         // We make use of plugin metadata that should list up required and optional extensions.
         if (!instance->setupAAPXSInstances(instance->getAAPXSRegistry(), [&](const char* uri, AAPXSSerializationContext *serialization) {
             // create asharedmem and add as an extension FD, keep it until it is destroyed.
-            auto fd = ASharedMemory_create(nullptr, serialization->data_size);
+            auto fd = ASharedMemory_create(nullptr, serialization->data_capacity);
             auto shm = instance->getSharedMemoryStore();
-            serialization->data = shm->addExtensionFD(fd, serialization->data_size);
+            serialization->data = shm->addExtensionFD(fd, serialization->data_capacity);
 
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
                 ndk::ScopedFileDescriptor sfd{dup(fd)};
-                auto stat = ctx->getProxy()->addExtension(ctx->instance_id, uri, sfd, serialization->data_size);
+                auto stat = ctx->getProxy()->addExtension(ctx->instance_id, uri, sfd, serialization->data_capacity);
                 if (!stat.isOk()) {
                     aap_bcap_log_error_with_details("addExtension() failed", stat);
                     ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;

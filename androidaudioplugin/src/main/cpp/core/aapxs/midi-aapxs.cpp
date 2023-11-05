@@ -16,6 +16,7 @@ void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_req
             char *pluginId = (char *) calloc(len + 1, 1);
             strncpy(pluginId, (const char *) ((int32_t *) request->serialization->data + 1), len);
             *((int32_t *) request->serialization->data) = getMidiSettingsFromLocalConfig2(pluginId);
+            aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
     }
 }

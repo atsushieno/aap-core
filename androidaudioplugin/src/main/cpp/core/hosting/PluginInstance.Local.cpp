@@ -210,28 +210,30 @@ void aap::LocalPluginInstance::setupAAPXS() {
     standards = std::make_unique<xs::ServiceStandardExtensions>(plugin);
 }
 
-static inline void staticSendAAPXSReply(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
+static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
     ((aap::LocalPluginInstance *) instance->host_context)->sendPluginAAPXSReply(context->uri,
                                                                                 context->opcode,
                                                                                 context->serialization->data,
                                                                                 context->serialization->data_size,
                                                                                 context->request_id);
 }
-static inline void staticSendAAPXSRequest(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
+static inline void staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
     ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
 }
 
 void aap::LocalPluginInstance::setupAAPXSInstances() {
     auto store = getSharedMemoryStore();
     auto func = [&](const char* uri, AAPXSSerializationContext* serialization) {
+        if (feature_registry->items()->getByUri(uri)->data_capacity == 0)
+            return; // no need to allocate serialization data
         auto index = store->getExtensionUriToIndexMap()[uri];
         serialization->data = store->getExtensionBuffer(index);
         serialization->data_capacity = store->getExtensionBufferCapacity(index);
     };
     aapxs_dispatcher.setupInstances(this,
                                     func,
-                                    staticSendAAPXSRequest,
                                     staticSendAAPXSReply,
+                                    staticSendAAPXSRequest,
                                     staticGetNewRequestId);
 }
 
@@ -255,7 +257,7 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
         // This is an asynchronous function, so we do not wait for the result.
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-        ipc_send_extension_message_impl(plugin->plugin_specific, uri, getInstanceId(), opcode);
+        ipc_send_extension_message_func(ipc_send_extension_message_context, uri, getInstanceId(), opcode);
     }
 }
 #endif

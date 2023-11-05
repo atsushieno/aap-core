@@ -22,6 +22,7 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
         int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
+        serialization->data_capacity = f.data_capacity;
         if (!sharedMemoryAllocatingRequester(f.uri, serialization.get()))
             return false;
         // plugin extensions

@@ -202,7 +202,8 @@ namespace aap {
         static void internalRequestProcess(AndroidAudioPluginHost *host);
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-        aapxs_host_ipc_sender ipc_send_extension_message_impl;
+        aapxs_host_ipc_sender ipc_send_extension_message_func;
+        void* ipc_send_extension_message_context;
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
@@ -272,8 +273,9 @@ namespace aap {
         void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         void sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
 
-        void setIpcExtensionMessageSender(aapxs_host_ipc_sender sender) {
-            ipc_send_extension_message_impl = sender;
+        void setIpcExtensionMessageSender(aapxs_host_ipc_sender sender, void* context) {
+            ipc_send_extension_message_func = sender;
+            ipc_send_extension_message_context = context;
         }
     };
 
