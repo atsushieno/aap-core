@@ -4,7 +4,7 @@
  *
  */
 
-#include "aap/core/aapxs/aapxs-runtime.h"
+#include "aap/core/aapxs/typed-aapxs.h"
 #include "aap/examples/aapxs/test-extension.h"
 
 // Extension Service ----------------------------------

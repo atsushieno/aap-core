@@ -2,6 +2,7 @@
 #define AAP_CORE_TYPED_AAPXS_H
 
 #include <cassert>
+#include <future>
 #include "aap/aapxs.h"
 #include "../../android-audio-plugin.h"
 
