@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.7.9-pre"
-aap-lv2 = "0.2.9-pre"
+aap-core = "0.8.0-pre"
+aap-lv2 = "0.3.0-pre"
 
 accompanist-drawablepainter = "0.30.1"
 accompanist-permissions = "0.30.1"
@@ -53,7 +53,7 @@ webkit = { module = "androidx.webkit:webkit", version = "1.8.0" }
 
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose" }
-compose-material = { module = "androidx.compose.material:material", version = "1.5.3" }
+compose-material = { module = "androidx.compose.material:material", version = "1.5.4" }
 compose-ui-test-junit = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "compose" }
 
 junit = { module = "junit:junit", version = "4.13.2" }
@@ -65,7 +65,7 @@ test-espresso-core = { module = "androidx.test.espresso:espresso-core", version 
 
 ktmidi = { module = "dev.atsushieno:ktmidi", version = "0.6.0" }
 
-oboe = { module = "com.google.oboe:oboe", version = "1.7.0" }
+oboe = { module = "com.google.oboe:oboe", version = "1.8.0" }
 ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
