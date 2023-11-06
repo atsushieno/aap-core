@@ -42,8 +42,22 @@ aap::LocalPluginInstance::LocalPluginInstance(
 
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
 #if USE_AAPXS_V2
-        // FIXME: implement
-        throw std::runtime_error("Implement");
+        auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
+        // We need to copy extension data buffer before calling it.
+        memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
+        controlExtension(context->uri, context->opcode, context->request_id);
+
+        // FIXME: this should be called only at the *end* of controlExtension()
+        //  which should be asynchronously handled.
+        aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
+                                       this,
+                                       context->uri,
+                                       context->group,
+                                       context->request_id,
+                                       aapxsInstance->serialization->data,
+                                       context->dataSize,
+                                       context->opcode
+        );
 #else
         auto aapxsInstance = aapxsServiceInstances.get(context->uri, false);
         // We need to copy extension data buffer before calling it.
@@ -54,9 +68,10 @@ aap::LocalPluginInstance::LocalPluginInstance(
         //  which should be asynchronously handled.
         aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
                                        this,
+                                       context->uri,
                                        context->group,
                                        context->request_id,
-                                       aapxsInstance,
+                                       aapxsInstance->data,
                                        context->dataSize,
                                        context->opcode
                                        );
@@ -264,9 +279,8 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
-        std::promise<int32_t> promise;
-        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::move(promise));
-        // This is an asynchronous function, so we do not wait for the result.
+        // This is an asynchronous function, so we do not wait for the result, and it has no awaiter (hence std::nullopt)
+        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::nullopt);
         return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.

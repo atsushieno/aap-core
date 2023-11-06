@@ -64,8 +64,6 @@ namespace aap {
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
 
-        virtual void setupAAPXS() = 0;
-
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
@@ -124,6 +122,7 @@ namespace aap {
         virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) = 0;
 
 #if USE_AAPXS_V2
+        virtual void setupAAPXS() = 0;
         virtual xs::StandardExtensions &getStandardExtensions() = 0;
 #else
         virtual StandardExtensions &getStandardExtensions() = 0;
@@ -357,8 +356,6 @@ namespace aap {
 
         void setInstanceId(int32_t instanceId) { instance_id = instanceId; }
 
-        void setupAAPXS() override;
-
         // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
         void configurePorts();
 
@@ -373,7 +370,9 @@ namespace aap {
         AAPXS_V1_DEPRECATED void sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode);
         AAPXS_V1_DEPRECATED void processExtensionReply(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
 
-#if !USE_AAPXS_V2
+#if USE_AAPXS_V2
+        void setupAAPXS() override;
+#else
         AAPXS_V1_DEPRECATED StandardExtensions &getStandardExtensions() override { return standards; }
 #endif
 
@@ -406,10 +405,16 @@ namespace aap {
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         bool setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
 #endif
+        // Intended for invocation from JNI.
+        // returns true if it is asynchronously invoked without waiting for result,
+        // or false if it is synchronously completed.
         bool sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
-        void processPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
-        void sendHostAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
-        void processHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId);
+        // returns true if it is asynchronously invoked without waiting for result,
+        // or false if it is synchronously completed.
+        bool sendPluginAAPXSRequest(AAPXSRequestContext* context);
+        void processPluginAAPXSReply(AAPXSRequestContext* context);
+        void sendHostAAPXSReply(AAPXSRequestContext* context);
+        void processHostAAPXSRequest(AAPXSRequestContext* context);
 
 #if USE_AAPXS_V2
         xs::AAPXSDefinitionClientRegistry* getAAPXSRegistry();

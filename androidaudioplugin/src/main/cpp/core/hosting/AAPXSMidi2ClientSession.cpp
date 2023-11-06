@@ -2,6 +2,7 @@
 
 #include "aap/core/AAPXSMidi2ClientSession.h"
 #include <stdlib.h>
+#include <assert.h>
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
 
@@ -13,6 +14,7 @@ aap::AAPXSMidi2ClientSession::AAPXSMidi2ClientSession(int32_t midiBufferSize)
                                           aapxs_rt_midi_buffer,
                                           aapxs_rt_conversion_helper_buffer,
                                           AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+    memset(pending_callbacks, 0, sizeof(CallbackUnit) * MAX_PENDING_CALLBACKS);
 }
 
 aap::AAPXSMidi2ClientSession::~AAPXSMidi2ClientSession() {
@@ -23,7 +25,7 @@ aap::AAPXSMidi2ClientSession::~AAPXSMidi2ClientSession() {
 }
 
 std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
-        void (*addMidi2Event)(AAPXSMidi2ClientSession * session, void *userData, int32_t messageSize),
+        add_midi2_event_func addMidi2Event,
         void* addMidi2EventUserData,
         int32_t group,
         int32_t requestId,
@@ -51,16 +53,63 @@ std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
         return std::nullopt;
 }
 
-void aap::AAPXSMidi2ClientSession::processReply(void* buffer) {
+void aap::AAPXSMidi2ClientSession::addSession(add_midi2_event_func addMidi2Event,
+                                              void* addMidi2EventUserData,
+                                              AAPXSRequestContext *request) {
+    int32_t group = 0; // will we have to give special semantics on it?
+    addSession(addMidi2Event, addMidi2EventUserData,
+               group,
+               request->request_id,
+               request->uri,
+               request->serialization->data,
+               request->serialization->data_size,
+               request->opcode,
+               std::nullopt);
+    // store its callback to the pending callbacks
+    if (request->callback) {
+        size_t i = 0;
+        auto cbu = CallbackUnit{request->request_id, request->callback,
+                                            request->callback_user_data};
+        for (; i < MAX_PENDING_CALLBACKS; i++) {
+            if (pending_callbacks[i].request_id == 0) {
+                pending_callbacks[i] = cbu;
+                break;
+            }
+        }
+        assert(i != MAX_PENDING_CALLBACKS);
+    }
+}
+
+void aap::AAPXSMidi2ClientSession::completeSession(void* buffer, void* pluginOrHost) {
     auto mbh = (AAPMidiBufferHeader *) buffer;
     void* data = mbh + 1;
     CMIDI2_UMP_SEQUENCE_FOREACH(data, mbh->length, iter) {
         auto umpSize = mbh->length - ((uint8_t*) iter - (uint8_t*) data);
-        if (aap_midi2_parse_aapxs_sysex8(&aapxs_parse_context, iter, umpSize))
+        if (aap_midi2_parse_aapxs_sysex8(&aapxs_parse_context, iter, umpSize)) {
             handle_reply(&aapxs_parse_context);
+
+            // look for the corresponding pending callback
+            for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
+                if (pending_callbacks[i].request_id == aapxs_parse_context.request_id) {
+                    pending_callbacks[i].func(pending_callbacks[i].data, pluginOrHost,
+                                              aapxs_parse_context.request_id);
+                    memset(pending_callbacks + i, 0, sizeof(CallbackUnit));
+                    break;
+                }
+            }
+
+            // look for the corresponding promise
+            for (auto& p : promises) {
+                int32_t key = aapxs_parse_context.request_id;
+                if (p.first == key) {
+                    promises.at(key).set_value(0);
+                    promises.erase(key);
+                    break;
+                }
+            }
+        }
 
         // FIXME: should we remove those AAPXS SysEx8 from the UMP buffer?
         //  It is going to be extraneous to the host.
     }
-
 }

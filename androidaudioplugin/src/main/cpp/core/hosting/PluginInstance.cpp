@@ -52,7 +52,9 @@ void aap::PluginInstance::completeInstantiation()
 
     instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
 
+#if USE_AAPXS_V2
     setupAAPXS();
+#endif
 }
 
 void aap::PluginInstance::setupPortConfigDefaults() {
