@@ -117,6 +117,62 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
             OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
 }
 
+void aap::xs::ParametersClientAAPXS::completeWithParameterCallback (void* callbackData, void* pluginOrHost, int32_t requestId) {
+    auto cb = (CallbackData*) callbackData;
+    auto thiz = (ParametersClientAAPXS *) cb->context;
+    auto result = thiz->getTypedResult<aap_parameter_info_t>(thiz->serialization);
+    ((aapxs_async_get_parameter_callback) cb->callback) (thiz, pluginOrHost, requestId, cb->index, result);
+    cb->context = nullptr;
+}
+
+void aap::xs::ParametersClientAAPXS::completeWithEnumCallback (void* callbackData, void* pluginOrHost, int32_t requestId) {
+    auto cb = (CallbackData*) callbackData;
+    auto thiz = (ParametersClientAAPXS *) cb->context;
+    auto result = getTypedResult<aap_parameter_enum_t>(thiz->serialization);
+    ((aapxs_async_get_enumeration_callback) cb->callback) (thiz, pluginOrHost, requestId, cb->index, cb->enum_index, result);
+    cb->context = nullptr;
+}
+
+
+int32_t
+aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index,
+                                                  aapxs_async_get_parameter_callback* callback) {
+    *((int32_t*) serialization->data) = index;
+
+    uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+    CallbackData *callbackData = nullptr;
+    for (size_t i = 0; i < UINT8_MAX; i++)
+        if (pending_calls[i].context == nullptr)
+            callbackData = pending_calls + i;
+    assert(callbackData);
+    *callbackData = {this, callback, index, 0};
+    AAPXSRequestContext request{completeWithParameterCallback, callbackData, serialization,
+                                0, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_PARAMETERS_GET_PARAMETER};
+
+    aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+
+    return requestId;
+}
+
+int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32_t enumIndex,
+                                                            aapxs_async_get_enumeration_callback* callback) {
+    *((int32_t*) serialization->data) = index;
+
+    uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+    CallbackData *callbackData = nullptr;
+    for (size_t i = 0; i < UINT8_MAX; i++)
+        if (pending_calls[i].context == nullptr)
+            callbackData = pending_calls + i;
+    assert(callbackData);
+    *callbackData = {this, callback, index, enumIndex};
+    AAPXSRequestContext request{completeWithEnumCallback, callbackData, serialization,
+                                0, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_PARAMETERS_GET_ENUMERATION};
+
+    aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+
+    return requestId;
+}
+
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {
     callVoidFunctionSynchronously(OPCODE_NOTIFY_PARAMETERS_CHANGED);
 }

@@ -59,9 +59,24 @@ namespace aap::xs {
     };
 
     class ParametersClientAAPXS : public TypedAAPXS {
+        typedef void (*aapxs_async_get_parameter_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t requestId, int32_t index, aap_parameter_info_t result);
+        typedef void (*aapxs_async_get_enumeration_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t requestId, int32_t index, int32_t enumIndex, aap_parameter_enum_t result);
+
+        struct CallbackData {
+            void* context{nullptr};
+            void* callback{nullptr};
+            int32_t index{0};
+            int32_t enum_index{0};
+        };
+
+        CallbackData pending_calls[UINT8_MAX];
+        static void completeWithParameterCallback(void *callbackData, void *pluginOrHost, int32_t requestId);
+        static void completeWithEnumCallback(void *callbackData, void *pluginOrHost, int32_t requestId);
+
     public:
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : TypedAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
+            memset(pending_calls, 0, sizeof(CallbackData) * UINT8_MAX);
         }
 
         int32_t getParameterCount();
@@ -69,6 +84,11 @@ namespace aap::xs {
         double getProperty(int32_t index, int32_t propertyId);
         int32_t getEnumerationCount(int32_t index);
         aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex);
+
+        // returns request ID
+        int32_t getParameterAsync(int32_t index, aapxs_async_get_parameter_callback* callback);
+        // returns request ID
+        int32_t getEnumerationAsync(int32_t index, int32_t enumIndex, aapxs_async_get_enumeration_callback* callback);
     };
 
     class ParametersServiceAAPXS : public TypedAAPXS {
@@ -82,9 +102,9 @@ namespace aap::xs {
         static void staticNotifyParametersChanged(aap_parameters_host_extension_t* ext, AndroidAudioPluginHost* host) {
             ((ParametersServiceAAPXS*) ext->aapxs_context)->notifyParametersChanged();
         }
-        aap_parameters_host_extension_t as_host_extension{this, staticNotifyParametersChanged};
+        aap_parameters_host_extension_t host_extension{this, staticNotifyParametersChanged};
 
-        aap_parameters_host_extension_t* asHostExtension() { return &as_host_extension; }
+        aap_parameters_host_extension_t* asHostExtension() { return &host_extension; }
     };
 }
 
