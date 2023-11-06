@@ -24,7 +24,7 @@ aap::AAPXSMidi2ClientSession::~AAPXSMidi2ClientSession() {
         free(aapxs_rt_conversion_helper_buffer);
 }
 
-std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
+void aap::AAPXSMidi2ClientSession::addSession(
         add_midi2_event_func addMidi2Event,
         void* addMidi2EventUserData,
         int32_t group,
@@ -32,8 +32,7 @@ std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
         const char* uri,
         void* data,
         int32_t dataSize,
-        int32_t opcode,
-        std::optional<std::promise<int32_t>> promise) {
+        int32_t opcode) {
     size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) aapxs_rt_midi_buffer,
                                                   midi_buffer_size / sizeof(int32_t),
                                                   (uint8_t*) aapxs_rt_conversion_helper_buffer,
@@ -45,12 +44,6 @@ std::optional<std::future<int32_t>> aap::AAPXSMidi2ClientSession::addSession(
                                                   (uint8_t*) data,
                                                   dataSize);
     addMidi2Event(this, addMidi2EventUserData, size);
-    if (promise.has_value()) {
-        promises[requestId] = std::move(promise.value());
-        return promises[requestId].get_future();
-    }
-    else
-        return std::nullopt;
 }
 
 void aap::AAPXSMidi2ClientSession::addSession(add_midi2_event_func addMidi2Event,
@@ -63,8 +56,7 @@ void aap::AAPXSMidi2ClientSession::addSession(add_midi2_event_func addMidi2Event
                request->uri,
                request->serialization->data,
                request->serialization->data_size,
-               request->opcode,
-               std::nullopt);
+               request->opcode);
     // store its callback to the pending callbacks
     if (request->callback) {
         size_t i = 0;
@@ -94,16 +86,6 @@ void aap::AAPXSMidi2ClientSession::completeSession(void* buffer, void* pluginOrH
                     pending_callbacks[i].func(pending_callbacks[i].data, pluginOrHost,
                                               aapxs_parse_context.request_id);
                     memset(pending_callbacks + i, 0, sizeof(CallbackUnit));
-                    break;
-                }
-            }
-
-            // look for the corresponding promise
-            for (auto& p : promises) {
-                int32_t key = aapxs_parse_context.request_id;
-                if (p.first == key) {
-                    promises.at(key).set_value(0);
-                    promises.erase(key);
                     break;
                 }
             }

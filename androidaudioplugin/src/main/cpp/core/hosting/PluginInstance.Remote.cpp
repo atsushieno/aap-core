@@ -244,8 +244,9 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
 void
 aap::RemotePluginInstance::processPluginAAPXSReply(AAPXSRequestContext* request) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        aapxs_session.promises[request->request_id].set_value(0);
-        aapxs_session.promises.erase(request->request_id);
+        // FIXME: should we handle callback here?
+        //if (request->callback)
+        //    request->callback(request->callback_user_data, plugin, request->request_id);
     } else {
         // nothing to do when non-realtime mode; extension functions are called synchronously.
     }
@@ -258,11 +259,9 @@ aap::RemotePluginInstance::sendHostAAPXSReply(AAPXSRequestContext* request) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
-        // It has no awaiter (hence std::nullopt)
         aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group,
                                  request->request_id, request->uri, request->serialization->data,
-                                 request->serialization->data_size,
-                                 request->opcode, std::nullopt);
+                                 request->serialization->data_size, request->opcode);
     } else {
         // it was done synchronously, nothing to do here
     }

@@ -56,8 +56,6 @@ Typical plugin extension APIs are usually synchronous i.e. their functions block
 They can be designed and implemented in synchronous manner (we actually have synchronous API as some transitive solutions), but then there is no assured realtime safety.
 
 
-
-
 ## vNext API Design Considerations
 
 There are some principles I have in mind. Some of them are rephrased later:
@@ -80,16 +78,6 @@ To make extensions generally usable, AAP defines some public API for AAPXS:
 - AAPXS is designed to be host implementation agnostic: it should work with any version of libandroidaudioplugin or any other AAP-compatible host that supports AAPXS
   - existing implementation achieves AAPXS themselves, but extension providers are not.
 
-## Existing AAPXS implementation basics
-
-An AAPXS developer provides a pair of AAPXS implementation constructs:
-
-- the AAPXS client instance (current API is `AAPXSClientInstance`): serialize the extension function arguments to binary buffer, which is then sent either via a Binder IPC or AAPXS SysEx8, and once the result is back then deserialize the reply. It only performs those serialization works.
-- the AAPXS service instance (current API is `AAPXSServiceInstance`): deserialize the binary buffer which is either via a Binder IPC or AAPXS SysEx8, and serialize the results (primarily the return value) to the buffer.
-
-The existing implementation of above also involves the actual extension invocation.
-
-`AAPXSFeature` works as a facade to the extension functions. `AAPXSClientInstance` and `AAPXSServiceInstance` are instantiated by AAPXS implementation (`AAPXSClientInstanceManager::setupAAPXSInstance()`). `AAPXSClientInstanceManager` is provided by `RemotePluginInstanceStandardExtensions` which is derived from `StandardExtensions` and has a host implementation `RemotePluginInstanceStandardExtensionsImpl`.
 
 ## Users of AAPXS: host implementation and framework implementation
 
@@ -129,10 +117,6 @@ Since AAP sends extension controllers either via Binder IPC (non-RT) or AAPXS Sy
 Serialization is handled by each AAPXS. For such a hosting implementation that does not directly support the extension (or a plugin implementation that does not directly suppot the host extension), there is untyped AAPXS API that is implemented without strongly-typed extension API. The host can still convey and even invoke its dynamically assigned extension invocation handler in `AAPXSDefinition`.
 
 At AAPXS Runtime level, there are utility functions in `aap_midi2_helper.h` for AAPXS parsing and generation in C, and `AAPXSMidi2Processor` and `AAPXSMidi2ClientSession` as the internal helpers in C++. To support asynchronous invocation under control, a host can assign an async callback `aapxs_completion_callback` to `AAPXSRequestContext`, which is then invoked when `AAPXSMidi2ClientSession` receives a corresponding reply to the request.
-
-The AAPXS Runtime will handle asynchronous calls internally regardless of the optional argument. If the function is not synchronous, then it will involve `std::promise` (if the programming paradigm matches) in the implementation (C++ will not appear in the public API surface).
-
-FIXME: the ^ needs to be re-examined (use of `std::promise`).
 
 
 ## vNext: what AAPXS developer writes

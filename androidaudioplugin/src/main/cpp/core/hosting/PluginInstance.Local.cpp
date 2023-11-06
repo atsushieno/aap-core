@@ -223,8 +223,8 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, 
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
-        // This is an asynchronous function, so we do not wait for the result, and it has no awaiter (hence std::nullopt)
-        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode, std::nullopt);
+        // This is an asynchronous function, so we do not wait for the result.
+        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode);
         return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.

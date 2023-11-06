@@ -38,17 +38,14 @@ namespace aap {
             handle_reply = handleReply;
         }
 
-        std::map<int32_t, std::promise<int>> promises{};
-
-        std::optional<std::future<int32_t>> addSession(add_midi2_event_func addMidi2Event,
+        void addSession(add_midi2_event_func addMidi2Event,
                         void* addMidi2EventUserData,
                         int32_t group,
                         int32_t requestId,
                         const char* uri,
                         void* data,
                         int32_t dataSize,
-                        int32_t opcode,
-                        std::optional<std::promise<int32_t>> promise);
+                        int32_t opcode);
 
         void addSession(add_midi2_event_func addMidi2Event, void* addMidi2EventUserData, AAPXSRequestContext* request);
 
