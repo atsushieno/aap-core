@@ -7,6 +7,8 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     auto ext = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
+    if (!ext)
+        return; // FIXME: should there be any global error handling?
     switch(request->opcode) {
         case OPCODE_GET_PRESET_COUNT:
             *((int32_t*) request->serialization->data) = ext->get_preset_count(ext, plugin);
@@ -60,6 +62,8 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     auto ext = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
+    if (!ext)
+        return; // FIXME: should there be any global error handling?
     switch(request->opcode) {
         case OPCODE_NOTIFY_PRESET_LOADED:
             // no args, no return
@@ -84,15 +88,8 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs_reply(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
-    //auto ext = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
-    switch(request->opcode) {
-        case OPCODE_NOTIFY_PRESET_LOADED:
-            // nothing to handle
-            break;
-        case OPCODE_NOTIFY_PRESETS_UPDATED:
-            // nothing to handle
-            break;
-    }
+    if (request->callback != nullptr)
+        request->callback(request->callback_user_data, host, request->request_id);
 }
 
 // Strongly-typed client implementation (plugin extension functions)

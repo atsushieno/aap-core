@@ -5,6 +5,8 @@ void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_plugin_aapxs_r
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     auto ext = (aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
+    if (!ext)
+        return; // FIXME: should there be any global error handling?
     switch(request->opcode) {
         case OPCODE_GET_STATE_SIZE:
             *((int32_t *) request->serialization->data) = ext->get_state_size(ext, plugin);

@@ -9,6 +9,8 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
+    if (!ext)
+        return; // FIXME: should there be any global error handling?
     switch (request->opcode) {
         case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
             *((int32_t*) aapxsInstance->serialization->data) = (ext && ext->get_parameter_count) ? ext->get_parameter_count(ext, plugin) : -1;
@@ -58,6 +60,8 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     auto ext = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
+    if (!ext)
+        return; // FIXME: should there be any global error handling?
     switch (request->opcode) {
         case OPCODE_NOTIFY_PARAMETERS_CHANGED:
             ext->notify_parameters_changed(ext, host);
