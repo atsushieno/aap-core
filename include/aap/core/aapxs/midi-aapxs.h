@@ -5,7 +5,7 @@
 
 #include <functional>
 #include <future>
-#include "../../unstable/aapxs-vnext.h"
+#include "aap/aapxs.h"
 #include "../../ext/midi.h"
 #include "aapxs-runtime.h"
 

@@ -1,136 +1,130 @@
-#ifndef AAP_EXTENSIONS_H_INCLUDED
-#define AAP_EXTENSIONS_H_INCLUDED
+#ifndef AAP_CORE_AAPXS_H
+#define AAP_CORE_AAPXS_H
 
-/*
- * AAPXS - AAP Extension Service public API which is open to (available for) extension developers.
- * AAP internals wrap those types in its own.
- */
+// The new 2023 version of AAPXS runtime - ABI compatibility.
 
-#ifdef __cplusplus
-extern "C" {
+#define USE_AAPXS_V2 true
+#if USE_AAPXS_V2
+#define AAPXS_V1_DEPRECATED [[deprecated("Remove use of it")]]
+#else
+#define AAPXS_V1_DEPRECATED /* none */
 #endif
-#include <stdint.h>
+
+#include <cstdint>
 #include "android-audio-plugin.h"
 
+// Created per extension per instance
+typedef struct AAPXSSerializationContext {
+    void* data;
+    size_t data_size;
+    size_t data_capacity;
+} AAPXSSerializationContext;
+
+typedef struct AAPXSRequestContext {
+    aapxs_completion_callback callback;
+    void* callback_user_data;
+    AAPXSSerializationContext* serialization;
+    const char * uri;
+    uint32_t request_id;
+    int32_t opcode;
+} AAPXSRequestContext;
+
+// Stores audio processing shared memory buffers (could be used without binder)
+typedef struct AAPXSProxyContextVNext {
+    const char* uri;
+    void* extension;
+    AAPXSSerializationContext serialization;
+} AAPXSProxyContextVNext;
+
+// client instance for plugin extension API, and service instance for host extension API
+typedef struct AAPXSInitiatorInstance {
+    // owned by each AAPXS implementation
+    void* aapxs_context;
+    // owned by hosting implementation
+    void* host_context;
+    AAPXSSerializationContext* serialization;
+
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer, for async implementation
+    // - FIXME: this may become framework reference implementation
+    uint32_t (*get_new_request_id) (AAPXSInitiatorInstance* instance);
+
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer
+    bool (*send_aapxs_request) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
+} AAPXSInitiatorInstance;
+
+// service instance for plugin extension API, and client instance for host extension API
+typedef struct AAPXSRecipientInstance {
+    // owned by each AAPXS implementation
+    void* aapxs_context;
+    // owned by hosting implementation
+    void* host_context;
+    AAPXSSerializationContext* serialization;
+
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer
+    void (*send_aapxs_reply) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
+} AAPXSRecipientInstance;
+
 /**
- * The public extension API surface that represents a service extension instance, for plugin extension service implementors.
- * In libandroidaudioplugin implementation, its `context` is `aap::PluginService, which has handful of members:
+ * The "untyped" AAPXS definition (in the public API surface).
+ * Each AAPXS needs to provide an instance of this type so that host framework (reference
+ * implementation) can register at its AAPXS map.
  *
- * - serviceHandle, which is AudioPluginInterfaceImpl on Android.
+ * Instance of this type must be copyable.
+ *
+ * This type provides a handful of handler functions to deal with AAPXS requests and replies, for
+ * both the "plugin extension" and the "host extension".
+ * They are implemented by each AAPXS implementation, and invoked by the host framework
+ * (reference implementation) that would delegate to each strongly-typed AAPXS function (which is
+ * hidden behind `aapxs_context` opaque pointer).
  */
-typedef struct {
-    /** AAPXS implementation context that is used and should be assigned only by the extension developer. */
-    void *context;
-    /** The extension URI */
-    const char *uri;
-    /** The plugin instance ID within the service.
-     * (Note that two or more plugins can be instantiated from the same AudioPluginService.)
-     */
-    int32_t plugin_instance_id;
-    /** The shared memory pointer, if is provided. */
-    void *data;
-    /** The size of `data`, if it is provided a non-null pointer. */
-    int32_t data_size;
-    /** extension-specific local context. Extension developer uses it. */
-    void *local_data;
-} AAPXSServiceInstance;
-
-// ---------------------------------------------------
-
-/**
- * An instantiated AAPXS helper for a client.
- * It is implemented by AAP framework.
- * In libandroidaudioplugin reference implementation, it is `AAPXSClientInstanceManager` that manages
- * the instances of this struct.
- */
-typedef struct AAPXSClientInstance {
-    /** Custom context that AAP framework may assign.
-     * In libandroidaudioplugin it is RemotePluginInstance. It may be different on other implementations.
-     */
-    void *host_context;
-
+typedef struct AAPXSDefinition {
     /** The extension URI */
     const char *uri;
 
-    /** The plugin instance ID within the client.
-     * (Note that two or more plugins can be instantiated from the same AudioPluginService.)
+    /** An opaque pointer to the AAPXS developers' context.
+     * It should be assigned and used only by the AAPXS developers of the extension.
      */
-    int32_t plugin_instance_id;
-
-    /** The shared memory pointer, if it needs to provide. */
-    void *data;
-
-    /** The size of `data`, if it provides non-null pointer. */
-    int32_t data_size;
-
-    /**
-     * Do send the extension() request (either send via Binder, or add AAPXS SysEx8 to the MIDI2 channel buffer)
-     *
-     * Can be used for either synchronous or asynchronous calls.
-     */
-     // FIXME: rename this to `send_extension_request`
-    void (*extension_message) (struct AAPXSClientInstance* aapxsClientInstance, int32_t messageSize, int32_t opcode);
-
-    /** Handle the reply */
-    void (*handle_extension_reply) (struct AAPXSClientInstance* aapxsClientInstance, int32_t messageSize, int32_t opcode, int32_t requestId);
-} AAPXSClientInstance;
-
-// ---------------------------------------------------
-
-typedef AndroidAudioPlugin* (*aapxs_host_context_get_plugin_t) (void* frameworkContext);
-
-typedef struct AAPXSProxyContext {
-    /** It is assigned by the extension hosting implementation.
-     *  In libandroidaudioplugin, AAPXSClientInstance holds RemoteClientInstance as its context.
-     *  Along with the instance ID, it is used to retrieve AndroidAudioPlugin. */
-    AAPXSClientInstance *host_context;
-    /** The actual extension proxy of the same type as non-AAPXS extension. */
     void *aapxs_context;
-    void *extension;
-} AAPXSProxyContext;
-
-/**
- * The entrypoint for AAP extension service feature.
- * Every extension developer defines one for each AAPXS (i.e. instantiated for each extension).
- * Multiple clients may share the same instance of this struct. They pass client instances.
- */
-typedef struct AAPXSFeature {
-
-    /** The extension URI. */
-    const char *uri;
 
     /**
-     * AAPXS implementor's context. Only AAPXS developer should assign it and reference it.
-     * It should be host implementation agnostic (e.g. no reference to aap::RemotePluginInstance)
+     * The data capacity that is used to allocate shared memory for the binary transfer storage (Binder/SysEx8).
      */
-    void *context;
-
-    /** The size of required shared memory that we allocate and use between host client and plugin service. */
-    int32_t shared_memory_size;
+    int32_t data_capacity;
 
     /**
-     * Implemented by the extension developer.
-     * Called by AAP framework (service part) to invoke the actual plugin extension.
-     * Plugin (service) has direct (in-memory) access to the extension, but arguments are the ones
-     * deserialized by the implementation of the extension, not the ones in the host memory space.
+     * Invoked by host (reference implementation) when a plugin extension request has arrived at the service
+     * and the service identified which AAPXS handles it.
+     *
+     * The parameter `definition` provides access to aapxs_context to help AAPXS developers encapsulate the implementation details.
+     *
+     * @param definition The containing AAPXSDefinition.
+     * @param aapxsInstance
+     * @param plugin The target plugin
+     * @param request The request context that provides access to data, opcode, request ID, etc.
      */
-    void (*on_invoked) (struct AAPXSFeature* feature,
-                        AndroidAudioPlugin* plugin,
-                        AAPXSServiceInstance* extension,
-                        int32_t opcode);
-    /**
-     * Implemented by the extension developer.
-     * Called by AAP framework (client part) to return the extension proxy to the extension.
-     * Client application has access to the extension service only through the extension API via the proxy.
-     */
-    AAPXSProxyContext (*as_proxy) (struct AAPXSFeature* feature, AAPXSClientInstance* extension);
+    void (*process_incoming_plugin_aapxs_request) (
+            struct AAPXSDefinition* definition,
+            AAPXSRecipientInstance* aapxsInstance,
+            AndroidAudioPlugin* plugin,
+            AAPXSRequestContext* request);
+    void (*process_incoming_host_aapxs_request) (
+            struct AAPXSDefinition* definition,
+            AAPXSRecipientInstance* aapxsInstance,
+            AndroidAudioPluginHost* host,
+            AAPXSRequestContext* request);
+    void (*process_incoming_plugin_aapxs_reply) (
+            struct AAPXSDefinition* definition,
+            AAPXSInitiatorInstance* aapxsInstance,
+            AndroidAudioPlugin* plugin,
+            AAPXSRequestContext* request);
+    void (*process_incoming_host_aapxs_reply) (
+            struct AAPXSDefinition* definition,
+            AAPXSInitiatorInstance* aapxsInstance,
+            AndroidAudioPluginHost* host,
+            AAPXSRequestContext* request);
+} AAPXSDefinition;
 
-    /** True if get_extension() must return non-null implementation. */
-    bool is_implementation_mandatory;
-} AAPXSFeature;
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif /* AAP_EXTENSIONS_H_INCLUDED */
+#endif //AAP_CORE_AAPXS_H

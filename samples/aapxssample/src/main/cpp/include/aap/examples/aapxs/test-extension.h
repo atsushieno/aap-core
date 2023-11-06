@@ -3,6 +3,8 @@
 #ifndef AAPXS_SAMPLE_TEST_EXTENSION_H_INCLUDED
 #define AAPXS_SAMPLE_TEST_EXTENSION_H_INCLUDED
 
+#include <aap/android-audio-plugin.h>
+
 #define AAPXS_EXAMPLE_TEST_EXTENSION_URI "urn://androidaudioplugin.org/examples/aapxs/test1/v1"
 
 // we have to resort to this forward declaration in the function typedefs below.

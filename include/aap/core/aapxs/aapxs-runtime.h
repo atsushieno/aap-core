@@ -8,7 +8,7 @@
 #include <vector>
 #include <map>
 #include <future>
-#include "../../unstable/aapxs-vnext.h"
+#include "aap/aapxs.h"
 #include "../../android-audio-plugin.h"
 
 namespace aap::xs {

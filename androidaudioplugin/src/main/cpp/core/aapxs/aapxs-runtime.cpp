@@ -1,5 +1,5 @@
 
-#include "aap/unstable/aapxs-vnext.h"
+#include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-runtime.h"
 
 // Client setup

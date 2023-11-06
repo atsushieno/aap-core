@@ -5,32 +5,20 @@
 #define LOG_TAG "AAP.Remote.Instance"
 
 aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
-#if USE_AAPXS_V2
                                                 xs::AAPXSDefinitionRegistry *aapxsRegistry,
-#else
-                                                AAPXSRegistry* aapxsRegistry,
-#endif
                                                 const PluginInformation* pluginInformation,
                                                 AndroidAudioPluginFactory* loadedPluginFactory,
                                                 int32_t sampleRate,
                                                 int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
           client(client),
-#if !USE_AAPXS_V2
-          aapxs_registry(aapxsRegistry),
-          standards(this),
-          aapxs_manager(std::make_unique<RemoteAAPXSManager>(this)),
-#endif
-          aapxs_session(eventMidi2InputBufferSize)
-#if USE_AAPXS_V2
-          ,feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
+          aapxs_session(eventMidi2InputBufferSize),
+          feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
           aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get()))
-#endif
           {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
-#if USE_AAPXS_V2
         auto aapxs = feature_registry->items()->getByUri(context->uri);
         if (aapxs) {
             auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
@@ -42,13 +30,6 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
         }
         else
             aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS for %s is not registered (opcode: %d)", context->uri, context->opcode);
-#else
-        auto aapxsInstance = aapxs_manager->getInstanceFor(context->uri);
-        if (aapxsInstance->handle_extension_reply)
-            aapxsInstance->handle_extension_reply(aapxsInstance, context->dataSize, context->opcode, context->request_id);
-        else
-            aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
-#endif
     });
 }
 
@@ -80,39 +61,6 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     plugin_host_facade.context = this;
     plugin_host_facade.get_extension = RemotePluginInstance::internalGetHostExtension;
     return &plugin_host_facade;
-}
-
-void aap::RemotePluginInstance::sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode) {
-    auto aapxsInstance = aapxs_manager->getInstanceFor(uri);
-
-    // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
-    // otherwise it goes to the Binder route.
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        // aapxsInstance already contains binary data here, so we retrieve data from there.
-        int32_t group = 0; // will we have to give special semantics on it?
-        int32_t requestId = aapxsRequestIdSerial();
-        std::promise<int32_t> promise;
-        auto future = aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group, requestId, uri, aapxsInstance->data, messageSize,  opcode, std::move(promise));
-        // This is a synchronous function, so we have to wait for the result...
-        future.value().wait();
-    } else {
-        // Here we have to get a native plugin instance and send extension message.
-        // It is kind af annoying because we used to implement Binder-specific part only within the
-        // plugin API (binder-client-as-plugin.cpp)...
-        // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
-        // assign its implementation details that handle Binder messaging as a std::function.
-        ipc_send_extension_message_impl(plugin->plugin_specific, aapxsInstance->uri, getInstanceId(), messageSize, opcode);
-    }
-}
-
-void aap::RemotePluginInstance::processExtensionReply(const char *uri, int32_t messageSize,
-                                                      int32_t opcode, int32_t requestId) {
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        aapxs_session.promises[requestId].set_value(0);
-        aapxs_session.promises.erase(requestId);
-    } else {
-        // nothing to do when non-realtime mode; extension functions are called synchronously.
-    }
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount) {
@@ -222,12 +170,8 @@ aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
-#if USE_AAPXS_V2
     // FIXME: implement more host extensions
     return nullptr;
-#else
-    return ((RemotePluginInstance*) host->context)->getAAPXSManager()->getExtensionProxy(uri).extension;
-#endif
 }
 
 //----
@@ -249,34 +193,7 @@ void aap::RemotePluginInstance::RemotePluginNativeUIController::hide() {
 }
 
 
-//----
-
-AAPXSClientInstance* aap::RemoteAAPXSManager::setupAAPXSInstance(AAPXSFeature *feature, int32_t dataCapacity) {
-    const char* uri = aapxsClientInstances.addOrGetUri(feature->uri);
-    assert (aapxsClientInstances.get(uri) == nullptr);
-    if (dataCapacity < 0)
-        dataCapacity = feature->shared_memory_size;
-    aapxsClientInstances.add(uri, std::make_unique<AAPXSClientInstance>(AAPXSClientInstance{owner, uri, owner->instance_id, nullptr, dataCapacity}));
-    auto ret = aapxsClientInstances.get(uri);
-    ret->extension_message = staticSendExtensionMessage;
-    ret->handle_extension_reply = staticProcessExtensionReply;
-    return ret;
-}
-
-void aap::RemoteAAPXSManager::staticSendExtensionMessage(AAPXSClientInstance* clientInstance, int32_t messageSize, int32_t opcode) {
-    auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
-    thisObj->sendExtensionMessage(clientInstance->uri, messageSize, opcode);
-}
-
-void
-aap::RemoteAAPXSManager::staticProcessExtensionReply(AAPXSClientInstance *clientInstance, int32_t messageSize,
-                                            int32_t opcode, int32_t requestId) {
-    auto thisObj = (RemotePluginInstance*) clientInstance->host_context;
-    thisObj->processExtensionReply(clientInstance->uri, messageSize, opcode, requestId);
-}
-
 // ---- AAPXS v2
-#if USE_AAPXS_V2
 static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
     return ((aap::RemotePluginInstance *) instance->host_context)->sendPluginAAPXSRequest(context);
 }
@@ -292,7 +209,6 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientReg
                                            staticSendAAPXSReply,
                                            staticGetNewRequestId);
 }
-#endif
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
@@ -358,7 +274,6 @@ aap::RemotePluginInstance::processHostAAPXSRequest(AAPXSRequestContext* context)
     throw std::runtime_error("FIXME: implement");
 }
 
-#if USE_AAPXS_V2
 aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegistry() {
     return feature_registry.get();
 }
@@ -366,5 +281,3 @@ aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegis
 void aap::RemotePluginInstance::setupAAPXS() {
     standards = std::make_unique<xs::ClientStandardExtensions>(&aapxs_dispatcher);
 }
-
-#endif

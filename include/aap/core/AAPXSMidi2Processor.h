@@ -4,7 +4,6 @@
 #include <functional>
 #include "../android-audio-plugin.h"
 #include "aap_midi2_helper.h"
-#include "aap/aapxs.h"
 
 namespace aap {
     class AAPXSMidi2Processor {

@@ -4,74 +4,19 @@
 #include <aap/core/host/plugin-instance.h>
 #include <aap/core/aapxs/extension-service.h>
 #include <aap/core/aapxs/standard-extensions.h>
-#include "../extensions/parameters-service.h"
-#include "../extensions/presets-service.h"
-#include "../extensions/midi-service.h"
-#include "../extensions/port-config-service.h"
 #include "audio-plugin-host-internals.h"
 
 #define LOG_TAG "AAP.PluginHost"
 
-std::unique_ptr<aap::StateExtensionFeature> aapxs_state{nullptr};
-std::unique_ptr<aap::PresetsExtensionFeature> aapxs_presets{nullptr};
-std::unique_ptr<aap::PortConfigExtensionFeature> aapxs_port_config{nullptr};
-std::unique_ptr<aap::MidiExtensionFeature> aapxs_midi2{nullptr};
-std::unique_ptr<aap::ParametersExtensionFeature> aapxs_parameters{nullptr};
-std::unique_ptr<aap::AAPXSRegistry> standard_aapxs_registry{nullptr};
-
-void initializeStandardAAPXSRegistry() {
-    auto aapxs_registry = std::make_unique<aap::AAPXSRegistry>();
-
-    // state
-    if (aapxs_state == nullptr)
-        aapxs_state = std::make_unique<aap::StateExtensionFeature>();
-    aapxs_registry->add(aapxs_state->asPublicApi());
-    // presets
-    if (aapxs_presets == nullptr)
-        aapxs_presets = std::make_unique<aap::PresetsExtensionFeature>();
-    aapxs_registry->add(aapxs_presets->asPublicApi());
-    // port_config
-    if (aapxs_port_config == nullptr)
-        aapxs_port_config = std::make_unique<aap::PortConfigExtensionFeature>();
-    aapxs_registry->add(aapxs_state->asPublicApi());
-    // midi2
-    if (aapxs_midi2 == nullptr)
-        aapxs_midi2 = std::make_unique<aap::MidiExtensionFeature>();
-    aapxs_registry->add(aapxs_midi2->asPublicApi());
-    // parameters
-    if (aapxs_parameters == nullptr)
-        aapxs_parameters = std::make_unique<aap::ParametersExtensionFeature>();
-    aapxs_registry->add(aapxs_parameters->asPublicApi());
-
-    aapxs_registry->freeze();
-
-    standard_aapxs_registry = std::move(aapxs_registry);
-}
-
-
 aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
                             xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry,
-#if !USE_AAPXS_V2
-                            AAPXSRegistry* aapxsRegistry,
-#endif
                             int32_t eventMidi2InputBufferSize)
         : plugin_list(contextPluginList),
           event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
     assert(contextPluginList);
 
-    if (standard_aapxs_registry == nullptr)
-        initializeStandardAAPXSRegistry();
     aapxs_definition_registry = aapxsDefinitionRegistry; // FIXME: replace null with standard extensions
-#if !USE_AAPXS_V2
-    aapxs_registry = aapxsRegistry ? aapxsRegistry : standard_aapxs_registry.get();
-#endif
 }
-
-#if !USE_AAPXS_V2
-AAPXSFeature* aap::PluginHost::getExtensionFeature(const char* uri) {
-    return aapxs_registry->getByUri(uri);
-}
-#endif
 
 void aap::PluginHost::destroyInstance(PluginInstance* instance)
 {
@@ -125,11 +70,7 @@ aap::PluginInstance* aap::PluginHost::instantiateLocalPlugin(const PluginInforma
         return nullptr;
     }
     auto instance = new LocalPluginInstance(this,
-#if USE_AAPXS_V2
                                             aapxs_definition_registry,
-#else
-                                            aapxs_registry,
-#endif
                                             localInstanceIdSerial++,
                                             descriptor, pluginFactory, sampleRate, event_midi2_input_buffer_size);
     instances.emplace_back(instance);

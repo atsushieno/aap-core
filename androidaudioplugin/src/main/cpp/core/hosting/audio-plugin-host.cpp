@@ -10,10 +10,6 @@
 #include "plugin-service-list.h"
 #include "audio-plugin-host-internals.h"
 #include "aap/core/host/plugin-client-system.h"
-#include "../extensions/parameters-service.h"
-#include "../extensions/presets-service.h"
-#include "../extensions/midi-service.h"
-#include "../extensions/port-config-service.h"
 #include "aap/core/host/plugin-instance.h"
 #include "aap/core/AAPXSMidi2Processor.h"
 

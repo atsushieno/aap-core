@@ -11,7 +11,7 @@
 #include "../aap_midi2_helper.h"
 #include "aap/core/AAPXSMidi2Processor.h"
 #include "aap/core/AAPXSMidi2ClientSession.h"
-#include "aap/unstable/aapxs-vnext.h"
+#include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-runtime.h"
 
 #if ANDROID
@@ -121,12 +121,8 @@ namespace aap {
 
         virtual void process(int32_t frameCount, int32_t timeoutInNanoseconds) = 0;
 
-#if USE_AAPXS_V2
         virtual void setupAAPXS() = 0;
         virtual xs::StandardExtensions &getStandardExtensions() = 0;
-#else
-        virtual StandardExtensions &getStandardExtensions() = 0;
-#endif
 
         uint32_t getTailTimeInMilliseconds() {
             // TODO: FUTURE - most likely just a matter of plugin property
@@ -161,32 +157,11 @@ namespace aap {
  * FIXME: It should become usable either as a client or a service, but so far it only works as a service.
  */
     class LocalPluginInstance : public PluginInstance {
-        class AAPXS_V1_DEPRECATED LocalPluginInstanceStandardExtensionsImpl
-                : public LocalPluginInstanceStandardExtensions {
-            LocalPluginInstance *owner;
-
-        public:
-            LocalPluginInstanceStandardExtensionsImpl(LocalPluginInstance *owner)
-                    : owner(owner) {
-            }
-
-            AndroidAudioPlugin *getPlugin() override { return owner->getPlugin(); }
-        };
-
         PluginHost *host;
         AAPXSMidi2ClientSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
-#if USE_AAPXS_V2
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
-#else
-        AAPXS_V1_DEPRECATED AAPXSRegistry *aapxs_registry;
-#endif
-        AAPXS_V1_DEPRECATED AAPXSInstanceMap <AAPXSServiceInstance> aapxsServiceInstances;
-#if !USE_AAPXS_V2
-        AAPXS_V1_DEPRECATED LocalPluginInstanceStandardExtensionsImpl standards;
-        AAPXS_V1_DEPRECATED aap_parameters_host_extension_t host_parameters_extension{};
-#endif
         bool process_requested_to_host{false};
 
         AAPXSMidi2Processor aapxs_midi2_processor{};
@@ -194,8 +169,6 @@ namespace aap {
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
-
-        AAPXS_V1_DEPRECATED static void notify_parameters_changed(aap_parameters_host_extension_t* ext, AndroidAudioPluginHost *host);
 
         static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri);
         static void internalRequestProcess(AndroidAudioPluginHost *host);
@@ -209,11 +182,7 @@ namespace aap {
 
     public:
         LocalPluginInstance(PluginHost *host,
-#if USE_AAPXS_V2
                             xs::AAPXSDefinitionRegistry *aapxsRegistry,
-#else
-                            AAPXSRegistry *aapxsRegistry,
-#endif
                             int32_t instanceId,
                             const PluginInformation *pluginInformation,
                             AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
@@ -226,24 +195,9 @@ namespace aap {
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
-        // unlike client host side, this function is invoked for each `addExtension()` Binder call,
-        // which is way simpler.
-        AAPXS_V1_DEPRECATED AAPXSServiceInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize = -1);
-
-        AAPXS_V1_DEPRECATED AAPXSServiceInstance *getInstanceFor(const char *uri) {
-            auto ret = aapxsServiceInstances.get(uri);
-            assert(ret);
-            return ret;
-        }
-
-#if USE_AAPXS_V2
         std::unique_ptr<aap::xs::ServiceStandardExtensions> standards{nullptr};
         xs::ServiceStandardExtensions &getStandardExtensions() override { return *standards; }
-
         void setupAAPXS() override;
-#else
-        AAPXS_V1_DEPRECATED StandardExtensions &getStandardExtensions() override { return standards; }
-#endif
 
         // It is invoked by AudioPluginInterfaceImpl and AAPXSMidi2Processor callback,
         // and supposed to dispatch request to extension service
@@ -265,10 +219,8 @@ namespace aap {
 
 
         // AAPXS v2
-#if USE_AAPXS_V2
         xs::AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         void setupAAPXSInstances();
-#endif
         void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         bool sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
 
@@ -285,22 +237,6 @@ namespace aap {
                           int32_t opcode);
 
     class RemotePluginInstance : public PluginInstance {
-#if !USE_AAPXS_V2
-        class AAPXS_V1_DEPRECATED RemotePluginInstanceStandardExtensionsImpl
-                : public RemotePluginInstanceStandardExtensions {
-            RemotePluginInstance *owner;
-
-        public:
-            RemotePluginInstanceStandardExtensionsImpl(RemotePluginInstance *owner)
-                    : owner(owner) {
-            }
-
-            AndroidAudioPlugin* getPlugin() override { return owner->getPlugin(); }
-
-            AAPXSClientInstanceManager* getAAPXSManager() override { return owner->getAAPXSManager(); }
-        };
-#endif
-
         // holds AudioPluginSurfaceControlClient for plugin instance lifetime.
         class RemotePluginNativeUIController {
             void* handle;
@@ -314,18 +250,9 @@ namespace aap {
         };
 
         PluginClient *client;
-#if !USE_AAPXS_V2
-        AAPXSRegistry *aapxs_registry;
-#endif
         AndroidAudioPluginHost plugin_host_facade{};
-#if !USE_AAPXS_V2
-        AAPXS_V1_DEPRECATED RemotePluginInstanceStandardExtensionsImpl standards;
-#endif
-        std::unique_ptr<AAPXSClientInstanceManager> aapxs_manager;
         AAPXSMidi2ClientSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
-
-        friend class RemoteAAPXSManager;
 
         static void* internalGetHostExtension(AndroidAudioPluginHost* host, const char* uri);
 
@@ -339,11 +266,7 @@ namespace aap {
         // The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
         // (binder-client-as-plugin does so, and desktop implementation should do so too.)
         RemotePluginInstance(PluginClient* client,
-#if USE_AAPXS_V2
                              xs::AAPXSDefinitionRegistry *aapxsRegistry,
-#else
-                             AAPXSRegistry *aapxsRegistry,
-#endif
                              const PluginInformation *pluginInformation,
                              AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
                              int32_t eventMidi2InputBufferSize);
@@ -361,20 +284,11 @@ namespace aap {
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
-        AAPXS_V1_DEPRECATED AAPXSClientInstanceManager *getAAPXSManager() { return aapxs_manager.get(); }
-
         void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
             ipc_send_extension_message_impl = sender;
         }
 
-        AAPXS_V1_DEPRECATED void sendExtensionMessage(const char *uri, int32_t messageSize, int32_t opcode);
-        AAPXS_V1_DEPRECATED void processExtensionReply(const char *uri, int32_t messageSize, int32_t opcode, int32_t requestId);
-
-#if USE_AAPXS_V2
         void setupAAPXS() override;
-#else
-        AAPXS_V1_DEPRECATED StandardExtensions &getStandardExtensions() override { return standards; }
-#endif
 
         void prepare(int frameCount) override;
 
@@ -396,7 +310,6 @@ namespace aap {
 
 
         // AAPXS v2
-#if USE_AAPXS_V2
     private:
         std::unique_ptr<xs::AAPXSDefinitionClientRegistry> feature_registry;
         xs::AAPXSClientDispatcher aapxs_dispatcher;
@@ -404,7 +317,6 @@ namespace aap {
     public:
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         bool setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
-#endif
         // Intended for invocation from JNI.
         // returns true if it is asynchronously invoked without waiting for result,
         // or false if it is synchronously completed.
@@ -416,37 +328,9 @@ namespace aap {
         void sendHostAAPXSReply(AAPXSRequestContext* context);
         void processHostAAPXSRequest(AAPXSRequestContext* context);
 
-#if USE_AAPXS_V2
+        // AAPXS v2 registry
         xs::AAPXSDefinitionClientRegistry* getAAPXSRegistry();
-
         xs::StandardExtensions &getStandardExtensions() override { return *standards; }
-#endif
-    };
-
-    // The AAPXSClientInstanceManager implementation specific to RemotePluginInstance
-    class AAPXS_V1_DEPRECATED RemoteAAPXSManager : public AAPXSClientInstanceManager {
-        RemotePluginInstance *owner;
-
-        static void staticSendExtensionMessage(AAPXSClientInstance *clientInstance, int32_t dataSize, int32_t opcode);
-        static void staticProcessExtensionReply(AAPXSClientInstance *clientInstance, int32_t dataSize, int32_t opcode, int32_t requestId);
-
-    public:
-        RemoteAAPXSManager(RemotePluginInstance *owner)
-                : owner(owner) {
-        }
-
-        const PluginInformation *
-        getPluginInformation() override { return owner->getPluginInformation(); }
-
-        AndroidAudioPlugin *getPlugin() override { return owner->plugin; }
-
-#if !USE_AAPXS_V2
-        AAPXSFeature *getExtensionFeature(const char *uri) override {
-            return owner->aapxs_registry->getByUri(uri);
-        }
-#endif
-
-        AAPXSClientInstance *setupAAPXSInstance(AAPXSFeature *feature, int32_t dataSize) override;
     };
 }
 

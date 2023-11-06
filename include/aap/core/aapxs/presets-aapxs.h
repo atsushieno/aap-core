@@ -3,9 +3,8 @@
 
 #include <functional>
 #include <future>
-#include "../../unstable/aapxs-vnext.h"
-#include "../../ext/presets.h"
 #include "aapxs-runtime.h"
+#include "../../ext/presets.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_PRESET_COUNT = 0;

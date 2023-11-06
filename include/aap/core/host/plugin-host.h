@@ -49,9 +49,6 @@ namespace aap {
     {
     protected:
         xs::AAPXSDefinitionRegistry* aapxs_definition_registry{nullptr};
-#if !USE_AAPXS_V2
-        AAPXSRegistry* aapxs_registry{nullptr};
-#endif
         PluginListSnapshot* plugin_list{nullptr};
 
         std::vector<PluginInstance*> instances{};
@@ -61,16 +58,9 @@ namespace aap {
     public:
         PluginHost(PluginListSnapshot* contextPluginList,
                    xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry,
-#if !USE_AAPXS_V2
-                   AAPXSRegistry* aapxsRegistry = nullptr,
-#endif
                    int32_t eventMidi2InputBufferSize = 4096);
 
         virtual ~PluginHost() {}
-
-#if !USE_AAPXS_V2
-        AAPXSFeature* getExtensionFeature(const char* uri);
-#endif
 
         void destroyInstance(PluginInstance* instance);
 
@@ -86,13 +76,9 @@ namespace aap {
     class PluginService : public PluginHost {
         AudioPluginServiceCallback* plugin_service_callback;
     public:
-        PluginService(PluginListSnapshot* contextPluginList, AudioPluginServiceCallback* callback, xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry = nullptr, AAPXSRegistry* aapxsRegistry = nullptr)
+        PluginService(PluginListSnapshot* contextPluginList, AudioPluginServiceCallback* callback, xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry = nullptr)
                 : PluginHost(contextPluginList,
-                             aapxsDefinitionRegistry
-#if !USE_AAPXS_V2
-                             ,aapxsRegistry
-#endif
-                             ),
+                             aapxsDefinitionRegistry),
                   plugin_service_callback(callback)
         {
         }
@@ -120,13 +106,9 @@ namespace aap {
         Result<int32_t> instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
 
     public:
-        PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList, xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry = nullptr, AAPXSRegistry* aapxsRegistry = nullptr)
+        PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList, xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry = nullptr)
                 : PluginHost(contextPluginList,
-                             aapxsDefinitionRegistry
-#if !USE_AAPXS_V2
-                             , aapxsRegistry
-#endif
-                             ),
+                             aapxsDefinitionRegistry),
                   connections(pluginConnections)
         {
         }

@@ -11,7 +11,6 @@
 #include "aap/core/android/android-application-context.h"
 #include "AudioPluginInterfaceImpl.h"
 #include "audio-plugin-host-android-internal.h"
-#include "JNIClientAAPXSManager.h"
 #include "../core/hosting/plugin-service-list.h"
 #include "../core/AAPJniFacade.h"
 

@@ -97,7 +97,6 @@ public:
     ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string &in_uri,
                                       const ::ndk::ScopedFileDescriptor &in_sharedMemoryFD,
                                       int32_t in_size) override {
-#if USE_AAPXS_V2
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
         if (in_size > 0) {
@@ -109,27 +108,6 @@ public:
             shmExt->getExtensionUriToIndexMap()[in_uri] = shmExt->getExtensionBufferCount() - 1;
         }
         return ndk::ScopedAStatus::ok();
-#else
-        auto feature = svc->getExtensionFeature(in_uri.c_str());
-        if (feature == nullptr) {
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_UNEXPECTED_FEATURE_URI, (std::string{"The host requested plugin extension '"} + in_uri + "', but this plugin service does not support it.").c_str());
-        } else {
-            auto instance = svc->getLocalInstance(in_instanceID);
-            CHECK_INSTANCE(instance, in_instanceID)
-
-            auto aapxsInstance = instance->setupAAPXSInstance(feature, in_size);
-            aapxsInstance->plugin_instance_id = in_instanceID;
-            if (in_size > 0) {
-                auto shmExt = instance->getSharedMemoryStore();
-                assert(shmExt != nullptr);
-                auto fdRemote = in_sharedMemoryFD.get();
-                auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
-                aapxsInstance->data = shmExt->addExtensionFD(dfd, in_size);
-            }
-        }
-        return ndk::ScopedAStatus::ok();
-#endif
     }
 
     ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override {
@@ -137,9 +115,7 @@ public:
         CHECK_INSTANCE(instance, in_instanceID)
 
         instance->completeInstantiation();
-#if USE_AAPXS_V2
         instance->setupAAPXSInstances();
-#endif
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();
     }

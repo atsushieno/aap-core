@@ -73,8 +73,7 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
         }
         if (presetIndex >= 0) {
             if (instance->getInstanceState() == aap::PluginInstantiationState::PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-                auto aapxsInstance = instance->getAAPXSManager()->getInstanceFor(
-                        AAP_PRESETS_EXTENSION_URI);
+                auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI);
                 auto size = aap_midi2_generate_aapxs_sysex8(
                         (uint32_t *) (translation_buffer + translatedIndex),
                         (midi_buffer_size - translatedIndex) / 4,
@@ -84,8 +83,8 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                         instance->aapxsRequestIdSerial(),
                         AAP_PRESETS_EXTENSION_URI,
                         OPCODE_SET_PRESET_INDEX,
-                        (const uint8_t *) aapxsInstance->data,
-                        aapxsInstance->data_size);
+                        (const uint8_t *) aapxsInstance->serialization->data,
+                        aapxsInstance->serialization->data_size);
                 translatedIndex += size;
             }
             else

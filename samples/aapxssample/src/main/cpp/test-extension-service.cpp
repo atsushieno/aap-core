@@ -4,7 +4,7 @@
  *
  */
 
-#include "aap/core/aapxs/extension-service.h"
+#include "aap/core/aapxs/aapxs-runtime.h"
 #include "aap/examples/aapxs/test-extension.h"
 
 // Extension Service ----------------------------------
@@ -17,72 +17,109 @@ const int32_t AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE = 4096;
 // FIXME: allocate this per extension service client instance
 char instance_message_buffer[1024];
 
-void test_extension_feature_on_invoked(
-    AAPXSFeature* feature,
-    AndroidAudioPlugin* plugin,
-    AAPXSServiceInstance *extension,
-    int32_t opcode) {
-
-    auto ext = (example_test_extension_t *) extension->data;
-
-    switch (opcode) {
-    case AAPXS_EXAMPLE_TEST_OPCODE_FOO: {
-        int32_t input = *(int32_t *) extension->data;
-        int32_t ret = ext->foo(nullptr, plugin, input);
-        *(int32_t *) extension->data = ret;
-        }
-        break;
-    case AAPXS_EXAMPLE_TEST_OPCODE_BAR: {
-        int32_t size = *(int32_t*) extension->data;
-        strncpy(instance_message_buffer, const_cast<char*>((char*)extension->data + sizeof(int32_t)), size);
-        ext->bar(nullptr, plugin, instance_message_buffer);
-        }
-        break;
-    }
-}
-
 // client proxy
 
 example_test_extension_t proxy{};
 
-int32_t proxy_foo (example_test_extension_t* test, AndroidAudioPlugin* plugin, int32_t input) {
-    // The context is assigned by `test_extension_feature_as_proxy()`.
-    auto aapxs = (AAPXSClientInstance*) test->context;
-    // set `input` at the very beginning of the shared data pointer.
-    *(int32_t*) aapxs->data = input;
-    // Regarding dataSize, we take one int32_t parameter (`input`)
-    int32_t dataSize = sizeof(int32_t);
-    // send the request using AAPXSClient->extension_message().
-    aapxs->extension_message(aapxs, dataSize, AAPXS_EXAMPLE_TEST_OPCODE_FOO);
-    // retrieve the return value from the very beginning of the shared data pointer.
-    return *(int32_t*) aapxs->data;
+void aapxs_example_process_incoming_plugin_aapxs_request(
+        struct AAPXSDefinition* definition,
+        AAPXSRecipientInstance* aapxsInstance,
+        AndroidAudioPlugin* plugin,
+        AAPXSRequestContext* request) {
+
+    auto ext = (example_test_extension_t *) request->serialization->data;
+
+    switch (request->opcode) {
+        case AAPXS_EXAMPLE_TEST_OPCODE_FOO: {
+            int32_t input = *(int32_t *) request->serialization->data;
+            int32_t ret = ext->foo(nullptr, plugin, input);
+            *(int32_t *) request->serialization->data = ret;
+            aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+            break;
+        }
+        case AAPXS_EXAMPLE_TEST_OPCODE_BAR: {
+            int32_t size = *(int32_t*) request->serialization->data;
+            strncpy(instance_message_buffer, const_cast<char*>((char*) request->serialization->data + sizeof(int32_t)), size);
+            ext->bar(nullptr, plugin, instance_message_buffer);
+            aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+            break;
+        }
+    }
 }
 
-void proxy_bar (example_test_extension_t* test, AndroidAudioPlugin* plugin, char *msg) {
-    // The context is assigned by `test_extension_feature_as_proxy()`.
-    auto aapxs = (AAPXSClientInstance*) test->context;
-    // length-prefixed string: set length at the very beginning of the shared data pointer.
-    int32_t len = std::min(AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE, (int32_t) strlen(msg));
-    *(int32_t*) aapxs->data = len;
-    // then copy the string into the shared buffer
-    strncpy((char*) aapxs->data + sizeof(int32_t), msg, len);
-    // send the request using AAPXSClient->extension_message().
-    aapxs->extension_message(aapxs, len + sizeof(int32_t), AAPXS_EXAMPLE_TEST_OPCODE_BAR);
-    // no need to retrieve
+void aapxs_example_process_incoming_host_aapxs_request(
+        struct AAPXSDefinition* definition,
+        AAPXSRecipientInstance* aapxsInstance,
+        AndroidAudioPluginHost* host,
+        AAPXSRequestContext* request) {
+    // there is no host extension!
+    throw std::runtime_error("should not happen");
 }
 
-AAPXSProxyContext test_extension_feature_as_proxy(AAPXSFeature* feature, AAPXSClientInstance *extension) {
-    // This `proxy.context` is managed and used by this extension service developer like this, not by anyone else.
-    // FIXME: allocate individual example_test_extension_t instance for each plugin instance (or AAPXSClientInstance)
-    //proxy.context = extension;
-    proxy.foo = proxy_foo;
-    proxy.bar = proxy_bar;
-    return AAPXSProxyContext {extension, nullptr, &proxy };
+void aapxs_example_process_incoming_plugin_aapxs_reply(
+        struct AAPXSDefinition* definition,
+        AAPXSInitiatorInstance* aapxsInstance,
+        AndroidAudioPlugin* plugin,
+        AAPXSRequestContext* request) {
+    if (request->callback != nullptr)
+        request->callback(request->callback_user_data, plugin, request->request_id);
 }
 
-AAPXSFeature test_extensions_feature{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
-                                     nullptr,
-                                     AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE + sizeof(int32_t),
-                                     test_extension_feature_on_invoked,
-                                     test_extension_feature_as_proxy,
-                                     true};
+void aapxs_example_process_incoming_host_aapxs_reply(
+        struct AAPXSDefinition* definition,
+        AAPXSInitiatorInstance* aapxsInstance,
+        AndroidAudioPluginHost* host,
+        AAPXSRequestContext* request) {
+    if (request->callback != nullptr)
+        request->callback(request->callback_user_data, host, request->request_id);
+}
+
+namespace aap::xs {
+    class AAPXSDefinition_Example : public AAPXSDefinitionWrapper {
+
+        AAPXSDefinition aapxs_example{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
+                                      this,
+                                      AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE + sizeof(int32_t),
+                                      aapxs_example_process_incoming_plugin_aapxs_request,
+                                      aapxs_example_process_incoming_host_aapxs_request,
+                                      aapxs_example_process_incoming_plugin_aapxs_reply,
+                                      aapxs_example_process_incoming_host_aapxs_reply
+        };
+
+    public:
+        AAPXSDefinition& asPublic() override {
+            return aapxs_example;
+        }
+    };
+
+    class ExampleClientAAPXS : public TypedAAPXS {
+    public:
+        ExampleClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : TypedAAPXS(AAPXS_EXAMPLE_TEST_EXTENSION_URI, initiatorInstance, serialization) {
+        }
+
+        int32_t foo(int32_t input);
+        void bar(const char* msg);
+    };
+
+    int32_t ExampleClientAAPXS::foo(int32_t input) {
+        *((int32_t*)serialization->data) = input;
+        return callTypedFunctionSynchronously<int32_t>(AAPXS_EXAMPLE_TEST_OPCODE_FOO);
+    }
+
+    void ExampleClientAAPXS::bar(const char *msg) {
+        auto len = strlen(msg);
+        *((int32_t*)serialization->data) = len;
+        strncpy((char*) serialization->data + sizeof(int32_t), msg, len);
+        callVoidFunctionSynchronously(AAPXS_EXAMPLE_TEST_OPCODE_BAR);
+    }
+
+    class StateServiceAAPXS : public TypedAAPXS {
+    public:
+        StateServiceAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : TypedAAPXS(AAPXS_EXAMPLE_TEST_EXTENSION_URI, initiatorInstance, serialization) {
+        }
+        // nothing
+    };
+}
+

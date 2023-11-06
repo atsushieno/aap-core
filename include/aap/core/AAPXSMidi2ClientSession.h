@@ -5,9 +5,8 @@
 #include <functional>
 #include <map>
 #include <future>
-#include "aap/aapxs.h"
 #include "aap_midi2_helper.h"
-#include "aap/unstable/aapxs-vnext.h"
+#include "aap/aapxs.h"
 
 namespace aap {
     class AAPXSMidi2ClientSession;

@@ -4,7 +4,6 @@
 #include <sys/mman.h>
 #include <memory>
 
-#include "JNIClientAAPXSManager.h"
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
 #include "aap/core/host/audio-plugin-host.h"
