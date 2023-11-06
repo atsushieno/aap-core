@@ -1,6 +1,6 @@
 
 #include "aap/aapxs.h"
-#include "aap/core/aapxs/aapxs-runtime.h"
+#include "aap/core/aapxs/aapxs-hosting-runtime.h"
 
 // Client setup
 

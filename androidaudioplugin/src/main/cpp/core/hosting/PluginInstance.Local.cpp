@@ -237,6 +237,6 @@ void aap::LocalPluginInstance::controlExtension(const std::string &uri, int32_t 
     auto def = feature_registry.get()->items()->getByUri(uri.c_str());
     assert(def != nullptr);
     auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
-    AAPXSRequestContext context{nullptr, nullptr, instance->serialization, uri.c_str(), requestId, opcode};
+    AAPXSRequestContext context{nullptr, nullptr, instance->serialization, 0, uri.c_str(), requestId, opcode};
     def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
 }

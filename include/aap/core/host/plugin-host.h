@@ -23,7 +23,7 @@
 #include "plugin-instance.h"
 #include "../aapxs/extension-service.h"
 #include "../aapxs/standard-extensions.h"
-#include "../aapxs/aapxs-runtime.h"
+#include "../aapxs/aapxs-hosting-runtime.h"
 
 namespace aap {
 

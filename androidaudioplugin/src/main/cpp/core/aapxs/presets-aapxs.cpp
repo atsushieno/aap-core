@@ -1,7 +1,5 @@
 
 #include "aap/core/aapxs/presets-aapxs.h"
-#include "aap/android-audio-plugin.h"
-#include "aap/core/aapxs/aapxs-runtime.h"
 
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,

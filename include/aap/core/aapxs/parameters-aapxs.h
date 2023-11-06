@@ -5,7 +5,7 @@
 #include <future>
 #include "aap/aapxs.h"
 #include "../../ext/parameters.h"
-#include "aapxs-runtime.h"
+#include "typed-aapxs.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_PARAMETERS_GET_PARAMETER_COUNT = 1;

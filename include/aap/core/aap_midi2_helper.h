@@ -55,6 +55,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t *dst,
 struct aap_midi2_aapxs_parse_context {
     uint8_t group;
     uint32_t request_id;
+    uint8_t urid;
     char uri[AAP_MAX_EXTENSION_URI_SIZE]; // must be null-terminated
     int32_t opcode;
     uint8_t *data; // buffer must be allocated by the parsing host
@@ -70,6 +71,7 @@ static inline void aap_midi2_aapxs_parse_context_prepare(
         uint8_t *conversionHelperBuffer,
         size_t conversionHelperBufferSize) {
     context->group = 0;
+    context->urid = 0;
     context->opcode = 0;
     context->data = dataBuffer;
     context->dataSize = 0;

@@ -2,6 +2,7 @@
 #ifndef AAP_CORE_STANDARD_EXTENSIONS_V2_H
 #define AAP_CORE_STANDARD_EXTENSIONS_V2_H
 
+#include "aapxs-hosting-runtime.h"
 #include "presets-aapxs.h"
 #include "parameters-aapxs.h"
 #include "state-aapxs.h"

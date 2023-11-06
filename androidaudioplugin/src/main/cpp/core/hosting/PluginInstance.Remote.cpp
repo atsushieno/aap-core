@@ -22,7 +22,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
         auto aapxs = feature_registry->items()->getByUri(context->uri);
         if (aapxs) {
             auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
-            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->uri, context->request_id, context->opcode};
+            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_plugin_aapxs_reply)
                 aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
             else
@@ -211,12 +211,12 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientReg
 }
 
 bool
-aap::RemotePluginInstance::sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
+aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
     auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(uri);
     auto serialization = aapxsInstance->serialization;
     memcpy(serialization->data, data, dataSize);
     serialization->data_size = dataSize;
-    AAPXSRequestContext request{nullptr, nullptr, serialization, uri, newRequestId, opcode};
+    AAPXSRequestContext request{nullptr, nullptr, serialization, urid, uri, newRequestId, opcode};
     return sendPluginAAPXSRequest(&request);
 }
 

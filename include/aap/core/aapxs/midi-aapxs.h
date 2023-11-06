@@ -7,7 +7,7 @@
 #include <future>
 #include "aap/aapxs.h"
 #include "../../ext/midi.h"
-#include "aapxs-runtime.h"
+#include "typed-aapxs.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_MAPPING_POLICY = 0;

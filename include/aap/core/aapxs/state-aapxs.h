@@ -6,7 +6,7 @@
 #include <future>
 #include "aap/aapxs.h"
 #include "../../ext/state.h"
-#include "aapxs-runtime.h"
+#include "typed-aapxs.h"
 
 // plugin extension opcodes
 const int32_t OPCODE_GET_STATE_SIZE = 0;

@@ -11,7 +11,7 @@
 #include "aap/core/AAPXSMidi2Processor.h"
 #include "aap/core/AAPXSMidi2ClientSession.h"
 #include "aap/aapxs.h"
-#include "aap/core/aapxs/aapxs-runtime.h"
+#include "aap/core/aapxs/aapxs-hosting-runtime.h"
 
 #if ANDROID
 #include <android/trace.h>
@@ -319,7 +319,7 @@ namespace aap {
         // Intended for invocation from JNI.
         // returns true if it is asynchronously invoked without waiting for result,
         // or false if it is synchronously completed.
-        bool sendPluginAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        bool sendPluginAAPXSRequest(uint8_t urid, const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
         // returns true if it is asynchronously invoked without waiting for result,
         // or false if it is synchronously completed.
         bool sendPluginAAPXSRequest(AAPXSRequestContext* context);

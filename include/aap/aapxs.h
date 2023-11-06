@@ -24,6 +24,7 @@ typedef struct AAPXSRequestContext {
     aapxs_completion_callback callback;
     void* callback_user_data;
     AAPXSSerializationContext* serialization;
+    uint8_t urid;
     const char * uri;
     uint32_t request_id;
     int32_t opcode;
