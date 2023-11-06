@@ -20,8 +20,6 @@ extern "C" {
 
 #define AAP_MIDI2_AAPXS_DATA_MAX_SIZE 1024
 
-uint32_t aap_midi2_aapxs_get_request_id(uint8_t* ump);
-
 /**
  * Turns AAPXS extension invocation buffer into MIDI2 UMP.
  *

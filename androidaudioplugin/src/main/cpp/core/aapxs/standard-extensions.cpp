@@ -1,5 +1,5 @@
 
-#include "aap/core/aapxs/standard-extensions-v2.h"
+#include "aap/core/aapxs/standard-extensions.h"
 
 aap::xs::AAPXSDefinition_Midi midi;
 aap::xs::AAPXSDefinition_Parameters parameters;

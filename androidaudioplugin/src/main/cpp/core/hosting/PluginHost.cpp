@@ -15,7 +15,7 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
           event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
     assert(contextPluginList);
 
-    aapxs_definition_registry = aapxsDefinitionRegistry; // FIXME: replace null with standard extensions
+    aapxs_definition_registry = aapxsDefinitionRegistry ? aapxsDefinitionRegistry : xs::AAPXSDefinitionRegistry::getStandardExtensions();
 }
 
 void aap::PluginHost::destroyInstance(PluginInstance* instance)

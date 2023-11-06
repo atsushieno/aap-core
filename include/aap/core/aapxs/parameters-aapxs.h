@@ -78,6 +78,13 @@ namespace aap::xs {
         }
 
         void notifyParametersChanged();
+
+        static void staticNotifyParametersChanged(aap_parameters_host_extension_t* ext, AndroidAudioPluginHost* host) {
+            ((ParametersServiceAAPXS*) ext->aapxs_context)->notifyParametersChanged();
+        }
+        aap_parameters_host_extension_t as_host_extension{this, staticNotifyParametersChanged};
+
+        aap_parameters_host_extension_t* asHostExtension() { return &as_host_extension; }
     };
 }
 

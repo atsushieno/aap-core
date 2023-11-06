@@ -29,13 +29,6 @@ typedef struct AAPXSRequestContext {
     int32_t opcode;
 } AAPXSRequestContext;
 
-// Stores audio processing shared memory buffers (could be used without binder)
-typedef struct AAPXSProxyContextVNext {
-    const char* uri;
-    void* extension;
-    AAPXSSerializationContext serialization;
-} AAPXSProxyContextVNext;
-
 // client instance for plugin extension API, and service instance for host extension API
 typedef struct AAPXSInitiatorInstance {
     // owned by each AAPXS implementation

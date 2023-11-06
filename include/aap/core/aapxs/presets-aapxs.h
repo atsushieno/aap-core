@@ -77,6 +77,16 @@ namespace aap::xs {
 
         void notifyPresetLoaded();
         void notifyPresetsUpdated();
+
+        static void staticNotifyPresetLoaded(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
+            ((PresetsServiceAAPXS*) ext->aapxs_context)->notifyPresetLoaded();
+        }
+        static void staticNotifyPresetsUpdated(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
+            ((PresetsServiceAAPXS*) ext->aapxs_context)->notifyPresetsUpdated();
+        }
+        aap_presets_host_extension_t as_host_extension{this, staticNotifyPresetLoaded, staticNotifyPresetsUpdated};
+
+        aap_presets_host_extension_t* asHostExtension() { return &as_host_extension; }
     };
 }
 

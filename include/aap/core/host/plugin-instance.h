@@ -4,7 +4,6 @@
 
 #include <mutex>
 #include "aap/core/aapxs/standard-extensions.h"
-#include "aap/core/aapxs/standard-extensions-v2.h"
 #include "aap/unstable/utility.h"
 #include "plugin-host.h"
 #include "aap/ext/plugin-info.h"

@@ -72,7 +72,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs
             break;
         case OPCODE_NOTIFY_PRESETS_UPDATED:
             // no args, no return
-            ext->notify_presets_update(ext, host);
+            ext->notify_presets_updated(ext, host);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
     }
