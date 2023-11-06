@@ -8,7 +8,7 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include "stdint.h"
 
-#define AAP_STATE_EXTENSION_URI "urn://androidaudioplugin.org/extensions/state/v2"
+#define AAP_STATE_EXTENSION_URI "urn://androidaudioplugin.org/extensions/state/v3"
 
 typedef struct {
     void* data;

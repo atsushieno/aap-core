@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v2.1"
+#define AAP_PARAMETERS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/parameters/v3"
 #define AAP_PARAMETERS_XMLNS_URI "urn://androidaudioplugin.org/extensions/parameters"
 
 #define AAP_MAX_PARAMETER_NAME_CHARS 64

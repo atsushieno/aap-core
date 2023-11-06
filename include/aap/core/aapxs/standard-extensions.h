@@ -127,40 +127,62 @@ namespace aap::xs {
         }
 
         // MIDI
-        int32_t getMidiMappingPolicy() override { return midi->get_mapping_policy(midi, plugin); }
+        int32_t getMidiMappingPolicy() override { return midi ? midi->get_mapping_policy(midi, plugin) : 0; }
 
         // Parameters
-        int32_t getParameterCount() override { return parameters->get_parameter_count(parameters, plugin); }
-        aap_parameter_info_t getParameter(int32_t index) override { return parameters->get_parameter(parameters, plugin, index); }
-        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters->get_parameter_property(parameters, plugin, index, propertyId); }
-        int32_t getEnumerationCount(int32_t index) override { return parameters->get_enumeration_count(parameters, plugin, index); }
-        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters->get_enumeration(parameters, plugin, index, enumIndex); }
+        int32_t getParameterCount() override { return parameters ? parameters->get_parameter_count(parameters, plugin) : 0; }
+        aap_parameter_info_t getParameter(int32_t index) override { return parameters ? parameters->get_parameter(parameters, plugin, index) : aap_parameter_info_t{}; }
+        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters ? parameters->get_parameter_property(parameters, plugin, index, propertyId) : 0.0; }
+        int32_t getEnumerationCount(int32_t index) override { return parameters ? parameters->get_enumeration_count(parameters, plugin, index) : 0; }
+        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters ? parameters->get_enumeration(parameters, plugin, index, enumIndex) : aap_parameter_enum_t{}; }
 
         // Presets
-        int32_t getPresetCount() override { return presets->get_preset_count(presets, plugin); }
-        void getPreset(int32_t index, aap_preset_t& preset) override { presets->get_preset(presets, plugin, index, &preset, nullptr, nullptr); }
+        int32_t getPresetCount() override { return presets ? presets->get_preset_count(presets, plugin) : 0; }
+        void getPreset(int32_t index, aap_preset_t& preset) override { if (presets) presets->get_preset(presets, plugin, index, &preset, nullptr, nullptr); }
         std::string getPresetName(int32_t index) override {
+            if (!presets)
+                return "";
             aap_preset_t preset;
+            getPreset(index, preset);
             return preset.name;
         }
-        int32_t getCurrentPresetIndex() override { return presets->get_preset_index(presets, plugin); }
-        void setCurrentPresetIndex(int32_t index) override { presets->set_preset_index(presets, plugin, index); }
+        int32_t getCurrentPresetIndex() override { return presets ? presets->get_preset_index(presets, plugin) : 0; }
+        void setCurrentPresetIndex(int32_t index) override { if (presets) presets->set_preset_index(presets, plugin, index); }
 
         // State
-        int32_t getStateSize() override { return state->get_state_size(state, plugin); }
+        int32_t getStateSize() override { return state ? state->get_state_size(state, plugin) : 0; }
         aap_state_t getState() override {
-            aap_state_t stateToSave;
-            state->get_state(state, plugin, &stateToSave);
+            aap_state_t stateToSave{};
+            if (state)
+                state->get_state(state, plugin, &stateToSave);
             return stateToSave;
         }
-        void setState(aap_state_t& stateToLoad) override { state->set_state(state, plugin, &stateToLoad); }
+        void setState(aap_state_t& stateToLoad) override { if (state) state->set_state(state, plugin, &stateToLoad); }
 
         // Gui
-        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView); }
-        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui->show(gui, plugin, guiInstanceId); }
-        int32_t hideGui(aap_gui_instance_id guiInstanceId) override { gui->hide(gui, plugin, guiInstanceId); return 0; }
-        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui->resize(gui, plugin, guiInstanceId, width, height); }
-        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { gui->destroy(gui, plugin, guiInstanceId); return 0; }
+        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView) : -1; }
+        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->show ? gui->show(gui, plugin, guiInstanceId) : AAP_GUI_ERROR_NO_SHOW_DEFINED : AAP_GUI_ERROR_NO_GUI_DEFINED; }
+        int32_t hideGui(aap_gui_instance_id guiInstanceId) override {
+            if (gui)
+                if (gui->hide)
+                    gui->hide(gui, plugin, guiInstanceId);
+                else
+                    return AAP_GUI_ERROR_NO_HIDE_DEFINED;
+            else
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            return 0;
+        }
+        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui ? gui->resize ? gui->resize(gui, plugin, guiInstanceId, width, height) : AAP_GUI_ERROR_NO_RESIZE_DEFINED : AAP_GUI_ERROR_NO_GUI_DEFINED; }
+        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override {
+            if (gui)
+                if (gui->destroy)
+                    gui->destroy(gui, plugin, guiInstanceId);
+                else
+                    return AAP_GUI_ERROR_NO_DESTROY_DEFINED;
+            else
+                return AAP_GUI_ERROR_NO_GUI_DEFINED;
+            return 0;
+        }
     };
 
     class StandardHostExtensions {

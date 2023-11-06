@@ -8,7 +8,7 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include <stdint.h>
 
-#define AAP_PORT_CONFIG_EXTENSION_URI "urn://androidaudioplugin.org/extensions/port-config/v2"
+#define AAP_PORT_CONFIG_EXTENSION_URI "urn://androidaudioplugin.org/extensions/port-config/v3"
 
 #define AAP_PORT_CONFIG_DEFAULT_INSTRUMENT "urn://androidaudioplugin.org/port-config/default/instrument/v1"
 #define AAP_PORT_CONFIG_DEFAULT_EFFECT "urn://androidaudioplugin.org/port-config/default/effect/v1"

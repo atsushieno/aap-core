@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define AAP_GUI_EXTENSION_URI "urn://androidaudioplugin.org/extensions/gui/v2"
+#define AAP_GUI_EXTENSION_URI "urn://androidaudioplugin.org/extensions/gui/v3"
 
 typedef int32_t aap_gui_instance_id;
 
