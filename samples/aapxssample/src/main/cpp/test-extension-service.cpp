@@ -77,8 +77,8 @@ void aapxs_example_process_incoming_host_aapxs_reply(
 namespace aap::xs {
     class AAPXSDefinition_Example : public AAPXSDefinitionWrapper {
 
-        AAPXSDefinition aapxs_example{AAPXS_EXAMPLE_TEST_EXTENSION_URI,
-                                      this,
+        AAPXSDefinition aapxs_example{this,
+                                      AAPXS_EXAMPLE_TEST_EXTENSION_URI,
                                       AAPXS_EXAMPLE_TEST_MAX_MESSAGE_SIZE + sizeof(int32_t),
                                       aapxs_example_process_incoming_plugin_aapxs_request,
                                       aapxs_example_process_incoming_host_aapxs_request,
