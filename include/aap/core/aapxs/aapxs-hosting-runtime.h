@@ -101,9 +101,6 @@ namespace aap::xs {
         const_iterator end() const { return items.cend(); }
     };
 
-    class AAPXSDefinitionClientRegistry;
-    class AAPXSDefinitionServiceRegistry;
-
     typedef uint32_t (*initiator_get_new_request_id_func) (AAPXSInitiatorInstance* instance);
     typedef bool (*aapxs_initiator_send_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
     typedef void (*aapxs_recipient_send_func) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
@@ -122,9 +119,18 @@ namespace aap::xs {
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
     };
 
+    class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {
+        std::unique_ptr<UridMapping> mapping;
+
+    public:
+        AAPXSDefinitionRegistry(std::unique_ptr<UridMapping> mapping = std::make_unique<UridMapping>(), std::vector<AAPXSDefinition> items = {});
+
+        static AAPXSDefinitionRegistry* getStandardExtensions();
+    };
+
     // Created per plugin instance.
     class AAPXSClientDispatcher : public AAPXSDispatcher {
-        AAPXSDefinitionClientRegistry* registry;
+        AAPXSDefinitionRegistry* registry;
         bool already_setup{false};
 
         AAPXSInitiatorInstance
@@ -138,7 +144,7 @@ namespace aap::xs {
                                        aapxs_recipient_send_func sendAapxsReply);
 
     public:
-        AAPXSClientDispatcher(AAPXSDefinitionClientRegistry* registry);
+        AAPXSClientDispatcher(AAPXSDefinitionRegistry* registry);
 
         inline AAPXSInitiatorInstance* getPluginAAPXSByUri(const char* uri) { assert(already_setup); return initiators.getByUri(uri); }
         inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { assert(already_setup); return initiators.getByUrid(urid); };
@@ -157,7 +163,7 @@ namespace aap::xs {
 
     // Created per plugin instance.
     class AAPXSServiceDispatcher : public AAPXSDispatcher {
-        AAPXSDefinitionServiceRegistry *registry;
+        AAPXSDefinitionRegistry *registry;
         std::map<uint8_t, std::unique_ptr<AAPXSSerializationContext>> serialization_store{};
         bool already_setup{false};
 
@@ -172,7 +178,7 @@ namespace aap::xs {
                 aapxs_recipient_send_func sendAAPXSReply);
 
     public:
-        AAPXSServiceDispatcher(AAPXSDefinitionServiceRegistry* registry);
+        AAPXSServiceDispatcher(AAPXSDefinitionRegistry* registry);
 
         AAPXSRecipientInstance* getPluginAAPXSByUri(const char* uri) { assert(already_setup); return recipients.getByUri(uri); }
         AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { assert(already_setup); return recipients.getByUrid(urid); };
@@ -187,17 +193,9 @@ namespace aap::xs {
                        initiator_get_new_request_id_func initiatorGetNewRequestId);
     };
 
-    class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {
-        std::unique_ptr<UridMapping> mapping;
-
-    public:
-        AAPXSDefinitionRegistry(std::unique_ptr<UridMapping> mapping = std::make_unique<UridMapping>(), std::vector<AAPXSDefinition> items = {});
-
-        static AAPXSDefinitionRegistry* getStandardExtensions();
-    };
-
     class AAPXSDefinitionClientRegistry {
         AAPXSDefinitionRegistry* registry;
+
     public:
         AAPXSDefinitionClientRegistry(AAPXSDefinitionRegistry* registry = nullptr) : registry(registry ? registry : AAPXSDefinitionRegistry::getStandardExtensions()){}
         virtual ~AAPXSDefinitionClientRegistry() {}

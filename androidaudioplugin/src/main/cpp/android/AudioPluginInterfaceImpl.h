@@ -115,6 +115,7 @@ public:
         CHECK_INSTANCE(instance, in_instanceID)
 
         instance->completeInstantiation();
+        instance->setupAAPXS();
         instance->setupAAPXSInstances();
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();

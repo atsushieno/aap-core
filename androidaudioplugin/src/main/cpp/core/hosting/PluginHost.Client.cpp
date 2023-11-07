@@ -77,8 +77,8 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
                                                      descriptor, pluginFactory,
                                                      sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
+            instance->setupAAPXS();
             instance->completeInstantiation();
-            instance->scanParametersAndBuildList();
             return Result<int32_t>{instance->getInstanceId(), ""};
         }
         else

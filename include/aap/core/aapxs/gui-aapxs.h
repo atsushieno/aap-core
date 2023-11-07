@@ -43,13 +43,15 @@ namespace aap::xs {
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* request);
 
-        AAPXSDefinition aapxs_gui{AAP_GUI_EXTENSION_URI,
-                                   this,
-                                   GUI_SHARED_MEMORY_SIZE,
-                                   aapxs_gui_process_incoming_plugin_aapxs_request,
-                                   aapxs_gui_process_incoming_host_aapxs_request,
-                                   aapxs_gui_process_incoming_plugin_aapxs_reply,
-                                   aapxs_gui_process_incoming_host_aapxs_reply
+        AAPXSDefinition aapxs_gui{this,
+                                  AAP_GUI_EXTENSION_URI,
+                                  GUI_SHARED_MEMORY_SIZE,
+                                  aapxs_gui_process_incoming_plugin_aapxs_request,
+                                  aapxs_gui_process_incoming_host_aapxs_request,
+                                  aapxs_gui_process_incoming_plugin_aapxs_reply,
+                                  aapxs_gui_process_incoming_host_aapxs_reply,
+                                  nullptr, // not sure if it is of any use
+                                  nullptr // not sure if it is of any use
         };
 
     public:

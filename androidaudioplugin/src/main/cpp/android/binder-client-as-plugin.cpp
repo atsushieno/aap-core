@@ -156,7 +156,13 @@ void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
 void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
-	return ctx->host.get_extension(&ctx->host, uri);
+    auto instance = (aap::RemotePluginInstance*) ctx->host.context;
+    auto aapxsDefinition = instance->getAAPXSRegistry()->items()->getByUri(uri);
+    if (!aapxsDefinition->get_plugin_extension_proxy)
+        return nullptr;
+    auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUri(uri);
+    auto proxy = aapxsDefinition->get_plugin_extension_proxy(aapxsDefinition, aapxsInstance, aapxsInstance->serialization);
+    return proxy.as_plugin_extension(&proxy);
 }
 
 aap_plugin_info_t aap_client_as_plugin_get_plugin_info(AndroidAudioPlugin *plugin)
@@ -214,7 +220,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
         // Set up shared memory FDs for plugin extension services.
         // We make use of plugin metadata that should list up required and optional extensions.
-        if (!instance->setupAAPXSInstances(instance->getAAPXSRegistry(), [&](const char* uri, AAPXSSerializationContext *serialization) {
+        if (!instance->setupAAPXSInstances([&](const char* uri, AAPXSSerializationContext *serialization) {
             // create asharedmem and add as an extension FD, keep it until it is destroyed.
             auto fd = ASharedMemory_create(nullptr, serialization->data_capacity);
             auto shm = instance->getSharedMemoryStore();

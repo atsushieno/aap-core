@@ -51,8 +51,6 @@ void aap::PluginInstance::completeInstantiation()
     assert(plugin);
 
     instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
-
-    setupAAPXS();
 }
 
 void aap::PluginInstance::setupPortConfigDefaults() {

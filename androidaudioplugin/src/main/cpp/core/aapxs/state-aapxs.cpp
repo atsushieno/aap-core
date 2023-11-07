@@ -52,7 +52,19 @@ void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_host_aapxs_rep
         request->callback(request->callback_user_data, host, request->request_id);
 }
 
-int32_t aap::xs::StateClientAAPXS::getStateSize() {
+AAPXSExtensionClientProxy
+aap::xs::AAPXSDefinition_State::aapxs_state_get_plugin_proxy(struct AAPXSDefinition *feature,
+                                                             AAPXSInitiatorInstance *aapxsInstance,
+                                                             AAPXSSerializationContext *serialization) {
+    auto client = (AAPXSDefinition_State*) feature->aapxs_context;
+    if (!client->typed_client)
+        client->typed_client = std::make_unique<StateClientAAPXS>(aapxsInstance, serialization);
+    *client->typed_client = StateClientAAPXS(aapxsInstance, serialization);
+    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_parameters_as_plugin_extension};
+    return client->client_proxy;
+}
+
+size_t aap::xs::StateClientAAPXS::getStateSize() {
     return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_STATE_SIZE);
 }
 

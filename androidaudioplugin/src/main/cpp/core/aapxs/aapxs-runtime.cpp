@@ -4,8 +4,8 @@
 
 // Client setup
 
-aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionClientRegistry *registry)
-        : AAPXSDispatcher(registry->items()->getUridMapping()), registry(registry) {
+aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionRegistry *registry)
+        : AAPXSDispatcher(registry->getUridMapping()), registry(registry) {
 }
 
 bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
@@ -15,11 +15,10 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
                                                     initiator_get_new_request_id_func initiatorGetNewRequestId) {
     assert(!already_setup);
 
-    auto items = registry->items();
-    if (!std::all_of(items->begin(), items->end(), [&](AAPXSDefinition& f) {
+    if (!std::all_of(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)
             return true; // skip
-        int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
+        int32_t urid = registry->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
         serialization->data_capacity = f.data_capacity;
@@ -63,14 +62,14 @@ aap::xs::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
 }
 
 AAPXSSerializationContext *aap::xs::AAPXSClientDispatcher::getSerialization(const char *uri) {
-    auto& shm = serialization_store[registry->items()->getUridMapping()->getUrid(uri)];
+    auto& shm = serialization_store[registry->getUridMapping()->getUrid(uri)];
     return shm ? shm.get() : nullptr;
 }
 
 // Service setup
 
-aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionServiceRegistry *registry)
-        : AAPXSDispatcher(registry->items()->getUridMapping()), registry(registry) {
+aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionRegistry *registry)
+        : AAPXSDispatcher(registry->getUridMapping()), registry(registry) {
 }
 
 void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
@@ -80,11 +79,10 @@ void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
                                                      initiator_get_new_request_id_func initiatorGetNewRequestId) {
     assert(!already_setup);
 
-    auto items = registry->items();
-    std::for_each(items->begin(), items->end(), [&](AAPXSDefinition& f) {
+    std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)
             return; // skip
-        int32_t urid = registry->items()->getUridMapping()->getUrid(f.uri);
+        int32_t urid = registry->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
         // host extensions

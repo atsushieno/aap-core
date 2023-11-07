@@ -283,12 +283,6 @@ namespace aap {
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
-        void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
-            ipc_send_extension_message_impl = sender;
-        }
-
-        void setupAAPXS() override;
-
         void prepare(int frameCount) override;
 
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
@@ -314,8 +308,14 @@ namespace aap {
         xs::AAPXSClientDispatcher aapxs_dispatcher;
         std::unique_ptr<aap::xs::ClientStandardExtensions> standards{nullptr};
     public:
+
+        void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
+            ipc_send_extension_message_impl = sender;
+        }
+
+        void setupAAPXS() override;
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        bool setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry, std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
+        bool setupAAPXSInstances(std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester);
         // Intended for invocation from JNI.
         // returns true if it is asynchronously invoked without waiting for result,
         // or false if it is synchronously completed.

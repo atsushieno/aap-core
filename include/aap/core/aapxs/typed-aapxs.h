@@ -9,15 +9,8 @@
 namespace aap::xs {
     template<typename T, typename R>
     struct WithPromise {
-        T* context;
+        void* data;
         std::promise<R>* promise;
-    };
-
-    class AAPXSDefinitionWrapper {
-    protected:
-        AAPXSDefinitionWrapper() {}
-    public:
-        virtual AAPXSDefinition& asPublic() = 0;
     };
 
     class TypedAAPXS {
@@ -40,9 +33,8 @@ namespace aap::xs {
         // This must be visible to consuming code i.e. defined in this header file.
         template<typename T>
         static void getTypedCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
-            auto callbackData = (WithPromise<TypedAAPXS, T>*) callbackContext;
-            auto thiz = (TypedAAPXS*) callbackData->context;
-            T result = *(T*) (thiz->serialization->data);
+            auto callbackData = (WithPromise<void*, T>*) callbackContext;
+            T result = *(T*) (callbackData->data);
             callbackData->promise->set_value(result);
         }
 
@@ -52,8 +44,8 @@ namespace aap::xs {
         }
 
         static void getVoidCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
-            auto callbackData = (WithPromise<TypedAAPXS, int32_t>*) callbackContext;
-            callbackData->promise->set_value(0); // dummy result
+            auto callbackData = (WithPromise<void*, int32_t>*) callbackContext;
+            callbackData->promise->set_value(0); // dummy result, just signaling the std::future
         }
 
         // This must be visible to consuming code i.e. defined in this header file.
@@ -64,7 +56,7 @@ namespace aap::xs {
             std::promise<T> promise{};
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
-            WithPromise<TypedAAPXS, T> callbackData{this, &promise};
+            WithPromise<void, T> callbackData{serialization->data, &promise};
             AAPXSRequestContext request{getTypedCallback<T>, &callbackData, serialization, urid, uri, requestId, opcode};
 
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request)) {
@@ -81,7 +73,7 @@ namespace aap::xs {
             std::promise<int32_t> promise{};
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
-            WithPromise<TypedAAPXS, int32_t> callbackData{this, &promise};
+            WithPromise<void, int32_t> callbackData{serialization->data, &promise};
             AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, urid, uri, requestId, opcode};
 
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))
@@ -89,6 +81,17 @@ namespace aap::xs {
         }
     };
 
+    class AAPXSDefinitionWrapper {
+    protected:
+        AAPXSDefinitionWrapper() {}
+
+        std::unique_ptr<TypedAAPXS> typed_client{nullptr};
+        std::unique_ptr<TypedAAPXS> typed_service{nullptr};
+        AAPXSExtensionClientProxy client_proxy;
+        AAPXSExtensionServiceProxy service_proxy;
+    public:
+        virtual AAPXSDefinition& asPublic() = 0;
+    };
 }
 
 #endif //AAP_CORE_TYPED_AAPXS_H

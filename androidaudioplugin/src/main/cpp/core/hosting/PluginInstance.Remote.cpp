@@ -14,7 +14,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           client(client),
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
-          aapxs_dispatcher(xs::AAPXSClientDispatcher(feature_registry.get()))
+          aapxs_dispatcher(aapxsRegistry)
           {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
@@ -201,13 +201,15 @@ static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSR
     ((aap::RemotePluginInstance*) instance->host_context)->sendHostAAPXSReply(context);
 }
 
-bool aap::RemotePluginInstance::setupAAPXSInstances(xs::AAPXSDefinitionClientRegistry *registry,
-                                                    std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester) {
-    return aapxs_dispatcher.setupInstances(this,
+bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester) {
+    if (!aapxs_dispatcher.setupInstances(this,
                                            sharedMemoryAllocatingRequester,
                                            staticSendAAPXSRequest,
                                            staticSendAAPXSReply,
-                                           staticGetNewRequestId);
+                                           staticGetNewRequestId))
+        return false;
+    standards->initialize(&aapxs_dispatcher);
+    return true;
 }
 
 bool
@@ -278,5 +280,5 @@ aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegis
 }
 
 void aap::RemotePluginInstance::setupAAPXS() {
-    standards = std::make_unique<xs::ClientStandardExtensions>(&aapxs_dispatcher);
+    standards = std::make_unique<xs::ClientStandardExtensions>();
 }

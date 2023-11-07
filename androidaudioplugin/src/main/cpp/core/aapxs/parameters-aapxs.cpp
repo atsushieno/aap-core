@@ -86,6 +86,28 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host
         request->callback(request->callback_user_data, host, request->request_id);
 }
 
+AAPXSExtensionClientProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_plugin_proxy(
+        struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
+        AAPXSSerializationContext *serialization) {
+    auto client = (AAPXSDefinition_Parameters*) feature->aapxs_context;
+    if (!client->typed_client)
+        client->typed_client = std::make_unique<ParametersClientAAPXS>(aapxsInstance, serialization);
+    *client->typed_client = ParametersClientAAPXS(aapxsInstance, serialization);
+    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_parameters_as_plugin_extension};
+    return client->client_proxy;
+}
+
+AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_host_proxy(
+        struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
+        AAPXSSerializationContext *serialization) {
+    auto service = (AAPXSDefinition_Parameters*) feature->aapxs_context;
+    if (!service->typed_service)
+        service->typed_service = std::make_unique<ParametersServiceAAPXS>(aapxsInstance, serialization);
+    *service->typed_service = ParametersServiceAAPXS(aapxsInstance, serialization);
+    service->service_proxy = AAPXSExtensionServiceProxy{&service->typed_service, aapxs_parameters_as_host_extension};
+    return service->service_proxy;
+}
+
 // AAPXSParametersClient
 
 int32_t aap::xs::ParametersClientAAPXS::getParameterCount() {
@@ -95,18 +117,18 @@ int32_t aap::xs::ParametersClientAAPXS::getParameterCount() {
 aap_parameter_info_t aap::xs::ParametersClientAAPXS::getParameter(int32_t index) {
     *((int32_t*) serialization->data) = index;
     return callTypedFunctionSynchronously<aap_parameter_info_t>(
-            OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+            OPCODE_PARAMETERS_GET_PARAMETER);
 }
 
 double aap::xs::ParametersClientAAPXS::getProperty(int32_t index, int32_t propertyId) {
     *((int32_t*) serialization->data) = index;
     *((int32_t*) serialization->data + 1) = propertyId;
-    return callTypedFunctionSynchronously<double>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<double>(OPCODE_PARAMETERS_GET_PROPERTY);
 }
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationCount(int32_t index) {
     *((int32_t*) serialization->data) = index;
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT);
 }
 
 aap_parameter_enum_t
@@ -114,7 +136,7 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
     *((int32_t*) serialization->data) = index;
     *((int32_t*) serialization->data + 1) = enumIndex;
     return callTypedFunctionSynchronously<aap_parameter_enum_t>(
-            OPCODE_PARAMETERS_GET_PARAMETER_COUNT);
+            OPCODE_PARAMETERS_GET_ENUMERATION);
 }
 
 void aap::xs::ParametersClientAAPXS::completeWithParameterCallback (void* callbackData, void* pluginOrHost, int32_t requestId) {

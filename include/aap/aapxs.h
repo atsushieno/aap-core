@@ -61,6 +61,9 @@ typedef struct AAPXSRecipientInstance {
     void (*send_aapxs_reply) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
 } AAPXSRecipientInstance;
 
+struct AAPXSExtensionClientProxy;
+struct AAPXSExtensionServiceProxy;
+
 /**
  * The "untyped" AAPXS definition (in the public API surface).
  * Each AAPXS needs to provide an instance of this type so that host framework (reference
@@ -75,13 +78,13 @@ typedef struct AAPXSRecipientInstance {
  * hidden behind `aapxs_context` opaque pointer).
  */
 typedef struct AAPXSDefinition {
-    /** The extension URI */
-    const char *uri;
-
     /** An opaque pointer to the AAPXS developers' context.
      * It should be assigned and used only by the AAPXS developers of the extension.
      */
     void *aapxs_context;
+
+    /** The extension URI */
+    const char *uri;
 
     /**
      * The data capacity that is used to allocate shared memory for the binary transfer storage (Binder/SysEx8).
@@ -119,6 +122,25 @@ typedef struct AAPXSDefinition {
             AAPXSInitiatorInstance* aapxsInstance,
             AndroidAudioPluginHost* host,
             AAPXSRequestContext* request);
+
+    struct AAPXSExtensionClientProxy (*get_plugin_extension_proxy) (
+            AAPXSDefinition* definition,
+            AAPXSInitiatorInstance *aapxsInstance,
+            AAPXSSerializationContext *serialization);
+    struct AAPXSExtensionServiceProxy (*get_host_extension_proxy) (
+            AAPXSDefinition* definition,
+            AAPXSInitiatorInstance *aapxsInstance,
+            AAPXSSerializationContext *serialization);
 } AAPXSDefinition;
+
+typedef struct AAPXSExtensionClientProxy {
+    void* aapxs_context;
+    void* (*as_plugin_extension) (AAPXSExtensionClientProxy *proxy);
+} AAPXSExtensionClientProxy;
+
+typedef struct AAPXSExtensionServiceProxy {
+    void* aapxs_context;
+    void* (*as_host_extension) (AAPXSExtensionServiceProxy *proxy);
+} AAPXSExtensionServiceProxy;
 
 #endif //AAP_CORE_AAPXS_H

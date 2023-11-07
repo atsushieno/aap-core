@@ -21,7 +21,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
           host(host),
           aapxs_host_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionServiceRegistry(aapxsRegistry)),
-          aapxs_dispatcher(xs::AAPXSServiceDispatcher(feature_registry.get()))
+          aapxs_dispatcher(aapxsRegistry)
           {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
