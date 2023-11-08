@@ -5,7 +5,7 @@ project(androidaudioplugin LANGUAGES CXX)
 # List of sources. Android build has some additional sources.
 set (androidaudioplugin_SOURCES
 	"core/hosting/AAPXSMidi2ClientSession.cpp"
-	"core/hosting/AAPXSMidi2Processor.cpp"
+	"core/hosting/AAPXSMidi2ReceiverSession.cpp"
 	"core/hosting/PluginInformation.cpp"
 	"core/hosting/PluginInstance.cpp"
 	"core/hosting/PluginInstance.Local.cpp"
@@ -17,7 +17,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/PluginHost.Service.cpp"
 	"core/hosting/plugin-client-system.cpp"
 	"core/hosting/plugin-connections.cpp"
-		"core/aapxs/aapxs-runtime.cpp"
+	"core/aapxs/aapxs-runtime.cpp"
 	"core/aapxs/gui-aapxs.cpp"
 	"core/aapxs/midi-aapxs.cpp"
 	"core/aapxs/parameters-aapxs.cpp"

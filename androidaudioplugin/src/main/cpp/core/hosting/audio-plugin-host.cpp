@@ -11,7 +11,7 @@
 #include "audio-plugin-host-internals.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "aap/core/host/plugin-instance.h"
-#include "aap/core/AAPXSMidi2Processor.h"
+#include "aap/core/AAPXSMidi2ReceiverSession.h"
 
 
 #define LOG_TAG "AAP_HOST"

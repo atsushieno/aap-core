@@ -1,18 +1,18 @@
-#ifndef AAP_CORE_AAPXSMIDI2PROCESSOR_H
-#define AAP_CORE_AAPXSMIDI2PROCESSOR_H
+#ifndef AAP_CORE_AAPXSMIDI2RECEIVERSESSION_H
+#define AAP_CORE_AAPXSMIDI2RECEIVERSESSION_H
 
 #include <functional>
 #include "../android-audio-plugin.h"
 #include "aap_midi2_helper.h"
 
 namespace aap {
-    class AAPXSMidi2Processor {
+    class AAPXSMidi2ReceiverSession {
         aap_midi2_aapxs_parse_context aapxs_parse_context{};
 
         std::function<void(aap_midi2_aapxs_parse_context*)> call_extension;
     public:
-        AAPXSMidi2Processor();
-        virtual ~AAPXSMidi2Processor();
+        AAPXSMidi2ReceiverSession();
+        virtual ~AAPXSMidi2ReceiverSession();
 
         uint8_t* midi2_aapxs_data_buffer{nullptr};
         uint8_t* midi2_aapxs_conversion_helper_buffer{nullptr};
@@ -24,7 +24,7 @@ namespace aap {
         void process(void* buffer);
 
         void
-        addReply(void (*addMidi2Event)(AAPXSMidi2Processor *, void *, int32_t),
+        addReply(void (*addMidi2Event)(AAPXSMidi2ReceiverSession *, void *, int32_t),
                  void* addMidi2EventUserData,
                  const char* extensionUri,
                  int32_t group,
@@ -35,4 +35,4 @@ namespace aap {
     };
 }
 
-#endif //AAP_CORE_AAPXSMIDI2PROCESSOR_H
+#endif //AAP_CORE_AAPXSMIDI2RECEIVERSESSION_H

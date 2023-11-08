@@ -1,5 +1,5 @@
-#ifndef AAP_CORE_AAPXSMIDI2CLIENTSESSION_H
-#define AAP_CORE_AAPXSMIDI2CLIENTSESSION_H
+#ifndef AAP_CORE_AAPXSMIDI2INITIATORSESSION_H
+#define AAP_CORE_AAPXSMIDI2INITIATORSESSION_H
 
 #include <stdint.h>
 #include <functional>
@@ -9,12 +9,12 @@
 #include "aap/aapxs.h"
 
 namespace aap {
-    class AAPXSMidi2ClientSession;
+    class AAPXSMidi2InitiatorSession;
     const size_t MAX_PENDING_CALLBACKS = UINT8_MAX;
 
-    typedef void (*add_midi2_event_func) (AAPXSMidi2ClientSession* session, void* userData, int32_t messageSize);
+    typedef void (*add_midi2_event_func) (AAPXSMidi2InitiatorSession* session, void* userData, int32_t messageSize);
 
-    class AAPXSMidi2ClientSession {
+    class AAPXSMidi2InitiatorSession {
 
         struct CallbackUnit {
             uint32_t request_id;
@@ -28,8 +28,8 @@ namespace aap {
         CallbackUnit pending_callbacks[MAX_PENDING_CALLBACKS];
 
     public:
-        AAPXSMidi2ClientSession(int32_t midiBufferSize);
-        ~AAPXSMidi2ClientSession();
+        AAPXSMidi2InitiatorSession(int32_t midiBufferSize);
+        ~AAPXSMidi2InitiatorSession();
 
         uint8_t *aapxs_rt_midi_buffer{nullptr};
         uint8_t *aapxs_rt_conversion_helper_buffer{nullptr};
@@ -53,4 +53,4 @@ namespace aap {
     };
 }
 
-#endif //AAP_CORE_AAPXSMIDI2CLIENTSESSION_H
+#endif //AAP_CORE_AAPXSMIDI2INITIATORSESSION_H

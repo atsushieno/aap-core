@@ -8,8 +8,8 @@
 #include "plugin-host.h"
 #include "aap/ext/plugin-info.h"
 #include "../aap_midi2_helper.h"
-#include "aap/core/AAPXSMidi2Processor.h"
-#include "aap/core/AAPXSMidi2ClientSession.h"
+#include "aap/core/AAPXSMidi2ReceiverSession.h"
+#include "aap/core/AAPXSMidi2InitiatorSession.h"
 #include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
 
@@ -142,7 +142,7 @@ namespace aap {
         }
 
         static void
-        aapxsSessionAddEventUmpInput(AAPXSMidi2ClientSession *client, void *context,
+        aapxsSessionAddEventUmpInput(AAPXSMidi2InitiatorSession *client, void *context,
                                      int32_t messageSize);
     };
 
@@ -157,13 +157,13 @@ namespace aap {
  */
     class LocalPluginInstance : public PluginInstance {
         PluginHost *host;
-        AAPXSMidi2ClientSession aapxs_host_session;
+        AAPXSMidi2InitiatorSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
         bool process_requested_to_host{false};
 
-        AAPXSMidi2Processor aapxs_midi2_processor{};
+        AAPXSMidi2ReceiverSession aapxs_midi2_processor{};
         NanoSleepLock aapxs_out_merger_mutex_out{};
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};
@@ -250,7 +250,7 @@ namespace aap {
 
         PluginClient *client;
         AndroidAudioPluginHost plugin_host_facade{};
-        AAPXSMidi2ClientSession aapxs_session;
+        AAPXSMidi2InitiatorSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
 
         static void* internalGetHostExtension(AndroidAudioPluginHost* host, const char* uri);

@@ -245,7 +245,7 @@ uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
 
 // AAPXS (v2 too)
 
-void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2ClientSession* client, void* context, int32_t messageSize) {
+void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2InitiatorSession* client, void* context, int32_t messageSize) {
     auto instance = (aap::RemotePluginInstance *) context;
     instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
 }

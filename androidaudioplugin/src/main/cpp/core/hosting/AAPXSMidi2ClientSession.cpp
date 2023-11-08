@@ -1,12 +1,12 @@
 
 
-#include "aap/core/AAPXSMidi2ClientSession.h"
+#include "aap/core/AAPXSMidi2InitiatorSession.h"
 #include <stdlib.h>
 #include <assert.h>
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
 
-aap::AAPXSMidi2ClientSession::AAPXSMidi2ClientSession(int32_t midiBufferSize)
+aap::AAPXSMidi2InitiatorSession::AAPXSMidi2InitiatorSession(int32_t midiBufferSize)
         : midi_buffer_size(midiBufferSize) {
     aapxs_rt_midi_buffer = (uint8_t*) calloc(1, midi_buffer_size);
     aapxs_rt_conversion_helper_buffer = (uint8_t*) calloc(1, midi_buffer_size);
@@ -17,14 +17,14 @@ aap::AAPXSMidi2ClientSession::AAPXSMidi2ClientSession(int32_t midiBufferSize)
     memset(pending_callbacks, 0, sizeof(CallbackUnit) * MAX_PENDING_CALLBACKS);
 }
 
-aap::AAPXSMidi2ClientSession::~AAPXSMidi2ClientSession() {
+aap::AAPXSMidi2InitiatorSession::~AAPXSMidi2InitiatorSession() {
     if (aapxs_rt_midi_buffer)
         free(aapxs_rt_midi_buffer);
     if (aapxs_rt_conversion_helper_buffer)
         free(aapxs_rt_conversion_helper_buffer);
 }
 
-void aap::AAPXSMidi2ClientSession::addSession(
+void aap::AAPXSMidi2InitiatorSession::addSession(
         add_midi2_event_func addMidi2Event,
         void* addMidi2EventUserData,
         int32_t group,
@@ -46,9 +46,9 @@ void aap::AAPXSMidi2ClientSession::addSession(
     addMidi2Event(this, addMidi2EventUserData, size);
 }
 
-void aap::AAPXSMidi2ClientSession::addSession(add_midi2_event_func addMidi2Event,
-                                              void* addMidi2EventUserData,
-                                              AAPXSRequestContext *request) {
+void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Event,
+                                                 void* addMidi2EventUserData,
+                                                 AAPXSRequestContext *request) {
     int32_t group = 0; // will we have to give special semantics on it?
     addSession(addMidi2Event, addMidi2EventUserData,
                group,
@@ -72,7 +72,7 @@ void aap::AAPXSMidi2ClientSession::addSession(add_midi2_event_func addMidi2Event
     }
 }
 
-void aap::AAPXSMidi2ClientSession::completeSession(void* buffer, void* pluginOrHost) {
+void aap::AAPXSMidi2InitiatorSession::completeSession(void* buffer, void* pluginOrHost) {
     auto mbh = (AAPMidiBufferHeader *) buffer;
     void* data = mbh + 1;
     CMIDI2_UMP_SEQUENCE_FOREACH(data, mbh->length, iter) {
