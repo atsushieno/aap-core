@@ -191,8 +191,6 @@ namespace aap::midi {
 
             instrument_instance_id = instanceId;
 
-            instance->configurePorts();
-
             int32_t numPorts = instance->getNumPorts();
             auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
 

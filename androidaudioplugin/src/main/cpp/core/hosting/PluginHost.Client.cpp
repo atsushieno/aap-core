@@ -77,8 +77,11 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
                                                      descriptor, pluginFactory,
                                                      sampleRate, event_midi2_input_buffer_size);
             instances.emplace_back(instance);
-            instance->setupAAPXS();
+            instance->setupAAPXS(); // this needs to be done before setupAAPXSInstances() which is invoked by completeInstantiation() in binder-client-as-plugin.
             instance->completeInstantiation();
+            instance->configurePorts();
+            instance->scanParametersAndBuildList();
+
             return Result<int32_t>{instance->getInstanceId(), ""};
         }
         else

@@ -166,8 +166,6 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
 	}
 	auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(result.value));
 	assert(instance);
-    instance->scanParametersAndBuildList();
-    instance->configurePorts();
 	return (jlong) result.value;
 }
 
