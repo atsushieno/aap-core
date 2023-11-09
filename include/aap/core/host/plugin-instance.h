@@ -8,7 +8,7 @@
 #include "plugin-host.h"
 #include "aap/ext/plugin-info.h"
 #include "../aap_midi2_helper.h"
-#include "aap/core/AAPXSMidi2ReceiverSession.h"
+#include "aap/core/AAPXSMidi2RecipientSession.h"
 #include "aap/core/AAPXSMidi2InitiatorSession.h"
 #include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
@@ -163,7 +163,7 @@ namespace aap {
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
         bool process_requested_to_host{false};
 
-        AAPXSMidi2ReceiverSession aapxs_midi2_processor{};
+        AAPXSMidi2RecipientSession aapxs_midi2_processor{};
         NanoSleepLock aapxs_out_merger_mutex_out{};
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};

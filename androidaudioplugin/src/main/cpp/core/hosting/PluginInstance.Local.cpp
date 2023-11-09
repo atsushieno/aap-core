@@ -4,7 +4,7 @@
 #define LOG_TAG "AAP.Local.Instance"
 
 
-void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2ReceiverSession* processor, void* context, int32_t messageSize) {
+void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2RecipientSession* processor, void* context, int32_t messageSize) {
     auto instance = (aap::LocalPluginInstance *) context;
     instance->addEventUmpOutput(processor->midi2_aapxs_data_buffer, messageSize);
 }

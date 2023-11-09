@@ -1,8 +1,8 @@
-#include "aap/core/AAPXSMidi2ReceiverSession.h"
+#include "aap/core/AAPXSMidi2RecipientSession.h"
 #include "aap/ext/midi.h"
 
 
-aap::AAPXSMidi2ReceiverSession::AAPXSMidi2ReceiverSession() {
+aap::AAPXSMidi2RecipientSession::AAPXSMidi2RecipientSession() {
     midi2_aapxs_data_buffer = (uint8_t*) calloc(1, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
     midi2_aapxs_conversion_helper_buffer = (uint8_t*) calloc(1, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
     aap_midi2_aapxs_parse_context_prepare(&aapxs_parse_context,
@@ -11,14 +11,14 @@ aap::AAPXSMidi2ReceiverSession::AAPXSMidi2ReceiverSession() {
                                           AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
 }
 
-aap::AAPXSMidi2ReceiverSession::~AAPXSMidi2ReceiverSession() {
+aap::AAPXSMidi2RecipientSession::~AAPXSMidi2RecipientSession() {
     if (midi2_aapxs_data_buffer)
         free(midi2_aapxs_data_buffer);
     if (midi2_aapxs_conversion_helper_buffer)
         free(midi2_aapxs_conversion_helper_buffer);
 }
 
-void aap::AAPXSMidi2ReceiverSession::process(void* buffer) {
+void aap::AAPXSMidi2RecipientSession::process(void* buffer) {
     auto mbh = (AAPMidiBufferHeader *) buffer;
     void* data = mbh + 1;
     CMIDI2_UMP_SEQUENCE_FOREACH(data, mbh->length, iter) {
@@ -40,8 +40,8 @@ void aap::AAPXSMidi2ReceiverSession::process(void* buffer) {
 }
 
 
-void aap::AAPXSMidi2ReceiverSession::addReply(
-        void (*addMidi2Event)(AAPXSMidi2ReceiverSession * processor, void *userData, int32_t messageSize),
+void aap::AAPXSMidi2RecipientSession::addReply(
+        void (*addMidi2Event)(AAPXSMidi2RecipientSession * processor, void *userData, int32_t messageSize),
         void* addMidi2EventUserData,
         const char* extensionUri,
         int32_t group,
