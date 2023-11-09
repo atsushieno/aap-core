@@ -65,13 +65,14 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 void *
 aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
     auto instance = (LocalPluginInstance *) host->context;
+    // FIXME: in the future maybe we want to eliminate this kind of special cases.
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
-    // FIXME: implement more extensions
+    // Look up host extension and get proxy via AAPXSDefinition.
     auto definition = instance->getAAPXSRegistry()->items()->getByUri(uri);
-    if (definition) {
+    if (definition && definition->get_host_extension_proxy) {
         auto aapxsInstance = instance->getAAPXSDispatcher().getHostAAPXSByUri(uri);
         auto proxy = definition->get_host_extension_proxy(definition, aapxsInstance, aapxsInstance->serialization);
         return proxy.as_host_extension(&proxy);
@@ -176,14 +177,10 @@ void aap::LocalPluginInstance::setupAAPXS() {
 }
 
 static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
-    ((aap::LocalPluginInstance *) instance->host_context)->sendPluginAAPXSReply(context->uri,
-                                                                                context->opcode,
-                                                                                context->serialization->data,
-                                                                                context->serialization->data_size,
-                                                                                context->request_id);
+    ((aap::LocalPluginInstance *) instance->host_context)->sendPluginAAPXSReply(context);
 }
 static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPXSRequestContext* context) {
-    return ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context->uri, context->opcode, context->serialization->data, context->serialization->data_size, context->request_id);
+    return ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context);
 }
 
 void aap::LocalPluginInstance::setupAAPXSInstances() {
@@ -203,38 +200,34 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
 }
 
 void
-aap::LocalPluginInstance::sendPluginAAPXSReply(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t requestId) {
+aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(uri);
         aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
                                        this,
-                                       uri,
+                                       request->uri,
                                        // should we support MIDI 2.0 group?
                                        0,
-                                       requestId,
-                                       aapxsInstance->serialization->data,
-                                       dataSize,
-                                       opcode);
+                                       request->request_id,
+                                       request->serialization->data,
+                                       request->serialization->data_size,
+                                       request->opcode);
     } else {
         // it is synchronously handled at Binder IPC, nothing to process here.
     }
 }
 
 bool
-aap::LocalPluginInstance::sendHostAAPXSRequest(const char* uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto aapxsInstance = aapxs_dispatcher.getHostAAPXSByUri(uri);
-
+aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
-        int32_t group = 0; // will we have to give special semantics on it?
         // This is an asynchronous function, so we do not wait for the result.
-        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, group, newRequestId, uri, aapxsInstance->serialization->data, dataSize, opcode);
+        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, request);
         return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-        ipc_send_extension_message_func(ipc_send_extension_message_context, uri, getInstanceId(), opcode);
+        ipc_send_extension_message_func(ipc_send_extension_message_context, request->uri, getInstanceId(), request->opcode);
         return false;
     }
 }

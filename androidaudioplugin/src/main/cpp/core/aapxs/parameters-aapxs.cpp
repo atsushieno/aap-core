@@ -103,7 +103,7 @@ AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters
     if (!service->typed_service)
         service->typed_service = std::make_unique<ParametersServiceAAPXS>(aapxsInstance, serialization);
     //*service->typed_service = ParametersServiceAAPXS(aapxsInstance, serialization);
-    service->service_proxy.aapxs_context = &service->typed_service;
+    service->service_proxy.aapxs_context = service->typed_service.get();
     service->service_proxy.as_host_extension = aapxs_parameters_as_host_extension;
     return service->service_proxy;
 }
@@ -196,5 +196,5 @@ int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {
-    callVoidFunctionSynchronously(OPCODE_NOTIFY_PARAMETERS_CHANGED);
+    fireVoidFunctionAndForget(OPCODE_NOTIFY_PARAMETERS_CHANGED);
 }

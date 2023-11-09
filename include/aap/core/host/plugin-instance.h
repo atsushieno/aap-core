@@ -221,8 +221,12 @@ namespace aap {
         xs::AAPXSDefinitionServiceRegistry* getAAPXSRegistry() { return feature_registry.get(); }
         xs::AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         void setupAAPXSInstances();
-        void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
-        bool sendHostAAPXSRequest(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);
+        void sendPluginAAPXSReply(AAPXSRequestContext* request);
+        // returns true if it is asynchronously invoked without waiting for result,
+        // or false if it is synchronously completed.
+        // Note that, however, there should not be synchronous callback in ACTIVE (realtime) mode, because
+        // there will not be any RT-safe return mode across multiple `process()` calls.
+        bool sendHostAAPXSRequest(AAPXSRequestContext* request);
 
         void setIpcExtensionMessageSender(aapxs_host_ipc_sender sender, void* context) {
             ipc_send_extension_message_func = sender;

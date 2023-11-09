@@ -79,6 +79,14 @@ namespace aap::xs {
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))
                 future.wait();
         }
+
+        // "Fire and forget" invocation. Host extensions must be always like this.
+        void fireVoidFunctionAndForget(int32_t opcode) {
+            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
+            AAPXSRequestContext request{nullptr, nullptr, serialization, urid, uri, requestId,
+                                        opcode};
+            aapxs_instance->send_aapxs_request(aapxs_instance, &request);
+        }
     };
 
     class AAPXSDefinitionWrapper {
