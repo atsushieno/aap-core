@@ -2,6 +2,7 @@
 
 # This shell script is to set up ASAN for debugging native libs.
 # Specify your own path in those variables below.
+# Note that ASAN is *deprecated in Android 14 or later (use HWAsan instead).
 
 # They have to be adjusted to your environment and NDK version.
 # Although note that whenever we use AAP the NDK version has to be fixed to
@@ -12,16 +13,18 @@
 #
 if [ "$ANDROID_NDK_PATH" == "" ]; then
   if [ `uname` == "Darwin" ]; then
-    ANDROID_NDK_PATH=~/Library/Android/Sdk/ndk/25.1.8937393
+    ANDROID_NDK_PATH=~/Library/Android/Sdk/ndk/26.1.10909125
   else
-    ANDROID_NDK_PATH=~/Android/Sdk/ndk/25.1.8937393
+    ANDROID_NDK_PATH=~/Android/Sdk/ndk/26.1.10909125
   fi
 fi
 UNAMEXX=`uname | tr '[:upper:]' '[:lower:]'`
-echo "UNAME: $UNAMEXX"
-HOST_ARCH_LIB=$UNAMEXX-x86_64/lib64
-CLANG_VER=14.0.6
+# Note that these paths may not work depending on the NDK versions. Always make sure that the resulting paths exist
+HOST_ARCH_LIB=$UNAMEXX-x86_64/lib
+CLANG_VER=17
 CLANG_LIB=$ANDROID_NDK_PATH/toolchains/llvm/prebuilt/$HOST_ARCH_LIB/clang/$CLANG_VER/lib
+echo "UNAME: $UNAMEXX"
+echo "CLANG_LIB: $CLANG_LIB"
 
 ALL_ABIS=("x86" "x86_64" "armeabi-v7a" "arm64-v8a")
 
