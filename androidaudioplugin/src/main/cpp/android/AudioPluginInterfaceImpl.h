@@ -114,9 +114,11 @@ public:
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
+        // we kinda need to call setupAAPXSInstances() *before* completeInstantiation() because otherwise plugin constructors have no access to host extension.
+        // We need to call completeInstantiation() *before* setupAAPXS() because service standard extensions require AndroidAudioPlugin*.
+        instance->setupAAPXSInstances();
         instance->completeInstantiation();
         instance->setupAAPXS();
-        instance->setupAAPXSInstances();
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();
     }

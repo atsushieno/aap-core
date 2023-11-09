@@ -64,12 +64,18 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 
 void *
 aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
+    auto instance = (LocalPluginInstance *) host->context;
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        auto instance = (LocalPluginInstance *) host->context;
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
     // FIXME: implement more extensions
+    auto definition = instance->getAAPXSRegistry()->items()->getByUri(uri);
+    if (definition) {
+        auto aapxsInstance = instance->getAAPXSDispatcher().getHostAAPXSByUri(uri);
+        auto proxy = definition->get_host_extension_proxy(definition, aapxsInstance, aapxsInstance->serialization);
+        return proxy.as_host_extension(&proxy);
+    }
     return nullptr;
 }
 

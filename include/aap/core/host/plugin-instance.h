@@ -218,6 +218,7 @@ namespace aap {
 
 
         // AAPXS v2
+        xs::AAPXSDefinitionServiceRegistry* getAAPXSRegistry() { return feature_registry.get(); }
         xs::AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
         void setupAAPXSInstances();
         void sendPluginAAPXSReply(const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId);

@@ -102,8 +102,9 @@ AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters
     auto service = (AAPXSDefinition_Parameters*) feature->aapxs_context;
     if (!service->typed_service)
         service->typed_service = std::make_unique<ParametersServiceAAPXS>(aapxsInstance, serialization);
-    *service->typed_service = ParametersServiceAAPXS(aapxsInstance, serialization);
-    service->service_proxy = AAPXSExtensionServiceProxy{&service->typed_service, aapxs_parameters_as_host_extension};
+    //*service->typed_service = ParametersServiceAAPXS(aapxsInstance, serialization);
+    service->service_proxy.aapxs_context = &service->typed_service;
+    service->service_proxy.as_host_extension = aapxs_parameters_as_host_extension;
     return service->service_proxy;
 }
 

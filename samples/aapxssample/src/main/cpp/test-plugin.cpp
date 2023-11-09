@@ -1,13 +1,31 @@
 
+#include <cassert>
 #include <memory>
 #include "aap/android-audio-plugin.h"
 #include "aap/examples/aapxs/test-extension.h"
+#include "aap/ext/parameters.h"
+
+struct AAPXSSampleContext {
+    AndroidAudioPluginHost* host;
+    aap_parameters_host_extension_t* params_ext;
+
+    AAPXSSampleContext(AndroidAudioPluginHost* host) :
+            host(host) {
+        params_ext = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
+        assert(params_ext);
+    }
+};
 
 void test_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {}
 
 void test_plugin_activate(AndroidAudioPlugin *plugin) {}
 
-void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, int32_t frameCount, int64_t timeoutInNanoiseconds) {}
+void test_plugin_process(AndroidAudioPlugin *plugin, aap_buffer_t *buffer, int32_t frameCount, int64_t timeoutInNanoiseconds) {
+    auto context = (AAPXSSampleContext*) plugin->plugin_specific;
+    auto params = context->params_ext;
+    params->notify_parameters_changed(context->params_ext, context->host);
+    if (frameCount == INT32_MAX) throw std::runtime_error("whoa"); // NOP in practice, just to make sure we successfully pass host extension calls.
+}
 
 void test_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 
@@ -29,7 +47,7 @@ AndroidAudioPlugin *test_plugin_new(
         int sampleRate,
         AndroidAudioPluginHost *host) {
     return new AndroidAudioPlugin{
-            nullptr,
+            new AAPXSSampleContext(host),
             test_plugin_prepare,
             test_plugin_activate,
             test_plugin_process,
@@ -41,6 +59,7 @@ AndroidAudioPlugin *test_plugin_new(
 void test_plugin_delete(
         AndroidAudioPluginFactory *pluginFactory,
         AndroidAudioPlugin *instance) {
+    delete (AAPXSSampleContext*) instance->plugin_specific;
     delete instance;
 }
 
