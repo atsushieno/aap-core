@@ -10,7 +10,7 @@
 #include "typed-aapxs.h"
 
 // plugin extension opcodes
-const int32_t OPCODE_GET_MAPPING_POLICY = 0;
+const int32_t OPCODE_GET_MAPPING_POLICY = 1;
 
 // host extension opcodes
 // ... nothing?

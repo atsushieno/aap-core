@@ -7,10 +7,10 @@
 #include "../../ext/presets.h"
 
 // plugin extension opcodes
-const int32_t OPCODE_GET_PRESET_COUNT = 0;
-const int32_t OPCODE_GET_PRESET_DATA = 1;
-const int32_t OPCODE_GET_PRESET_INDEX = 2;
-const int32_t OPCODE_SET_PRESET_INDEX = 3;
+const int32_t OPCODE_GET_PRESET_COUNT = 1;
+const int32_t OPCODE_GET_PRESET_DATA = 2;
+const int32_t OPCODE_GET_PRESET_INDEX = 3;
+const int32_t OPCODE_SET_PRESET_INDEX = 4;
 
 // host extension opcodes
 const int32_t OPCODE_NOTIFY_PRESET_LOADED = -1;

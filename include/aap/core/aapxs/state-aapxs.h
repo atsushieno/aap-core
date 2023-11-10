@@ -9,9 +9,9 @@
 #include "typed-aapxs.h"
 
 // plugin extension opcodes
-const int32_t OPCODE_GET_STATE_SIZE = 0;
-const int32_t OPCODE_GET_STATE = 1;
-const int32_t OPCODE_SET_STATE = 2;
+const int32_t OPCODE_GET_STATE_SIZE = 1;
+const int32_t OPCODE_GET_STATE = 2;
+const int32_t OPCODE_SET_STATE = 3;
 
 // host extension opcodes
 // ... nothing?
