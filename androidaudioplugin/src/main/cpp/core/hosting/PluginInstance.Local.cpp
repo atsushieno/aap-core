@@ -29,6 +29,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
     aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
 
     aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
+        // FIXME: this should be implemented in LocalPluginInstance.
         auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);

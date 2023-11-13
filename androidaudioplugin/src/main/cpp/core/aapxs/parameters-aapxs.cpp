@@ -58,13 +58,16 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     auto ext = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
-    if (!ext)
-        return; // FIXME: should there be any global error handling?
     switch (request->opcode) {
-        case OPCODE_NOTIFY_PARAMETERS_CHANGED:
-            ext->notify_parameters_changed(ext, host);
+        case OPCODE_NOTIFY_PARAMETERS_CHANGED: {
+            if (ext)
+                ext->notify_parameters_changed(ext, host);
+            //else {
+            // FIXME: log warning?
+            //}
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
+        }
         default:
             // FIXME: log warning?
             break;

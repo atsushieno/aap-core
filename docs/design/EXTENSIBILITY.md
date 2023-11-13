@@ -53,6 +53,8 @@ This will make extension implementation independent of specific AAP versions to 
 
 Typical plugin extension APIs are usually synchronous i.e. their functions block throughout the execution, but AAP extension foundation is designed to be "async ready", especially when the plugin enters ACTIVE = realtime mode.
 
+It is because AAP, unlike those desktop plugin APIs, needs interaction between the host and plugin and keeping a thread per extension function call costs potentially a lot of synchronization constructs e.g. 100 locks per 100 `getPreset()` calls or potentially more (100 locks in the host + 100 locks in the plugin + 100 locks in AAPXS).
+
 They can be designed and implemented in synchronous manner (we actually have synchronous API as some transitive solutions), but then there is no assured realtime safety.
 
 
@@ -110,13 +112,13 @@ There should be two kinds of accesses to AAPXS from `RemotePluginInstance`: AAPX
 
 ### vNext Hosting entrypoint to AAPXS Runtime API
 
-Since AAP sends extension controllers either via Binder IPC (non-RT) or AAPXS SysEx8 (RT), unknown extensions can be still *supported*. For untyped extension accesses, `RemotePluginInstance` provides `sendExtensionRequest()` (`sendExtensionMessage()` in the existing implementation).
+Since AAP sends extension controllers either via Binder IPC (non-RT) or AAPXS SysEx8 (RT), unknown extensions can be still *supported*. For untyped extension accesses, `RemotePluginInstance` provides `sendExtensionRequest()`.
 
 `sendExtensionRequest()` takes `AAPXSRequestContext` which contains *already serialized* requests as a binary chunk in its member `AAPXSSerializationContext`. Then it dispatches the request to the appropriate handler: Binder IPC at INACTIVE (non-RT) state, or AAPXS SysEx8 at ACTIVE RT state.
 
 Serialization is handled by each AAPXS. For such a hosting implementation that does not directly support the extension (or a plugin implementation that does not directly suppot the host extension), there is untyped AAPXS API that is implemented without strongly-typed extension API. The host can still convey and even invoke its dynamically assigned extension invocation handler in `AAPXSDefinition`.
 
-At AAPXS Runtime level, there are utility functions in `aap_midi2_helper.h` for AAPXS parsing and generation in C, and `AAPXSMidi2Processor` and `AAPXSMidi2ClientSession` as the internal helpers in C++. To support asynchronous invocation under control, a host can assign an async callback `aapxs_completion_callback` to `AAPXSRequestContext`, which is then invoked when `AAPXSMidi2ClientSession` receives a corresponding reply to the request.
+At AAPXS Runtime level, there are utility functions in `aap_midi2_helper.h` for AAPXS parsing and generation in C, and `AAPXSMidi2RecipientSession` and `AAPXSMidi2InitiatorSession` as the internal helpers in C++ in `aapxs-hosting-runtime.h`. To support asynchronous invocation under control, a host can assign an async callback `aapxs_completion_callback` to `AAPXSRequestContext`, which is then invoked when `AAPXSMidi2InitiatorSession` receives a corresponding reply to the request.
 
 
 ## vNext: what AAPXS developer writes
@@ -134,6 +136,8 @@ Each AAPXS developer provides the following stuff:
 - Strongly typed plugin extension client (optionally) to help plugin client development.
 - Strongly typed host extension client (optionally) to help plugin service development.
 
+`samples/aapxssample` is an example plugin that provides its own AAPXS (no dedicated host client app there yet though).
+
 ### vNext: Untyped Extension Handler implementation
 
 We need AAPXS implementation by extension API developer at:
@@ -144,3 +148,4 @@ We need AAPXS implementation by extension API developer at:
 - weakly-typed plugin service AAPXS reply sender: Once the plugin extension function does its job, then the result should be serialized by `process_incoming_plugin_aapxs_request()` or whatever it asynchronously invokes at its completion. It should then call `send_aapxs_reply()` function (in `AAPXSServiceInstance`) which is assigned by the host. It takes `requestId` for correlation.
 - weakly-typed plugin client AAPXS reply handler: a caller would need to deserialize the AAPXS binary and continue the client extension call, but it is totally optional.
   - If it was an asynchronous call, then the `aapxs_completion_callback` should be invoked.
+

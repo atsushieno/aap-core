@@ -19,17 +19,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
-        auto aapxs = feature_registry->items()->getByUri(context->uri);
-        if (aapxs) {
-            auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
-            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
-            if (aapxs->process_incoming_plugin_aapxs_reply)
-                aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
-            else
-            aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
-        }
-        else
-            aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS for %s is not registered (opcode: %d)", context->uri, context->opcode);
+        handleAAPXSReply(context);
     });
 }
 
@@ -165,12 +155,14 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
 
 void *
 aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri)  {
+    auto instance = (RemotePluginInstance *) host->context;
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        auto instance = (RemotePluginInstance *) host->context;
         instance->host_plugin_info.get = get_plugin_info;
         return &instance->host_plugin_info;
     }
-    // FIXME: implement more host extensions
+    // look for user-implemented host extensions
+    if (instance->getHostExtension)
+        return instance->getHostExtension(host, uri);
     return nullptr;
 }
 
@@ -281,4 +273,29 @@ aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegis
 
 void aap::RemotePluginInstance::setupAAPXS() {
     standards = std::make_unique<xs::ClientStandardExtensions>();
+}
+
+void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *context) {
+    auto aapxs = feature_registry->items()->getByUri(context->uri);
+    if (aapxs) {
+        if (context->opcode >= 0) {
+            // plugin AAPXS reply
+            auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
+            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
+            if (aapxs->process_incoming_plugin_aapxs_reply)
+                aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
+            else
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
+        } else {
+            // host AAPXS request
+            auto aapxsInstance = getAAPXSDispatcher().getHostAAPXSByUri(context->uri);
+            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
+            if (aapxs->process_incoming_host_aapxs_request)
+                aapxs->process_incoming_host_aapxs_request(aapxs, aapxsInstance, &plugin_host_facade, &request);
+            else
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
+        }
+    }
+    else
+        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS for %s is not registered (opcode: %d)", context->uri, context->opcode);
 }

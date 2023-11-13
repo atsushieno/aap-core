@@ -335,6 +335,11 @@ namespace aap {
         // AAPXS v2 registry
         xs::AAPXSDefinitionClientRegistry* getAAPXSRegistry();
         xs::StandardExtensions &getStandardExtensions() override { return *standards; }
+
+        void handleAAPXSReply(aap_midi2_aapxs_parse_context *context);
+
+        // Host developers can override this function to return their own extensions.
+        std::function<void*(AndroidAudioPluginHost *host, const char *uri)> getHostExtension;
     };
 }
 
