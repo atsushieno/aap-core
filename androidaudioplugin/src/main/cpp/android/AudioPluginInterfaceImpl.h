@@ -210,7 +210,7 @@ public:
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->controlExtension(in_uri, in_opcode, 0); // no requestId is assigned for synchronous Binder calls.
+        instance->controlExtension(0, in_uri, in_opcode, 0); // no requestId is assigned for synchronous Binder calls.
         return ndk::ScopedAStatus::ok();
     }
 

@@ -28,24 +28,8 @@ aap::LocalPluginInstance::LocalPluginInstance(
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
     aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
 
-    aapxs_midi2_processor.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
-        // FIXME: this should be implemented in LocalPluginInstance.
-        auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
-        // We need to copy extension data buffer before calling it.
-        memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
-        controlExtension(context->uri, context->opcode, context->request_id);
-
-        // FIXME: this should be called only at the *end* of controlExtension()
-        //  which should be asynchronously handled.
-        aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
-                                       this,
-                                       context->uri,
-                                       context->group,
-                                       context->request_id,
-                                       aapxsInstance->serialization->data,
-                                       context->dataSize,
-                                       context->opcode
-        );
+    aapxs_midi2_in_session.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
+        handleAAPXSInput(context);
     });
 }
 
@@ -147,7 +131,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             continue;
         auto aapBuffer = getAudioPluginBuffer();
         void *data = aapBuffer->get_buffer(*aapBuffer, i);
-        aapxs_midi2_processor.process(data);
+        aapxs_midi2_in_session.process(data);
     }
 
     plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
@@ -203,15 +187,15 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
 void
 aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        aapxs_midi2_processor.addReply(aapxsProcessorAddEventUmpOutput,
-                                       this,
-                                       request->uri,
+        aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
+                                        this,
+                                        request->uri,
                                        // should we support MIDI 2.0 group?
                                        0,
-                                       request->request_id,
-                                       request->serialization->data,
-                                       request->serialization->data_size,
-                                       request->opcode);
+                                        request->request_id,
+                                        request->serialization->data,
+                                        request->serialization->data_size,
+                                        request->opcode);
     } else {
         // it is synchronously handled at Binder IPC, nothing to process here.
     }
@@ -233,10 +217,52 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     }
 }
 
-void aap::LocalPluginInstance::controlExtension(const std::string &uri, int32_t opcode, uint32_t requestId)  {
-    auto def = feature_registry.get()->items()->getByUri(uri.c_str());
-    assert(def != nullptr);
-    auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
-    AAPXSRequestContext context{nullptr, nullptr, instance->serialization, 0, uri.c_str(), requestId, opcode};
-    def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
+    auto registry = feature_registry.get()->items();
+    auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
+
+    if (def) { // ignore undefined extensions here
+        auto& dispatcher = getAAPXSDispatcher();
+        auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
+        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, 0, uri.c_str(), requestId, opcode};
+        def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+    }
+}
+
+void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *context) {
+    if (context->opcode >= 0) {
+        // plugin request
+        auto& dispatcher = getAAPXSDispatcher();
+        auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
+        // We need to copy extension data buffer before calling it.
+        memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
+        controlExtension(context->urid, context->uri, context->opcode, context->request_id);
+/*
+        // FIXME: this should be called only at the *end* of controlExtension()
+        //  which should be asynchronously handled.
+        aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
+                                        this,
+                                        context->uri,
+                                        context->group,
+                                        context->request_id,
+                                        aapxsInstance->serialization->data,
+                                        context->dataSize,
+                                        context->opcode
+        );
+*/
+    } else {
+        // host reply
+        auto& dispatcher = getAAPXSDispatcher();
+        auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
+        // We need to copy extension data buffer before calling it.
+        memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
+
+        auto registry = feature_registry.get()->items();
+        auto def = context->urid != 0 ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);
+        if (def) { // ignore undefined extensions here
+            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization,
+                                        context->urid, context->uri, context->request_id, context->opcode};
+            def->process_incoming_host_aapxs_reply(def, aapxsInstance, &plugin_host_facade, &request);
+        }
+    }
 }

@@ -163,7 +163,7 @@ namespace aap {
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
         bool process_requested_to_host{false};
 
-        AAPXSMidi2RecipientSession aapxs_midi2_processor{};
+        AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
         NanoSleepLock aapxs_out_merger_mutex_out{};
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};
@@ -200,7 +200,7 @@ namespace aap {
 
         // It is invoked by AudioPluginInterfaceImpl and AAPXSMidi2Processor callback,
         // and supposed to dispatch request to extension service
-        void controlExtension(const std::string &uri, int32_t opcode, uint32_t requestId);
+        void controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId);
 
         void prepare(int32_t maximumExpectedSamplesPerBlock) override {
             assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED ||
@@ -232,6 +232,8 @@ namespace aap {
             ipc_send_extension_message_func = sender;
             ipc_send_extension_message_context = context;
         }
+
+        void handleAAPXSInput(aap_midi2_aapxs_parse_context *context);
     };
 
     typedef void(*aapxs_client_ipc_sender)(void* context,
