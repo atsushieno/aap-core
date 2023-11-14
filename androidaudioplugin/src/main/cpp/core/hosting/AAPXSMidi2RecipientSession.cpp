@@ -43,6 +43,7 @@ void aap::AAPXSMidi2RecipientSession::process(void* buffer) {
 void aap::AAPXSMidi2RecipientSession::addReply(
         void (*addMidi2Event)(AAPXSMidi2RecipientSession * processor, void *userData, int32_t messageSize),
         void* addMidi2EventUserData,
+        uint8_t extensionUrid,
         const char* extensionUri,
         int32_t group,
         int32_t requestId,
@@ -55,6 +56,7 @@ void aap::AAPXSMidi2RecipientSession::addReply(
                                                   AAP_MIDI2_AAPXS_DATA_MAX_SIZE,
                                                   group,
                                                   requestId,
+                                                  extensionUrid,
                                                   extensionUri,
                                                   opcode,
                                                   (uint8_t*) data,

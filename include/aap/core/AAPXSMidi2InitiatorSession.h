@@ -42,6 +42,7 @@ namespace aap {
                         void* addMidi2EventUserData,
                         int32_t group,
                         int32_t requestId,
+                        uint8_t urid,
                         const char* uri,
                         void* data,
                         int32_t dataSize,

@@ -49,7 +49,7 @@ void aap::RemotePluginInstance::configurePorts() {
 
 AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInstantiation() {
     plugin_host_facade.context = this;
-    plugin_host_facade.get_extension = RemotePluginInstance::internalGetHostExtension;
+    plugin_host_facade.get_extension = RemotePluginInstance::staticGetHostExtension;
     return &plugin_host_facade;
 }
 
@@ -154,15 +154,14 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
 }
 
 void *
-aap::RemotePluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri)  {
-    auto instance = (RemotePluginInstance *) host->context;
+aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *uri) {
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        instance->host_plugin_info.get = get_plugin_info;
-        return &instance->host_plugin_info;
+        host_plugin_info.get = get_plugin_info;
+        return &host_plugin_info;
     }
     // look for user-implemented host extensions
-    if (instance->getHostExtension)
-        return instance->getHostExtension(host, uri);
+    if (getHostExtension)
+        return getHostExtension(this, urid, uri);
     return nullptr;
 }
 
@@ -206,7 +205,8 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(uri);
+    auto& dispatcher = getAAPXSDispatcher();
+    auto aapxsInstance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri);
     auto serialization = aapxsInstance->serialization;
     memcpy(serialization->data, data, dataSize);
     serialization->data_size = dataSize;
@@ -254,7 +254,7 @@ aap::RemotePluginInstance::sendHostAAPXSReply(AAPXSRequestContext* request) {
         // aapxsInstance already contains binary data here, so we retrieve data from there.
         int32_t group = 0; // will we have to give special semantics on it?
         aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group,
-                                 request->request_id, request->uri, request->serialization->data,
+                                 request->request_id, request->urid, request->uri, request->serialization->data,
                                  request->serialization->data_size, request->opcode);
     } else {
         // it was done synchronously, nothing to do here
@@ -276,11 +276,13 @@ void aap::RemotePluginInstance::setupAAPXS() {
 }
 
 void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *context) {
-    auto aapxs = feature_registry->items()->getByUri(context->uri);
+    auto& dispatcher = getAAPXSDispatcher();
+    auto registry = feature_registry->items();
+    auto aapxs = context->urid != 0 ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);
     if (aapxs) {
         if (context->opcode >= 0) {
             // plugin AAPXS reply
-            auto aapxsInstance = getAAPXSDispatcher().getPluginAAPXSByUri(context->uri);
+            auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
             AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_plugin_aapxs_reply)
                 aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
@@ -288,7 +290,7 @@ void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *
                 aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS %s does not have a reply handler (opcode: %d)", context->uri, context->opcode);
         } else {
             // host AAPXS request
-            auto aapxsInstance = getAAPXSDispatcher().getHostAAPXSByUri(context->uri);
+            auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
             AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_host_aapxs_request)
                 aapxs->process_incoming_host_aapxs_request(aapxs, aapxsInstance, &plugin_host_facade, &request);

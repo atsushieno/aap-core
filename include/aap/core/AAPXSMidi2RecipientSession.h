@@ -26,6 +26,7 @@ namespace aap {
         void
         addReply(void (*addMidi2Event)(AAPXSMidi2RecipientSession *, void *, int32_t),
                  void* addMidi2EventUserData,
+                 uint8_t extensionUrid,
                  const char* extensionUri,
                  int32_t group,
                  int32_t requestId,

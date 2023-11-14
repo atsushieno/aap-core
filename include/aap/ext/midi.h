@@ -24,15 +24,14 @@ typedef struct AAPMidiBufferHeader {
 //
 // The SysEx8 UMP packets consist of multiple UMP packets, whose data part (after `5g sz si`) looks like:
 //
-//   `7E  7F co-de ext-flag]  [reqId]  [uri-size]  [..uri..]  [opcode]  [value-size]  [..value..]`
+//   `7E  7F co-de urid]  [reqId]  [uri-size]  [..uri..]  [opcode]  [value-size]  [..value..]`
 //
 // where -
 //   - g : UMP group
 //   - sz : UMP status and size, always 1F
 //   - si : stream Id, always 00. AAP MIDI sysex8 does not have to support simultaneous sysex8 streams.
 //   - co-de : AAP sysex8 code. Always 00-01 for realtime extension controls.
-//   - ext-flag : extension flag, reserved as 00; it may be used once we started supporting something like
-//     "local extension index" (LV2 URID alike).
+//   - urid : 1 byte URID (LV2 URID alike).
 //   - reqId : request Id (32bit), assured to be unique within a connected session.
 //   - uri-size: string length for extension URI, in 4 bytes
 //   - uri: string URI in escaped ASCII format, split and padded by 13 bytes (modulo padded as 0)

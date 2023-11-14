@@ -153,6 +153,8 @@ void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
     ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 
+// we do not care much about realtime safety breakage by lack of URID support here,
+// because it is about Binder `extension()` call...
 void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
@@ -172,6 +174,8 @@ aap_plugin_info_t aap_client_as_plugin_get_plugin_info(AndroidAudioPlugin *plugi
     return hostExt->get(hostExt, &ctx->host, ctx->unique_id);
 }
 
+// we do not care much about realtime safety breakage by lack of URID support here,
+// because it is about Binder `extension()` call...
 void aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           const char* uri,
                                                           int32_t instanceId,

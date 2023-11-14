@@ -169,7 +169,10 @@ namespace aap {
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
 
-        static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri);
+        static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
+            return ((LocalPluginInstance*) host->context)->getHostExtension(0, uri);
+        }
+        void* getHostExtension(uint8_t urid, const char *uri);
         static void internalRequestProcess(AndroidAudioPluginHost *host);
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
@@ -260,7 +263,11 @@ namespace aap {
         AAPXSMidi2InitiatorSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
 
-        static void* internalGetHostExtension(AndroidAudioPluginHost* host, const char* uri);
+        void* internalGetHostExtension(uint8_t urid, const char *uri);
+
+        static void* staticGetHostExtension(AndroidAudioPluginHost* host, const char* uri) {
+            return ((RemotePluginInstance*) host->context)->internalGetHostExtension(0, uri);
+        }
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
         aapxs_client_ipc_sender ipc_send_extension_message_impl;
@@ -341,7 +348,7 @@ namespace aap {
         void handleAAPXSReply(aap_midi2_aapxs_parse_context *context);
 
         // Host developers can override this function to return their own extensions.
-        std::function<void*(AndroidAudioPluginHost *host, const char *uri)> getHostExtension;
+        std::function<void*(RemotePluginInstance *instance, uint8_t urid, const char *uri)> getHostExtension;
     };
 }
 

@@ -48,17 +48,19 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 }
 
 void *
-aap::LocalPluginInstance::internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
-    auto instance = (LocalPluginInstance *) host->context;
+aap::LocalPluginInstance::getHostExtension(uint8_t urid, const char *uri) {
     // FIXME: in the future maybe we want to eliminate this kind of special cases.
+    //  It is also not suitable for RT processing.
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        instance->host_plugin_info.get = get_plugin_info;
-        return &instance->host_plugin_info;
+        host_plugin_info.get = get_plugin_info;
+        return &host_plugin_info;
     }
     // Look up host extension and get proxy via AAPXSDefinition.
-    auto definition = instance->getAAPXSRegistry()->items()->getByUri(uri);
+    auto registry = getAAPXSRegistry()->items();
+    auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);
     if (definition && definition->get_host_extension_proxy) {
-        auto aapxsInstance = instance->getAAPXSDispatcher().getHostAAPXSByUri(uri);
+        auto& dispatcher = getAAPXSDispatcher();
+        auto aapxsInstance = urid != 0 ? dispatcher.getHostAAPXSByUrid(urid) : dispatcher.getHostAAPXSByUri(uri);
         auto proxy = definition->get_host_extension_proxy(definition, aapxsInstance, aapxsInstance->serialization);
         return proxy.as_host_extension(&proxy);
     }
@@ -189,6 +191,7 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
                                         this,
+                                        request->urid,
                                         request->uri,
                                        // should we support MIDI 2.0 group?
                                        0,

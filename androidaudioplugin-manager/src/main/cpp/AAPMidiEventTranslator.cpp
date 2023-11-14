@@ -81,6 +81,7 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                         conversion_helper_buffer_size,
                         0,
                         instance->aapxsRequestIdSerial(),
+                        0, // FIXME: provide valid URID
                         AAP_PRESETS_EXTENSION_URI,
                         OPCODE_SET_PRESET_INDEX,
                         (const uint8_t *) aapxsInstance->serialization->data,

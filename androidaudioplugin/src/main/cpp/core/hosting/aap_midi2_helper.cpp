@@ -40,6 +40,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
                                        size_t conversionHelperBufferSize,
                                        uint8_t group,
                                        uint32_t requestId,
+                                       uint8_t urid,
                                        const char* uri,
                                        int32_t opcode,
                                        const uint8_t* data,
@@ -53,7 +54,7 @@ size_t aap_midi2_generate_aapxs_sysex8(uint32_t* dst,
     uint8_t sysexStart[] {
         0x7Eu, 0x7Fu, // universal sysex
         0, 1, // code
-        0 // extension flags
+        urid
         };
     memcpy(ptr, sysexStart, sizeof(sysexStart));
     ptr += sizeof(sysexStart);
@@ -122,6 +123,7 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
         return false;
 
     // filling in results...
+    context->urid = data[4];
     size_t requestId = aapMidi2ExtensionHelperGetUInt32(data + 5);
     context->request_id = requestId;
 
