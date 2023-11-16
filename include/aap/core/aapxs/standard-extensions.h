@@ -8,6 +8,7 @@
 #include "state-aapxs.h"
 #include "midi-aapxs.h"
 #include "gui-aapxs.h"
+#include "urid-aapxs.h"
 
 namespace aap::xs {
     class StandardExtensions {
