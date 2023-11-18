@@ -12,7 +12,7 @@ AAP since 0.7.8 handles that via Binder IPC or MIDI 2.0 SysEx8. Each extension c
 
 ### AAP extension APIs that has existed since v1
 
-A plugin extension is implemented by each plugin. A host retrieves an extension via `get_extension()` member function in `AndroidAudioPlugin`, identifying by the extension URI or the corresponding "URID" integer.
+A plugin extension is implemented by each plugin. A host retrieves an extension via `get_extension()` member function in `AndroidAudioPlugin`, identifying it by the extension URI or the corresponding "URID" integer.
 
 For quick look, these are the Standard Extensions that had existed since AAPXS v1:
 

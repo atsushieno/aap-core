@@ -25,7 +25,7 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
         if (!sharedMemoryAllocatingRequester(f.uri, serialization.get()))
             return false;
         // plugin extensions
-        addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
+        addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), urid, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // host extensions
         addRecipient(populateAAPXSRecipientInstance(hostContext, serialization.get(), sendAAPXSReply), f.uri);
         serialization_store[urid] = std::move(serialization);
@@ -39,11 +39,13 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
 AAPXSInitiatorInstance aap::xs::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
         void* hostContext,
         AAPXSSerializationContext* serialization,
+        uint8_t urid,
         aapxs_initiator_send_func sendAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {
     AAPXSInitiatorInstance instance{this,
                                     hostContext,
                                     serialization,
+                                    urid,
                                     getNewRequestId,
                                     sendAAPXSRequest};
     return instance;
@@ -86,7 +88,7 @@ void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
         // host extensions
-        addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
+        addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), urid, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // plugin extensions
         addRecipient(populateAAPXSRecipientInstance(hostContext, serialization.get(), sendAapxsReply), f.uri);
         extensionBufferAssigner(f.uri, serialization.get());
@@ -111,11 +113,13 @@ AAPXSInitiatorInstance
 aap::xs::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
         void* hostContext,
         AAPXSSerializationContext *serialization,
+        uint8_t urid,
         aapxs_initiator_send_func sendHostAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {
     AAPXSInitiatorInstance instance{this,
                                     hostContext,
                                     serialization,
+                                    urid,
                                     getNewRequestId,
                                     sendHostAAPXSRequest};
     return instance;

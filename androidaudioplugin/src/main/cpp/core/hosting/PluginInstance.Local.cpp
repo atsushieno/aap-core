@@ -221,13 +221,27 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
 }
 
 void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
+    // special case URID mapping request: this hosting implementation also consumes it and
+    // adds the URID mapping.
+    // Note that it is handled only at UNPREPARED state and thus no realtime special casing happens.
+    if (urid == 0 && uri == AAP_URID_EXTENSION_URI) {
+        auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
+        auto parsedUrid = *(uint8_t*) instance->serialization->data;
+        auto len = *(int32_t*) (uint8_t*) instance->serialization->data + 1;
+        char s[len + 1];
+        strncpy(s, (char*) instance->serialization->data + 1 + sizeof(int32_t), len);
+        s[len] = 0;
+        urid_mapping.forceAdd(parsedUrid, s);
+    } // ... and the mapping could also be used by the plugin, so go on as well.
+
+
     auto registry = feature_registry.get()->items();
     auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
 
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
-        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, 0, uri.c_str(), requestId, opcode};
+        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
     }
 }

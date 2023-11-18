@@ -37,6 +37,7 @@ typedef struct AAPXSInitiatorInstance {
     // owned by hosting implementation
     void* host_context;
     AAPXSSerializationContext* serialization;
+    uint8_t urid;
 
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer, for async implementation

@@ -21,6 +21,7 @@ namespace aap::xs {
      */
     class UridMapping {
         std::vector<uint8_t> urids{};
+        std::vector<std::string> string_pool{};
         std::vector<const char*> uris{};
 
     public:
@@ -59,6 +60,29 @@ namespace aap::xs {
                 if (urid == urids[i])
                     return uris[i];
             return nullptr;
+        }
+
+        using container=std::vector<uint8_t>;
+        using iterator=typename container::iterator;
+        using const_iterator=typename container::const_iterator;
+
+        iterator begin() { return urids.begin(); }
+        iterator end() { return urids.end(); }
+        const_iterator begin() const { return urids.cbegin(); }
+        const_iterator end() const { return urids.cend(); }
+
+        void forceAdd(uint8_t urid, char* uri) {
+            assert(uri);
+            assert(strlen(uri) > 0);
+
+            string_pool.emplace_back(uri);
+            while (urids.size() < urid)
+                urids.emplace_back(0);
+            while (uris.size() < urid)
+                uris.emplace_back("");
+            urids.emplace_back(urid);
+            // add the underlying buffer as the const char*.
+            uris.emplace_back(string_pool[string_pool.size() - 1].data());
         }
     };
 
@@ -136,6 +160,7 @@ namespace aap::xs {
         AAPXSInitiatorInstance
         populateAAPXSInitiatorInstance(void* hostContext,
                                        AAPXSSerializationContext *serialization,
+                                       uint8_t urid,
                                        aapxs_initiator_send_func sendAAPXSRequest,
                                        initiator_get_new_request_id_func getNewRequestId);
         AAPXSRecipientInstance
@@ -170,6 +195,7 @@ namespace aap::xs {
         AAPXSInitiatorInstance populateAAPXSInitiatorInstance(
                 void* hostContext,
                 AAPXSSerializationContext* serialization,
+                uint8_t urid,
                 aapxs_initiator_send_func sendHostAAPXSRequest,
                 initiator_get_new_request_id_func getNewRequestId);
         AAPXSRecipientInstance populateAAPXSRecipientInstance(

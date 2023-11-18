@@ -14,7 +14,6 @@ namespace aap::xs {
     };
 
     class TypedAAPXS {
-        uint8_t urid{0};
         const char* uri;
     protected:
         AAPXSInitiatorInstance *aapxs_instance;
@@ -57,7 +56,7 @@ namespace aap::xs {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
             WithPromise<void, T> callbackData{serialization->data, &promise};
-            AAPXSRequestContext request{getTypedCallback<T>, &callbackData, serialization, urid, uri, requestId, opcode};
+            AAPXSRequestContext request{getTypedCallback<T>, &callbackData, serialization, aapxs_instance->urid, uri, requestId, opcode};
 
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request)) {
                 future.wait();
@@ -74,7 +73,7 @@ namespace aap::xs {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             auto future = promise.get_future();
             WithPromise<void, int32_t> callbackData{serialization->data, &promise};
-            AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, urid, uri, requestId, opcode};
+            AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, aapxs_instance->urid, uri, requestId, opcode};
 
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))
                 future.wait();
@@ -83,7 +82,7 @@ namespace aap::xs {
         // "Fire and forget" invocation. Host extensions must be always like this.
         void fireVoidFunctionAndForget(int32_t opcode) {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            AAPXSRequestContext request{nullptr, nullptr, serialization, urid, uri, requestId,
+            AAPXSRequestContext request{nullptr, nullptr, serialization, aapxs_instance->urid, uri, requestId,
                                         opcode};
             aapxs_instance->send_aapxs_request(aapxs_instance, &request);
         }

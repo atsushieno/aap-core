@@ -63,6 +63,7 @@ namespace aap::xs {
         std::unique_ptr<PresetsClientAAPXS> presets{nullptr};
         std::unique_ptr<StateClientAAPXS> state{nullptr};
         std::unique_ptr<GuiClientAAPXS> gui{nullptr};
+        std::unique_ptr<UridClientAAPXS> urid{nullptr};
 
     public:
         void initialize(AAPXSClientDispatcher* dispatcher) {
@@ -71,7 +72,11 @@ namespace aap::xs {
             presets = std::make_unique<PresetsClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI), dispatcher->getSerialization(AAP_PRESETS_EXTENSION_URI));
             state = std::make_unique<StateClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI));
             gui = std::make_unique<GuiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_GUI_EXTENSION_URI), dispatcher->getSerialization(AAP_GUI_EXTENSION_URI));
+            urid = std::make_unique<UridClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_URID_EXTENSION_URI), dispatcher->getSerialization(AAP_URID_EXTENSION_URI));
         }
+
+        // URID
+        void map(uint8_t uridValue, const char* uri) { return urid->map(uridValue, uri); }
 
         // MIDI
         int32_t getMidiMappingPolicy() override { return midi->getMidiMappingPolicy(); }

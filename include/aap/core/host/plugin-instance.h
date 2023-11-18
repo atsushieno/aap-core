@@ -157,6 +157,7 @@ namespace aap {
  */
     class LocalPluginInstance : public PluginInstance {
         PluginHost *host;
+        xs::UridMapping urid_mapping{};
         AAPXSMidi2InitiatorSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
@@ -178,6 +179,8 @@ namespace aap {
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
         aapxs_host_ipc_sender ipc_send_extension_message_func;
         void* ipc_send_extension_message_context;
+
+        void setupUrids();
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
@@ -292,6 +295,8 @@ namespace aap {
 
         void setInstanceId(int32_t instanceId) { instance_id = instanceId; }
 
+        void setupUrids();
+
         // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
         void configurePorts();
 
@@ -349,6 +354,8 @@ namespace aap {
 
         // Host developers can override this function to return their own extensions.
         std::function<void*(RemotePluginInstance *instance, uint8_t urid, const char *uri)> getHostExtension;
+
+        void setupStandardExtensions();
     };
 }
 

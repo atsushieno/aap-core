@@ -301,3 +301,19 @@ void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *
     else
         aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG, "AAPXS for %s is not registered (opcode: %d)", context->uri, context->opcode);
 }
+
+void aap::RemotePluginInstance::setupUrids() {
+    auto uridExt = (aap_urid_extension_t*) plugin->get_extension(plugin, AAP_URID_EXTENSION_URI);
+    if (!uridExt)
+        return; // we cannot use URID, bear with any relevant potential latency!
+
+    auto mapping = getAAPXSRegistry()->items()->getUridMapping();
+    for (uint8_t urid : *mapping)
+        if (urid != 0)
+            uridExt->map(uridExt, plugin, urid, mapping->getUri(urid));
+}
+
+void aap::RemotePluginInstance::setupStandardExtensions() {
+    setupUrids(); // must be done before initializing AAPXSTypedClients.
+    standards->initialize(&aapxs_dispatcher);
+}

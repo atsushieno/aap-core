@@ -60,7 +60,7 @@ For plugin side, it does not matter; the AAPXS SysEx8 approach makes it asynchro
 
 But the caller side needs to care, because it has to wait for the actual results from the plugin service to return *their* return value, and to achieve that it needs to block its thread until it is signaled with the return value from the plugin.
 
-If we had extension functions to provide async calls, then AAPXS developers could simply converts the request to AAPXS SysEx8 request, send it, and once the reply has arrived (identified by `requestId`) then the AAPXS could receive async context and pass the result to callback, without blocking the caller.
+If we had extension functions to provide async calls, then AAPXS developers could simply convert the request to AAPXS SysEx8 request, send it, and once the reply has arrived (identified by `requestId`) then the AAPXS could receive async context and pass the result to callback, without blocking the caller.
 
 But the change is too drastic. Could we just ask host developers assign a new thread that can block during the extension call? In theory yes, but that could result in such a situation that every track invokes `setPreset()` at the top of the song which would result in 100 "physically running" threads for 100 tracks. That is a bit too disastrous.
 
