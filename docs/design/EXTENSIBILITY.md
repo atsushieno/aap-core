@@ -6,7 +6,7 @@ This documentation was written when we came up with AAPXS "v2", introduced in AA
 
 ## AAP extensibility basics
 
-In a typical extension API in a plugin format, it is a set of API (data types + functions) without implementation. In AAP, plugin extension implementation (native code) is not loadable within the host (technically it is possible on Android platform, but Google Play Store will kick out your app), and thus we have a proxying system that transmits the requests and responses.
+In a typical extension API in a plugin format, it is a set of API (data types + functions) without implementation. In AAP, plugin extension implementation (native code) is not loadable within the host (technically it is possible on Android platform, but Google Play Store will kick out your app), and thus we have a proxying system that transmits the requests and responses across apps.
 
 AAP since 0.7.8 handles that via Binder IPC or MIDI 2.0 SysEx8. Each extension comes with a proxying support that the extension developer needs to implement (though most of the extensions are "standard" and AAP framework developers implement them), and those proxies are called **AAPXS** (AAP Extension Service).
 
@@ -51,11 +51,21 @@ This will make extension implementation independent of specific AAP versions to 
 
 ### Asynchronous API
 
-Typical plugin extension APIs are usually synchronous i.e. their functions block throughout the execution, but AAP extension foundation is designed to be "async ready", especially when the plugin enters ACTIVE = realtime mode.
+Extension APIs in typical plugin formats are usually synchronous i.e. their functions block throughout the execution. AAP extension foundations are, on the other hand, designed to be "async ready", especially when the plugin enters ACTIVE = realtime mode.
 
-It is because AAP, unlike those desktop plugin APIs, needs interaction between the host and plugin and keeping a thread per extension function call costs potentially a lot of synchronization constructs e.g. 100 locks per 100 `getPreset()` calls or potentially more (100 locks in the host + 100 locks in the plugin + 100 locks in AAPXS).
+It is because AAP, unlike those desktop plugin APIs, needs interaction between the host and plugin and keeping a thread per extension function call costs potentially a lot of synchronization constructs. For example, AAP needs 100 locks for 100 `getPreset()` calls (or potentially more: 100 locks in the host + 100 locks in the plugin + 100 locks in AAPXS...).
 
-They can be designed and implemented in synchronous manner (we actually have synchronous API as some transitive solutions), but then there is no assured realtime safety.
+It is technically possible to be designed and implemented in synchronous manner (we actually have synchronous API as some transitive solutions), but then there is no assured realtime safety.
+
+### Publicly extensible
+
+AAP extension foundation is designed to be extensible by third party developers. Since we need AAPXS layer, AAP extensions are not just API definition but also the binding implementation. And they must be capable of asynchronous processing.
+
+To make it possible, we define a handful of complicated AAPXS API in C that could be kept binary compatible across AAP versions.
+
+### Support for URID
+
+In AAPXS v2, there is a new "URID" concept. Precisely to say, it is not really new and just a copy concept of LV2 URID feature. We map each extension URI to an integer, and use the integer at extension invocation (especially in RT-safe mode). Once the mapping gains agreement between the host and the plugin, it will be used to help avoid that string matching operations in O(n) order will not happen.
 
 
 ## vNext API Design Considerations
@@ -85,7 +95,6 @@ To make extensions generally usable, AAP defines some public API for AAPXS:
 
 The client instance is used by a host to call the host-side extension API (might be different from the plugin extension API) and wait for the result, potentically asynchronously.
 
-
 The service instance is used by `AudioPluginService` to dispatch an incoming request (either via a Binder IPC call or an AAPXS SysEx8) to the actual plugin implementation of the corresponding extension function, and return the results back to the outgoing channel (IPC / SysEx8).
 
 
@@ -93,12 +102,13 @@ The service instance is used by `AudioPluginService` to dispatch an incoming req
 
 In vNext API, there are the following concepts (implementation can be in C++):
 
-- Plugin Extension API (C) - close to what exists now
-- Host Extension API (C) - close to what exists now
+- Plugin Extension API (C) - close to what existed in v1
+- Host Extension API (C) - close to what existed in v1
 - AAPXS Runtime API (C) - used by each AAPXS implementation (`aapxs.h`)
 - AAPXS Definition API (C) - each extension developer is supposed to implement and provide it
 - AAPXS hosting runtime API (C++) - hosting runtime for the framework (reference implementation) (`aapxs-hosting-runtime.h`)
-- Strongly-Typed AAPXS and collection of those (C++) - refresh version of `StandardExtensions` etc.
+- Strongly-Typed AAPXS and collection of those (C++) - refresh version of `StandardExtensions` in v1.
+
 
 ## vNext Client Side Hosting
 
@@ -114,9 +124,9 @@ There should be two kinds of accesses to AAPXS from `RemotePluginInstance`: AAPX
 
 Since AAP sends extension controllers either via Binder IPC (non-RT) or AAPXS SysEx8 (RT), unknown extensions can be still *supported*. For untyped extension accesses, `RemotePluginInstance` provides `sendExtensionRequest()`.
 
-`sendExtensionRequest()` takes `AAPXSRequestContext` which contains *already serialized* requests as a binary chunk in its member `AAPXSSerializationContext`. Then it dispatches the request to the appropriate handler: Binder IPC at INACTIVE (non-RT) state, or AAPXS SysEx8 at ACTIVE RT state.
+`sendExtensionRequest()` takes `AAPXSRequestContext` which contains *already serialized* request as a binary chunk in its member `AAPXSSerializationContext`. Then it dispatches the request to the appropriate handler: Binder IPC at INACTIVE (non-RT) state, or AAPXS SysEx8 at ACTIVE RT state.
 
-Serialization is handled by each AAPXS. For such a hosting implementation that does not directly support the extension (or a plugin implementation that does not directly suppot the host extension), there is untyped AAPXS API that is implemented without strongly-typed extension API. The host can still convey and even invoke its dynamically assigned extension invocation handler in `AAPXSDefinition`.
+Serialization is most likely handled by each AAPXS. For such a hosting implementation that does not directly support the extension (or a plugin implementation that does not directly suppot the host extension), there is untyped AAPXS API that is implemented without strongly-typed extension API. The host can still convey and even invoke its dynamically assigned extension invocation handler in `AAPXSDefinition`.
 
 At AAPXS Runtime level, there are utility functions in `aap_midi2_helper.h` for AAPXS parsing and generation in C, and `AAPXSMidi2RecipientSession` and `AAPXSMidi2InitiatorSession` as the internal helpers in C++ in `aapxs-hosting-runtime.h`. To support asynchronous invocation under control, a host can assign an async callback `aapxs_completion_callback` to `AAPXSRequestContext`, which is then invoked when `AAPXSMidi2InitiatorSession` receives a corresponding reply to the request.
 
@@ -149,3 +159,12 @@ We need AAPXS implementation by extension API developer at:
 - weakly-typed plugin client AAPXS reply handler: a caller would need to deserialize the AAPXS binary and continue the client extension call, but it is totally optional.
   - If it was an asynchronous call, then the `aapxs_completion_callback` should be invoked.
 
+
+## Plugin extension proxies and Host extension proxies
+
+AAP allows untyped extensions to pass around the processing, but sometimes typed proxies are required:
+
+- binder-client-as-plugin `get_extension()` needs AAPXS to return strongly-typed plugin extensions.
+- LocalPluginInstance needs to implement `AndroidAudioPluginHost` against the loaded plugin (e.g. at instantiation time), and it contains `get_extension` function that is supposed to return strongly-typed host extensions.
+
+To make them happen, we need `AAPXSDefinition` to provide such strongly-typed extensions. They lead to `get_plugin_extension_proxy()` and `get_host_extension_proxy()` member function pointers in the type.
