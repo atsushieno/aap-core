@@ -1,16 +1,16 @@
 [versions]
 
-aap-core = "0.8.0-pre"
-aap-lv2 = "0.3.0-pre"
+aap-core = "0.8.0"
+aap-lv2 = "0.3.0"
 
 accompanist-drawablepainter = "0.30.1"
 accompanist-permissions = "0.30.1"
-agp = "8.1.2"
+agp = "8.1.4"
 kotlin = "1.8.10"
 ndk = "26.1.10909125"
 cmake = "3.22.1"
 build-tools = "33.0.1"
-dokka = "1.8.10"
+dokka = "1.8.20"
 compose = "1.4.3"
 androidx-test = "1.5.0"
 coroutines = "1.7.3"
