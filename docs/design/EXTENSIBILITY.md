@@ -164,7 +164,9 @@ We need AAPXS implementation by extension API developer at:
 
 AAP allows untyped extensions to pass around the processing, but sometimes typed proxies are required:
 
-- binder-client-as-plugin `get_extension()` needs AAPXS to return strongly-typed plugin extensions.
+- binder-client-as-plugin `get_extension()` needs AAPXS to return strongly-typed plugin extensions. It should be used under very limited condition.
+  - It should be actually prohibited (as it is inappropriate to imitate the plugin client side API at AAPXS), but we still need it at binder-client-as-plugin and did not find alternative way to directly invoke it directly.
 - LocalPluginInstance needs to implement `AndroidAudioPluginHost` against the loaded plugin (e.g. at instantiation time), and it contains `get_extension` function that is supposed to return strongly-typed host extensions.
+  - This could not also be killed because we need `plugin-info` host extension.
 
-To make them happen, we need `AAPXSDefinition` to provide such strongly-typed extensions. They lead to `get_plugin_extension_proxy()` and `get_host_extension_proxy()` member function pointers in the type.
+To make them happen, we need `AAPXSDefinition` to provide such strongly-typed extensions. They lead to `get_plugin_extension_proxy()` and `get_host_extension_proxy()` member function pointers in the type. They do not immediately return the exact extension in request, but each of the return value contains instantiation-time context object that is enough to construct the requested extension object.

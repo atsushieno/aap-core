@@ -41,7 +41,6 @@ typedef struct AAPXSInitiatorInstance {
 
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer, for async implementation
-    // - FIXME: this may become framework reference implementation
     uint32_t (*get_new_request_id) (AAPXSInitiatorInstance* instance);
 
     // assigned by: framework reference implementation
