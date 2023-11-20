@@ -86,8 +86,7 @@ void aap::AAPXSMidi2InitiatorSession::completeSession(void* buffer, void* plugin
             // look for the corresponding pending callback
             for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
                 if (pending_callbacks[i].request_id == aapxs_parse_context.request_id) {
-                    pending_callbacks[i].func(pending_callbacks[i].data, pluginOrHost,
-                                              aapxs_parse_context.request_id);
+                    pending_callbacks[i].func(pending_callbacks[i].data, pluginOrHost);
                     memset(pending_callbacks + i, 0, sizeof(CallbackUnit));
                     break;
                 }

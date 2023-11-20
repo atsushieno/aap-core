@@ -78,14 +78,14 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, plugin, request->request_id);
+        request->callback(request->callback_user_data, plugin);
 }
 
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host_aapxs_reply(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, host, request->request_id);
+        request->callback(request->callback_user_data, host);
 }
 
 AAPXSExtensionClientProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_plugin_proxy(
@@ -142,19 +142,19 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
             OPCODE_PARAMETERS_GET_ENUMERATION);
 }
 
-void aap::xs::ParametersClientAAPXS::completeWithParameterCallback (void* callbackData, void* pluginOrHost, int32_t requestId) {
+void aap::xs::ParametersClientAAPXS::completeWithParameterCallback (void* callbackData, void* pluginOrHost) {
     auto cb = (CallbackData*) callbackData;
     auto thiz = (ParametersClientAAPXS *) cb->context;
     auto result = thiz->getTypedResult<aap_parameter_info_t>(thiz->serialization);
-    ((aapxs_async_get_parameter_callback) cb->callback) (thiz, pluginOrHost, requestId, cb->index, result);
+    ((aapxs_async_get_parameter_callback) cb->callback) (thiz, pluginOrHost, cb->index, result);
     cb->context = nullptr;
 }
 
-void aap::xs::ParametersClientAAPXS::completeWithEnumCallback (void* callbackData, void* pluginOrHost, int32_t requestId) {
+void aap::xs::ParametersClientAAPXS::completeWithEnumCallback (void* callbackData, void* pluginOrHost) {
     auto cb = (CallbackData*) callbackData;
     auto thiz = (ParametersClientAAPXS *) cb->context;
     auto result = getTypedResult<aap_parameter_enum_t>(thiz->serialization);
-    ((aapxs_async_get_enumeration_callback) cb->callback) (thiz, pluginOrHost, requestId, cb->index, cb->enum_index, result);
+    ((aapxs_async_get_enumeration_callback) cb->callback) (thiz, pluginOrHost, cb->index, cb->enum_index, result);
     cb->context = nullptr;
 }
 

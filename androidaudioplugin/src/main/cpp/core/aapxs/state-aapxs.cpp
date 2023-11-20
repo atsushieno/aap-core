@@ -42,14 +42,14 @@ void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_plugin_aapxs_r
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, plugin, request->request_id);
+        request->callback(request->callback_user_data, plugin);
 }
 
 void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_host_aapxs_reply(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, host, request->request_id);
+        request->callback(request->callback_user_data, host);
 }
 
 AAPXSExtensionClientProxy

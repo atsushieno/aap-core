@@ -81,14 +81,14 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, plugin, request->request_id);
+        request->callback(request->callback_user_data, plugin);
 }
 
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_host_aapxs_reply(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
     if (request->callback != nullptr)
-        request->callback(request->callback_user_data, host, request->request_id);
+        request->callback(request->callback_user_data, host);
 }
 
 AAPXSExtensionClientProxy

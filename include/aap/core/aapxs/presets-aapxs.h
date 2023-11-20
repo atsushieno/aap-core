@@ -28,7 +28,7 @@ namespace aap::xs {
         static void staticGetPreset(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset, aapxs_completion_callback aapxsCallback, void* callbackData) {
             ((PresetsClientAAPXS*) ext->aapxs_context)->getPreset(index, *preset);
             if (aapxsCallback)
-                aapxsCallback(callbackData, plugin, 0); // do we need precise requestId?
+                aapxsCallback(callbackData, plugin);
         }
         static int32_t staticGetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
             return ((PresetsClientAAPXS*) ext->aapxs_context)->getPresetIndex();

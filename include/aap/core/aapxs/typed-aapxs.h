@@ -31,7 +31,7 @@ namespace aap::xs {
 
         // This must be visible to consuming code i.e. defined in this header file.
         template<typename T>
-        static void getTypedCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
+        static void getTypedCallback(void* callbackContext, void* pluginOrHost) {
             auto callbackData = (WithPromise<void*, T>*) callbackContext;
             T result = *(T*) (callbackData->data);
             callbackData->promise->set_value(result);
@@ -42,7 +42,7 @@ namespace aap::xs {
             return *(T*) (serialization->data);
         }
 
-        static void getVoidCallback(void* callbackContext, void* pluginOrHost, int32_t requestId) {
+        static void getVoidCallback(void* callbackContext, void* pluginOrHost) {
             auto callbackData = (WithPromise<void*, int32_t>*) callbackContext;
             callbackData->promise->set_value(0); // dummy result, just signaling the std::future
         }

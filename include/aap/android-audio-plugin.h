@@ -155,7 +155,7 @@ typedef struct AndroidAudioPlugin {
     aap_plugin_info_t (*get_plugin_info) (AndroidAudioPlugin* plugin);
 } AndroidAudioPlugin;
 
-typedef void (*aapxs_completion_callback) (void* context, void* pluginOrHost, int32_t requestId);
+typedef void (*aapxs_completion_callback) (void* context, void* pluginOrHost);
 
 typedef struct AndroidAudioPluginFactory {
     aap_instantiate_func_t instantiate;

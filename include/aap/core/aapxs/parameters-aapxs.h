@@ -45,8 +45,8 @@ namespace aap::xs {
                                                        staticGetEnumeration};
 
         // async invocation support
-        typedef void (*aapxs_async_get_parameter_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t requestId, int32_t index, aap_parameter_info_t result);
-        typedef void (*aapxs_async_get_enumeration_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t requestId, int32_t index, int32_t enumIndex, aap_parameter_enum_t result);
+        typedef void (*aapxs_async_get_parameter_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, aap_parameter_info_t result);
+        typedef void (*aapxs_async_get_enumeration_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, int32_t enumIndex, aap_parameter_enum_t result);
 
         struct CallbackData {
             void* context{nullptr};
@@ -56,8 +56,8 @@ namespace aap::xs {
         };
 
         CallbackData pending_calls[UINT8_MAX];
-        static void completeWithParameterCallback(void *callbackData, void *pluginOrHost, int32_t requestId);
-        static void completeWithEnumCallback(void *callbackData, void *pluginOrHost, int32_t requestId);
+        static void completeWithParameterCallback(void *callbackData, void *pluginOrHost);
+        static void completeWithEnumCallback(void *callbackData, void *pluginOrHost);
 
     public:
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
