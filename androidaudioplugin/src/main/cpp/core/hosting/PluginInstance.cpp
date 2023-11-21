@@ -57,24 +57,33 @@ void aap::PluginInstance::setupPortConfigDefaults() {
     // If there is no declared ports, apply default ports configuration.
     uint32_t nPort = 0;
 
-    // MIDI2 in/out ports are always populated
-    PortInformation midi_in{nPort++, "MIDI In", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
-    PortInformation midi_out{nPort++, "MIDI Out", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
-    configured_ports->emplace_back(midi_in);
-    configured_ports->emplace_back(midi_out);
-
     // Populate audio in ports only if it is not an instrument.
     // FIXME: there may be better ways to guess whether audio in ports are required or not.
     if (!pluginInfo->isInstrument()) {
-        PortInformation audio_in_l{nPort++, "Audio In L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
+        // create audio inputs for Effect plugins
+        PortInformation audio_in_l{nPort++, "Audio In L", AAP_CONTENT_TYPE_AUDIO,
+                                   AAP_PORT_DIRECTION_INPUT};
         configured_ports->emplace_back(audio_in_l);
-        PortInformation audio_in_r{nPort++, "Audio In R", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_INPUT};
+        PortInformation audio_in_r{nPort++, "Audio In R", AAP_CONTENT_TYPE_AUDIO,
+                                   AAP_PORT_DIRECTION_INPUT};
         configured_ports->emplace_back(audio_in_r);
     }
-    PortInformation audio_out_l{nPort++, "Audio Out L", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_OUTPUT};
+    PortInformation audio_out_l{nPort++, "Audio Out L", AAP_CONTENT_TYPE_AUDIO,
+                                AAP_PORT_DIRECTION_OUTPUT};
     configured_ports->emplace_back(audio_out_l);
-    PortInformation audio_out_r{nPort++, "Audio Out R", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_OUTPUT};
+    PortInformation audio_out_r{nPort++, "Audio Out R", AAP_CONTENT_TYPE_AUDIO,
+                                AAP_PORT_DIRECTION_OUTPUT};
     configured_ports->emplace_back(audio_out_r);
+
+    // MIDI2 in/out ports are always populated
+    // create System MIDI input for Instrument plugins. We always need one for AAPXS.
+    const char* midiInName = pluginInfo->isInstrument() ? "MIDI In" : "System MIDI In";
+    PortInformation midi_in{nPort++, midiInName, AAP_CONTENT_TYPE_MIDI2,
+                            AAP_PORT_DIRECTION_INPUT};
+    configured_ports->emplace_back(midi_in);
+    PortInformation midi_out{nPort++, "System MIDI Out", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+    configured_ports->emplace_back(midi_out);
+
 }
 
 
@@ -84,8 +93,30 @@ void aap::PluginInstance::setupPortsViaMetadata() {
         return;
     are_ports_configured = true;
 
-    for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++)
-        configured_ports->emplace_back(PortInformation{*pluginInfo->getDeclaredPort(i)});
+    bool hasMidiIn = false, hasMidiOut = false;
+    for (int i = 0, n = pluginInfo->getNumDeclaredPorts(); i < n; i++) {
+        auto port = *pluginInfo->getDeclaredPort(i);
+        configured_ports->emplace_back(PortInformation{port});
+        if (port.getContentType() == AAP_CONTENT_TYPE_MIDI2) {
+            if (port.getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                hasMidiIn = true;
+            else
+                hasMidiOut = true;
+        }
+    }
+
+    // MIDI2 in/out ports are always populated for AAPXS SysEx8 messaging,
+    //  and parameter changes (FIXME: which should be optional in theory?)
+    if (!hasMidiIn) {
+        PortInformation midi_in{(uint32_t) configured_ports->size(), "System MIDI In", AAP_CONTENT_TYPE_MIDI2,
+                                AAP_PORT_DIRECTION_INPUT};
+        configured_ports->emplace_back(midi_in);
+    }
+    if (!hasMidiOut) {
+        PortInformation midi_out{(uint32_t) configured_ports->size(), "System MIDI Out",
+                                 AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
+        configured_ports->emplace_back(midi_out);
+    }
 }
 
 void aap::PluginInstance::startPortConfiguration() {
