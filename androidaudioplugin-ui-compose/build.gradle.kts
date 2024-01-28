@@ -21,7 +21,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.get()
+        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -53,21 +53,14 @@ dependencies {
 
     implementation (libs.accompanist.drawablepainter)
 
-    implementation (libs.compose.ui)
-    implementation (libs.compose.material)
-    implementation (libs.compose.ui.tooling)
-
+    implementation(platform(libs.compose.bom))
     implementation (libs.navigation.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
-    implementation(platform(libs.compose.bom))
-    implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
 
     androidTestImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
-    androidTestImplementation(libs.compose.ui.test.junit)
-    debugImplementation(libs.ui.test.manifest)
 }

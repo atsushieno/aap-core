@@ -1,8 +1,8 @@
 package org.androidaudioplugin.ui.compose
 
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.Text
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -35,13 +35,12 @@ fun PluginParameterEnumSelector(value: Float,
             expanded = enumExpanded,
             onDismissRequest = { enumExpanded = false }) {
             enumerations.forEach {
-                DropdownMenuItem(onClick = {
+                DropdownMenuItem(text = { Text(it.name) },
+                    onClick = {
                     if (enumExpanded)
                         onValueChange(it.value)
                     enumExpanded = !enumExpanded
-                }) {
-                    Text(it.name)
-                }
+                })
             }
         }
     }
