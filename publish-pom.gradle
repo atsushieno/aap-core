@@ -9,9 +9,10 @@ android {
 }
 
 afterEvaluate {
+    /*
     tasks.register('javadocJar', Jar) {
         archiveClassifier.set('javadoc')
-    }
+    }*/
     tasks.register('sourceJar', Jar) {
         from android.sourceSets.main.java.srcDirs
         from android.sourceSets.main.kotlin.srcDirs
@@ -41,8 +42,19 @@ afterEvaluate {
             }
 
             configureEach {
-                artifact(javadocJar)
-                artifact(sourceJar)
+                // https://github.com/gradle/gradle/issues/26091#issuecomment-1681343496
+                var dokkaJar = project.tasks.register("${name}DokkaJar", Jar) {
+                    group = JavaBasePlugin.DOCUMENTATION_GROUP
+                    description = "Assembles Kotlin docs with Dokka into a Javadoc jar"
+                    archiveClassifier.set("javadoc")
+                    from(tasks.named("dokkaHtml"))
+
+                    // Each archive name should be distinct, to avoid implicit dependency issues.
+                    // We use the same format as the sources Jar tasks.
+                    // https://youtrack.jetbrains.com/issue/KT-46466
+                    archiveBaseName.set("${archiveBaseName.get()}-${name}")
+                }
+                artifact(dokkaJar)
 
                 pom {
                     name.set(project.name)
