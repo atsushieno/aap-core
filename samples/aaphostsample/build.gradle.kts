@@ -31,9 +31,6 @@ android {
         if (enable_asan)
             jniLibs.useLegacyPackaging = true
     }
-    androidResources {
-        noCompress += listOf("sample.wav")
-    }
 
     // FIXME: it is annoying to copy this everywhere, but build.gradle.kts is incapable of importing this fragment...
     // It's been long time until I got this working, and I have no idea why it started working.
