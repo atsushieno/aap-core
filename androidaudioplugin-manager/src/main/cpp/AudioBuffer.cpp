@@ -41,6 +41,7 @@ void *aap::AudioBuffer::aapBufferGetBuffer(aap_buffer_t &b, int32_t portIndex) {
         case 1: return data->midi_out;
     }
     assert(false); // should not reach here
+    return nullptr;
 }
 
 int32_t aap::AudioBuffer::aapBufferGetBufferSize(aap_buffer_t &b, int32_t portIndex) {
@@ -53,6 +54,7 @@ int32_t aap::AudioBuffer::aapBufferGetBufferSize(aap_buffer_t &b, int32_t portIn
             return data->midi_capacity;
     }
     assert(false); // should not reach here
+    return 0;
 }
 
 int32_t aap::AudioBuffer::aapBufferGetNumPorts(aap_buffer_t &b) {
