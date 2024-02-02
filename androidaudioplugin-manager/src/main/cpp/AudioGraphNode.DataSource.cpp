@@ -94,7 +94,10 @@ bool aap::AudioDataSourceNode::setAudioSource(uint8_t *data, int dataLength, con
             auto reader = format->createReader(stream);
             auto props = reader->getProperties();
             AudioBuffer tmpData{(int32_t) props.numChannels, (int32_t) props.numFrames};
-            assert(reader->readFrames(0, tmpData.audio));
+            if (!reader->readFrames(0, tmpData.audio)) {
+                AAP_ASSERT_FALSE;
+                return false;
+            }
 
             // resample
             auto durationInSeconds = 1.0 * props.numFrames / props.sampleRate;
