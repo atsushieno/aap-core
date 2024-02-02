@@ -92,7 +92,10 @@ void aap::RemotePluginInstance::prepareSurfaceControlForRemoteNativeUI() {
 
 void* aap::RemotePluginInstance::getRemoteNativeView()  {
 #if ANDROID
-    assert(native_ui_controller);
+    if (!native_ui_controller) {
+        AAP_ASSERT_FALSE; // should not happen
+        return nullptr;
+    }
 	return AAPJniFacade::getInstance()->getRemoteNativeView(client, this);
 #else
     // cannot do anything
@@ -102,7 +105,10 @@ void* aap::RemotePluginInstance::getRemoteNativeView()  {
 
 void aap::RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t height)  {
 #if ANDROID
-    assert(native_ui_controller);
+    if (!native_ui_controller) {
+        AAP_ASSERT_FALSE; // should not happen
+        return;
+    }
 	AAPJniFacade::getInstance()->connectRemoteNativeView(client, this, width, height);
 #else
     // cannot do anything

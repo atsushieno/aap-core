@@ -1,6 +1,7 @@
 
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
+#include "aap/unstable/utility.h"
 
 // AAPXSDefinition_Parameters
 
@@ -169,10 +170,14 @@ aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index,
     for (size_t i = 0; i < UINT8_MAX; i++)
         if (pending_calls[i].context == nullptr)
             callbackData = pending_calls + i;
-    assert(callbackData);
+    if (!callbackData) {
+        AAP_ASSERT_FALSE;
+        return -1;
+    }
     *callbackData = {this, callback, index, 0};
     AAPXSRequestContext request{completeWithParameterCallback, callbackData, serialization,
-                                0, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_PARAMETERS_GET_PARAMETER};
+                                0, AAP_PARAMETERS_EXTENSION_URI, requestId,
+                                OPCODE_PARAMETERS_GET_PARAMETER};
 
     aapxs_instance->send_aapxs_request(aapxs_instance, &request);
 
@@ -188,7 +193,10 @@ int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32
     for (size_t i = 0; i < UINT8_MAX; i++)
         if (pending_calls[i].context == nullptr)
             callbackData = pending_calls + i;
-    assert(callbackData);
+    if (!callbackData) {
+        AAP_ASSERT_FALSE;
+        return -1;
+    }
     *callbackData = {this, callback, index, enumIndex};
     AAPXSRequestContext request{completeWithEnumCallback, callbackData, serialization,
                                 0, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_PARAMETERS_GET_ENUMERATION};

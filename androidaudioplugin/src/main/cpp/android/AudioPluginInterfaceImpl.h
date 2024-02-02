@@ -101,7 +101,10 @@ public:
         CHECK_INSTANCE(instance, in_instanceID)
         if (in_size > 0) {
             auto shmExt = instance->getSharedMemoryStore();
-            assert(shmExt != nullptr);
+            if (shmExt == nullptr) {
+                AAP_ASSERT_FALSE;
+                return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "failed to get PluginSharedMemoryStore");
+            }
             auto fdRemote = in_sharedMemoryFD.get();
             auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
             shmExt->addExtensionFD(dfd, in_size);

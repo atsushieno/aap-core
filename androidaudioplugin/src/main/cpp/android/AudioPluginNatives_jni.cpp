@@ -14,6 +14,8 @@
 #include "../core/hosting/plugin-service-list.h"
 #include "../core/AAPJniFacade.h"
 
+#define LOG_TAG "AAP.JNI"
+
 std::string jstringToStdString(JNIEnv* env, jstring s) {
     jboolean b{false};
     const char *u8 = env->GetStringUTFChars(s, &b);
@@ -138,7 +140,10 @@ JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_hosting_NativePluginClient_newInstance(JNIEnv *env, jclass clazz,
 																   jint serviceConnectionId) {
 	auto connections = aap::AAPJniFacade::getInstance()->getPluginConnectionListFromJni(serviceConnectionId, true);
-	assert(connections);
+	if (!connections) {
+        AAP_ASSERT_FALSE;
+        return -1;
+    }
 	if (cached_plugin_list.getNumPluginInformation() == 0)
 		cached_plugin_list = aap::PluginListSnapshot::queryServices();
 	return (jlong) (void*) new aap::PluginClient(connections, &cached_plugin_list);
@@ -156,16 +161,24 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePluginInstance(
 		JNIEnv *env, jclass clazz, jstring plugin_id, jint sampleRate, jlong clientPointer) {
-	assert(clientPointer != 0);
+	if (clientPointer == 0) {
+        aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, "null clientPointer");
+        AAP_ASSERT_FALSE;
+        return -1;
+    }
 	auto client = (aap::PluginClient*) (void*) clientPointer;
 	std::string pluginIdString = jstringToStdString(env, plugin_id);
 	auto result = client->createInstance(pluginIdString.c_str(), sampleRate, true);
 	if (!result.error.empty()) {
-		aap::a_log(AAP_LOG_LEVEL_ERROR, "AAP", result.error.c_str());
+		aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, result.error.c_str());
 		return (jlong) -1;
 	}
 	auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(result.value));
-	assert(instance);
+    if (!instance) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "instance for id %i not found.", result.value);
+        AAP_ASSERT_FALSE;
+        return -1;
+    }
 	return (jlong) result.value;
 }
 

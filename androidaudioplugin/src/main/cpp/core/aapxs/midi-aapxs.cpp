@@ -12,11 +12,19 @@ void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_req
     switch (request->opcode) {
         case OPCODE_GET_MAPPING_POLICY:
             auto len = *(int32_t *) request->serialization->data;
-            assert(len < AAP_MAX_PLUGIN_ID_SIZE);
-            char *pluginId = (char *) calloc(len + 1, 1);
-            strncpy(pluginId, (const char *) ((int32_t *) request->serialization->data + 1), len);
-            *((int32_t *) request->serialization->data) = getMidiSettingsFromLocalConfig2(pluginId);
+            char *pluginId = nullptr;
+            int32_t midiSettings = 0;
+            if (len >= AAP_MAX_PLUGIN_ID_SIZE) {
+                AAP_ASSERT_FALSE;
+            } else {
+                pluginId = (char *) calloc(len + 1, 1);
+                strncpy(pluginId, (const char *) ((int32_t *) request->serialization->data + 1), len);
+                midiSettings = getMidiSettingsFromLocalConfig2(pluginId);
+            }
+            *((int32_t *) request->serialization->data) = midiSettings;
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+            if (pluginId)
+                free(pluginId);
             break;
     }
 }

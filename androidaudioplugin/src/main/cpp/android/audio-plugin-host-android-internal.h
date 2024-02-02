@@ -74,12 +74,18 @@ public:
     aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
 
     ::ndk::ScopedAStatus handleRequestProcess(int32_t instanceId) {
-        assert(request_process);
+        if (!request_process) {
+            AAP_ASSERT_FALSE;
+            return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "null request_process");
+        }
         return request_process(instanceId);
     }
 
     ::ndk::ScopedAStatus handleHostExtension(int32_t instanceId, const std::string& uri, int32_t opcode) {
-        assert(host_extension);
+        if (!host_extension) {
+            AAP_ASSERT_FALSE;
+            return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "null host_extension");
+        }
         return host_extension(instanceId, uri, opcode);
     }
 };

@@ -13,7 +13,10 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
                             int32_t eventMidi2InputBufferSize)
         : plugin_list(contextPluginList),
           event_midi2_input_buffer_size(eventMidi2InputBufferSize) {
-    assert(contextPluginList);
+    if (!contextPluginList) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
 
     aapxs_definition_registry = aapxsDefinitionRegistry ? aapxsDefinitionRegistry : xs::AAPXSDefinitionRegistry::getStandardExtensions();
 }
@@ -25,8 +28,10 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
 }
 
 aap::PluginInstance* aap::PluginHost::getInstanceByIndex(int32_t index) {
-    assert(0 <= index);
-    assert(index < instances.size());
+    if (index < 0 || index >= instances.size()) {
+        AAP_ASSERT_FALSE;
+        return nullptr;
+    }
     return instances[index];
 }
 

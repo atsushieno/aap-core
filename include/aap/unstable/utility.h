@@ -2,6 +2,9 @@
 #define AAP_CORE_UNSTABLE_UTILITY_H
 
 #include <sys/time.h>
+#include <assert.h>
+
+#define AAP_ASSERT_FALSE assert(false)
 
 namespace aap {
 

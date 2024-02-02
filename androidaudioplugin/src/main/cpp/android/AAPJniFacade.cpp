@@ -1,4 +1,3 @@
-#include <cassert>
 #include "aap/core/android/android-application-context.h"
 #include "../core/AAPJniFacade.h"
 #include "ALooperMessage.h"
@@ -57,9 +56,15 @@ namespace aap {
     void AAPJniFacade::initializeJNIMetadata() {
         JNIEnv *env;
         auto vm = aap::get_android_jvm();
-        assert(vm);
+        if (vm == nullptr) {
+            AAP_ASSERT_FALSE;
+            return;
+        }
         vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
-        assert(env);
+        if (env == nullptr) {
+            AAP_ASSERT_FALSE;
+            return;
+        }
 
         jclass java_plugin_information_class = env->FindClass(java_plugin_information_class_name),
                 java_extension_information_class = env->FindClass(
@@ -179,11 +184,17 @@ namespace aap {
     T usingJNIEnv(std::function<T(JNIEnv*)> func) {
         JNIEnv *env;
         JavaVM* vm = aap::get_android_jvm();
-        assert(vm);
+        if (vm == nullptr) {
+            AAP_ASSERT_FALSE;
+            return (T) 0;
+        }
         auto envState = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
         if (envState == JNI_EDETACHED)
             vm->AttachCurrentThread(&env, nullptr);
-        assert(env);
+        if (env == nullptr) {
+            AAP_ASSERT_FALSE;
+            return (T) 0;
+        }
 
         T ret = func(env);
 
@@ -331,11 +342,13 @@ namespace aap {
         return usingJNIEnv<jobjectArray>([](JNIEnv *env) {
             jclass java_audio_plugin_host_helper_class = env->FindClass(
                     "org/androidaudioplugin/hosting/AudioPluginHostHelper");
-            assert(java_audio_plugin_host_helper_class);
+            if (!java_audio_plugin_host_helper_class)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_query_audio_plugins = env->GetStaticMethodID(
                     java_audio_plugin_host_helper_class, "queryAudioPlugins",
                     "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
-            assert(j_method_query_audio_plugins);
+            if (!j_method_query_audio_plugins)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class,
                                                               j_method_query_audio_plugins,
                                                               aap::get_android_application_context());
@@ -347,11 +360,13 @@ namespace aap {
     int32_t AAPJniFacade::getMidiSettingsFromLocalConfig(std::string pluginId) {
         return usingJNIEnv<int32_t>([pluginId](JNIEnv *env) {
             auto java_audio_plugin_midi_settings_class = AAPJniFacade::getInstance()->getAudioPluginMidiSettingsClass();
-            assert(java_audio_plugin_midi_settings_class);
+            if (!java_audio_plugin_midi_settings_class)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_get_midi_settings_from_shared_preference = env->GetStaticMethodID(
                     java_audio_plugin_midi_settings_class, "getMidiSettingsFromSharedPreference",
                     "(Landroid/content/Context;Ljava/lang/String;)I");
-            assert(j_method_get_midi_settings_from_shared_preference);
+            if (!j_method_get_midi_settings_from_shared_preference)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             auto context = aap::get_android_application_context();
             auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
             return env->CallStaticIntMethod(java_audio_plugin_midi_settings_class,
@@ -363,11 +378,13 @@ namespace aap {
     void AAPJniFacade::putMidiSettingsToSharedPreference(std::string pluginId, int32_t flags) {
         usingJNIEnv<int32_t>([this, pluginId, flags](JNIEnv *env) {
             auto java_audio_plugin_midi_settings_class = getAudioPluginMidiSettingsClass();
-            assert(java_audio_plugin_midi_settings_class);
+            if (!java_audio_plugin_midi_settings_class)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_put_midi_settings_to_shared_preference = env->GetStaticMethodID(
                     java_audio_plugin_midi_settings_class, "putMidiSettingsToSharedPreference",
                     "(Landroid/content/Context;Ljava/lang/String;I)V");
-            assert(j_method_put_midi_settings_to_shared_preference);
+            if (!j_method_put_midi_settings_to_shared_preference)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             auto context = aap::get_android_application_context();
             auto pluginIdJString = env->NewStringUTF(pluginId.c_str());
             env->CallStaticVoidMethod(java_audio_plugin_midi_settings_class,
@@ -383,7 +400,8 @@ namespace aap {
         return usingJNIEnv<T>([&](JNIEnv* env) {
             auto context = aap::get_android_application_context();
             auto cls = env->FindClass(java_audio_plugin_service_class_name);
-            assert(cls);
+            if (!cls)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             return func(env, cls, context);
         });
     }
@@ -514,16 +532,19 @@ namespace aap {
 
         auto classLoaderClass = env->FindClass("java/lang/ClassLoader");
         CLEAR_JNI_ERROR(env)
-        assert(classLoaderClass);
+        if (!classLoaderClass)
+            AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
         auto findClassMethod = env->GetMethodID(classLoaderClass, "findClass",
                                                 "(Ljava/lang/String;)Ljava/lang/Class;");
         CLEAR_JNI_ERROR(env)
-        assert(findClassMethod);
+        if (!findClassMethod)
+            AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
         auto settingsClassObj = env->CallObjectMethod(contextClassLoader, findClassMethod,
                                                       env->NewStringUTF(
                                                               "org/androidaudioplugin/hosting/AudioPluginMidiSettings"));
         CLEAR_JNI_ERROR(env)
-        assert(settingsClassObj);
+        if (!settingsClassObj)
+            AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
         return (jclass) settingsClassObj;
     }
 
@@ -551,11 +572,13 @@ namespace aap {
 
             jclass java_audio_plugin_host_helper_class = env->FindClass(
                     "org/androidaudioplugin/hosting/AudioPluginHostHelper");
-            assert(java_audio_plugin_host_helper_class);
+            if (!java_audio_plugin_host_helper_class)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_ensure_instance_created = env->GetStaticMethodID(
                     java_audio_plugin_host_helper_class, "ensureBinderConnected",
                     "(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
-            assert(j_method_ensure_instance_created);
+            if (!j_method_ensure_instance_created)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
 
             env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
                                       j_method_ensure_instance_created,
@@ -582,7 +605,8 @@ namespace aap {
             auto instance = host->getInstanceById(instanceId);
             auto para = instance->getParameter(index);
             auto klass = env->FindClass(java_parameter_information_class_name);
-            assert(klass);
+            if (!klass)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             auto ret = env->NewObject(klass, j_method_parameter_ctor, (jint) para->getId(),
                                   env->NewStringUTF(para->getName()), para->getMinimumValue(),
                                   para->getMaximumValue(), para->getDefaultValue());
@@ -601,7 +625,8 @@ namespace aap {
             auto instance = host->getInstanceById(instanceId);
             auto port = instance->getPort(index);
             auto klass = env->FindClass(java_port_information_class_name);
-            assert(klass);
+            if (!klass)
+                AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             return env->NewObject(klass, j_method_port_ctor, (jint) port->getIndex(),
                                   env->NewStringUTF(port->getName()),
                                   (jint) port->getPortDirection(),

@@ -1,6 +1,7 @@
 
 #include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
+#include "aap/unstable/utility.h"
 
 // Client setup
 
@@ -13,7 +14,10 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
                                                     aapxs_initiator_send_func sendAAPXSRequest,
                                                     aapxs_recipient_send_func sendAAPXSReply,
                                                     initiator_get_new_request_id_func initiatorGetNewRequestId) {
-    assert(!already_setup);
+    if (already_setup) {
+        AAP_ASSERT_FALSE; // should not reach here
+        return false;
+    }
 
     if (!std::all_of(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)
@@ -79,7 +83,10 @@ void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
                                                      aapxs_recipient_send_func sendAapxsReply,
                                                      aapxs_initiator_send_func sendAAPXSRequest,
                                                      initiator_get_new_request_id_func initiatorGetNewRequestId) {
-    assert(!already_setup);
+    if (already_setup) {
+        AAP_ASSERT_FALSE; // should not reach here
+        return;
+    }
 
     std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)

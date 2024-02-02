@@ -7,8 +7,11 @@ namespace aap {
 
 std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
 {
-    std::vector<PluginInformation*> ret;
-    assert(jPluginInfos != nullptr);
+    std::vector<PluginInformation*> ret{};
+    if (!jPluginInfos) {
+        AAP_ASSERT_FALSE;
+        return ret;
+    }
     JNIEnv *env;
     aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
     jsize infoSize = env->GetArrayLength(jPluginInfos);
@@ -26,10 +29,13 @@ std::vector<PluginInformation*> queryInstalledPlugins() {
 std::vector<std::string> AndroidPluginClientSystem::getPluginPaths() {
     std::vector<std::string> ret{};
     for (auto p : queryInstalledPlugins()) {
-        assert(p);
-        auto packageName = p->getPluginPackageName();
-        if (std::find(ret.begin(), ret.end(), packageName) == ret.end())
-            ret.emplace_back(packageName);
+        if (!p)
+            AAP_ASSERT_FALSE;
+        else {
+            auto packageName = p->getPluginPackageName();
+            if (std::find(ret.begin(), ret.end(), packageName) == ret.end())
+                ret.emplace_back(packageName);
+        }
     }
     return ret;
 }

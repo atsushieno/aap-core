@@ -12,10 +12,13 @@ void aap::xs::AAPXSDefinition_Urid::aapxs_urid_process_incoming_plugin_aapxs_req
         case OPCODE_MAP:
             uint8_t urid = *(uint8_t*) request->serialization->data;
             auto len = *(int32_t *) ((uint8_t*) request->serialization->data + 1);
-            assert(len < AAP_MAX_EXTENSION_URI_SIZE);
-            char uri[AAP_MAX_EXTENSION_URI_SIZE];
-            strncpy(uri, (const char *) (1 + (int32_t *) request->serialization->data), len);
-            ext->map(ext, plugin, urid, uri);
+            if (len >= AAP_MAX_EXTENSION_URI_SIZE)
+                AAP_ASSERT_FALSE;
+            else {
+                char uri[AAP_MAX_EXTENSION_URI_SIZE];
+                strncpy(uri, (const char *) (1 + (int32_t *) request->serialization->data), len);
+                ext->map(ext, plugin, urid, uri);
+            }
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
     }

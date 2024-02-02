@@ -1,10 +1,12 @@
 #include "AudioBuffer.h"
+#include "aap/unstable/utility.h"
 
 aap::AudioBuffer::AudioBuffer(int32_t numChannels, int32_t framesPerCallback, int32_t midiBufferSize) {
     audio = choc::buffer::createChannelArrayBuffer(numChannels,
                                                    framesPerCallback,
                                                    []() { return (float) 0; });
-    assert(midiBufferSize > 0);
+    if (midiBufferSize <= 0)
+        AAP_ASSERT_FALSE; // note: should not reach here
     audio.clear();
     midi_capacity = midiBufferSize;
     midi_in = midiBufferSize > 0 ? calloc(1, midiBufferSize) : nullptr;
@@ -40,7 +42,7 @@ void *aap::AudioBuffer::aapBufferGetBuffer(aap_buffer_t &b, int32_t portIndex) {
         case 0: return data->midi_in;
         case 1: return data->midi_out;
     }
-    assert(false); // should not reach here
+    AAP_ASSERT_FALSE; // should not reach here
     return nullptr;
 }
 
@@ -53,7 +55,7 @@ int32_t aap::AudioBuffer::aapBufferGetBufferSize(aap_buffer_t &b, int32_t portIn
         case 1:
             return data->midi_capacity;
     }
-    assert(false); // should not reach here
+    AAP_ASSERT_FALSE; // should not reach here
     return 0;
 }
 

@@ -14,7 +14,7 @@
 #include "aap/core/AAPXSMidi2RecipientSession.h"
 
 
-#define LOG_TAG "AAP_HOST"
+#define LOG_TAG "AAP.Host"
 
 namespace aap
 {
@@ -30,8 +30,10 @@ PluginServiceList* PluginServiceList::getInstance() {
 //-----------------------------------
 
 bool AbstractPluginBuffer::initialize(int32_t numPorts, int32_t numFrames) {
-	assert(!buffers); // already allocated
-	assert(!buffer_sizes); // already allocated
+    if (buffers || buffer_sizes) {  // already allocated?
+        AAP_ASSERT_FALSE;
+        return false;
+    }
 
 	num_ports = numPorts;
 	num_frames = numFrames;
@@ -51,7 +53,10 @@ int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, siz
 
 	size_t commonMemSize = numFrames * sizeof(float);
 	port_buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
-	assert(port_buffer);
+    if (!port_buffer) {
+        AAP_ASSERT_FALSE;
+        return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+    }
 	port_buffer->initialize(numPorts, numFrames);
 
 	for (size_t i = 0; i < numPorts; i++) {
@@ -77,7 +82,10 @@ int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_
 	size_t numPorts = clientFDs.size();
 	size_t commonMemSize = numFrames * sizeof(float);
 	port_buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
-	assert(port_buffer);
+    if (!port_buffer) {
+        AAP_ASSERT_FALSE;
+        return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+    }
 	if (!port_buffer->initialize(numPorts, numFrames))
 		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
 

@@ -14,11 +14,16 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
           plugin(nullptr),
           pluginInfo(pluginInformation),
           event_midi2_buffer_size(eventMidi2InputBufferSize) {
-    assert(pluginInformation);
-    assert(loadedPluginFactory);
-    assert(event_midi2_buffer_size > 0);
-    event_midi2_buffer = calloc(1, event_midi2_buffer_size);
-    event_midi2_merge_buffer = calloc(1, event_midi2_buffer_size);
+    if (!pluginInformation)
+        AAP_ASSERT_FALSE; // should not happen
+    if (!loadedPluginFactory)
+        AAP_ASSERT_FALSE; // should not happen
+    if (event_midi2_buffer_size <= 0)
+        AAP_ASSERT_FALSE; // should not happen
+    else {
+        event_midi2_buffer = calloc(1, event_midi2_buffer_size);
+        event_midi2_merge_buffer = calloc(1, event_midi2_buffer_size);
+    }
 }
 
 aap::PluginInstance::~PluginInstance() {
@@ -48,9 +53,12 @@ void aap::PluginInstance::completeInstantiation()
 
     AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
     plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
-    assert(plugin);
-
-    instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+    if (plugin)
+        instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+    else {
+        AAP_ASSERT_FALSE;
+        instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
+    }
 }
 
 void aap::PluginInstance::setupPortConfigDefaults() {
@@ -134,7 +142,10 @@ void aap::PluginInstance::startPortConfiguration() {
 }
 
 void aap::PluginInstance::scanParametersAndBuildList() {
-    assert(!cached_parameters);
+    if (cached_parameters) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
 
     auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
     if (!ext || !ext->get_parameter_count || !ext->get_parameter)
@@ -165,7 +176,10 @@ void aap::PluginInstance::scanParametersAndBuildList() {
 void aap::PluginInstance::activate() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
         return;
-    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
 
     plugin->activate(plugin);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
@@ -175,7 +189,10 @@ void aap::PluginInstance::deactivate() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE ||
         instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED)
         return;
-    assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE);
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
 
     plugin->deactivate(plugin);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;

@@ -5,6 +5,10 @@
 #include <assert.h>
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
+#include "aap/unstable/utility.h"
+#include "aap/unstable/logging.h"
+
+#define LOG_TAG "AAP.XS"
 
 aap::AAPXSMidi2InitiatorSession::AAPXSMidi2InitiatorSession(int32_t midiBufferSize)
         : midi_buffer_size(midiBufferSize) {
@@ -71,7 +75,10 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
                 break;
             }
         }
-        assert(i != MAX_PENDING_CALLBACKS);
+        if (i == MAX_PENDING_CALLBACKS) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, "AAPXSMidi2InitiatorSession reached max pending callbacks.");
+            AAP_ASSERT_FALSE; //
+        }
     }
 }
 

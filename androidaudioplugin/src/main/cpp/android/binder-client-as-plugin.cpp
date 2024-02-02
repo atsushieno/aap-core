@@ -198,9 +198,18 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginHost* host
 	)
 {
-	assert(pluginFactory != nullptr);
-	assert(pluginUniqueId != nullptr);
-	assert(host != nullptr);
+    if (!pluginFactory) {
+        AAP_ASSERT_FALSE;
+        return nullptr;
+    }
+    if (!pluginUniqueId) {
+        AAP_ASSERT_FALSE;
+        return nullptr;
+    }
+    if (!host) {
+        AAP_ASSERT_FALSE;
+        return nullptr;
+    }
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
     auto ctx = new AAPClientContext();

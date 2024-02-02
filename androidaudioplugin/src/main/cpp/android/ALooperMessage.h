@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <memory>
 #include <functional>
+#include "aap/unstable/utility.h"
 
 namespace aap {
 
@@ -30,11 +31,14 @@ namespace aap {
     public:
         NonRealtimeLoopRunner(ALooper* looper, int32_t preallocatedSpaceSize)
         : looper(looper), preallocated_space_size(preallocatedSpaceSize) {
-            assert(pipe(pipe_fds) == 0);
-            assert(ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, handleMessage, nullptr));
+            if (pipe(pipe_fds) != 0)
+                AAP_ASSERT_FALSE;
+            else if (ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, handleMessage, nullptr))
+                AAP_ASSERT_FALSE;
 
             preallocated_space = calloc(1, preallocated_space_size);
-            assert(preallocated_space);
+            if (preallocatedSpaceSize == 0)
+                AAP_ASSERT_FALSE;
         }
 
         ~NonRealtimeLoopRunner() {
@@ -76,7 +80,10 @@ namespace aap {
 
             // Call the message handler function
             auto message = (ALooperMessage*) value;
-            assert(message);
+            if (!message) {
+                AAP_ASSERT_FALSE;
+                return 1; // loop continues anyway
+            }
             message->handleMessage();
 
             return 1; // loop continues
