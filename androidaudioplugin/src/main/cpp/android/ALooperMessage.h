@@ -33,11 +33,11 @@ namespace aap {
         : looper(looper), preallocated_space_size(preallocatedSpaceSize) {
             if (pipe(pipe_fds) != 0)
                 AAP_ASSERT_FALSE;
-            else if (ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, handleMessage, nullptr))
+            else if (!ALooper_addFd(looper, pipe_fds[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT, handleMessage, nullptr))
                 AAP_ASSERT_FALSE;
 
             preallocated_space = calloc(1, preallocated_space_size);
-            if (preallocatedSpaceSize == 0)
+            if (preallocated_space == 0)
                 AAP_ASSERT_FALSE;
         }
 
