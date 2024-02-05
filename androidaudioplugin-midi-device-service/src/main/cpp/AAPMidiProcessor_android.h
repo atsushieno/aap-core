@@ -45,12 +45,18 @@ public:
 
     int32_t setupStream() override { return 0; }
     int32_t startStreaming() override {
-        assert(!callback_thread);
+        if (callback_thread) {
+            AAP_ASSERT_FALSE;
+            return -1;
+        }
         callback_thread = std::make_unique<std::thread>(static_cast<void(AAPMidiProcessorAndroidStubPAL::*)()>(&AAPMidiProcessorAndroidStubPAL::runStreamingLoop), this);
         return 0;
     }
     int32_t stopStreaming() override {
-        assert(callback_thread);
+        if (!callback_thread) {
+            AAP_ASSERT_FALSE;
+            return -1;
+        }
         alive = false;
         callback_thread->join();
         return 0;
@@ -97,7 +103,10 @@ public:
             std::make_unique<AAPMidiProcessorOboePAL>(this)) {}
 
     inline void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize, int midiBufferSize) {
-        assert(connections);
+        if (!connections) {
+            AAP_ASSERT_FALSE;
+            return;
+        }
         androidPAL->setBufferCapacityInFrames(oboeBurstFrameSize);
         AAPMidiProcessor::initialize(connections, sampleRate, channelCount, aapFrameSize, midiBufferSize);
     }

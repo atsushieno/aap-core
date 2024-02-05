@@ -2,7 +2,6 @@
 
 #include "aap/core/AAPXSMidi2InitiatorSession.h"
 #include <stdlib.h>
-#include <assert.h>
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
 #include "aap/unstable/utility.h"

@@ -70,7 +70,10 @@ namespace aap::midi {
     }
 
     void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize, int32_t midiBufferSize) {
-        assert(connections);
+        if (!connections) {
+            AAP_ASSERT_FALSE;
+            return;
+        }
         plugin_list = aap::PluginListSnapshot::queryServices();
 
         // AAP settings
@@ -180,14 +183,19 @@ namespace aap::midi {
             }
             auto result = client->createInstance(pluginId, sample_rate, true);
             if (!result.error.empty()) {
-                aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,"Plugin \"%s\" could not be instantiated: %s",
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,"Plugin \"%s\" could not be instantiated due to: %s",
                              pluginInfo->getDisplayName().c_str(), result.error.c_str());
                 state = AAP_MIDI_PROCESSOR_STATE_ERROR;
                 return;
             }
             auto instanceId = result.value;
             auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
-            assert(instance);
+            if (!instance) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,"Plugin \"%s\" could not be instantiated",
+                             pluginInfo->getDisplayName().c_str());
+                state = AAP_MIDI_PROCESSOR_STATE_ERROR;
+                return;
+            }
 
             instrument_instance_id = instanceId;
 
@@ -347,7 +355,10 @@ namespace aap::midi {
 
     int32_t AAPMidiProcessor::getAAPMidiInputPortType() {
         auto data = instance_data.get();
-        assert(data);
+        if (!data) {
+            AAP_ASSERT_FALSE;
+            return 0;
+        }
         // Returns
         // - MIDI2 port if MIDI2 port exists and MIDI2 protocol is specified.
         // - MIDI1 port unless MIDI1 port does not exist.
@@ -360,7 +371,10 @@ namespace aap::midi {
 
     void* AAPMidiProcessor::getAAPMidiInputBuffer() {
         auto data = instance_data.get();
-        assert(data);
+        if (!data) {
+            AAP_ASSERT_FALSE;
+            return nullptr;
+        }
         int portIndex = getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2 ? data->midi2_in_port : data->midi1_in_port;
         auto instance = client->getInstanceById(data->instance_id);
         auto b = instance->getAudioPluginBuffer();

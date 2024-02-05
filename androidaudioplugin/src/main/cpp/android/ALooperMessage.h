@@ -1,7 +1,6 @@
 #ifndef AAP_CORE_ALOOPERMESSAGE_H
 #define AAP_CORE_ALOOPERMESSAGE_H
 
-#include <cassert>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
 #include <sys/types.h>

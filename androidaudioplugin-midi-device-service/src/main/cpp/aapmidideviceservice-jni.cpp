@@ -48,7 +48,10 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
     startNewDeviceInstance();
 
     auto connections = aap::getPluginConnectionListByConnectorInstanceId(connectorInstanceId, true);
-    assert(connections);
+    if (!connections) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
 
     AAPMIDIDEVICE_INSTANCE->initialize(connections, sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize, midiBufferSize);
 }

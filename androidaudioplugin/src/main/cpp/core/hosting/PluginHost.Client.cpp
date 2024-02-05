@@ -6,7 +6,10 @@
 
 void aap::PluginClient::connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback) {
     const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
-    assert (descriptor != nullptr);
+    if (descriptor == nullptr) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
     connectToPluginService(descriptor->getPluginPackageName(), descriptor->getPluginLocalName(), callback);
 }
 void aap::PluginClient::connectToPluginService(const std::string& packageName, const std::string& className, std::function<void(std::string&)> callback) {
@@ -36,7 +39,10 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string
 {
     Result<int32_t> result;
     const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
-    assert (descriptor != nullptr);
+    if (descriptor == nullptr) {
+        AAP_ASSERT_FALSE;
+        return Result<int32_t>{-1, std::string{"plugin not found: "} + identifier};
+    }
 
     // For local plugins, they can be directly loaded using dlopen/dlsym.
     // For remote plugins, the connection has to be established through binder.
@@ -71,7 +77,10 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
 #else
             auto pluginFactory = GetDesktopAudioPluginFactoryClientBridge(this);
 #endif
-            assert (pluginFactory != nullptr);
+            if (pluginFactory == nullptr) {
+                AAP_ASSERT_FALSE;
+                return Result<int32_t>{-1, std::string{"pluginFactory is not returned as expected"}};
+            }
             auto instance = new RemotePluginInstance(this,
                                         aapxs_definition_registry,
                                                      descriptor, pluginFactory,
