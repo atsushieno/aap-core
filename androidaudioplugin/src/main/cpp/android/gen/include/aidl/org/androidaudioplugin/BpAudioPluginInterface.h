@@ -9,7 +9,7 @@ namespace org {
 namespace androidaudioplugin {
 class BpAudioPluginInterface : public ::ndk::BpCInterface<IAudioPluginInterface> {
 public:
-  explicit BpAudioPluginInterface(const ::ndk::SpAIBinder& binder);
+  BpAudioPluginInterface(const ::ndk::SpAIBinder& binder);
   virtual ~BpAudioPluginInterface();
 
   ::ndk::ScopedAStatus setCallback(const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override;

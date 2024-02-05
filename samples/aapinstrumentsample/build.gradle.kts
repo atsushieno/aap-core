@@ -62,12 +62,20 @@ android {
 }
 
 dependencies {
+    implementation(libs.aap.core)
+    implementation(libs.aap.midi.device.service)
+    implementation(libs.aap.ui.web)
+    implementation(libs.aap.ui.compose)
+    implementation(libs.aap.ui.compose.app)
+    androidTestImplementation(libs.aap.testing)
+    /*
     implementation (project(":androidaudioplugin"))
     implementation (project(":androidaudioplugin-ui-compose"))
     implementation (project(":androidaudioplugin-ui-compose-app"))
     implementation (project(":androidaudioplugin-ui-web"))
     implementation (project(":androidaudioplugin-midi-device-service"))
     androidTestImplementation (project(":androidaudioplugin-testing"))
+     */
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)
@@ -77,11 +85,4 @@ dependencies {
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
     //androidTestImplementation (libs.compose.ui.test.junit)
-}
-
-// Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
-// This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
-gradle.projectsEvaluated {
-    tasks["buildCMakeDebug"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeDebugNativeLibs"])
-    tasks["buildCMakeRelWithDebInfo"].dependsOn(rootProject.project("androidaudioplugin").tasks["mergeReleaseNativeLibs"])
 }

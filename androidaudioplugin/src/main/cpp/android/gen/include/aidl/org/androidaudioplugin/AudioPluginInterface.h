@@ -1,15 +1,16 @@
 #pragma once
 
+#include <android/binder_interface_utils.h>
+
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-#include <android/binder_interface_utils.h>
-#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
+#include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 
 namespace aidl {
 namespace org {
@@ -20,32 +21,22 @@ public:
   IAudioPluginInterface();
   virtual ~IAudioPluginInterface();
 
-  enum : int32_t { AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1 };
-  enum : int32_t { AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED = 2 };
-  enum : int32_t { AAP_BINDER_ERROR_UNEXPECTED_FEATURE_URI = 3 };
-  enum : int32_t { AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION = 10 };
-  enum : int32_t { AAP_BINDER_ERROR_MMAP_FAILED = 11 };
-  enum : int32_t { AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12 };
-  enum : int32_t { AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20 };
-  enum : int32_t { AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30 };
-  static constexpr uint32_t TRANSACTION_setCallback = FIRST_CALL_TRANSACTION + 0;
-  static constexpr uint32_t TRANSACTION_beginCreate = FIRST_CALL_TRANSACTION + 1;
-  static constexpr uint32_t TRANSACTION_addExtension = FIRST_CALL_TRANSACTION + 2;
-  static constexpr uint32_t TRANSACTION_endCreate = FIRST_CALL_TRANSACTION + 3;
-  static constexpr uint32_t TRANSACTION_isPluginAlive = FIRST_CALL_TRANSACTION + 4;
-  static constexpr uint32_t TRANSACTION_extension = FIRST_CALL_TRANSACTION + 5;
-  static constexpr uint32_t TRANSACTION_beginPrepare = FIRST_CALL_TRANSACTION + 6;
-  static constexpr uint32_t TRANSACTION_prepareMemory = FIRST_CALL_TRANSACTION + 7;
-  static constexpr uint32_t TRANSACTION_endPrepare = FIRST_CALL_TRANSACTION + 8;
-  static constexpr uint32_t TRANSACTION_activate = FIRST_CALL_TRANSACTION + 9;
-  static constexpr uint32_t TRANSACTION_process = FIRST_CALL_TRANSACTION + 10;
-  static constexpr uint32_t TRANSACTION_deactivate = FIRST_CALL_TRANSACTION + 11;
-  static constexpr uint32_t TRANSACTION_destroy = FIRST_CALL_TRANSACTION + 12;
+
+  enum : int32_t {
+    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1,
+    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED = 2,
+    AAP_BINDER_ERROR_UNEXPECTED_FEATURE_URI = 3,
+    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION = 10,
+    AAP_BINDER_ERROR_MMAP_FAILED = 11,
+    AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12,
+    AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20,
+    AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30,
+  };
 
   static std::shared_ptr<IAudioPluginInterface> fromBinder(const ::ndk::SpAIBinder& binder);
   static binder_status_t writeToParcel(AParcel* parcel, const std::shared_ptr<IAudioPluginInterface>& instance);
   static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IAudioPluginInterface>* instance);
-  static bool setDefaultImpl(const std::shared_ptr<IAudioPluginInterface>& impl);
+  static bool setDefaultImpl(std::shared_ptr<IAudioPluginInterface> impl);
   static const std::shared_ptr<IAudioPluginInterface>& getDefaultImpl();
   virtual ::ndk::ScopedAStatus setCallback(const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) = 0;
   virtual ::ndk::ScopedAStatus beginCreate(const std::string& in_pluginId, int32_t in_sampleRate, int32_t* _aidl_return) = 0;

@@ -29,7 +29,7 @@ android {
             packaging.jniLibs.keepDebugSymbols.add("**/*.so")
             externalNativeBuild {
                 cmake {
-                    cppFlags ("-Werror")
+                    //cppFlags ("-Werror")
                 }
             }
         }
@@ -42,7 +42,7 @@ android {
             // FIXME: remove this once we figure out how to work around this issue: https://github.com/atsushieno/aap-core/issues/194
             externalNativeBuild {
                 cmake {
-                    arguments ("-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O1 -g -DNDEBUG")
+                    arguments ("-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O1 -g -DNDEBUG -finline -fvectorize -fslp-vectorize")
                 }
             }
         }
