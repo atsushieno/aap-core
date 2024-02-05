@@ -3,13 +3,13 @@
 
 // AAPXS v2 runtime - strongly typed.
 
-#include <assert.h>
 #include <cstdint>
 #include <vector>
 #include <map>
 #include <future>
 #include "aap/aapxs.h"
 #include "../../android-audio-plugin.h"
+#include "aap/unstable/utility.h"
 
 namespace aap::xs {
     /**
@@ -33,7 +33,10 @@ namespace aap::xs {
         }
 
         uint8_t tryAdd(const char* uri) {
-            assert(uris.size() < UINT8_MAX);
+            if (uris.size() >= UINT8_MAX) {
+                AAP_ASSERT_FALSE;
+                return -1;
+            }
             auto existing = getUrid(uri);
             if (existing > 0)
                 return existing;
@@ -72,8 +75,14 @@ namespace aap::xs {
         const_iterator end() const { return urids.cend(); }
 
         void forceAdd(uint8_t urid, char* uri) {
-            assert(uri);
-            assert(strlen(uri) > 0);
+            if (!uri) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
+            if (strlen(uri) <= 0) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
 
             string_pool.emplace_back(uri);
             while (urids.size() < urid)
@@ -171,10 +180,10 @@ namespace aap::xs {
     public:
         AAPXSClientDispatcher(AAPXSDefinitionRegistry* registry);
 
-        inline AAPXSInitiatorInstance* getPluginAAPXSByUri(const char* uri) { assert(already_setup); return initiators.getByUri(uri); }
-        inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { assert(already_setup); return initiators.getByUrid(urid); };
-        inline AAPXSRecipientInstance* getHostAAPXSByUri(const char* uri) { assert(already_setup); return recipients.getByUri(uri); }
-        inline AAPXSRecipientInstance* getHostAAPXSByUrid(uint8_t urid) { assert(already_setup); return recipients.getByUrid(urid); };
+        inline AAPXSInitiatorInstance* getPluginAAPXSByUri(const char* uri) { if (already_setup) return initiators.getByUri(uri); AAP_ASSERT_FALSE; return nullptr; }
+        inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return initiators.getByUrid(urid); AAP_ASSERT_FALSE; return nullptr; }
+        inline AAPXSRecipientInstance* getHostAAPXSByUri(const char* uri) { if (already_setup) return recipients.getByUri(uri); AAP_ASSERT_FALSE; return nullptr; }
+        inline AAPXSRecipientInstance* getHostAAPXSByUrid(uint8_t urid) { if (already_setup) return recipients.getByUrid(urid); AAP_ASSERT_FALSE; return nullptr; }
 
         bool
         setupInstances(void* hostContext,
@@ -206,10 +215,10 @@ namespace aap::xs {
     public:
         AAPXSServiceDispatcher(AAPXSDefinitionRegistry* registry);
 
-        AAPXSRecipientInstance* getPluginAAPXSByUri(const char* uri) { assert(already_setup); return recipients.getByUri(uri); }
-        AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { assert(already_setup); return recipients.getByUrid(urid); };
-        AAPXSInitiatorInstance* getHostAAPXSByUri(const char* uri) { assert(already_setup); return initiators.getByUri(uri); }
-        AAPXSInitiatorInstance* getHostAAPXSByUrid(uint8_t urid) { assert(already_setup); return initiators.getByUrid(urid); };
+        AAPXSRecipientInstance* getPluginAAPXSByUri(const char* uri) { if (already_setup) return recipients.getByUri(uri);  AAP_ASSERT_FALSE; return nullptr; }
+        AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return recipients.getByUrid(urid);  AAP_ASSERT_FALSE; return nullptr; }
+        AAPXSInitiatorInstance* getHostAAPXSByUri(const char* uri) { if (already_setup) return initiators.getByUri(uri);  AAP_ASSERT_FALSE; return nullptr; }
+        AAPXSInitiatorInstance* getHostAAPXSByUrid(uint8_t urid) { if (already_setup) return initiators.getByUrid(urid);  AAP_ASSERT_FALSE; return nullptr; }
 
         void
         setupInstances(void* hostContext,

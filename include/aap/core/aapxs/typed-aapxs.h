@@ -1,10 +1,10 @@
 #ifndef AAP_CORE_TYPED_AAPXS_H
 #define AAP_CORE_TYPED_AAPXS_H
 
-#include <cassert>
 #include <future>
 #include "aap/aapxs.h"
 #include "../../android-audio-plugin.h"
+#include "aap/unstable/utility.h"
 
 namespace aap::xs {
     template<typename T, typename R>
@@ -22,9 +22,18 @@ namespace aap::xs {
     public:
         TypedAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : uri(uri), aapxs_instance(initiatorInstance), serialization(serialization) {
-            assert(uri);
-            assert(aapxs_instance);
-            assert(serialization);
+            if (!uri) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
+            if (!aapxs_instance) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
+            if (!serialization) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
         }
 
         virtual ~TypedAAPXS() {}

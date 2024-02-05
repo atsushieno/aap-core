@@ -153,7 +153,8 @@ namespace aap {
             cached_shm_fds_for_prepare = std::make_unique<std::vector<int32_t>>();
 
             port_buffer_fds = std::make_unique<std::vector<int32_t>>();
-            assert(port_buffer_fds);
+            if (!port_buffer_fds)
+                AAP_ASSERT_FALSE;
         }
 
         virtual ~PluginSharedMemoryStore() {
@@ -212,7 +213,10 @@ namespace aap {
 
         // So far it is used only by aap_client_as_plugin.
         aap_buffer_t* getAudioPluginBuffer() {
-            assert(port_buffer); // make sure to call allocate*Buffer() first.
+            if (!port_buffer) { // make sure to call allocate*Buffer() first.
+                AAP_ASSERT_FALSE;
+                return nullptr;
+            }
             return port_buffer->toPublicApi();
         }
 

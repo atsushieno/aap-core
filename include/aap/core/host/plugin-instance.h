@@ -94,8 +94,12 @@ namespace aap {
         const ParameterInformation *getParameter(int32_t index) {
             if (!cached_parameters)
                 return pluginInfo->getDeclaredParameter(index);
-            assert(cached_parameters->size() > index);
-            return &(*cached_parameters)[index];
+            if (cached_parameters->size() > index)
+                return &(*cached_parameters)[index];
+            else {
+                AAP_ASSERT_FALSE;
+                return nullptr;
+            }
         }
 
         int32_t getNumPorts() {
@@ -106,8 +110,12 @@ namespace aap {
         const PortInformation *getPort(int32_t index) {
             if (!configured_ports)
                 return pluginInfo->getDeclaredPort(index);
-            assert(configured_ports->size() > index);
-            return &(*configured_ports)[index];
+            if (configured_ports->size() > index)
+                return &(*configured_ports)[index];
+            else {
+                AAP_ASSERT_FALSE;
+                return nullptr;
+            }
         }
 
         virtual void prepare(int maximumExpectedSamplesPerBlock) = 0;
@@ -209,8 +217,11 @@ namespace aap {
         void controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId);
 
         void prepare(int32_t maximumExpectedSamplesPerBlock) override {
-            assert(instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED ||
-                   instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE);
+            if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
+                   instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
+                AAP_ASSERT_FALSE;
+                return;
+            }
 
             plugin->prepare(plugin, getAudioPluginBuffer());
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
@@ -289,7 +300,10 @@ namespace aap {
 
         int32_t getInstanceId() override {
             // Make sure that we never try to retrieve it before being initialized at completeInstantiation() (at client)
-            assert(instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL);
+            if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL) {
+                AAP_ASSERT_FALSE;
+                return -1;
+            }
             return instance_id;
         }
 
