@@ -3,14 +3,18 @@ cmake_minimum_required(VERSION 3.5.1)
 project(androidaudioplugin LANGUAGES CXX)
 
 # List of sources. Android build has some additional sources.
-set (androidaudioplugin_SOURCES
+# FIXME: remove these "avoid vectorization bug" hacks once this issue is resolved:
+#  https://github.com/atsushieno/aap-core/issues/194
+set (androidaudioplugin_SOURCES_NO_VECTORIZE
+		"core/hosting/aap_midi2_helper.cpp"
+)
+set (androidaudioplugin_SOURCES_VECTORIZE
 	"core/hosting/AAPXSMidi2InitiatorSession.cpp"
 	"core/hosting/AAPXSMidi2RecipientSession.cpp"
 	"core/hosting/PluginInformation.cpp"
 	"core/hosting/PluginInstance.cpp"
 	"core/hosting/PluginInstance.Local.cpp"
 	"core/hosting/PluginInstance.Remote.cpp"
-	"core/hosting/aap_midi2_helper.cpp"
 	"core/hosting/audio-plugin-host.cpp"
 	"core/hosting/PluginHost.cpp"
 	"core/hosting/PluginHost.Client.cpp"
@@ -25,6 +29,11 @@ set (androidaudioplugin_SOURCES
 	"core/aapxs/state-aapxs.cpp"
 	"core/aapxs/standard-extensions.cpp"
 	"core/aapxs/urid-aapxs.cpp"
+)
+set_source_files_properties(${androidaudioplugin_SOURCES_VECTORIZE} PROPERTIES COMPILE_FLAGS -fvectorize)
+set (androidaudioplugin_SOURCES
+		${androidaudioplugin_SOURCES_NO_VECTORIZE}
+		${androidaudioplugin_SOURCES_VECTORIZE}
 )
 
 if (ANDROID)
