@@ -39,12 +39,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // FIXME: remove this once we figure out how to work around this issue: https://github.com/atsushieno/aap-core/issues/194
-            externalNativeBuild {
-                cmake {
-                    arguments ("-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O1 -g -DNDEBUG -finline -fslp-vectorize -fvectorize")
-                }
-            }
         }
     }
 
