@@ -22,10 +22,6 @@ static void aapMidi2ExtensionHelperPutUInt32(uint8_t* dst, uint32_t value) {
         *((uint32_t*) dst) = value;
 }
 
-uint32_t aap_midi2_aapxs_get_request_id(uint8_t* ump) {
-    return aapMidi2ExtensionHelperGetUInt32(ump + 8);
-}
-
 static void* aapMidi2ExtensionInvokeHelperSysEx8Forge(uint64_t data1, uint64_t data2, size_t index, void* context) {
     auto forge = (cmidi2_ump_forge*) context;
     if (cmidi2_ump_forge_add_packet_128(forge, data1, data2))
