@@ -1,7 +1,11 @@
 #!/bin/bash
 
+if [ "`uname`" == 'Darwin' ] ; then
 ANDROID_HOME=~/Library/Android/sdk
-BUILD_TOOLS_VERSION=33.0.2
+else
+ANDROID_HOME=~/Android/Sdk
+fi
+BUILD_TOOLS_VERSION=34.0.0
 THIS_DIR=`dirname $(readlink -f $0)`
 AIDL_DIR=$THIS_DIR
 AIDL_TOOL=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aidl
