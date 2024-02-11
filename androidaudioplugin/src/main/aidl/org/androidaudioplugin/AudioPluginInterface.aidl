@@ -15,6 +15,7 @@ interface AudioPluginInterface {
 	void setCallback(in AudioPluginInterfaceCallback callback);
 
     // Instance operations
+
 	int beginCreate(String pluginId, int sampleRate);
 	// add an AAP extension, with a URI, with an optional shared memory FD and its size dedicated to it.
 	// For consistency in the future, the order of calls to `addExtension()` should be considered as significant

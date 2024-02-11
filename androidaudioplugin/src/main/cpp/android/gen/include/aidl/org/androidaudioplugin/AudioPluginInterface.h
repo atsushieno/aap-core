@@ -11,11 +11,17 @@
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
 
+namespace aidl::org::androidaudioplugin {
+class IAudioPluginInterfaceCallback;
+}  // namespace aidl::org::androidaudioplugin
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
+class IAudioPluginInterfaceDelegator;
+
 class IAudioPluginInterface : public ::ndk::ICInterface {
 public:
+  typedef IAudioPluginInterfaceDelegator DefaultDelegator;
   static const char* descriptor;
   IAudioPluginInterface();
   virtual ~IAudioPluginInterface();

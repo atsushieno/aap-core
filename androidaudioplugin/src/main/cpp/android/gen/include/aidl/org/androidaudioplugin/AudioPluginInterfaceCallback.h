@@ -13,8 +13,11 @@
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
+class IAudioPluginInterfaceCallbackDelegator;
+
 class IAudioPluginInterfaceCallback : public ::ndk::ICInterface {
 public:
+  typedef IAudioPluginInterfaceCallbackDelegator DefaultDelegator;
   static const char* descriptor;
   IAudioPluginInterfaceCallback();
   virtual ~IAudioPluginInterfaceCallback();
