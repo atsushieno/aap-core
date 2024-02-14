@@ -18,18 +18,26 @@
 
 namespace aap {
 
-class AndroidAudioPluginServiceCallback : public AudioPluginServiceCallback {
-public:
-    AndroidAudioPluginServiceCallback() {}
-    virtual ~AndroidAudioPluginServiceCallback() {}
+class AudioPluginServiceCallbackAndroid : public AudioPluginServiceCallback {
+    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> proxy{nullptr};
 
-    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback_proxy{nullptr};
+public:
+    AudioPluginServiceCallbackAndroid() {}
+    virtual ~AudioPluginServiceCallbackAndroid() {}
+
+    void setProxy(std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> newProxy) {
+        if (!proxy)
+            aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
+                       "setCallback() is already invoked. "
+                       "The Service connection is at suspicious state e.g. initialized twice");
+        proxy = std::move(newProxy);
+    }
 
     void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-        callback_proxy->hostExtension(in_instanceId, in_uri, in_opcode);
+        proxy->hostExtension(in_instanceId, in_uri, in_opcode);
     }
     void requestProcess(int32_t in_instanceId) override {
-        callback_proxy->requestProcess(in_instanceId);
+        proxy->requestProcess(in_instanceId);
     }
 };
 
@@ -40,13 +48,13 @@ class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPl
     PluginListSnapshot plugins;
     std::unique_ptr<PluginService> svc;
     std::vector<aap_buffer_t> buffers{};
-    std::unique_ptr<AndroidAudioPluginServiceCallback> plugin_service_callback{nullptr};
+    std::unique_ptr<AudioPluginServiceCallbackAndroid> plugin_service_callback{nullptr};
 
 public:
 
     AudioPluginInterfaceImpl() {
         plugins = PluginListSnapshot::queryServices();
-        plugin_service_callback = std::make_unique<AndroidAudioPluginServiceCallback>();
+        plugin_service_callback = std::make_unique<AudioPluginServiceCallbackAndroid>();
         svc.reset(new PluginService(&plugins, plugin_service_callback.get()));
         aap::PluginServiceList::getInstance()->addBoundServiceInProcess(svc.get());
     }
@@ -56,12 +64,13 @@ public:
     }
 
     ::ndk::ScopedAStatus setCallback(const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback>& in_callback) override {
-        if (plugin_service_callback->callback_proxy.get()) {
+        if (in_callback == nullptr) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
+                       "AudioPluginInterfaceImpl::setCallback() received null callback.");
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_CALLBACK_ALREADY_SET, "failed to create AAP service instance: callback already exists.");
+                    AAP_BINDER_ERROR_NULL_CALLBACK, "AudioPluginInterfaceImpl::setCallback() received null callback.");
         }
-        plugin_service_callback->callback_proxy.reset(in_callback.get());
-
+        plugin_service_callback->setProxy(in_callback);
         return ndk::ScopedAStatus::ok();
     }
 

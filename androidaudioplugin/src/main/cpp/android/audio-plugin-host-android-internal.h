@@ -6,6 +6,8 @@
 
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
+#include "aidl/org/androidaudioplugin/BnAudioPluginInterfaceCallback.h"
+#include "aidl/org/androidaudioplugin/BpAudioPluginInterfaceCallback.h"
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/host/plugin-client-system.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
@@ -40,32 +42,35 @@ public:
 };
 
 class AndroidPluginClientConnectionData {
+    class AudioPluginInterfaceCallbackImpl : public aidl::org::androidaudioplugin::BnAudioPluginInterfaceCallback {
+            AndroidPluginClientConnectionData* owner;
+        public:
+            AudioPluginInterfaceCallbackImpl(AndroidPluginClientConnectionData* owner)
+                : owner(owner) {
+            }
+
+            ~AudioPluginInterfaceCallbackImpl() {}
+
+            ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
+                return owner->handleRequestProcess(in_instanceId);
+            }
+
+            ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
+                return owner->handleHostExtension(in_instanceId, in_uri, in_opcode);
+            }
+        };
+
     ndk::SpAIBinder spAIBinder;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
-    std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> callback;
-
-    class AudioPluginCallback : public aidl::org::androidaudioplugin::IAudioPluginInterfaceCallbackDefault {
-        AndroidPluginClientConnectionData* owner;
-
-    public:
-        AudioPluginCallback(AndroidPluginClientConnectionData* owner) : owner(owner) {}
-
-        ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
-            return owner->handleRequestProcess(in_instanceId);
-        }
-
-        ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-            return owner->handleHostExtension(in_instanceId, in_uri, in_opcode);
-        }
-    };
-
+    std::shared_ptr<AudioPluginInterfaceCallbackImpl> callback;
 public:
     AndroidPluginClientConnectionData(AIBinder* aiBinder) {
         spAIBinder.set(aiBinder);
         proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
-        callback = std::make_shared<AudioPluginCallback>(this);
-        proxy->setCallback(callback);
+        callback = ndk::SharedRefBase::make<AudioPluginInterfaceCallbackImpl>(this);
+        proxy->setCallback(callback->ref<AudioPluginInterfaceCallbackImpl>());
     }
+    virtual ~AndroidPluginClientConnectionData() {}
 
     std::function<::ndk::ScopedAStatus(int32_t instanceId)> request_process;
     std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode)> host_extension;

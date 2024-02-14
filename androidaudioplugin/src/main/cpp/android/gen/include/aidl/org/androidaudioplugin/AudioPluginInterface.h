@@ -34,6 +34,7 @@ public:
   enum : int32_t { AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12 };
   enum : int32_t { AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20 };
   enum : int32_t { AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30 };
+  enum : int32_t { AAP_BINDER_ERROR_NULL_CALLBACK = 31 };
   static constexpr uint32_t TRANSACTION_setCallback = FIRST_CALL_TRANSACTION + 0;
   static constexpr uint32_t TRANSACTION_beginCreate = FIRST_CALL_TRANSACTION + 1;
   static constexpr uint32_t TRANSACTION_addExtension = FIRST_CALL_TRANSACTION + 2;

@@ -10,6 +10,7 @@ interface AudioPluginInterface {
     const int AAP_BINDER_ERROR_MMAP_NULL_RETURN = 12;
     const int AAP_BINDER_ERROR_INVALID_SHARED_MEMORY_FD = 20;
     const int AAP_BINDER_ERROR_CALLBACK_ALREADY_SET = 30;
+    const int AAP_BINDER_ERROR_NULL_CALLBACK = 31;
 
     // ServiceConnection operations
 	void setCallback(in AudioPluginInterfaceCallback callback);
