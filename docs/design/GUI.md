@@ -131,9 +131,16 @@ Since it is communication between the host and the plugin, the API will have to 
 
 ## In-plugin-process View
 
+**TODO: this documentation is not precise; it was written when we were using SYSTEM_ALERT_WINDOW. In the latest in-plugin-process UI with SurfaceControlViewHost, we do not have `AudioPluginView` (at least not yet). `createView()` directly creates an `android.view.View` and we directly use it as either `AndroidView` in Jetpack Compose, or `juce::AndroidViewComponent` in aap-juce apps. GUI extension is almost outdated, likewise.**
+
 In-plugin-process View is useful if Android Views are feasible.
 
 Every in-plugin-process View must be derived from `AudioPluginView` so that it can handle interoperability with the plugin host. The actual `AudioPluginView` is returned by `AudioPluginViewFactory.createView(pluginId: String)`. Each plugin declares a GUI factory which must be derived from this `AudioPluginViewFactory` class. `createView()` is an abstract method. The factory class is described in `aap_metadata.xml`.
+
+Here are some exaples:
+
+- `ComposeAudioPluginViewFactory` in `androidaudioplugin-ui-compose` - creates Jetpack Compose plugin view.
+- `AudioPluginWebViewFactory` in - creates WebView (you can use it as an in-plugin-process View too)
 
 The host will be rendering it through `SurfaceControlViewHost` (the details are explained later). This `AudioPluginView` class has these methods:
 
