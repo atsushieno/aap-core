@@ -38,11 +38,10 @@
             android:permission="android.permission.BIND_MIDI_DEVICE_SERVICE"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.media.midi.MidiDeviceService" />
+                <action android:name="android.media.midi.MidiUmpDeviceService" />
             </intent-filter>
-            <!-- we can reference the *same* device_info.xml as MidiDeviceService so far -->
-            <meta-data android:name="android.media.midi.MidiDeviceService"
-                android:resource="@xml/device_info" />
+            <meta-data android:name="android.media.midi.UmpMidiDeviceService"
+                android:resource="@xml/ump_device_info" />
         </service>
     </application>
 </manifest>

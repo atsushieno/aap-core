@@ -16,11 +16,6 @@ abstract class AudioPluginMidiUmpDeviceService : MidiUmpDeviceService() {
     // It is designed to be open overridable.
     abstract val plugins: List<PluginInformation>
 
-    override fun onCreate() {
-        // weird-looking, but this is the correct order
-        impl.onCreate()
-        super.onCreate()
-    }
     override fun onGetInputPortReceivers() = impl.onGetInputPortReceivers().toMutableList()
     override fun onDeviceStatusChanged(status: MidiDeviceStatus) {
         super.onDeviceStatusChanged(status)
@@ -34,11 +29,6 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
     // It is designed to be open overridable.
     abstract val plugins: List<PluginInformation>
 
-    override fun onCreate() {
-        // weird-looking, but this is the correct order
-        impl.onCreate()
-        super.onCreate()
-    }
     override fun onGetInputPortReceivers(): Array<MidiReceiver> = impl.onGetInputPortReceivers()
     override fun onDeviceStatusChanged(status: MidiDeviceStatus) {
         super.onDeviceStatusChanged(status)
@@ -47,32 +37,30 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 }
 
 internal class AudioPluginMidi1Device(owner: AudioPluginMidiDeviceService)
-    : AudioPluginMidiDevice(owner.applicationContext, owner.deviceInfo, owner.plugins) {
+    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo }, owner.plugins) {
 
     override val midiProtocol = 1
 }
 
 @RequiresApi(35)
 internal class AudioPluginMidi2Device(owner: AudioPluginMidiUmpDeviceService)
-    : AudioPluginMidiDevice(owner.applicationContext, owner.deviceInfo!!, owner.plugins) {
+    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo!! }, owner.plugins) {
 
     override val midiProtocol = 2
 }
 
 abstract class AudioPluginMidiDevice(
-    val applicationContext: Context,
-    val deviceInfo: MidiDeviceInfo,
+    lazyGetApplicationContext: ()->Context,
+    lazyGetDeviceInfo: ()->MidiDeviceInfo,
     candidatePlugins: List<PluginInformation>
 ) {
+    val applicationContext by lazy { lazyGetApplicationContext() }
+    val deviceInfo by lazy { lazyGetDeviceInfo() }
 
     val plugins: List<PluginInformation> = candidatePlugins.filter { p -> isInstrument(p) }
     private fun isInstrument(info: PluginInformation) : Boolean {
         val c = info.category
         return c != null && (c.contains(PluginInformation.PRIMARY_CATEGORY_INSTRUMENT) || c.contains("Synth"))
-    }
-
-    fun onCreate() {
-        portStatus = Array(deviceInfo.inputPortCount) { false }
     }
 
     abstract val midiProtocol: Int
@@ -84,7 +72,7 @@ abstract class AudioPluginMidiDevice(
 
     fun onGetInputPortReceivers(): Array<MidiReceiver> = receivers
 
-    private lateinit var portStatus: Array<Boolean>
+    private val portStatus by lazy { Array(deviceInfo.inputPortCount) { false } }
 
     fun onDeviceStatusChanged(status: MidiDeviceStatus) {
         for (i in 0 until deviceInfo.inputPortCount) {

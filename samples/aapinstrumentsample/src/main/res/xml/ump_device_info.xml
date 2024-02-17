@@ -1,0 +1,7 @@
+<devices>
+    <device name="InstrumentAPISample-UMP" manufacturer="androidaudioplugin.org" product="InstrumentSampleMidiDeviceService">
+        <input-port name="input" />
+        <output-port name="output" />
+    </device>
+</devices>
+
