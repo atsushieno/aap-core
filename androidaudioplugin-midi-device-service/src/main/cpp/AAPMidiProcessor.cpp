@@ -69,7 +69,9 @@ namespace aap::midi {
         return AudioCallbackResult::Continue;
     }
 
-    void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t audioOutChannelCount, int32_t aapFrameSize, int32_t midiBufferSize) {
+    void AAPMidiProcessor::initialize(aap::PluginClientConnectionList* connections,
+                                      int32_t sampleRate, int32_t audioOutChannelCount,
+                                      int32_t aapFrameSize, int32_t midiBufferSize, int32_t midiTransport) {
         if (!connections) {
             AAP_ASSERT_FALSE;
             return;
@@ -82,6 +84,7 @@ namespace aap::midi {
         aap_frame_size = aapFrameSize;
         midi_buffer_size = midiBufferSize;
         channel_count = audioOutChannelCount;
+        receiver_midi_protocol = midiTransport == 2 ? CMIDI2_PROTOCOL_TYPE_MIDI2 : CMIDI2_PROTOCOL_TYPE_MIDI1;
 
         aap_input_ring_buffer = zix_ring_new(aap_frame_size * audioOutChannelCount * sizeof(float) * 2); // xx for ring buffering
         zix_ring_mlock(aap_input_ring_buffer);

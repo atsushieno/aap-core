@@ -44,7 +44,9 @@ aap::midi::AAPMidiProcessorAndroid* getDeviceInstance() {
 #define AAPMIDIDEVICE_INSTANCE getDeviceInstance()
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_initializeMidiProcessor(
-        JNIEnv *env, jobject midiReceiver, jint connectorInstanceId, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount, jint aapFrameSize, jint midiBufferSize) {
+        JNIEnv *env, jobject midiReceiver,
+        jint connectorInstanceId, jint sampleRate, jint oboeFrameSize, jint audioOutChannelCount,
+        jint aapFrameSize, jint midiBufferSize, jint midiTransport) {
     startNewDeviceInstance();
 
     auto connections = aap::getPluginConnectionListByConnectorInstanceId(connectorInstanceId, true);
@@ -53,7 +55,9 @@ JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPlugin
         return;
     }
 
-    AAPMIDIDEVICE_INSTANCE->initialize(connections, sampleRate, oboeFrameSize, audioOutChannelCount, aapFrameSize, midiBufferSize);
+    AAPMIDIDEVICE_INSTANCE->initialize(connections,
+                                       sampleRate, oboeFrameSize, audioOutChannelCount,
+                                       aapFrameSize, midiBufferSize, midiTransport);
 }
 
 JNIEXPORT void JNICALL Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_terminateMidiProcessor(

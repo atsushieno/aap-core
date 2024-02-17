@@ -11,7 +11,7 @@ class AudioPluginMidiDeviceInstance private constructor(
     private val client: AudioPluginClientBase) {
 
     companion object {
-        suspend fun create(pluginId: String, ownerService: AudioPluginMidiDeviceService) : AudioPluginMidiDeviceInstance {
+        suspend fun create(pluginId: String, ownerService: AudioPluginMidiDevice, midiTransport: Int) : AudioPluginMidiDeviceInstance {
             val audioManager = ownerService.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
             val oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
@@ -23,7 +23,8 @@ class AudioPluginMidiDeviceInstance private constructor(
             // FIXME: adjust audioOutChannelCount and appFrameSize somewhere?
 
             ret.initializeMidiProcessor(client.serviceConnectionId,
-                sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize, ret.midiBufferSize)
+                sampleRate, oboeFrameSize, ret.audioOutChannelCount, ret.aapFrameSize,
+                ret.midiBufferSize, midiTransport)
 
             val pluginInfo = ownerService.plugins.first { p -> p.pluginId == pluginId }
             client.connectToPluginService(pluginInfo.packageName)
@@ -51,7 +52,14 @@ class AudioPluginMidiDeviceInstance private constructor(
     }
 
     // Initialize basic native parts, without any plugin information.
-    private external fun initializeMidiProcessor(connectorInstanceId: Int, sampleRate: Int, oboeFrameSize: Int, audioOutChannelCount: Int, aapFrameSize: Int, midiBufferSize: Int)
+    private external fun initializeMidiProcessor(
+        connectorInstanceId: Int,
+        sampleRate: Int,
+        oboeFrameSize: Int,
+        audioOutChannelCount: Int,
+        aapFrameSize: Int,
+        midiBufferSize: Int,
+        midiTransport: Int)
     private external fun terminateMidiProcessor()
     private external fun instantiatePlugin(pluginId: String)
     private external fun processMessage(msg: ByteArray?, offset: Int, count: Int, timestampInNanoseconds: Long)

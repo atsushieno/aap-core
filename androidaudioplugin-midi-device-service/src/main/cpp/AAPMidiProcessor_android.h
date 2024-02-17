@@ -102,13 +102,15 @@ public:
             std::make_unique<AAPMidiProcessorAndroidStubPAL>(this) :
             std::make_unique<AAPMidiProcessorOboePAL>(this)) {}
 
-    inline void initialize(aap::PluginClientConnectionList* connections, int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount, int32_t aapFrameSize, int midiBufferSize) {
+    void initialize(aap::PluginClientConnectionList* connections,
+                           int32_t sampleRate, int32_t oboeBurstFrameSize, int32_t channelCount,
+                           int32_t aapFrameSize, int32_t midiBufferSize, int32_t midiTransport) {
         if (!connections) {
             AAP_ASSERT_FALSE;
             return;
         }
         androidPAL->setBufferCapacityInFrames(oboeBurstFrameSize);
-        AAPMidiProcessor::initialize(connections, sampleRate, channelCount, aapFrameSize, midiBufferSize);
+        AAPMidiProcessor::initialize(connections, sampleRate, channelCount, aapFrameSize, midiBufferSize, midiTransport);
     }
 };
 

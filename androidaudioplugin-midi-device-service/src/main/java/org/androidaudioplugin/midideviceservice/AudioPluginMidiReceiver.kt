@@ -21,7 +21,10 @@ import kotlinx.coroutines.runBlocking
 // depends on Application context until MidiDeviceService.onCreate() is invoked, so
 // (1) we have a dedicated `initialize()` method to do that job, so (2) do not anything
 // before that happens!
-open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDeviceService, private val portIndex: Int) : MidiReceiver() {
+open class AudioPluginMidiReceiver(
+    private val owner: AudioPluginMidiDevice,
+    private val portIndex: Int,
+    private val midiTransport: Int) : MidiReceiver() {
     companion object {
         init {
             System.loadLibrary("aapmidideviceservice")
@@ -29,12 +32,12 @@ open class AudioPluginMidiReceiver(private val ownerService: AudioPluginMidiDevi
     }
 
     private var instance: AudioPluginMidiDeviceInstance? = null
-    private val port = ownerService.deviceInfo.ports[portIndex]
+    private val port = owner.deviceInfo.ports[portIndex]
 
     fun onDeviceOpened() {
         assert(instance == null)
         runBlocking {
-            instance = AudioPluginMidiDeviceInstance.create(ownerService.getPluginId(portIndex), ownerService)
+            instance = AudioPluginMidiDeviceInstance.create(owner.getPluginId(portIndex), owner, midiTransport)
         }
     }
 

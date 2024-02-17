@@ -34,5 +34,15 @@
             <meta-data android:name="android.media.midi.MidiDeviceService"
                 android:resource="@xml/device_info" />
         </service>
+        <service android:name="org.androidaudioplugin.midideviceservice.StandaloneAudioPluginMidiUmpDeviceService"
+            android:permission="android.permission.BIND_MIDI_DEVICE_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.midi.MidiDeviceService" />
+            </intent-filter>
+            <!-- we can reference the *same* device_info.xml as MidiDeviceService so far -->
+            <meta-data android:name="android.media.midi.MidiDeviceService"
+                android:resource="@xml/device_info" />
+        </service>
     </application>
 </manifest>

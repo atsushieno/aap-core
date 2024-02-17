@@ -89,6 +89,7 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 		if (pair.first == aiBinder)
 			connectionData = pair.second;
     if (!connectionData) {
+        // FIXME: we need to assign request_process() and host_extension() to this connectionData.
         connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
         live_connection_data[aiBinder] = connectionData;
 		AIBinder_incStrong(aiBinder);

@@ -1,11 +1,13 @@
 
 android {
-    compileSdk = libs.versions.android.compileSdk.get().toInteger()
-    buildToolsVersion = libs.versions.build.tools.get()
+    //compileSdk = libs.versions.android.compileSdk.get().toInteger()
+    compileSdkPreview = "VanillaIceCream"
+    //buildToolsVersion = libs.versions.build.tools.get()
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInteger()
-        targetSdk = libs.versions.android.targetSdk.get().toInteger()
+        //targetSdk = libs.versions.android.targetSdk.get().toInteger()
+        targetSdkPreview = "VanillaIceCream"
         versionCode = 1
         versionName = libs.versions.aap.core.get()
 
