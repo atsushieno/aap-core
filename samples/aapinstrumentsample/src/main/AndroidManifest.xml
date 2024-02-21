@@ -40,7 +40,7 @@
             <intent-filter>
                 <action android:name="android.media.midi.MidiUmpDeviceService" />
             </intent-filter>
-            <meta-data android:name="android.media.midi.MidiUmpDeviceService"
+            <property android:name="android.media.midi.MidiUmpDeviceService"
                 android:resource="@xml/ump_device_info" />
         </service>
     </application>
