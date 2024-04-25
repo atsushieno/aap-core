@@ -6,8 +6,8 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInteger()
-        //targetSdk = libs.versions.android.targetSdk.get().toInteger()
-        targetSdkPreview = "VanillaIceCream"
+        targetSdk = libs.versions.android.targetSdk.get().toInteger()
+        //targetSdkPreview = "VanillaIceCream"
         versionCode = 1
         versionName = libs.versions.aap.core.get()
 
