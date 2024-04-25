@@ -2,6 +2,9 @@
 #include "OboeAudioDeviceManager.h"
 #include <audio/choc_SampleBuffers.h>
 #include <containers/choc_VariableSizeFIFO.h>
+#if ANDROID
+#include <android/trace.h>
+#endif
 
 namespace aap {
 #define AAP_OBOE_IO_TIMEOUT_MILLISECONDS 0
@@ -34,9 +37,9 @@ namespace aap {
 
         bool onError(oboe::AudioStream *, oboe::Result) override;
 
-        void copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames);
+        void copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int32_t bufferPosition, int32_t numFrames) const;
 
-        void copyAAPBufferForWriting(AudioBuffer *srcAudioData, int32_t currentPosition, int32_t numFrames);
+        void copyAAPBufferForWriting(AudioBuffer *srcAudioData, int32_t currentPosition, int32_t numFrames) const;
     };
 
     class OboeAudioDeviceIn :
@@ -169,11 +172,19 @@ aap::OboeAudioDevice::onAudioInputReady(oboe::AudioStream *audioStream, void *ob
     return oboe::DataCallbackResult::Continue;
 }
 
+const char* local_trace_name = "AAP::OboeAudioDevice::onAudioOutputReady";
 oboe::DataCallbackResult
 aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *oboeAudioData,
                                         int32_t numFrames) {
     if (aap_callback != nullptr) {
         // kick AAP callback, convert AAP result (channel array) to Oboe (interleaved), then write to oboe buffer
+#if ANDROID
+        struct timespec timeSpecBegin{}, timeSpecEnd{};
+        if (ATrace_isEnabled()) {
+            ATrace_beginSection(local_trace_name);
+            clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
+        }
+#endif
 
         aap_buffer.audio.clear();
         memset(aap_buffer.midi_in, 0, aap_buffer.midi_capacity);
@@ -186,6 +197,15 @@ aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *o
 
         auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copy(oboeView, aap_buffer.audio.getStart(numFrames));
+
+#if ANDROID
+        if (ATrace_isEnabled()) {
+            clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
+            ATrace_setCounter(local_trace_name,
+                              (timeSpecEnd.tv_sec - timeSpecBegin.tv_sec) * 1000000000 + timeSpecEnd.tv_nsec - timeSpecBegin.tv_nsec);
+            ATrace_endSection();
+        }
+#endif
     }
 
     return oboe::DataCallbackResult::Continue;
@@ -197,7 +217,7 @@ void aap::OboeAudioDevice::setCallback(aap::AudioDeviceCallback aapCallback, voi
 }
 
 void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int32_t bufferPosition,
-                                                  int32_t numFrames) {
+                                                  int32_t numFrames) const {
     // This copies current AAP input buffer (ring buffer) into the argument `dstAudioData`, without "consuming".
     // FIXME: use currentPosition
     // FIXME: use bufferPosition
@@ -206,7 +226,7 @@ void aap::OboeAudioDevice::copyCurrentAAPBufferTo(AudioBuffer *dstAudioData, int
 }
 
 void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioBuffer *srcAudioData, int32_t currentPosition,
-                                                   int32_t numFrames) {
+                                                   int32_t numFrames) const {
     // This puts `srcAudioData` into current AAP output buffer (ring buffer).
     // FIXME: currentPosition?
     choc::buffer::FrameRange range{0, (uint32_t ) numFrames};
