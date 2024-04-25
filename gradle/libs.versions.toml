@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.8.0"
-aap-lv2 = "0.3.0"
+aap-core = "0.8.1"
+aap-lv2 = "0.3.1"
 
 android-compileSdk = "34"
 android-minSdk = "29"
@@ -10,17 +10,17 @@ android-targetSdk = "34"
 androidx-lifecycle = "2.7.0"
 accompanist-drawablepainter = "0.32.0"
 accompanist-permissions = "0.32.0"
-agp = "8.2.2"
-kotlin = "1.9.21"
+agp = "8.3.2"
+kotlin = "1.9.23"
 ndk = "26.3.11579264"
 cmake = "3.22.1"
-build-tools = "33.0.1"
+build-tools = "34.0.0"
 dokka = "1.9.10"
 compose = "1.6.0"
-compose-compiler = "1.5.6"
+compose-compiler = "1.5.12"
 androidx-test = "1.5.0"
-coroutines = "1.8.0-RC2"
-ktmidi = "0.7.0"
+coroutines = "1.8.0"
+ktmidi = "0.8.2"
 
 [libraries]
 
