@@ -10,15 +10,15 @@ namespace aap {
     class OboeAudioDeviceOut;
 
     class OboeAudioDeviceManager : public AudioDeviceManager {
-        uint32_t frames_per_callback;
+        uint32_t frames_per_callback{};
         std::shared_ptr<OboeAudioDeviceIn> input{nullptr};
         std::shared_ptr<OboeAudioDeviceOut> output{nullptr};
 
     public:
-        OboeAudioDeviceManager() {}
-        AudioDeviceIn * openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
+        OboeAudioDeviceManager() = default;
+        AudioDeviceIn * ensureDefaultInputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
 
-        AudioDeviceOut * openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
+        AudioDeviceOut * ensureDefaultOutputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
     };
 }
 

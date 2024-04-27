@@ -20,13 +20,13 @@ namespace aap {
         int32_t conversion_helper_buffer_size;
 
         // MIDI protocol type of the messages it receives via JNI
-        int32_t receiver_midi_protocol;
+        int32_t receiver_midi_transport_protocol;
         int32_t current_mapping_policy{AAP_PARAMETERS_MAPPING_POLICY_NONE};
 
         int32_t detectEndpointConfigurationMessage(uint8_t* bytes, size_t offset, size_t length);
 
     public:
-        explicit AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
+        explicit AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiTransportProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
         ~AAPMidiEventTranslator();
 
         void setPlugin(RemotePluginInstance* pluginInstance);

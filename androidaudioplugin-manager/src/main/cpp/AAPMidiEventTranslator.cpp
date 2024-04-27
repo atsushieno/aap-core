@@ -1,11 +1,11 @@
 #include "aap/core/aap_midi2_helper.h"
 #include "AAPMidiEventTranslator.h"
 
-aap::AAPMidiEventTranslator::AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize, int32_t initialMidiProtocol) :
+aap::AAPMidiEventTranslator::AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize, int32_t initialMidiTransportProtocol) :
         instance(instance),
         midi_buffer_size(midiBufferSize),
         conversion_helper_buffer_size(AAP_MAX_EXTENSION_URI_SIZE + AAP_MAX_EXTENSION_DATA_SIZE + 16),
-        receiver_midi_protocol(initialMidiProtocol) {
+        receiver_midi_transport_protocol(initialMidiTransportProtocol) {
     translation_buffer = (uint8_t*) calloc(1, midi_buffer_size);
     conversion_helper_buffer = (uint8_t*) calloc(1, conversion_helper_buffer_size);
 }
@@ -131,14 +131,14 @@ size_t aap::AAPMidiEventTranslator::translateMidiBufferIfNeeded(uint8_t* bytes, 
     //  https://issuetracker.google.com/issues/227690391
     auto protocol = detectEndpointConfigurationMessage(bytes, offset, length);
     if (protocol != 0) {
-        receiver_midi_protocol = protocol;
+        receiver_midi_transport_protocol = protocol;
         // Do not process the rest, it should contain only the Stream Configuration message
         //  (Not an official standard requirement, but the legacy Set New Protocol message was
         //  defined that there must be some rational wait time until the next messages.)
         return 0;
     }
 
-    if (receiver_midi_protocol != CMIDI2_PROTOCOL_TYPE_MIDI2) {
+    if (receiver_midi_transport_protocol != CMIDI2_PROTOCOL_TYPE_MIDI2) {
         // It receives MIDI1 bytestream. We translate to MIDI2 UMPs.
         cmidi2_midi_conversion_context context;
         cmidi2_midi_conversion_context_initialize(&context);

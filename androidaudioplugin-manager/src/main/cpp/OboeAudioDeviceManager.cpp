@@ -87,18 +87,16 @@ namespace aap {
 //--------
 
 aap::AudioDeviceIn *
-aap::OboeAudioDeviceManager::openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
-    // FIXME: this should not be created twice
-    //assert(input == nullptr);
-    input = std::make_shared<OboeAudioDeviceIn>(sampleRate, framesPerCallback, numChannels);
+aap::OboeAudioDeviceManager::ensureDefaultInputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
+    if (input == nullptr)
+        input = std::make_shared<OboeAudioDeviceIn>(sampleRate, framesPerCallback, numChannels);
     return input.get();
 }
 
 aap::AudioDeviceOut *
-aap::OboeAudioDeviceManager::openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
-    // FIXME: this should not be created twice
-    //assert(output == nullptr);
-    output = std::make_shared<OboeAudioDeviceOut>(sampleRate, framesPerCallback, numChannels);
+aap::OboeAudioDeviceManager::ensureDefaultOutputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
+    if (output == nullptr)
+        output = std::make_shared<OboeAudioDeviceOut>(sampleRate, framesPerCallback, numChannels);
     return output.get();
 }
 

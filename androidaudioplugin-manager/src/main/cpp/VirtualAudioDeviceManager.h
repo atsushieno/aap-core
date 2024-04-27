@@ -50,8 +50,8 @@ namespace aap {
                   output(std::make_shared<VirtualAudioDeviceOut>()) {
         }
 
-        AudioDeviceIn * openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return input.get(); }
-        AudioDeviceOut * openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return output.get(); }
+        AudioDeviceIn * ensureDefaultInputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return input.get(); }
+        AudioDeviceOut * ensureDefaultOutputOpened(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return output.get(); }
     };
 
 }
