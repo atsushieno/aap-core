@@ -27,7 +27,7 @@ void aap::PluginPlayer::enableAudioRecorder() {
 }
 
 void
-aap::PluginPlayer::addMidiEvents(uint8_t *data, int32_t dataLength, uint64_t timestampInNanoseconds) {
+aap::PluginPlayer::addMidiEvents(uint8_t *data, int32_t dataLength, int64_t timestampInNanoseconds) {
     graph.addMidiEvent(data, dataLength, timestampInNanoseconds);
 }
 

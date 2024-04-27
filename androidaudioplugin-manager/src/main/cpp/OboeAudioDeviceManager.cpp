@@ -14,8 +14,8 @@ namespace aap {
     protected:
         std::shared_ptr<oboe::AudioStream> stream{};
         oboe::AudioStreamBuilder builder{};
-        void* callback_context;
-        AudioDeviceCallback *aap_callback;
+        void* callback_context{};
+        AudioDeviceCallback *aap_callback{};
         AudioBuffer aap_buffer;
         void* oboe_buffer;
 
@@ -23,9 +23,9 @@ namespace aap {
         oboe::DataCallbackResult onAudioOutputReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames);
 
     public:
-        explicit OboeAudioDevice(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels, oboe::Direction direction);
+        explicit OboeAudioDevice(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels, oboe::Direction direction);
 
-        virtual ~OboeAudioDevice() noexcept;
+        ~OboeAudioDevice() noexcept override;
 
         void setCallback(AudioDeviceCallback callback, void* callbackContext);
 
@@ -47,7 +47,8 @@ namespace aap {
         OboeAudioDevice impl;
 
     public:
-        OboeAudioDeviceIn(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels);
+        OboeAudioDeviceIn(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels);
+        virtual ~OboeAudioDeviceIn() = default;
 
         // required on Android platform
         bool isPermissionRequired() override { return true; }
@@ -68,7 +69,8 @@ namespace aap {
         OboeAudioDevice impl;
 
     public:
-        OboeAudioDeviceOut(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels);
+        OboeAudioDeviceOut(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels);
+        virtual ~OboeAudioDeviceOut() = default;
 
         void startCallback() override { impl.startCallback(); }
 
@@ -85,7 +87,7 @@ namespace aap {
 //--------
 
 aap::AudioDeviceIn *
-aap::OboeAudioDeviceManager::openDefaultInput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) {
+aap::OboeAudioDeviceManager::openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
     // FIXME: this should not be created twice
     //assert(input == nullptr);
     input = std::make_shared<OboeAudioDeviceIn>(sampleRate, framesPerCallback, numChannels);
@@ -93,7 +95,7 @@ aap::OboeAudioDeviceManager::openDefaultInput(uint32_t sampleRate, uint32_t fram
 }
 
 aap::AudioDeviceOut *
-aap::OboeAudioDeviceManager::openDefaultOutput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) {
+aap::OboeAudioDeviceManager::openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) {
     // FIXME: this should not be created twice
     //assert(output == nullptr);
     output = std::make_shared<OboeAudioDeviceOut>(sampleRate, framesPerCallback, numChannels);
@@ -102,7 +104,7 @@ aap::OboeAudioDeviceManager::openDefaultOutput(uint32_t sampleRate, uint32_t fra
 
 //--------
 
-aap::OboeAudioDevice::OboeAudioDevice(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels, oboe::Direction direction) :
+aap::OboeAudioDevice::OboeAudioDevice(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels, oboe::Direction direction) :
         oboe::StabilizedCallback(this),
         aap_buffer(numChannels, (int32_t) framesPerCallback) {
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
@@ -233,18 +235,18 @@ void aap::OboeAudioDevice::copyAAPBufferForWriting(AudioBuffer *srcAudioData, in
     choc::buffer::copy(aap_buffer.audio.getFrameRange(range), srcAudioData->audio.getView().getFrameRange(range));
 }
 
-bool aap::OboeAudioDevice::onError(oboe::AudioStream *stream, oboe::Result result) {
+bool aap::OboeAudioDevice::onError(oboe::AudioStream *audioStream, oboe::Result result) {
     // Should we log errors here?
-    return AudioStreamErrorCallback::onError(stream, result);
+    return AudioStreamErrorCallback::onError(audioStream, result);
 }
 
 //--------
 
-aap::OboeAudioDeviceIn::OboeAudioDeviceIn(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) :
+aap::OboeAudioDeviceIn::OboeAudioDeviceIn(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) :
         impl(sampleRate, framesPerCallback, numChannels, oboe::Direction::Input) {
 }
 
-aap::OboeAudioDeviceOut::OboeAudioDeviceOut(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) :
+aap::OboeAudioDeviceOut::OboeAudioDeviceOut(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) :
         impl(sampleRate, framesPerCallback, numChannels, oboe::Direction::Output) {
 
 }

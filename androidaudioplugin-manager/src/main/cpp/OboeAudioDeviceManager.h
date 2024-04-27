@@ -16,9 +16,9 @@ namespace aap {
 
     public:
         OboeAudioDeviceManager() {}
-        AudioDeviceIn * openDefaultInput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) override;
+        AudioDeviceIn * openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
 
-        AudioDeviceOut * openDefaultOutput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) override;
+        AudioDeviceOut * openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override;
     };
 }
 

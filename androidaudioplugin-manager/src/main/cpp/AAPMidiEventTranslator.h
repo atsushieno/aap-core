@@ -26,7 +26,7 @@ namespace aap {
         int32_t detectEndpointConfigurationMessage(uint8_t* bytes, size_t offset, size_t length);
 
     public:
-        AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
+        explicit AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
         ~AAPMidiEventTranslator();
 
         void setPlugin(RemotePluginInstance* pluginInstance);

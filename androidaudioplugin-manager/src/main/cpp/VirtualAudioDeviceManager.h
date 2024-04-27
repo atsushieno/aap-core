@@ -11,8 +11,8 @@ namespace aap {
     class VirtualAudioDeviceIn : public AudioDeviceIn {
         bool running{false};
     public:
-        explicit VirtualAudioDeviceIn() {}
-        virtual ~VirtualAudioDeviceIn() {}
+        explicit VirtualAudioDeviceIn() = default;
+        virtual ~VirtualAudioDeviceIn() = default;
 
         void startCallback() override { running = true; }
         void stopCallback() override { running = false; }
@@ -27,8 +27,8 @@ namespace aap {
     class VirtualAudioDeviceOut : public AudioDeviceOut {
         bool running{false};
     public:
-        explicit VirtualAudioDeviceOut() {}
-        virtual ~VirtualAudioDeviceOut() {}
+        explicit VirtualAudioDeviceOut() = default;
+        virtual ~VirtualAudioDeviceOut() = default;
 
         void startCallback() override { running = true; }
         void stopCallback() override { running = false; }
@@ -50,8 +50,8 @@ namespace aap {
                   output(std::make_shared<VirtualAudioDeviceOut>()) {
         }
 
-        AudioDeviceIn * openDefaultInput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) override { return input.get(); }
-        AudioDeviceOut * openDefaultOutput(uint32_t sampleRate, uint32_t framesPerCallback, int32_t numChannels) override { return output.get(); }
+        AudioDeviceIn * openDefaultInput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return input.get(); }
+        AudioDeviceOut * openDefaultOutput(int32_t sampleRate, int32_t framesPerCallback, int32_t numChannels) override { return output.get(); }
     };
 
 }

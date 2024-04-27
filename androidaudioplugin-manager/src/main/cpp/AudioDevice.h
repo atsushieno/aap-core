@@ -31,7 +31,7 @@ namespace aap {
 
     class AAP_PUBLIC_API AudioDeviceOut {
     public:
-        AudioDeviceOut() {}
+        AudioDeviceOut() = default;
 
         AAP_PUBLIC_API virtual void startCallback() = 0;
         AAP_PUBLIC_API virtual void stopCallback() = 0;

@@ -11,7 +11,7 @@ namespace aap {
         SimpleLinearAudioGraph graph;
 
     public:
-        PluginPlayer(PluginPlayerConfiguration &configuration);
+        explicit PluginPlayer(PluginPlayerConfiguration &configuration);
 
         virtual ~PluginPlayer();
 
@@ -19,7 +19,7 @@ namespace aap {
 
         void setAudioSource(uint8_t *data, int32_t dataLength, const char *filename);
 
-        void addMidiEvents(uint8_t* data, int32_t dataLength, uint64_t timestampInNanoseconds);
+        void addMidiEvents(uint8_t* data, int32_t dataLength, int64_t timestampInNanoseconds);
 
         void startProcessing();
 

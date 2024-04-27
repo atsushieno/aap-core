@@ -17,10 +17,10 @@ namespace aap {
     protected:
         AudioGraph* graph;
 
-        AudioGraphNode(AudioGraph* ownerGraph) : graph(ownerGraph) {}
+        explicit AudioGraphNode(AudioGraph* ownerGraph) : graph(ownerGraph) {}
 
     public:
-        virtual ~AudioGraphNode() {}
+        virtual ~AudioGraphNode() = default;
         virtual bool shouldSkip() { return false; }
         virtual void start() = 0;
         virtual void pause() = 0;
@@ -48,7 +48,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 input(input) {
         }
-        virtual ~AudioDeviceInputNode();
+        ~AudioDeviceInputNode() override;
 
         AudioDeviceIn* getDevice() { return input; }
 
@@ -81,7 +81,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 output(output) {
         }
-        virtual ~AudioDeviceOutputNode();
+        ~AudioDeviceOutputNode() override;
 
         AudioDeviceOut* getDevice() { return output; }
 
@@ -98,7 +98,7 @@ namespace aap {
                 AudioGraphNode(ownerGraph),
                 plugin(plugin) {
         }
-        virtual ~AudioPluginNode();
+        ~AudioPluginNode() override;
 
         void setPlugin(RemotePluginInstance* instance) { plugin = instance; }
 
@@ -121,7 +121,7 @@ namespace aap {
 
     public:
         explicit AudioDataSourceNode(AudioGraph* ownerGraph);
-        virtual ~AudioDataSourceNode();
+        ~AudioDataSourceNode() override;
 
         void start() override;
         void pause() override;
@@ -166,7 +166,7 @@ namespace aap {
                        int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2,
                        int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
-        virtual ~MidiSourceNode();
+        ~MidiSourceNode() override;
 
         void setPlugin(RemotePluginInstance* instance) { translator.setPlugin(instance); }
 
@@ -183,9 +183,9 @@ namespace aap {
         NanoSleepLock midi_buffer_mutex{};
 
     public:
-        MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
+        explicit MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
-        virtual ~MidiDestinationNode();
+        ~MidiDestinationNode() override;
 
         void start() override;
         void pause() override;
