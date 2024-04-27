@@ -168,6 +168,8 @@ namespace aap {
 
         virtual ~MidiSourceNode();
 
+        void setPlugin(RemotePluginInstance* instance) { translator.setPlugin(instance); }
+
         void addMidiEvent(uint8_t *data, int32_t length, int64_t timestampInNanoseconds);
 
         void start() override;

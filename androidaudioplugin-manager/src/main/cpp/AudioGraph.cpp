@@ -33,6 +33,7 @@ void aap::SimpleLinearAudioGraph::processAudio(AudioBuffer *audioData, int32_t n
 }
 
 void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance) {
+    midi_input.setPlugin(instance);
     plugin.setPlugin(instance);
 }
 

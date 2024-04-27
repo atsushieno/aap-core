@@ -81,7 +81,7 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                         conversion_helper_buffer_size,
                         0,
                         instance->aapxsRequestIdSerial(),
-                        0, // FIXME: provide valid URID
+                        preset_urid,
                         AAP_PRESETS_EXTENSION_URI,
                         OPCODE_SET_PRESET_INDEX,
                         (const uint8_t *) aapxsInstance->serialization->data,
@@ -159,4 +159,11 @@ size_t aap::AAPMidiEventTranslator::translateMidiBufferIfNeeded(uint8_t* bytes, 
         return context.ump_proceeded_bytes;
     }
     return 0;
+}
+
+void aap::AAPMidiEventTranslator::setPlugin(aap::RemotePluginInstance *pluginInstance) {
+    auto reg = instance ? instance->getAAPXSRegistry() : nullptr;
+    auto map = reg ? reg->items()->getUridMapping() : nullptr;
+    preset_urid = map ? map->getUrid(AAP_PRESETS_EXTENSION_URI) : aap::xs::UridMapping::UNMAPPED_URID;
+    instance = pluginInstance;
 }

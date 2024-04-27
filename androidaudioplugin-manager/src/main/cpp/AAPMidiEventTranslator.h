@@ -11,6 +11,7 @@ namespace aap {
 
     class AAPMidiEventTranslator {
         RemotePluginInstance* instance;
+        uint8_t preset_urid{aap::xs::UridMapping::UNMAPPED_URID};
         // used when we need MIDI1<->UMP translation.
         uint8_t* translation_buffer{nullptr};
         int32_t midi_buffer_size;
@@ -27,6 +28,8 @@ namespace aap {
     public:
         AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
         ~AAPMidiEventTranslator();
+
+        void setPlugin(RemotePluginInstance* pluginInstance);
 
         int32_t translateMidiEvent(uint8_t *data, int32_t length);
 
