@@ -56,7 +56,7 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
         // It is for the audio processor's callback
         // FIXME: make them configurable?
-        val frames = 1024 //audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
+        val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
         val channelCount = 2
         PluginPlayer.create(sampleRate, frames, channelCount).apply {
             setPlugin(instance!!)
