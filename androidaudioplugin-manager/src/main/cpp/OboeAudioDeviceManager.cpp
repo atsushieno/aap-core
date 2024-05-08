@@ -3,6 +3,7 @@
 #include <audio/choc_SampleBuffers.h>
 #include <containers/choc_VariableSizeFIFO.h>
 #if ANDROID
+#include <aap/unstable/logging.h>
 #include <android/trace.h>
 #endif
 
@@ -131,6 +132,10 @@ void aap::OboeAudioDevice::startCallback() {
     oboe::Result result = builder.openStream(stream);
     if (result != oboe::Result::OK)
         throw std::runtime_error(std::string{"Failed to create Oboe stream: "} + oboe::convertToText(result));
+    if (!stream->usesAAudio())
+        aap::a_log(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG, "AAudio is not enabled; anticipate audio output latency.");
+    if (stream->getSharingMode() != oboe::SharingMode::Exclusive)
+        aap::a_log(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG, "AAudio is not in exclusive mode; anticipate audio output latency.");
 
     result = stream->requestStart();
     if (result != oboe::Result::OK)
@@ -143,6 +148,7 @@ void aap::OboeAudioDevice::stopCallback() {
     oboe::Result result = stream->stop();
     if (result != oboe::Result::OK)
         throw std::runtime_error(std::string{"Failed to stop Oboe stream: "} + oboe::convertToText(result));
+    stream.reset();
     stream = nullptr;
 }
 
