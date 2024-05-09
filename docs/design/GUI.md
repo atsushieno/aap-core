@@ -156,6 +156,8 @@ Unlike Web UI protocol, we don't need DSP controllers as it is basically a matte
 
 ### SurfaceControlViewHost: controller from Kotlin API
 
+![Native UI boundary](../images/native-ui.drawio.svg)
+
 The host will instantiate the plugin's View by sending an independent Message to an independent GUI controller (i.e. not `AudioPluginService`, not in the .aidl). It is due to current limitation on AIDL that cannot handle Message/Parcelables in .aidl that are being used in both Java and NDK.
 
 It is done in Kotlin land, as it requires couple of Java/Kotlin classes e.g. `Service`, `SurfaceView` and `SurfaceControlViewHost.SurfacePackage` instances. Here is these internal steps to use it:
