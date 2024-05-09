@@ -2,9 +2,6 @@ package org.androidaudioplugin
 
 import android.content.Context
 import android.view.View
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 
 // It is used only by AudioPluginService and some plugin extensions (such as AudioPluginLv2ServiceExtension) to process client (plugin host) requests.
@@ -26,7 +23,7 @@ object AudioPluginServiceHelper {
         val cls = Class.forName(factoryClassName)
         if (!AudioPluginViewFactory::class.java.isAssignableFrom(cls))
             throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
-        val factory = cls.newInstance() as AudioPluginViewFactory
+        val factory = cls.getConstructor().newInstance() as AudioPluginViewFactory
         return factory.createView(context, pluginId, instanceId)
     }
 }
