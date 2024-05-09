@@ -1,0 +1,1 @@
+../../../../androidaudioplugin/src/main/cpp/core/include_cmidi2.h

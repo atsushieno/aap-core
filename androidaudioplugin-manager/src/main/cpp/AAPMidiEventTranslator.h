@@ -2,9 +2,6 @@
 #define AAP_CORE_AAPMIDIEVENTTRANSLATOR_H
 
 #include <aap/core/host/plugin-instance.h>
-#ifndef CMIDI2_H_INCLUDED // it is only a workaround to avoid reference resolution failure at aap-juce-* repos.
-#include <cmidi2.h>
-#endif
 #include "LocalDefinitions.h"
 
 namespace aap {
@@ -26,7 +23,7 @@ namespace aap {
         int32_t detectEndpointConfigurationMessage(uint8_t* bytes, size_t offset, size_t length);
 
     public:
-        explicit AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiTransportProtocol = CMIDI2_PROTOCOL_TYPE_MIDI2);
+        explicit AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize = AAP_MANAGER_MIDI_BUFFER_SIZE, int32_t initialMidiTransportProtocol = 2/*CMIDI2_PROTOCOL_TYPE_MIDI2*/);
         ~AAPMidiEventTranslator();
 
         void setPlugin(RemotePluginInstance* pluginInstance);

@@ -1,6 +1,7 @@
 
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Instance"
 

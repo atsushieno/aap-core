@@ -1,5 +1,6 @@
 #include "aap/core/AAPXSMidi2RecipientSession.h"
 #include "aap/ext/midi.h"
+#include "../include_cmidi2.h"
 
 
 aap::AAPXSMidi2RecipientSession::AAPXSMidi2RecipientSession() {

@@ -1,4 +1,5 @@
 #include "aap/core/aap_midi2_helper.h"
+#include "../include_cmidi2.h"
 
 #ifdef __cplusplus
 extern "C" {

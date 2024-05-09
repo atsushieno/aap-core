@@ -1,11 +1,12 @@
 
 
 #include "aap/core/AAPXSMidi2InitiatorSession.h"
-#include <stdlib.h>
+#include <cstdlib>
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
 #include "aap/unstable/utility.h"
 #include "aap/unstable/logging.h"
+#include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.XS"
 

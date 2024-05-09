@@ -1,5 +1,6 @@
 #include "aap/core/aap_midi2_helper.h"
 #include "AAPMidiEventTranslator.h"
+#include "include_cmidi2.h"
 
 aap::AAPMidiEventTranslator::AAPMidiEventTranslator(RemotePluginInstance* instance, int32_t midiBufferSize, int32_t initialMidiTransportProtocol) :
         instance(instance),
