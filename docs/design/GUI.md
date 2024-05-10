@@ -5,19 +5,20 @@ This is Nth. version of AAP GUI extension specfication draft. Every time I visit
 
 Compared to other audio plugin formats, AAP has simplifying aspects and complicating aspects on GUI support: We only have to care about Android: there is no concern over multiplatform. It is similar to AUv3 caring only about iOS and macOS.
 
-Though, we would like to be able to present the plugin UI on multiple methods:
+Though, we would like to be able to present the plugin UI on these methods:
 
-- **Native View**: runs in plugin process View, using [SurfaceControlViewHost](https://developer.android.com/reference/android/view/SurfaceControlViewHost). Plugin developers can implement arbitrary native UI, as long as it runs on a `View` (our host implementation uses `SurfaceView` but AAP hosts are supposed to use our API to retrieve it as a `View`). It is the best recommended approach by us, but requires Android 11 or later (minSdk 30).
-- **WebView**: runs in host process, using `WebView` and per-plugin Web UI. It is the widest range of target devices. There is however a various restrictions on how Web UI could interact with the rest of the plugin (DSP etc.), for example direct access from plugin UI to the files in the plugin is not possible (because WebView runs on the DAW process).
-- **Activity**: runs in plugin process. It is either by [Activity Embedding](https://developer.android.com/guide/topics/large-screens/activity-embedding) for tablets and foldables (which could run with the host side by side), or in the worst case, by just switching to it (then OS may kill the host process at any time!). It should be possible and easy, but not really investigated yet.
+- **Native View**: runs in plugin process View, using [SurfaceControlViewHost](https://developer.android.com/reference/android/view/SurfaceControlViewHost). Plugin developers can implement arbitrary native UI, as long as it runs on a `View`. Hosts need to use `SurfaceView` to reflect the plugin UI to be usable at its own UI. It is the best recommended approach by us, but requires Android 11 or later (minSdk 30).
+- **WebView**: runs in host process, using `WebView` and per-plugin Web UI. It covers the widest range of target devices (down to 29 which is the minSdk for AAP itself). There is however a various restrictions on how Web UI could interact with the rest of the plugin (DSP etc.), for example direct access from plugin UI to the files in the plugin is not possible (because WebView runs on the DAW process).
 
-Currently send-only (non-listening) default GUI is implemented for Native View (using Jetpack Compose) and WebView (HTML+JS), respectively.
+Your host app could make use of native view to achieve UI like sequencer-and-plugin split pane using [Activity Embedding](https://developer.android.com/guide/topics/large-screens/activity-embedding) for tablets and foldables (which could run with the host side by side). AAP itself does not provide any feature for that.
 
-We provide entry points to GUI on both Kotlin/Java and native. The native part is done by JNI invocation.
+Currently send-only (non-receiving) default GUI is implemented for Native View (using Jetpack Compose) and WebView (HTML+JS), respectively.
+
+We provide entry points to GUI hosting in both Kotlin/Java and native. The native part is done by JNI invocation.
 
 GUI instantiation is asynchronous, even though some part of our API looks synchronous.
 
-Note that there are GUI toolkits that is capable of running itself solely on a `android.view.View`: Jetpack Compose is designed well so that it meets this requirement. JUCE GUI will not work unless JUCE drastically improves the Android UI layer that currently does not implement the entire UI layer on top of `View`.
+Note that there are GUI toolkits that is capable of running itself solely on a `android.view.View`: Jetpack Compose is designed well so that it meets this requirement. JUCE GUI (even as of JUCE 8.0) will not work unless JUCE drastically improves the Android UI layer that currently does not implement the entire UI layer on top of `View`.
 
 ## Using GUI support API
 
@@ -53,13 +54,15 @@ Plugin `AndroidManifest.xml` example snippet:
 
 ## Interaction between GUI and the rest of the plugin
 
-### cross-process GUI
+### In-host-process UI: cross-process ready
 
-To support in-host-process GUI, a plugin UI must be *cross process ready*.
+To support in-host-process GUI, a plugin UI must be *cross-process ready*.
 
-Like LV2 UI, a *cross process ready* AAP GUI must interact with the rest of the plugin program only via the limited channels. LV2 uses Atom sequences. We use MIDI2 UMP transports. Any complicated operations (e.g. instruction to open a file and get results from file dialog) will typically have to be implemented as System Exclusive messages or MDS (Mixed Data Set).
+Like LV2 UI, a *cross-process ready* AAP GUI must interact with the rest of the plugin program only via the limited channels. LV2 uses Atom sequences. We use MIDI2 UMP transports. Any complicated operations (e.g. instruction to open a file and get results from file dialog) will typically have to be implemented as System Exclusive messages or MDS (Mixed Data Set).
 
-A *cross process ready* GUI interoperates with the plugin via the ports that are dedicated to UI, which typically are automatically populated channels: (1) a UMP input channel, and (2) a UMP output channel. There could be (3) optional sidechaining audio input channels for audio rendering (which would be expensive; it would always need `memcpy()` among audio inputs -or- outputs to GUI inputs, handled by DSP).
+A *cross-process ready* GUI interoperates with the plugin via the ports that are dedicated to UI, which typically are automatically populated channels: (1) a UMP input channel, and (2) a UMP output channel. There could be (3) optional sidechaining audio input channels for audio rendering (which would be expensive; it would always need `memcpy()` among audio inputs -or- outputs to GUI inputs, handled by DSP). As long as @atsushieno understands, sharing buffer between JavaScript Uint8Array and WebView seems possible, but not doable with Wasm yet (Kotlin/Wasm has such a limitation and it is explained due to platform limitation).
+
+We can send and receive extension controller messages using MIDI 2.0 UMPs (AAPXS SysEx8).
 
 ### In-plugin-process UI: no specification
 
@@ -73,7 +76,7 @@ While there is no constraints on interaction between DSP and in-plugin-process U
 
 A DSP should have only one event input sequence (there is [good explanation on why](https://cleveraudio.org/1-feature-overview/_midi/), at CLAP website) . Since typical DAW sequencer sends events via the playback engine, it will have to merge the sequencer inputs and the GUI inputs. To make it work, the DSP will have to hold an input queue for the GUI where GUI inputs are stored with timestamps (usually the timestamps would not matter though, as audio processing happen in very short duration like 10-20 msec.), and the processor will have to "unify" them, in timestamped order. Then the resulting queue is copied to the DSP event input sequence.
 
-Since no locking should happen in ALL of those queues, the insertion operation from GUI inputs to GUI input queue has to be atomic. Copying DSP output events to GUI itself does not have to be atomic, but since we have to avoid the situation that the same buffer gets overwritten by the next audio cycle, it should be atomically copied to GUI output processing queue within the audio processing cycle.
+Since no locking should happen in ALL of those queues, the insertion operation from GUI inputs to plugin's MIDI2 input queue has to be atomic. Copying DSP output events to GUI itself does not have to be atomic, but since we have to avoid the situation that the same buffer gets overwritten by the next audio cycle, it should be atomically copied to GUI output processing queue within the audio processing cycle.
 
 They could be part of the framework. But how to perform these tasks in optimal way is up to each app, so it is not part of implementation. We would offer some reference implementation though.
 
@@ -81,7 +84,7 @@ They could be part of the framework. But how to perform these tasks in optimal w
 
 The web UI zip archive must be provided as `content://${applicationId}.aap_zip_provider/org.androidaudioplugin.ui.web/web-ui.zip` (fixed so far). The web content should be served by each plugin service, per request by client with `pluginId` in the future.
 
-Since it is communication between the host and the plugin, the API will have to be stable. But it should only affect GUI instantiation and interoperability so it's somewhat less important than AudioPluginService AIDL compatibility.
+Since it is communication between the host and the plugin, the API will have to be stable. But it only affects UI management such as GUI instantiation, and the rest part is not about host-plugin interoperability, so it's somewhat less important than AudioPluginService AIDL compatibility.
 
 ### Scripting interface for plugin
 
@@ -131,28 +134,18 @@ Since it is communication between the host and the plugin, the API will have to 
 
 ## In-plugin-process View
 
-**TODO: this documentation is not precise; it was written when we were using SYSTEM_ALERT_WINDOW. In the latest in-plugin-process UI with SurfaceControlViewHost, we do not have `AudioPluginView` (at least not yet). `createView()` directly creates an `android.view.View` and we directly use it as either `AndroidView` in Jetpack Compose, or `juce::AndroidViewComponent` in aap-juce apps. GUI extension is almost outdated, likewise.**
-
 In-plugin-process View is useful if Android Views are feasible.
 
-Every in-plugin-process View must be derived from `AudioPluginView` so that it can handle interoperability with the plugin host. The actual `AudioPluginView` is returned by `AudioPluginViewFactory.createView(pluginId: String)`. Each plugin declares a GUI factory which must be derived from this `AudioPluginViewFactory` class. `createView()` is an abstract method. The factory class is described in `aap_metadata.xml`.
+In-plugin-process View can be any `android.view.View` implementation, as long as it is interoperable enough over `SurfaceControlViewHost`. The `View` instance has to be returned by `AudioPluginViewFactory.createView(context: Context, pluginId: String, instanceId: Int)`. Each plugin declares a GUI factory which must be derived from this `AudioPluginViewFactory` class. `createView()` is an abstract method. The factory class is described in `aap_metadata.xml`.
+
+Hosting wise, we can directly use it as either `AndroidView` in Jetpack Compose, or `juce::AndroidViewComponent` in aap-juce apps.
 
 Here are some exaples:
 
 - `ComposeAudioPluginViewFactory` in `androidaudioplugin-ui-compose` - creates Jetpack Compose plugin view.
 - `AudioPluginWebViewFactory` in - creates WebView (you can use it as an in-plugin-process View too)
 
-The host will be rendering it through `SurfaceControlViewHost` (the details are explained later). This `AudioPluginView` class has these methods:
-
-- Logging
-  - `log(s: String)` : dispatches the log string to the UI host.
-- <del>View controllers</del> We are unsure if they could be supported at Kotlin/Dalvik level.
-  - `onInitialize()`: it is invoked whenever it is attached to the `WindowManager`.
-  - `onCleanup()` : it is invoked whenever it is detached from the `WindowManager`.
-  - `onShow()` : it is invoked whenever the hosting overlay window is shown.
-  - `onHide()`: it is invoked whenever the hosting overlay window is being hidden.
-
-Unlike Web UI protocol, we don't need DSP controllers as it is basically a matter of the plugin application itself (there is no interaction between host and process).
+Unlike Web UI protocol, we don't need DSP controllers as it is basically a matter of the plugin application itself (there is no interaction between host and process). Initialization and disposal are handled via GUI extension. The `SurfaceView` may disappear at host side, which will be notified by "disconnect" message on `AudioPluginViewService`. Plugin developers should not have to worry about it.
 
 ### SurfaceControlViewHost: controller from Kotlin API
 
@@ -187,13 +180,14 @@ Note that this SurfaceControlViewHost GUI does not involve AudioPluginService's 
 
 There are some proof-of-concept example use of the GUI extension API, implemented in aapinstrumentsample. In particular:
 
+- in its `build.gradle.kts`, add `implementation project(":androidaudioplugin-ui-compose")` to `dependencies { ... }`.
 - in its `aap_metadata.xml` -
   - it adds `<extension>` element for the GUI extension
-  - its `<plugin>` element comes with `gui:ui-view-factory` attribute (where XMLNS `gui` is `urn://androidaudioplugin.org/extensions/gui`), which indicates `androidaudioplugin.ui.web.ComposeAudioPluginViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to use Jetpack Compose foundation as the in-plugin-process UI.
+  - its `<plugin>` element comes with `gui:ui-view-factory` attribute (where XMLNS `gui` is `urn://androidaudioplugin.org/extensions/gui`), which indicates `androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to use Jetpack Compose foundation as the in-plugin-process UI.
 
 If you want to rather use Web UI, things should be like:
 
 - in its `build.gradle.kts`, add `implementation project(":androidaudioplugin-ui-web")` to `dependencies { ... }`. It automatically adds a `<provider>` element for the Web UI archive and brings in support for basic Web UI.
 - in its `aap_metadata.xml` -
   - add `<extension>` element for the GUI extension just like it is done for native UI.
-  - In `<plugin>` element, set `gui:ui-view-factory` attribute (where XMLNS `gui` is `urn://androidaudioplugin.org/extensions/gui`) as `androidaudioplugin.ui.web.AudioPluginWebViewFactory`. It works as the in-plugin-process View factory (explained earlier). This class is to reuse the WebView foundation as the in-plugin-process UI.
+  - In `<plugin>` element, set `gui:ui-view-factory` attribute (where XMLNS `gui` is `urn://androidaudioplugin.org/extensions/gui`) as `androidaudioplugin.ui.web.AudioPluginWebViewFactory`. It works as the in-host-process View factory (explained earlier). This class is to reuse the WebView foundation as the in-plugin-process UI.
