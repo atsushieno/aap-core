@@ -14,10 +14,10 @@ int32_t AAPMidiProcessorOboePAL::setupStream() {
         ->setSharingMode(oboe::SharingMode::Exclusive)
         ->setFormat(oboe::AudioFormat::Float)
         ->setChannelCount(owner->getChannelCount())
-        ->setChannelConversionAllowed(false)
+        // channels should be processed by plugin framework itself, but in case its output is mono
+        // and the audio output is stereo in the end, there is no reason to refuse it.
+        ->setChannelConversionAllowed(true)
         ->setFramesPerDataCallback(owner->getAAPFrameSize())
-        ->setContentType(oboe::ContentType::Music)
-        ->setInputPreset(oboe::InputPreset::Unprocessed)
         ->setDataCallback(callback.get());
 
     return 0;
