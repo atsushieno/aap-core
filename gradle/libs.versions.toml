@@ -7,7 +7,7 @@ android-compileSdk = "35"
 android-minSdk = "29"
 android-targetSdk = "35"
 
-androidx-lifecycle = "2.7.0"
+androidx-lifecycle = "2.8.2"
 accompanist-drawablepainter = "0.32.0"
 accompanist-permissions = "0.32.0"
 agp = "8.3.2"
@@ -15,11 +15,11 @@ kotlin = "1.9.23"
 ndk = "26.3.11579264"
 cmake = "3.22.1"
 build-tools = "35.0.0"
-dokka = "1.9.10"
+dokka = "1.9.20"
 compose = "1.6.0"
 compose-compiler = "1.5.12"
-androidx-test = "1.5.0"
-coroutines = "1.8.0"
+androidx-test = "1.6.1"
+coroutines = "1.9.0-RC"
 ktmidi = "0.8.2"
 
 [libraries]
@@ -41,11 +41,11 @@ tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = 
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 
-compose-bom = { module = "androidx.compose:compose-bom", version = "2024.01.00" }
-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.6" }
-androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.12.0" }
+compose-bom = { module = "androidx.compose:compose-bom", version = "2024.06.00" }
+navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.7" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.13.1" }
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
-androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.6.1" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
 startup-runtime = { module = "androidx.startup:startup-runtime", version = "1.1.1" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
@@ -55,19 +55,19 @@ libcxx-provider = { module = "dev.atsushieno:libcxx-provider", version.ref = "nd
 
 lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "androidx-lifecycle" }
-activity-compose = { module = "androidx.activity:activity-compose", version = "1.8.2" }
-webkit = { module = "androidx.webkit:webkit", version = "1.10.0" }
+activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.0" }
+webkit = { module = "androidx.webkit:webkit", version = "1.11.0" }
 
 junit = { module = "junit:junit", version = "4.13.2" }
 test-core = { module =  "androidx.test:core", version.ref = "androidx-test" }
 test-rules = { module = "androidx.test:rules", version.ref = "androidx-test" }
-test-runner = { module = "androidx.test:runner", version = "1.5.2" }
-test-ext-junit = { module = "androidx.test.ext:junit", version = "1.1.5" }
-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version = "3.5.1" }
+test-runner = { module = "androidx.test:runner", version = "1.6.1" }
+test-ext-junit = { module = "androidx.test.ext:junit", version = "1.2.1" }
+test-espresso-core = { module = "androidx.test.espresso:espresso-core", version = "3.6.1" }
 
 ktmidi = { module = "dev.atsushieno:ktmidi", version.ref = "ktmidi" }
 
-oboe = { module = "com.google.oboe:oboe", version = "1.8.0" }
+oboe = { module = "com.google.oboe:oboe", version = "1.9.0" }
 ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 
 [plugins]
