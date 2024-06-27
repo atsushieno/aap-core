@@ -16,8 +16,9 @@ buildscript {
 }
 
 plugins {
-    id ("maven-publish")
-    alias(libs.plugins.kotlinAndroid) apply false
+    alias(libs.plugins.org.jetbrains.kotlin.android) apply false
+    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.dokka) apply false
     //id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
 
