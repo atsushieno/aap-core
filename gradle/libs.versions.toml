@@ -7,7 +7,7 @@ android-compileSdk = "35"
 android-minSdk = "29"
 android-targetSdk = "35"
 
-androidx-lifecycle = "2.8.2"
+androidx-lifecycle = "2.8.3"
 accompanist-drawablepainter = "0.32.0"
 accompanist-permissions = "0.32.0"
 agp = "8.5.0"
@@ -16,11 +16,22 @@ ndk = "26.3.11579264"
 cmake = "3.22.1"
 build-tools = "35.0.0"
 dokka = "1.9.20"
-compose = "1.6.0"
-compose-compiler = "1.5.12"
+compose-bom = "2024.06.00"
 androidx-test = "1.6.1"
 coroutines = "1.9.0-RC"
+navigation-compose = "2.7.7"
+core-ktx = "1.13.1"
+appcompat = "1.7.0"
+startup-runtime = "1.1.1"
+preference-ktx = "1.2.1"
+activity-compose = "1.9.0"
+webkit = "1.11.0"
+junit = "4.13.2"
+test-ext-junit = "1.2.1"
+espresso = "3.6.1"
+oboe = "1.9.0"
 ktmidi = "0.8.2"
+compose-audio-controls = "0.6.0"
 
 [libraries]
 
@@ -35,43 +46,40 @@ aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.re
 
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist-drawablepainter" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
-compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version = "0.2.0" }
+compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version.ref = "compose-audio-controls" }
 
-tools-build-gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
-
-compose-bom = { module = "androidx.compose:compose-bom", version = "2024.06.00" }
-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.7" }
-androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.13.1" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
-androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
-startup-runtime = { module = "androidx.startup:startup-runtime", version = "1.1.1" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+startup-runtime = { module = "androidx.startup:startup-runtime", version.ref = "startup-runtime" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 
-preference-ktx = { module = "androidx.preference:preference-ktx", version = "1.2.1" }
+preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "preference-ktx" }
 libcxx-provider = { module = "dev.atsushieno:libcxx-provider", version.ref = "ndk" }
 
 lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "androidx-lifecycle" }
-activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.0" }
-webkit = { module = "androidx.webkit:webkit", version = "1.11.0" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
 
-junit = { module = "junit:junit", version = "4.13.2" }
+junit = { module = "junit:junit", version.ref = "junit" }
 test-core = { module =  "androidx.test:core", version.ref = "androidx-test" }
 test-rules = { module = "androidx.test:rules", version.ref = "androidx-test" }
-test-runner = { module = "androidx.test:runner", version = "1.6.1" }
-test-ext-junit = { module = "androidx.test.ext:junit", version = "1.2.1" }
-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version = "3.6.1" }
+test-runner = { module = "androidx.test:runner", version.ref = "androidx-test" }
+test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "test-ext-junit" }
+test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
 
 ktmidi = { module = "dev.atsushieno:ktmidi", version.ref = "ktmidi" }
 
-oboe = { module = "com.google.oboe:oboe", version = "1.9.0" }
+oboe = { module = "com.google.oboe:oboe", version.ref = "oboe" }
 ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 
 [plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
-org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
