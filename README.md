@@ -7,9 +7,9 @@
 
 [![AAP demo 20200708](http://img.youtube.com/vi/gKCpHvYzupU/0.jpg)](http://www.youtube.com/watch?v=gKCpHvYzupU  "AAP demo 20200708")
 
-![AAP Instruments on Kmmk virtual MIDI keyboard](./docs/images/aap-instruments-on-kmmk.png)
+![AAP-LV2-MDA](https://i.imgur.com/OXc6J7R.png)
 
-![AAPHostSample](./docs/images/aaphostsample.png)
+![AAPHostSample (old)](./docs/images/aaphostsample.png)
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
@@ -21,7 +21,7 @@ There is no such thing in Android. Audio Plugins For Android (AAP) is to fill th
 
 What AAP aims is to become like an inclusive standard for audio plugin, adopted to Android applications ecosystem. The license is permissive (MIT). It is designed to be pluggable from other specific audio plugin formats like [VST3](https://github.com/steinbergmedia/vst3sdk), [LV2](https://lv2plug.in/), [CLAP](https://github.com/free-audio/clap), and so on, as long as their features are supported in AAP. They are not designed to work on Android, so we need another one like [AudioUnit v3 on iOS](https://developer.apple.com/documentation/audiotoolbox/audio_unit_v3_plug-ins).
 
-On the other hand, it is designed so that cross-audio-plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
+On the other hand, it is designed so that multi-format audio plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins that use [DPF](https://github.com/DISTRHO/DPF), and probably more in the future. Historically, AAP was first designed to make use of JUCE audio plugin hosting features and JUCE-based audio plugins.
 
 We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives, to some extent. We have many plugins from these world, as long as AAP provides functionality - check out our [Wiki page](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) for more comprehensive list. Note that there is no plugin UI integration support yet.
 
@@ -37,16 +37,16 @@ We have some hacky ["AAP APK Installer"](https://github.com/atsushieno/aap-ci-pa
 
 ![AAP process model](docs/images/aap-process-model.png)
 
-**Plugin GUI in DAW** : AAP is going to support GUI implemented by each plugin, either in native View (Android 11+) or Web view (complicated data access required). AAP DAWs can launch plugin UI within its own process, without switching DAW Activity and plugin Activity. See [GUI design doc](docs/design/GUI.md) for more details.
+**Plugin GUI in DAW** : AAP supports GUI implemented by each plugin, either in native View (Android 11+) or Web view (complicated data access required). AAP DAWs can launch plugin UI within its own process, without switching DAW Activity and plugin Activity. See [GUI design doc](docs/design/GUI.md) for more details.
 
-**Extensibility** : AAP provides extensibility foundation as well as some Standard Extensions such as state and presets (not quite enough to name yet), that are queried by URI. But unlike desktop audio plugin frameworks, a host has to interact with a plugin through Binder messaging (as they live in separate processes by Android platform nature), and therefore an extension has to also provide the messaging implementation called AAPXS (AAP extensibility service) apart from the API itself. We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
+**Extensibility** : AAP provides extensibility foundation as well as some Standard Extensions such as state and presets (not quite enough to name yet), that are queried by URI. But unlike desktop audio plugin frameworks, a host has to interact with a plugin through MIDI2 event messaging (as they live in separate processes by Android platform nature), and therefore an extension has to also provide the messaging implementation called AAPXS (AAP extensibility service) apart from the API itself. We have [some dedicated documentation for extensibility](docs/EXTENSIONS.md) for more details.
 
-**Basically declarative parameter meta data** : like LV2 or VST >= 3.7 (unlike VST < 3.6, AU or CLAP) we expect plugin metadata, `res/xml/aap_metadata.xml`, describes its ports, which is essential to faster plugin scanning. Parameters can be dynamically populated (since AAP 0.7.4), but declarative parameters would make it more "findable".
+**Fast meta data scanning without instantiating plugins** : like LV2 or VST >= 3.7 (unlike VST < 3.6, AU, or CLAP), we expect plugin metadata, `res/xml/aap_metadata.xml`, describes its ports, which is essential to faster plugin scanning.
 
 **Permissive license** : It is released under the MIT license. Same as CLAP, similar to LV2 (ISC), unlike VST3 or JUCE (GPLv3).
 
-**Works with MIDI Standards** : AAP is pretty much MIDI oriented in a couple of ways.
-(1) AAP has ability to turn an instrument plugin into a [Android MidiDeviceService](https://developer.android.com/reference/android/media/midi/package-summary).
+**Works with MIDI 1.0 / 2.0 Standards** : AAP is pretty much MIDI oriented in a couple of ways.
+(1) AAP has ability to turn an instrument plugin into a [Android MidiDeviceService](https://developer.android.com/reference/android/media/midi/package-summary). Starting AAP 0.9.0, it also provides support for [MidiUmpDeviceService](https://developer.android.com/reference/android/media/midi/MidiUmpDeviceService) on Android 15 or later.
 (2) AAP supports 32-bit parameters (typically float), and parameter changes are transmitted as MIDI 2.0 UMP System Exclusive 8 messages (via "midi2" input port). LV2 specified Atom, CLAP specified its own events format, and we use UMP.
 
 **C/C++ and Kotlin supported**: public plugin API is provided as the C API. For hosting, some utilized API is implemented for C++ and Kotlin, but officially it is only for reference purpose without stability. While the compatibility at Binder message was pretty stable from 2020 to 2022, AAP is still at infancy and we wouldn't really consider our API as stable. What we recommend instead is to use APIs from audio plugin framework or SDKs, such as JUCE or LV2 API, and port them to AAP.
