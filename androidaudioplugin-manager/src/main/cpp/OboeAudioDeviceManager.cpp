@@ -148,6 +148,7 @@ void aap::OboeAudioDevice::stopCallback() {
     oboe::Result result = stream->stop();
     if (result != oboe::Result::OK)
         throw std::runtime_error(std::string{"Failed to stop Oboe stream: "} + oboe::convertToText(result));
+    stream->close();
     stream.reset();
     stream = nullptr;
 }
