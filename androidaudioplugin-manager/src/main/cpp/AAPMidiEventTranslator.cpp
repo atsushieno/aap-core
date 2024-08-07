@@ -150,8 +150,9 @@ size_t aap::AAPMidiEventTranslator::translateMidiBufferIfNeeded(uint8_t* bytes, 
         context.ump_num_bytes = sizeof(translation_buffer);
         context.group = 0;
 
-        if (cmidi2_convert_midi1_to_ump(&context) != CMIDI2_CONVERSION_RESULT_OK) {
-            aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_MANAGER_LOG_TAG, "Failed to translate MIDI 1.0 inputs to MIDI 2.0 UMPs");
+        auto result = cmidi2_convert_midi1_to_ump(&context);
+        if (result != CMIDI2_CONVERSION_RESULT_OK) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_MANAGER_LOG_TAG, "Failed to translate MIDI 1.0 inputs to MIDI 2.0 UMPs (%d)", result);
             return 0;
         }
 
