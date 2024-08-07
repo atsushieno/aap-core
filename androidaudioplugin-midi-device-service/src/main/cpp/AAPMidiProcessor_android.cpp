@@ -11,7 +11,7 @@ int32_t AAPMidiProcessorOboePAL::setupStream() {
 
     builder.setDirection(oboe::Direction::Output)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(oboe::SharingMode::Exclusive)
+        ->setSharingMode(oboe::SharingMode::Shared)
         ->setFormat(oboe::AudioFormat::Float)
         ->setChannelCount(owner->getChannelCount())
         // channels should be processed by plugin framework itself, but in case its output is mono

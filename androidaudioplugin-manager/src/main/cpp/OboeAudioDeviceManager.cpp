@@ -107,7 +107,7 @@ aap::OboeAudioDevice::OboeAudioDevice(int32_t sampleRate, int32_t framesPerCallb
         oboe::StabilizedCallback(this),
         aap_buffer(numChannels, (int32_t) framesPerCallback) {
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(oboe::SharingMode::Exclusive)
+        ->setSharingMode(oboe::SharingMode::Shared)
         ->setFormatConversionAllowed(true)
         ->setFormat(oboe::AudioFormat::Float)
         ->setChannelConversionAllowed(true)
@@ -134,8 +134,6 @@ void aap::OboeAudioDevice::startCallback() {
         throw std::runtime_error(std::string{"Failed to create Oboe stream: "} + oboe::convertToText(result));
     if (!stream->usesAAudio())
         aap::a_log(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG, "AAudio is not enabled; anticipate audio output latency.");
-    if (stream->getSharingMode() != oboe::SharingMode::Exclusive)
-        aap::a_log(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG, "AAudio is not in exclusive mode; anticipate audio output latency.");
 
     result = stream->requestStart();
     if (result != oboe::Result::OK)
