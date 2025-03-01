@@ -1,3 +1,7 @@
+/*
+ * This file is auto-generated.  DO NOT MODIFY.
+ * Using: /Users/atsushi/Library/Android/sdk/build-tools/35.0.1/aidl --lang=ndk -o /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen -h /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen/include -I /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/ /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterface.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.aidl
+ */
 #include "aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h"
 
 #include <android/binder_parcel_utils.h>
@@ -139,7 +143,16 @@ IAudioPluginInterfaceCallback::~IAudioPluginInterfaceCallback() {}
 
 
 std::shared_ptr<IAudioPluginInterfaceCallback> IAudioPluginInterfaceCallback::fromBinder(const ::ndk::SpAIBinder& binder) {
-  if (!AIBinder_associateClass(binder.get(), _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_clazz)) { return nullptr; }
+  if (!AIBinder_associateClass(binder.get(), _g_aidl_org_androidaudioplugin_AudioPluginInterfaceCallback_clazz)) {
+    #if __ANDROID_API__ >= 31
+    const AIBinder_Class* originalClass = AIBinder_getClass(binder.get());
+    if (originalClass == nullptr) return nullptr;
+    if (0 == strcmp(AIBinder_Class_getDescriptor(originalClass), descriptor)) {
+      return ::ndk::SharedRefBase::make<BpAudioPluginInterfaceCallback>(binder);
+    }
+    #endif
+    return nullptr;
+  }
   std::shared_ptr<::ndk::ICInterface> interface = ::ndk::ICInterface::asInterface(binder.get());
   if (interface) {
     return std::static_pointer_cast<IAudioPluginInterfaceCallback>(interface);

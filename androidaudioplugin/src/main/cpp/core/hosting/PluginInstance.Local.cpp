@@ -228,10 +228,11 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
         auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
         auto parsedUrid = *(uint8_t*) instance->serialization->data;
         auto len = *(int32_t*) (uint8_t*) instance->serialization->data + 1;
-        char s[len + 1];
+        auto s = (char*) calloc(len + 1, 1);
         strncpy(s, (char*) instance->serialization->data + 1 + sizeof(int32_t), len);
         s[len] = 0;
         urid_mapping.forceAdd(parsedUrid, s);
+        free(s);
     } // ... and the mapping could also be used by the plugin, so go on as well.
 
 
