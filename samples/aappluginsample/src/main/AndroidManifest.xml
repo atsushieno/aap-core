@@ -15,7 +15,7 @@
             </intent-filter>
         </activity>
         <service android:name="org.androidaudioplugin.AudioPluginService" android:exported="true"
-            android:label="AAPInstrumentSample">
+            android:label="AAPPluginSample">
             <intent-filter>
                 <action
                     android:name="org.androidaudioplugin.AudioPluginService.V3" />

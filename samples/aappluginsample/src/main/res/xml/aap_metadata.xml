@@ -1,5 +1,5 @@
 <plugins xmlns="urn:org.androidaudioplugin.core">
-  <plugin name="Instrument Sample" category="Instrument" developer="AAP Developers"
+  <plugin name="AAP Instrument Sample" category="Instrument" developer="AAP Developers"
       unique-id="urn:org.androidaudioplugin/samples/aappluginsample/InstrumentSample"
       library="libaap-instrument-sample.so"
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
@@ -34,7 +34,7 @@
     </parameters>
   </plugin>
 
-  <plugin name="Test Filter" category="Effect" developer="AAP Developers"
+  <plugin name="AAP Effect Sample" category="Effect" developer="AAP Developers"
       unique-id="urn:org.androidaudioplugin/samples/aappluginsample/EffectSample"
       library="libaap-effect-sample.so"
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
