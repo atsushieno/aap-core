@@ -7,7 +7,7 @@ on:
 jobs:
   linux-build:
     name: build on linux
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - name: checkout
       uses: actions/checkout@v1
@@ -17,7 +17,7 @@ jobs:
       run: |
         sudo apt-get update
     - name: set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: 17
         distribution: temurin
@@ -35,14 +35,14 @@ jobs:
       run: |
         sed -i "s/signing {}/signing { sign(publishing.publications) }/" publish-pom.gradle
     - name: cache AVD
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-avd
       with:
         path: /home/runner/.android/gradle/avd
         key: ${{ runner.os }}-gradle-avd
     - name: cache gradle caches
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-gradle-caches
       with:
@@ -75,7 +75,7 @@ jobs:
         ./gradlew testDevice2DebugAndroidTest || exit 1
     - name: upload artifact
       if: success()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: aap-core-apps-and-libs
         path: |
@@ -83,24 +83,24 @@ jobs:
           samples/*/build/outputs/apk/debug/*.apk
     # Create release, only for release tags
     - name: Create Release
-      uses: ncipollo/release-action@v1.12.0
+      uses: ncipollo/release-action@v1.16
       if: success() && startsWith(github.ref, 'refs/tags/')
       with:
         artifacts: ./*/build/outputs/aar/*.aar,samples/*/build/outputs/apk/debug/*.apk
     # Update API reference, only for release tags
     - name: deploy to GitHub Pages
       if: ${{ success() && startsWith(github.ref, 'refs/tags/') }}
-      uses: JamesIves/github-pages-deploy-action@4.1.2
+      uses: JamesIves/github-pages-deploy-action@4
       with:
         branch: gh-pages
         folder: androidaudioplugin/build/dokka/html
 
   osx-build:
     name: build on osx
-    runs-on: macos-12
+    runs-on: macos-14
     steps:
     - name: checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: set up JDK 17
@@ -109,14 +109,14 @@ jobs:
         java-version: 17
         distribution: temurin
     - name: cache AVD
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-avd
       with:
         path: /Users/runner/.android/gradle/avd
         key: ${{ runner.os }}-gradle-avd
     - name: cache gradle caches
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-gradle-caches
       with:
@@ -124,7 +124,7 @@ jobs:
         key: ${{ runner.os }}-gradle-caches
     - name: install deps
       run: |
-        brew tap grpc/grpc && brew install doxygen libxml2 ninja graphviz openssl grpc
+        brew install doxygen libxml2 ninja graphviz openssl
     - name: build
       run: ./gradlew build dokkaHtml publishToMavenLocal
       env:
