@@ -4,6 +4,7 @@ import android.app.Activity
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -105,15 +106,14 @@ fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String
             )
         }
     }
-    val activity = LocalContext.current as Activity?
+    val context = LocalContext.current
     BackHandler {
-        if (activity != null && navController.currentBackStackEntry?.destination?.route == "plugin_list") {
+        if (navController.currentBackStackEntry?.destination?.route == "plugin_list") {
             if (System.currentTimeMillis() - lastBackPressed < 2000) {
-                activity.finish()
                 exitProcess(0)
             }
             else
-                Toast.makeText(activity, "Tap once more to quit", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Tap once more to quit", Toast.LENGTH_SHORT).show()
             lastBackPressed = System.currentTimeMillis()
         }
         else

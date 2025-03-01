@@ -10,7 +10,6 @@ dependencyResolutionManagement {
         mavenLocal()
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") } // required for compose-markdown...
     }
 }
 

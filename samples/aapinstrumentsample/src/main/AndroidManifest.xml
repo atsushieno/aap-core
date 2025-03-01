@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -36,6 +37,7 @@
         </service>
         <service android:name="org.androidaudioplugin.midideviceservice.StandaloneAudioPluginMidiUmpDeviceService"
             android:permission="android.permission.BIND_MIDI_DEVICE_SERVICE"
+            tools:targetApi="35"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.media.midi.MidiUmpDeviceService" />

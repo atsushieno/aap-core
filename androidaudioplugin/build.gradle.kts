@@ -81,9 +81,6 @@ dependencies {
     implementation (libs.lifecycle.service)
     implementation (libs.startup.runtime)
     testImplementation (libs.junit)
-    androidTestImplementation (libs.test.core)
-    androidTestImplementation (libs.test.rules)
-    androidTestImplementation (libs.test.runner)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
 }

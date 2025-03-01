@@ -70,10 +70,8 @@ dependencies {
     implementation (libs.androidx.appcompat)
 
     testImplementation (libs.junit)
-    androidTestImplementation (libs.test.rules)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
-    //androidTestImplementation (libs.compose.ui.test.junit)
 }
 
 // Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.

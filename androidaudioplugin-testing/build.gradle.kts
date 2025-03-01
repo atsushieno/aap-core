@@ -33,7 +33,6 @@ dependencies {
     implementation (libs.junit)
 
     testImplementation (libs.junit)
-    testImplementation (libs.test.core)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
 }

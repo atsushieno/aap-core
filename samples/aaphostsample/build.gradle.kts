@@ -62,11 +62,9 @@ dependencies {
     implementation (libs.coroutines.core)
     implementation (libs.coroutines.android)
 
-    //implementation (libs.compose.ui)
     implementation(platform(libs.compose.bom))
 
     testImplementation (libs.junit)
-    androidTestImplementation (libs.test.rules)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
 }
