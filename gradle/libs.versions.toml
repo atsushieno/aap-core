@@ -14,7 +14,7 @@ agp = "8.8.2"
 kotlin = "2.1.0"
 # We cannot migrate to NDK r28 because it had removed NdkBinder headers
 # without indicating how to specify includes nowadays.
-ndk = "27.2.12479018"
+ndk = "28.0.13004108"
 cmake = "3.22.1"
 build-tools = "35.0.1"
 dokka = "2.0.0"

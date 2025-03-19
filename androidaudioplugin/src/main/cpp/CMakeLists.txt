@@ -69,9 +69,14 @@ target_include_directories (androidaudioplugin
 		"../../../../external/cmidi2/"
 		)
 
+set(NDK_CPP_INCLUDE_DIR "${ANDROID_HOME}/platforms/android-35/optional/libbinder_ndk_cpp")
+message("libinder_ndk_cpp include directory: ${NDK_CPP_INCLUDE_DIR}")
+
 if (ANDROID)
 target_include_directories (androidaudioplugin
 		PRIVATE
+		# https://issuetracker.google.com/issues/400764489#comment5
+		${NDK_CPP_INCLUDE_DIR}
 		"android/gen/include"
 		)
 
