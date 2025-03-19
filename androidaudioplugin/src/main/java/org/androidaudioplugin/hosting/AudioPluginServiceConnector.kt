@@ -22,12 +22,14 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
     /*
     The ServiceConnection implementation class for AudioPluginService.
      */
-    internal class Connection(private val parent: AudioPluginServiceConnector, private val serviceInfo: PluginServiceInformation, private val additionalOnServiceConnected: (PluginServiceConnection?) -> Unit) : ServiceConnection {
+    internal class Connection(private val parent: AudioPluginServiceConnector, private val serviceInfo: PluginServiceInformation, private val onServiceConnectionRegistered: (PluginServiceConnection?) -> Unit) : ServiceConnection {
 
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             Log.d("AAP", "AudioPluginServiceConnector: onServiceConnected")
-            if (binder != null)
-                additionalOnServiceConnected(parent.registerNewConnection(this, serviceInfo, binder))
+            if (binder != null) {
+                val conn = parent.registerNewConnection(this, serviceInfo, binder)
+                onServiceConnectionRegistered(conn)
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {

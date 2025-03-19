@@ -47,13 +47,8 @@ fun PluginDetails(pluginInfo: PluginInformation, manager: PluginManagerScope) {
     }
 
     val currentScope = scope
-    if (currentScope == null) {
-        LaunchedEffect(pluginInfo.packageName) {
-            if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
-                manager.client.connectToPluginService(pluginInfo.packageName)
-        }
+    if (currentScope == null)
         PluginDetailsInstancing(pluginInfo)
-    }
     else
         PluginDetailsInstantiated(currentScope)
 }
