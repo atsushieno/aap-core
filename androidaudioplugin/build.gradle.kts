@@ -19,7 +19,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_HOME=" + properties["sdk.dir"], "-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DANDROID_HOME=" + android.sdkDirectory.path, "-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
             }
         }
     }
