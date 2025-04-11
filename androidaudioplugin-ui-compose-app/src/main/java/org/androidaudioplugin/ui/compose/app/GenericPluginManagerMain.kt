@@ -61,10 +61,6 @@ fun LocalPluginManagerMain() {
             listOf(AudioPluginServiceHelper.getLocalAudioPluginService(context)).toMutableStateList())
     ) }
     GenericPluginManagerMain(scope, listTitleBarText = "Plugins in this application")
-
-    LaunchedEffect(key1 = "") {
-        scope.client.connectToPluginService(scope.pluginServices.first().packageName)
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
