@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -24,6 +26,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,12 +35,16 @@ fun PluginList(context: PluginManagerScope,
                onSelectItem: (pluginId: String) -> Unit) {
     val pluginServices = remember { context.pluginServices }
 
-    val deselectedLabel = "-- all plugin services --"
+    val deselectedLabel = "-- jump to plugin service --"
     // Plugin Service selector
     var selectedPackage by remember { mutableStateOf("") }
     // the selected package might disappear from the provided list. Empty it if that happens.
     if (!pluginServices.any { it.packageName == selectedPackage })
         selectedPackage = ""
+
+    val listState = remember { LazyListState() }
+    val plugins = remember { pluginServices.flatMap { it.plugins } }
+    val coroutineScope = rememberCoroutineScope()
 
     if (pluginServices.size > 1) {
         var expanded by remember { mutableStateOf(false) }
@@ -60,6 +68,10 @@ fun PluginList(context: PluginManagerScope,
                 })
                 pluginServices.forEach {
                     DropdownMenuItem(onClick = {
+                        val matchingPluginIndex = plugins.indexOfFirst { p -> p.packageName == it.packageName }
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(matchingPluginIndex)
+                        }
                         if (expanded)
                             selectedPackage = it.packageName
                         expanded = !expanded
@@ -71,9 +83,7 @@ fun PluginList(context: PluginManagerScope,
         }
     }
 
-    LazyColumn {
-        val plugins = pluginServices.flatMap { it.plugins }
-            .filter { selectedPackage == "" || it.packageName == selectedPackage }
+    LazyColumn(state = listState) {
         items(plugins.size) { index ->
             val plugin = plugins[index]
             Row(
