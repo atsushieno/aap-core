@@ -7,9 +7,6 @@ import android.view.View
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
@@ -39,17 +36,9 @@ class PluginManagerScope(val context: Context,
     }
 }
 
-class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
+class PluginDetailsScope(val pluginInfo: PluginInformation,
                          val manager: PluginManagerScope) : AutoCloseable {
-    companion object {
-        suspend fun create(pluginInfo: PluginInformation, manager: PluginManagerScope): PluginDetailsScope {
-            val scope = PluginDetailsScope(pluginInfo, manager)
-            scope.instantiatePlugin()
-            return scope
-        }
-    }
-
-    var instance: NativeRemotePluginInstance? = null
+    var instance = mutableStateOf<NativeRemotePluginInstance?>(null)
 
     private val pluginPlayer by lazy {
         val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -59,7 +48,7 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
         val channelCount = 2
         PluginPlayer.create(sampleRate, frames, channelCount).apply {
-            setPlugin(instance!!)
+            setPlugin(instance.value!!)
             manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
                 val bytes = ByteArray(it.available())
                 it.read(bytes)
@@ -68,14 +57,21 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
         }
     }
 
+    private var alreadyDisposed = false
+
     override fun close() {
+        if (alreadyDisposed)
+            return
+        alreadyDisposed = true
         pluginPlayer.close()
     }
 
     suspend fun instantiatePlugin() {
         if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
             manager.client.connectToPluginService(pluginInfo.packageName)
-        instance = manager.client.instantiateNativePlugin(pluginInfo)
+        val result = manager.client.instantiateNativePlugin(pluginInfo)
+        if (!alreadyDisposed)
+            instance.value = result
     }
 
     fun setNewMidiMappingFlags(pluginId: String, newFlags: Int) {
@@ -107,7 +103,7 @@ class PluginDetailsScope private constructor(val pluginInfo: PluginInformation,
     }
 
     fun setParameterValue(index: Int, value: Float) {
-        val ins = instance
+        val ins = instance.value
         if (ins != null)
             pluginPlayer.setParameterValue(ins.getParameter(index).id.toUInt(), value)
     }
@@ -142,7 +138,7 @@ class SurfaceControlUIScope private constructor(private val parentScope: PluginD
             surfaceControl!!.connectUINoHandler(
                 pluginInfo.packageName,
                 pluginInfo.pluginId!!,
-                parentScope.instance!!.instanceId,
+                parentScope.instance.value!!.instanceId,
                 width,
                 height
             )

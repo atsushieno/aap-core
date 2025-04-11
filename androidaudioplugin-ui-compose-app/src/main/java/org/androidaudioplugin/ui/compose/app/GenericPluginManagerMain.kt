@@ -46,20 +46,18 @@ fun GenericPluginHostPreview() {
 @Composable
 fun SystemPluginManagerMain() {
     val context = LocalContext.current
-    val scope by remember { mutableStateOf(
-        PluginManagerScope(context,
-            AudioPluginHostHelper.queryAudioPluginServices(context).toList().toMutableStateList())
-    ) }
+    val scope = remember { PluginManagerScope(context,
+        AudioPluginHostHelper.queryAudioPluginServices(context).toList().toMutableStateList())
+    }
     GenericPluginManagerMain(scope, listTitleBarText = "Plugins on this system")
 }
 
 @Composable
 fun LocalPluginManagerMain() {
     val context = LocalContext.current
-    val scope by remember { mutableStateOf(
-        PluginManagerScope(context,
-            listOf(AudioPluginServiceHelper.getLocalAudioPluginService(context)).toMutableStateList())
-    ) }
+    val scope = remember { PluginManagerScope(context,
+        listOf(AudioPluginServiceHelper.getLocalAudioPluginService(context)).toMutableStateList())
+    }
     GenericPluginManagerMain(scope, listTitleBarText = "Plugins in this application")
 }
 

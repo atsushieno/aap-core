@@ -33,24 +33,23 @@ import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 @Composable
 fun PluginDetails(pluginInfo: PluginInformation, manager: PluginManagerScope) {
     // PluginDetailsScope.create() involves suspend fun, so we replace the Composable once it's ready.
-    var scope by remember { mutableStateOf<PluginDetailsScope?>(null) }
+    val info = remember { pluginInfo }
+    val scope = remember { PluginDetailsScope(info, manager) }
+    val instance by remember { scope.instance }
 
-    LaunchedEffect(key1 = pluginInfo) {
-        scope = PluginDetailsScope.create(pluginInfo, manager)
+    LaunchedEffect(scope) {
+        scope.instantiatePlugin()
     }
-    if (scope != null) {
-        DisposableEffect(scope) {
-            onDispose {
-                scope?.close()
-            }
+    DisposableEffect(Unit) {
+        onDispose {
+            scope.close()
         }
     }
 
-    val currentScope = scope
-    if (currentScope == null)
-        PluginDetailsInstancing(pluginInfo)
+    if (instance == null)
+        PluginDetailsInstancing(info)
     else
-        PluginDetailsInstantiated(currentScope)
+        PluginDetailsInstantiated(scope)
 }
 
 @Composable
@@ -67,7 +66,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     var showWebUI by remember { mutableStateOf(false) }
     var showSurfaceUI by remember { mutableStateOf(false) }
     var surfaceUIConnected by remember { mutableStateOf(false) }
-    val instance = scope.instance!!
+    val instance = scope.instance.value!!
     var surfaceUIScope by remember { mutableStateOf<SurfaceControlUIScope?>(null) }
 
     Box {
