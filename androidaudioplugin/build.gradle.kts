@@ -1,8 +1,10 @@
+import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.dokka)
-    id ("maven-publish")
+    alias(libs.plugins.vanniktech.maven.publish)
     id ("signing")
 }
 
@@ -67,6 +69,14 @@ android {
 }
 
 apply { from ("../publish-pom.gradle") }
+// "mavenPublishing" could not resolve reference to com.vanniktech.maven.publish.SonatypeHost. Another reason Gradle should die.
+mavenPublishing {
+    configure(AndroidMultiVariantLibrary())
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    if (project.hasProperty("mavenCentralUsername") ||
+        System.getenv("ORG_GRADLE_PROJECT_mavenCentralUsername") != null)
+        signAllPublications()
+}
 
 dependencies {
     implementation (libs.androidx.core.ktx)

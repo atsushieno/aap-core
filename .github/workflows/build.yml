@@ -1,8 +1,9 @@
-name: build dist
+name: build
 
 on:
   push:
   pull_request:
+  workflow_call:
 
 jobs:
   linux-build:
@@ -10,7 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: apt update
@@ -21,19 +22,6 @@ jobs:
       with:
         java-version: 17
         distribution: temurin
-    # ONLY FOR NEW RELEASE TAGS
-    - name: setup gpg necessities
-      if: startsWith(github.ref, 'refs/tags/')
-      run: sudo bash -c "echo '$GPG_KEY_CONTENTS' | base64 -d > $WORKSPACE/'$SIGNING_SECRET_KEY_RING_FILE'"
-      env:
-        WORKSPACE: ${{ github.workspace }}
-        GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
-        SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
-    # ONLY FOR NEW RELEASE TAGS
-    - name: rewrite publish-pom.gradle to require signing
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        sed -i "s/signing {}/signing { sign(publishing.publications) }/" publish-pom.gradle
     - name: cache AVD
       uses: actions/cache@v4
       env:
@@ -51,20 +39,8 @@ jobs:
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
-    # ONLY FOR NON-RELEASES
     - name: build
-      if: ${{ !startsWith(github.ref, 'refs/tags/') }}
       run: ./gradlew build dokkaHtml publishToMavenLocal
-    # ONLY FOR NEW RELEASE TAGS
-    - name: publish
-      if: startsWith(github.ref, 'refs/tags/')
-      run: ./gradlew --warning-mode all publish dokkaHtml
-      env:
-        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-        OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-        SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-        SIGNING_SECRET_KEY_RING_FILE: ${{ format('{0}/{1}', github.workspace, secrets.SIGNING_SECRET_KEY_RING_FILE) }}
     - name: run instrumented tests (disabled)
       if: false
       # > Gradle was not able to complete device setup for: dev30_google_x86_Pixel_5
@@ -81,19 +57,6 @@ jobs:
         path: |
           ./*/build/outputs/aar/*.aar
           samples/*/build/outputs/apk/debug/*.apk
-    # Create release, only for release tags
-    - name: Create Release
-      uses: ncipollo/release-action@v1
-      if: success() && startsWith(github.ref, 'refs/tags/')
-      with:
-        artifacts: ./*/build/outputs/aar/*.aar,samples/*/build/outputs/apk/debug/*.apk
-    # Update API reference, only for release tags
-    - name: deploy to GitHub Pages
-      if: ${{ success() && startsWith(github.ref, 'refs/tags/') }}
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        branch: gh-pages
-        folder: androidaudioplugin/build/dokka/html
 
   osx-build:
     name: build on osx
@@ -104,7 +67,7 @@ jobs:
       with:
         submodules: recursive
     - name: set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: 17
         distribution: temurin
