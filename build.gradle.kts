@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.dokka) apply false
+    id("cl.franciscosolis.sonatype-central-upload") version ("1.0.3") apply false
 }
 
 buildscript {

@@ -8,21 +8,30 @@ android {
     }
 }
 
+version = libs.versions.aap.core.get()
+
 afterEvaluate {
-    tasks.register('sourceJar', Jar) {
+    // based on https://zenn.dev/orangain/articles/publish-to-maven-central-using-gradle#fn-c896-2
+    // Note that this will build valid archive only on clean environment like CI builds.
+    //
+    // It is technically unnecessary anymore...
+    tasks.register("makeArchive", Zip) {
+        dependsOn("publishReleasePublicationToMavenRepository")
+        from layout.buildDirectory.dir("stub-install")
+        into "."
+    }
+
+    tasks.register('sourcesJar', Jar) {
         from android.sourceSets.main.java.srcDirs
         from android.sourceSets.main.kotlin.srcDirs
         archiveClassifier.set('sources')
     }
+
     publishing {
         repositories {
             maven {
-                name = "OSSRH"
-                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                credentials {
-                    username = System.getenv("OSSRH_USERNAME")
-                    password = System.getenv("OSSRH_PASSWORD")
-                }
+                // Install once into fake directory (not to mavenLocal, because it can skip signing)
+                url = uri(layout.buildDirectory.dir("stub-install"))
             }
         }
 
@@ -70,6 +79,20 @@ afterEvaluate {
                 }
             }
         }
+    }
+
+    // based on https://zenn.dev/orangain/articles/publish-to-maven-central-using-gradle#fn-c896-2
+    tasks.named("sonatypeCentralUpload") {
+        dependsOn("makeArchive")
+
+        username = System.getenv("OSSRH_USERNAME")
+        password = System.getenv("OSSRH_PASSWORD")
+
+        archives = files(layout.buildDirectory.dir("stub-install").get().asFileTree.files)
+        pom = file(tasks.named("generatePomFileForReleasePublication").get().outputs.files.singleFile)
+
+        signingKey = System.getenv("SIGNING_KEY_ID")
+        signingKeyPassphrase = System.getenv("SIGNING_PASSWORD")
     }
 
     // keep it as is. It is replaced by CI release builds

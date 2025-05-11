@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.dokka)
     id ("maven-publish")
     id ("signing")
+    id("cl.franciscosolis.sonatype-central-upload")
 }
 
 apply { from ("../common.gradle") }
