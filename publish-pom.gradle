@@ -75,4 +75,11 @@ afterEvaluate {
             }
         }
     }
+    if (project.hasProperty("mavenCentralUsername") ||
+            System.getenv("ORG_GRADLE_PROJECT_mavenCentralUsername")) {
+        signing {
+            useGpgCmd()
+            sign(publishing.publications)
+        }
+    }
 }

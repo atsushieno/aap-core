@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.maven.publish)
-    id ("signing")
+    signing
 }
 
 apply { from ("../common.gradle") }
@@ -73,9 +73,6 @@ apply { from ("../publish-pom.gradle") }
 mavenPublishing {
     configure(AndroidMultiVariantLibrary())
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
-    if (project.hasProperty("mavenCentralUsername") ||
-        System.getenv("ORG_GRADLE_PROJECT_mavenCentralUsername") != null)
-        signAllPublications()
 }
 
 dependencies {
