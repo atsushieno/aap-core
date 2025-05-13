@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.9.1"
-aap-lv2 = "0.4.1"
+aap-core = "0.9.2"
+aap-lv2 = "0.4.2"
 
 android-compileSdk = "36"
 android-minSdk = "29"
@@ -32,6 +32,8 @@ espresso = "3.6.1"
 oboe = "1.9.3"
 ktmidi = "0.11.0"
 compose-audio-controls = "0.7.0"
+
+vanniktech-maven-publish = "0.31.0"
 
 [libraries]
 
@@ -80,3 +82,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+vanniktech-maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-maven-publish" }

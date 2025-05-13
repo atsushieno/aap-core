@@ -1,14 +1,17 @@
+import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
+
 plugins {
-    id ("com.android.library")
-    id ("kotlin-android")
-    id ("org.jetbrains.dokka")
-    id ("maven-publish")
-    id ("signing")
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.vanniktech.maven.publish)
+    signing
 }
 
 apply { from ("../common.gradle") }
 
 // What a mess...
+version = libs.versions.aap.core.get()
 val enable_asan: Boolean by rootProject
 
 android {
@@ -60,8 +63,6 @@ android {
     }
 }
 
-apply { from ("../publish-pom.gradle") }
-
 dependencies {
     implementation (project(":androidaudioplugin"))
     implementation (libs.androidx.core.ktx)
@@ -74,13 +75,29 @@ dependencies {
     androidTestImplementation (libs.test.espresso.core)
 }
 
-/*
-// Starting AGP 7.0.0-alpha05, AGP stopped caring build dependencies and it broke builds.
-// This is a forcible workarounds to build libandroidaudioplugin.so in prior to referencing it.
-gradle.projectsEvaluated {
-    tasks.findByPath(":androidaudioplugin-midi-device-service:buildCMakeDebug")!!.dependsOn(":androidaudioplugin:prefabDebugPackage")
-    tasks.findByPath(":androidaudioplugin-midi-device-service:buildCMakeRelWithDebInfo")!!.dependsOn(":androidaudioplugin:prefabReleasePackage")
-    //tasks["mergeDebugNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabDebugPackage"])
-    //tasks["mergeReleaseNativeLibs"].dependsOn(rootProject.project("androidaudioplugin").tasks["prefabReleasePackage"])
+val gitProjectName = "aap-core"
+val packageName = project.name
+val packageDescription = android.ext["description"].toString()
+// my common settings
+val packageUrl = "https://github.com/atsushieno/$gitProjectName"
+val licenseName = "MIT"
+val licenseUrl = "https://github.com/atsushieno/$gitProjectName/blob/main/LICENSE"
+val devId = "atsushieno"
+val devName = "Atsushi Eno"
+val devEmail = "atsushieno@gmail.com"
+
+// Common copy-pasted
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    if (project.hasProperty("mavenCentralUsername") || System.getenv("ORG_GRADLE_PROJECT_mavenCentralUsername") != null)
+        signAllPublications()
+    coordinates(group.toString(), project.name, version.toString())
+    pom {
+        name.set(packageName)
+        description.set(packageDescription)
+        url.set(packageUrl)
+        scm { url.set(packageUrl) }
+        licenses { license { name.set(licenseName); url.set(licenseUrl) } }
+        developers { developer { id.set(devId); name.set(devName); email.set(devEmail) } }
+    }
 }
-*/
