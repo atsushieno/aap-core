@@ -12,6 +12,7 @@ apply { from ("../common.gradle") }
 
 // What a mess...
 val enable_asan: Boolean by rootProject
+version = libs.versions.aap.core.get()
 
 android {
     namespace = "org.androidaudioplugin"
@@ -68,13 +69,6 @@ android {
     }
 }
 
-apply { from ("../publish-pom.gradle") }
-// "mavenPublishing" could not resolve reference to com.vanniktech.maven.publish.SonatypeHost. Another reason Gradle should die.
-mavenPublishing {
-    configure(AndroidMultiVariantLibrary())
-    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
-}
-
 dependencies {
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)
@@ -90,4 +84,31 @@ dependencies {
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
+}
+
+val gitProjectName = "aap-core"
+val packageName = project.name
+val packageDescription = android.ext["description"].toString()
+// my common settings
+val packageUrl = "https://github.com/atsushieno/$gitProjectName"
+val licenseName = "MIT"
+val licenseUrl = "https://github.com/atsushieno/$gitProjectName/blob/main/LICENSE"
+val devId = "atsushieno"
+val devName = "Atsushi Eno"
+val devEmail = "atsushieno@gmail.com"
+
+// Common copy-pasted
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    if (project.hasProperty("mavenCentralUsername") || System.getenv("ORG_GRADLE_PROJECT_mavenCentralUsername") != null)
+        signAllPublications()
+    coordinates(group.toString(), project.name, version.toString())
+    pom {
+        name.set(packageName)
+        description.set(packageDescription)
+        url.set(packageUrl)
+        scm { url.set(packageUrl) }
+        licenses { license { name.set(licenseName); url.set(licenseUrl) } }
+        developers { developer { id.set(devId); name.set(devName); email.set(devEmail) } }
+    }
 }

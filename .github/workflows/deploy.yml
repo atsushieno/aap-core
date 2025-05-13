@@ -21,24 +21,14 @@ jobs:
         with:
           java-version: 17
           distribution: temurin
-      - name: setup gpg necessities
-        run: sudo bash -c "echo '$GPG_KEY_CONTENTS' | base64 -d > $WORKSPACE/'$SIGNING_SECRET_KEY_RING_FILE'"
-        env:
-          WORKSPACE: ${{ github.workspace }}
-          GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
-          SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v5
-        with:
-          gpg_private_key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
-          passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
       - name: publish
-        run: ./gradlew 
-          -PmavenCentralUsername=${{ secrets.OSSRH_USERNAME }}
-          -PmavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}
-          -PsigningInMemoryKeyId=${{ secrets.OSSRH_GPG_SECRET_KEY_ID }}
-          -PsigningInMemoryPassword=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
-          --warning-mode=all publish dokkaHtml
+        run: ./gradlew --warning-mode=all publishToMavenCentral dokkaHtml
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
+
       - name: upload artifact
         if: false #success()
         uses: actions/upload-artifact@v4
