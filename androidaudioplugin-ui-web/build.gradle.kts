@@ -1,5 +1,3 @@
-import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
