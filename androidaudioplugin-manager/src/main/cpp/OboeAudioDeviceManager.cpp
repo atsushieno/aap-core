@@ -1,7 +1,7 @@
 #include <cassert>
 #include "OboeAudioDeviceManager.h"
-#include <audio/choc_SampleBuffers.h>
-#include <containers/choc_VariableSizeFIFO.h>
+#include <choc/audio/choc_SampleBuffers.h>
+#include <choc/containers/choc_VariableSizeFIFO.h>
 #if ANDROID
 #include <aap/unstable/logging.h>
 #include <android/trace.h>

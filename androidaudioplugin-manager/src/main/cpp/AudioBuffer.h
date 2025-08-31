@@ -3,8 +3,8 @@
 
 #include "LocalDefinitions.h"
 #define AAP_MANAGER_AUDIO_QUEUE_NX_FRAMES 4
-#include <audio/choc_SampleBuffers.h>
-#include <containers/choc_SingleReaderSingleWriterFIFO.h>
+#include <choc/audio/choc_SampleBuffers.h>
+#include <choc/containers/choc_SingleReaderSingleWriterFIFO.h>
 #include <aap/android-audio-plugin.h>
 
 namespace aap {

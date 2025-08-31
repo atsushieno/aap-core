@@ -1,10 +1,10 @@
 #include "AudioGraphNode.h"
 #include "AudioGraph.h"
-#include <audio/choc_AudioFileFormat_WAV.h>
-#include <audio/choc_AudioFileFormat_MP3.h>
-#include <audio/choc_AudioFileFormat_Ogg.h>
-#include <audio/choc_AudioFileFormat_FLAC.h>
-#include <audio/choc_SincInterpolator.h>
+#include <choc/audio/choc_AudioFileFormat_WAV.h>
+#include <choc/audio/choc_AudioFileFormat_MP3.h>
+#include <choc/audio/choc_AudioFileFormat_Ogg.h>
+#include <choc/audio/choc_AudioFileFormat_FLAC.h>
+#include <choc/audio/choc_SincInterpolator.h>
 
 
 class SeekableByteBuffer : public std::streambuf {
