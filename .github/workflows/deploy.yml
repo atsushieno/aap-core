@@ -19,7 +19,7 @@ jobs:
           java-version: 17
           distribution: temurin
       - name: publish
-        run: ./gradlew --warning-mode=all publishToMavenCentral dokkaHtml
+        run: ./gradlew --warning-mode=all publishToMavenCentral dokkaGenerate
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
