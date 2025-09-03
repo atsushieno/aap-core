@@ -80,6 +80,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             "AudioPluginHost",
             "bindAudioPluginService: ${service.packageName} | ${service.className}"
         )
+        assert(applicationContext.startForegroundService(intent) != null)
         assert(applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 

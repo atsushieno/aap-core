@@ -1,10 +1,16 @@
 package org.androidaudioplugin
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
-import android.content.Intent
-import android.os.IBinder
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
 import android.os.Looper
+import androidx.core.app.NotificationCompat
 
 /**
  * The Audio plugin service class. It should not be derived. We check the service class name strictly.
@@ -48,9 +54,15 @@ open class AudioPluginService : Service()
 
     private var nativeBinder : IBinder? = null
     var extensions = mutableListOf<Extension>()
+    private var notificationManager: NotificationManager? = null
+    private val NOTIFICATION_ID = 1
+    private val CHANNEL_ID by lazy { applicationInfo.packageName + ":" + javaClass.name }
 
     override fun onCreate() {
         initialize(this)
+        
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        createNotificationChannel()
 
         val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
         si.extensions.forEach { e ->
@@ -81,8 +93,16 @@ open class AudioPluginService : Service()
             this.start()
         }
 
+        startForegroundService()
+
         return nativeBinder
     }
+
+/*
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForegroundService()
+        return START_STICKY
+    }*/
 
     override fun onUnbind(intent: Intent?): Boolean {
         for(ext in extensions)
@@ -97,6 +117,35 @@ open class AudioPluginService : Service()
         if (binder != null)
             AudioPluginNatives.destroyBinderForService(binder)
         nativeBinder = null
+        
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        
         return true
+    }
+    
+    private fun createNotificationChannel() {
+        val name = applicationInfo.packageName
+        val descriptionText = getString(R.string.audio_plugin_service_notification_channel_description)
+        val importance = NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            description = descriptionText
+        }
+        notificationManager?.createNotificationChannel(channel)
+    }
+    
+    private fun startForegroundService() {
+        val notification = createNotification()
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+    }
+    
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            // It may be confusing if there are more than one AudioPluginService...
+            .setContentTitle("AAP: " + applicationInfo.packageName)
+            .setContentText(getString(R.string.audio_plugin_service_notification_text))
+            // FIXME: this should become customizable and identifiable
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setOngoing(true)
+            .build()
     }
 }

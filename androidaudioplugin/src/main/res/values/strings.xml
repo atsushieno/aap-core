@@ -1,2 +1,4 @@
 <resources>
+    <string name="audio_plugin_service_notification_channel_description">Shows when audio plugins are running</string>
+    <string name="audio_plugin_service_notification_text">Audio plugin service is running</string>
 </resources>

@@ -79,6 +79,7 @@ dependencies {
     }
     implementation (libs.lifecycle.service)
     implementation (libs.startup.runtime)
+    implementation(libs.accompanist.permissions)
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
