@@ -85,6 +85,8 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
         // start as FGS only if it is applicable
         if (context is Activity)
             assert(context.startForegroundService(intent) != null)
+        else
+            Log.d("AAP", "AudioPluginServiceConnector: not as foreground service - context is not Activity.")
         assert(context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 
