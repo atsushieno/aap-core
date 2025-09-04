@@ -1,5 +1,6 @@
 package org.androidaudioplugin.hosting
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.util.Log
 import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.AudioPluginService
+import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.PluginServiceInformation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -18,7 +20,7 @@ import kotlin.coroutines.suspendCoroutine
 
   Native hosts also use this class to instantiate plugins and manage them.
  */
-class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseable {
+class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
     /*
     The ServiceConnection implementation class for AudioPluginService.
      */
@@ -80,8 +82,10 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             "AudioPluginHost",
             "bindAudioPluginService: ${service.packageName} | ${service.className}"
         )
-        assert(applicationContext.startForegroundService(intent) != null)
-        assert(applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE))
+        // start as FGS only if it is applicable
+        if (context is Activity)
+            assert(context.startForegroundService(intent) != null)
+        assert(context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
     }
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
@@ -120,7 +124,7 @@ class AudioPluginServiceConnector(val applicationContext: Context) : AutoCloseab
             conn.serviceInfo.packageName,
             conn.serviceInfo.className
         )
-        applicationContext.unbindService(conn.platformServiceConnection)
+        context.unbindService(conn.platformServiceConnection)
     }
 
     override fun close() {

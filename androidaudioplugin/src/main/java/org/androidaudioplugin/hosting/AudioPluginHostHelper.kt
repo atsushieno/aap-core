@@ -245,7 +245,7 @@ object AudioPluginHostHelper {
     fun ensureBinderConnected(servicePackageName: String, connector: AudioPluginServiceConnector) {
         ensureBinderConnected(
             queryAudioPluginService(
-                connector.applicationContext,
+                connector.context,
                 servicePackageName
             ), connector
         )

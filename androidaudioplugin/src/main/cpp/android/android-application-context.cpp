@@ -38,6 +38,8 @@ NonRealtimeLoopRunner* get_non_rt_loop_runner() { return non_rt_loop_runner.get(
 
 #include <pthread.h>
 void prepare_non_rt_event_looper() {
+    assert(!non_rt_loop_runner);
+
 	auto looper = ALooper_prepare(0);
 	ALooper_acquire(looper);
 	// probably we need this constant adjustable...
@@ -53,6 +55,8 @@ void start_non_rt_event_looper() {
 }
 
 void stop_non_rt_event_looper() {
+    if (!non_rt_loop_runner)
+        return; // already stopped
     auto looper = (ALooper*) non_rt_loop_runner->getLooper();
 	ALooper_release(looper);
 	non_rt_loop_runner.reset(nullptr);

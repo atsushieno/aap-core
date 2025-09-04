@@ -29,6 +29,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import kotlin.system.exitProcess
@@ -104,7 +108,12 @@ fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String
     BackHandler {
         if (navController.currentBackStackEntry?.destination?.route == "plugin_list") {
             if (System.currentTimeMillis() - lastBackPressed < 2000) {
-                exitProcess(0)
+                (context as Activity).finish()
+                // FIXME: this should ensure that foreground services all stopped, instead of hacky delays.
+                GlobalScope.launch {
+                    delay(5000)
+                    exitProcess(0)
+                }
             }
             else
                 Toast.makeText(context, "Tap once more to quit", Toast.LENGTH_SHORT).show()

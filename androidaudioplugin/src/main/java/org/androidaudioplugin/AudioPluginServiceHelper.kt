@@ -1,5 +1,6 @@
 package org.androidaudioplugin
 
+import android.content.ComponentName
 import android.content.Context
 import android.view.View
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
@@ -9,6 +10,10 @@ object AudioPluginServiceHelper {
     fun getLocalAudioPluginService(context: Context) =
         AudioPluginHostHelper.queryAudioPluginServices(context)
             .first { svc -> svc.packageName == context.packageName }
+
+    @JvmStatic
+    fun getForegroundServiceType(context: Context, packageName: String, serviceClassName: String) =
+        context.packageManager.getServiceInfo(ComponentName(packageName, serviceClassName), 0).foregroundServiceType
 
     @JvmStatic
     external fun getServiceInstance(pluginId: String): Long

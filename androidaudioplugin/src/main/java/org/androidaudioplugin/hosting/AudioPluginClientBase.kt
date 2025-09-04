@@ -5,9 +5,9 @@ import android.media.AudioManager
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginInformation
 
-open class AudioPluginClientBase(private val applicationContext: Context) {
+open class AudioPluginClientBase(private val context: Context) {
     // Service connection
-    protected val serviceConnector by lazy { AudioPluginServiceConnector(applicationContext) }
+    protected val serviceConnector by lazy { AudioPluginServiceConnector(context) }
     protected val native by lazy { NativePluginClient.createFromConnection(serviceConnector.serviceConnectionId) }
 
     val serviceConnectionId by lazy { serviceConnector.serviceConnectionId }
@@ -26,7 +26,7 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     suspend fun connectToPluginService(packageName: String) : PluginServiceConnection {
         val conn = serviceConnector.findExistingServiceConnection(packageName)
         if (conn == null) {
-            val service = AudioPluginHostHelper.queryAudioPluginServices(applicationContext)
+            val service = AudioPluginHostHelper.queryAudioPluginServices(context.applicationContext)
                 .first { c -> c.packageName == packageName }
             return serviceConnector.bindAudioPluginService(service)
         }
@@ -48,9 +48,9 @@ open class AudioPluginClientBase(private val applicationContext: Context) {
     var sampleRate : Int
 
     init {
-        AudioPluginNatives.initializeAAPJni(applicationContext)
+        AudioPluginNatives.initializeAAPJni(context.applicationContext)
 
-        val audioManager = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
     }
 }
