@@ -4,10 +4,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -54,14 +53,13 @@ open class AudioPluginService : Service()
 
     private var nativeBinder : IBinder? = null
     var extensions = mutableListOf<Extension>()
-    private var notificationManager: NotificationManager? = null
+    private val notificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
     private val NOTIFICATION_ID = 1
     private val CHANNEL_ID by lazy { applicationInfo.packageName + ":" + javaClass.name }
 
     override fun onCreate() {
         initialize(this)
         
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
 
         val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
@@ -76,6 +74,10 @@ open class AudioPluginService : Service()
     }
 
     private var eventProcessorLooper: Looper? = null
+
+    // Depending on the plugin, it may be missing foreground service type in the manifest.
+    // To avoid crash due to insufficient permission, we make foreground behavior optional.
+    private val declaredForegroundServiceType by lazy { packageManager.getServiceInfo(ComponentName(applicationContext, javaClass.name), 0).foregroundServiceType }
 
     override fun onBind(intent: Intent?): IBinder? {
         val existing = nativeBinder
@@ -93,16 +95,11 @@ open class AudioPluginService : Service()
             this.start()
         }
 
-        startForegroundService()
+        if (declaredForegroundServiceType != 0)
+            startForegroundService()
 
         return nativeBinder
     }
-
-/*
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundService()
-        return START_STICKY
-    }*/
 
     override fun onUnbind(intent: Intent?): Boolean {
         for(ext in extensions)
@@ -117,8 +114,9 @@ open class AudioPluginService : Service()
         if (binder != null)
             AudioPluginNatives.destroyBinderForService(binder)
         nativeBinder = null
-        
-        stopForeground(STOP_FOREGROUND_REMOVE)
+
+        if (declaredForegroundServiceType != 0)
+            stopForeground(STOP_FOREGROUND_REMOVE)
         
         return true
     }
@@ -130,12 +128,12 @@ open class AudioPluginService : Service()
         val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
             description = descriptionText
         }
-        notificationManager?.createNotificationChannel(channel)
+        notificationManager.createNotificationChannel(channel)
     }
     
     private fun startForegroundService() {
         val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        startForeground(NOTIFICATION_ID, notification, declaredForegroundServiceType)
     }
     
     private fun createNotification(): Notification {
