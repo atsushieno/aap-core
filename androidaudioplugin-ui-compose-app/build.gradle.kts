@@ -25,7 +25,7 @@ android {
     buildFeatures {
         compose = true
     }
-    kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+    kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     defaultConfig {
         vectorDrawables {
             useSupportLibrary = true
