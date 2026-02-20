@@ -1,0 +1,284 @@
+
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+#include <string>
+#include <vector>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wshadow"
+#include <midicci/midicci.hpp>
+#pragma clang diagnostic pop
+
+#include <aap/ext/parameters.h>
+#include <aap/ext/presets.h>
+#include <aap/unstable/logging.h>
+
+#include "AAPMidiCISession.h"
+
+#define LOG_TAG "AAPMidiCISession"
+
+using namespace midicci;
+using namespace midicci::commonproperties;
+
+namespace aap::midi {
+
+// ---------------------------------------------------------------------------
+// Pimpl implementation
+// ---------------------------------------------------------------------------
+
+class AAPMidiCISession::Impl {
+    xs::StandardExtensions* extensions_;
+    const PluginInformation* pluginInfo_;
+    const bool is_ump_;
+
+    std::unique_ptr<midicci::musicdevice::MidiCISession> ci_session_{};
+    std::vector<midicci::musicdevice::MidiInputCallback> ci_input_forwarders_{};
+
+public:
+    Impl(xs::StandardExtensions* extensions, const PluginInformation* pluginInfo, bool isUmp)
+        : extensions_(extensions), pluginInfo_(pluginInfo), is_ump_(isUmp) {}
+
+    void setupMidiCISession(MidiSender outputSender);
+    void interceptInput(const uint8_t* data, size_t offset, size_t length,
+                        uint64_t timestampInNanoseconds);
+};
+
+// ---------------------------------------------------------------------------
+// Parameter → AllCtrlList / CtrlMapList helper
+// (Mirrors setupParameterList() in UapmdMidiCISession.cpp)
+// ---------------------------------------------------------------------------
+
+static void setupParameterList(const std::string& controlType,
+                                std::vector<MidiCIControl>& allCtrlList,
+                                xs::StandardExtensions& extensions,
+                                bool perNoteOnly,
+                                MidiCIDevice& ciDevice) {
+    const int32_t count = extensions.getParameterCount();
+    for (int32_t i = 0; i < count; i++) {
+        aap_parameter_info_t param = extensions.getParameter(i);
+
+        // Treat negative priority as "hidden / not automatable" — skip.
+        double priority = extensions.getParameterProperty(param.stable_id,
+                                                          AAP_PARAMETER_PROPERTY_PRIORITY);
+        if (priority < 0)
+            continue;
+
+        // Separate pass for normal vs per-note parameters.
+        if (param.per_note_enabled != perNoteOnly)
+            continue;
+
+        // Map stable_id to the two-byte NRPN/PNAC controller address.
+        const uint8_t msb = static_cast<uint8_t>(param.stable_id / 0x80);
+        const uint8_t lsb = static_cast<uint8_t>(param.stable_id % 0x80);
+
+        MidiCIControl ctrl{param.display_name, controlType, "",
+                           std::vector<uint8_t>{msb, lsb}};
+
+        if (param.path[0] != '\0')
+            ctrl.paramPath = std::string(param.path);
+
+        // Normalise a plain value to the [0, UINT32_MAX] range expected by MIDI-CI.
+        const double range = param.max_value - param.min_value;
+        auto plainToUint32 = [&](double plainValue) -> uint32_t {
+            if (!(range > 0.0))
+                return 0;
+            double normalized = (plainValue - param.min_value) / range;
+            normalized = std::clamp(normalized, 0.0, 1.0);
+            return static_cast<uint32_t>(normalized * static_cast<double>(UINT32_MAX));
+        };
+
+        if (param.default_value != 0.0)
+            ctrl.defaultValue = plainToUint32(param.default_value);
+
+        // Build a CtrlMap entry for parameters that have enumerated values.
+        const int32_t enumCount = extensions.getEnumerationCount(param.stable_id);
+        if (enumCount > 0) {
+            std::string mapId = std::to_string(param.stable_id);
+            ctrl.ctrlMapId = mapId;
+
+            std::vector<MidiCIControlMap> ctrlMapList;
+            ctrlMapList.reserve(static_cast<size_t>(enumCount));
+            for (int32_t j = 0; j < enumCount; j++) {
+                aap_parameter_enum_t e = extensions.getEnumeration(param.stable_id, j);
+                ctrlMapList.emplace_back(MidiCIControlMap{plainToUint32(e.value), e.name});
+            }
+            StandardPropertiesExtensions::setCtrlMapList(ciDevice, mapId, ctrlMapList);
+        }
+
+        allCtrlList.push_back(std::move(ctrl));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Impl::setupMidiCISession
+// (Mirrors UapmdMidiCISessionImpl::setupMidiCISession())
+// ---------------------------------------------------------------------------
+
+void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
+    // --- Device configuration -------------------------------------------
+    const std::string deviceName = pluginInfo_->getDisplayName();
+    const std::string manufacturer = pluginInfo_->getDeveloperName();
+    const std::string version = pluginInfo_->getVersion();
+
+    midicci::MidiCIDeviceConfiguration ci_config{
+        midicci::DEFAULT_RECEIVABLE_MAX_SYSEX_SIZE,
+        midicci::DEFAULT_MAX_PROPERTY_CHUNK_SIZE,
+        deviceName,
+        0
+    };
+    ci_config.device_info.manufacturer = manufacturer;
+    ci_config.device_info.model = deviceName;
+    ci_config.device_info.version = version;
+
+    auto device_info = ci_config.device_info;
+
+    uint32_t muid{static_cast<uint32_t>(rand() & 0x7F7F7F7F)};
+
+    // --- Transport wiring ------------------------------------------------
+    auto input_listener_adder = [this](midicci::musicdevice::MidiInputCallback callback) {
+        ci_input_forwarders_.push_back(std::move(callback));
+    };
+
+    // The sender writes CI responses back to the connected host.
+    auto sender = [outputSender](const uint8_t* data, size_t offset, size_t length,
+                                 uint64_t timestamp) {
+        if (outputSender)
+            outputSender(data, offset, length, timestamp);
+    };
+
+    // Choose the transport protocol to match the owning device service:
+    //   MidiDeviceService    → MIDI 1 SysEx byte-stream (F0 7E … F7)
+    //   MidiUmpDeviceService → UMP SysEx8 packets (message type 5)
+    const auto protocol = is_ump_
+        ? midicci::musicdevice::MidiTransportProtocol::UMP
+        : midicci::musicdevice::MidiTransportProtocol::Midi1;
+    midicci::musicdevice::MidiCISessionSource source{
+        protocol,
+        input_listener_adder,
+        sender
+    };
+
+    ci_session_ = createMidiCiSession(source, muid, std::move(ci_config),
+        [](const LogData& log) {
+            auto msg = std::get_if<std::reference_wrapper<const Message>>(&log.data);
+            if (msg)
+                aap::a_log_f(AAP_LOG_LEVEL_DEBUG, LOG_TAG, "[CI %s] %s",
+                             log.is_outgoing ? "OUT" : "IN",
+                             msg->get().getLogMessage().c_str());
+            else
+                aap::a_log_f(AAP_LOG_LEVEL_DEBUG, LOG_TAG, "[CI %s] %s",
+                             log.is_outgoing ? "OUT" : "IN",
+                             std::get<std::string>(log.data).c_str());
+        });
+
+    auto& ciDevice = ci_session_->getDevice();
+
+    // --- Register standard property metadata ----------------------------
+    auto& hostProps = ciDevice.getPropertyHostFacade();
+    hostProps.addMetadata(std::make_unique<CommonRulesPropertyMetadata>(
+        StandardProperties::allCtrlListMetadata()));
+    hostProps.addMetadata(std::make_unique<CommonRulesPropertyMetadata>(
+        StandardProperties::chCtrlListMetadata()));
+    hostProps.addMetadata(std::make_unique<CommonRulesPropertyMetadata>(
+        StandardProperties::ctrlMapListMetadata()));
+    hostProps.addMetadata(std::make_unique<CommonRulesPropertyMetadata>(
+        StandardProperties::programListMetadata()));
+
+    hostProps.updateCommonRulesDeviceInfo(device_info);
+
+    // --- Populate AllCtrlList / CtrlMapList from AAP parameters ----------
+    std::vector<MidiCIControl> allCtrlList{};
+
+    // Normal (non-per-note) parameters → NRPN
+    setupParameterList(MidiCIControlType::NRPN, allCtrlList, *extensions_,
+                       /*perNoteOnly=*/false, ciDevice);
+
+    // Per-note-enabled parameters → PNAC
+    setupParameterList(MidiCIControlType::PNAC, allCtrlList, *extensions_,
+                       /*perNoteOnly=*/true, ciDevice);
+
+    StandardPropertiesExtensions::setAllCtrlList(ciDevice, allCtrlList);
+
+    // --- Populate ProgramList from AAP presets ---------------------------
+    // AAP aap_preset_t has an integer id and a name string; there is no
+    // separate bank field, so bank is always treated as 0.  For preset IDs
+    // >= 0x80 we use the upper bit of the bank-MSB byte (bit 6 set) to
+    // signal that this byte carries the upper bits of the preset index,
+    // matching the same encoding UAPMD uses for index-based presets.
+    const int32_t presetCount = extensions_->getPresetCount();
+    std::vector<MidiCIProgram> programList{};
+    programList.reserve(static_cast<size_t>(presetCount));
+    for (int32_t i = 0; i < presetCount; i++) {
+        aap_preset_t preset{};
+        extensions_->getPreset(i, preset);
+
+        if (preset.id < (1 << 13)) {
+            const auto msb  = static_cast<uint8_t>(preset.id >= 0x80
+                                                   ? (preset.id / 0x80) | 0x40
+                                                   : 0);
+            const auto lsb  = static_cast<uint8_t>(0); // no bank concept in AAP
+            const auto pc   = static_cast<uint8_t>(preset.id % 0x80);
+            programList.push_back({preset.name, {msb, lsb, pc}});
+        }
+    }
+    StandardPropertiesExtensions::setProgramList(ciDevice, programList);
+
+    // --- MidiMessageReport handler ---------------------------------------
+    // NOTE: AAP's StandardExtensions does not expose a "get current value"
+    // call for parameters (values are only observable via MIDI2 NRPN output
+    // from the plugin).  The handler therefore currently sends nothing.
+    // Future work: track parameter changes emitted by the plugin's MIDI2
+    // output port and replay them here.
+    ciDevice.getMessenger().addMessageCallback([](const Message& req) {
+        if (req.getType() == MessageType::MidiMessageReportInquiry) {
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
+                         "MidiMessageReportInquiry received — "
+                         "parameter value dump not yet implemented for AAP.");
+        }
+    });
+
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
+                 "MIDI-CI session ready for plugin \"%s\" "
+                 "(%d parameters, %d presets)",
+                 deviceName.c_str(),
+                 extensions_->getParameterCount(),
+                 presetCount);
+}
+
+// ---------------------------------------------------------------------------
+// Impl::interceptInput
+// ---------------------------------------------------------------------------
+
+void AAPMidiCISession::Impl::interceptInput(const uint8_t* data, size_t offset,
+                                            size_t length,
+                                            uint64_t timestampInNanoseconds) {
+    for (auto& forwarder : ci_input_forwarders_)
+        forwarder(data, offset, length, timestampInNanoseconds);
+}
+
+// ---------------------------------------------------------------------------
+// AAPMidiCISession public interface (forwards to Impl)
+// ---------------------------------------------------------------------------
+
+AAPMidiCISession::AAPMidiCISession(xs::StandardExtensions* extensions,
+                                   const PluginInformation* pluginInfo,
+                                   bool isUmp)
+    : impl_(std::make_unique<Impl>(extensions, pluginInfo, isUmp)) {}
+
+AAPMidiCISession::~AAPMidiCISession() = default;
+
+void AAPMidiCISession::setupMidiCISession(MidiSender outputSender) {
+    impl_->setupMidiCISession(std::move(outputSender));
+}
+
+void AAPMidiCISession::interceptInput(const uint8_t* data, size_t offset,
+                                      size_t length,
+                                      uint64_t timestampInNanoseconds) {
+    impl_->interceptInput(data, offset, length, timestampInNanoseconds);
+}
+
+} // namespace aap::midi

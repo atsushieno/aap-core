@@ -36,17 +36,27 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
     }
 }
 
-internal class AudioPluginMidi1Device(owner: AudioPluginMidiDeviceService)
+internal class AudioPluginMidi1Device(private val owner: AudioPluginMidiDeviceService)
     : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo }, owner.plugins) {
 
     override val midiProtocol = 1
+
+    override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
+        val receivers = owner.getOutputPortReceivers()
+        return if (portIndex < receivers.size) receivers[portIndex] else null
+    }
 }
 
 @RequiresApi(35)
-internal class AudioPluginMidi2Device(owner: AudioPluginMidiUmpDeviceService)
+internal class AudioPluginMidi2Device(private val owner: AudioPluginMidiUmpDeviceService)
     : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo!! }, owner.plugins) {
 
     override val midiProtocol = 2
+
+    override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
+        val receivers = owner.getOutputPortReceivers()
+        return if (portIndex < receivers.size) receivers[portIndex] else null
+    }
 }
 
 abstract class AudioPluginMidiDevice(
@@ -85,6 +95,15 @@ abstract class AudioPluginMidiDevice(
                 (receivers[i] as AudioPluginMidiReceiver).onDeviceClosed()
         }
     }
+
+    /**
+     * Returns the [MidiReceiver] for the device's MIDI output port at [portIndex], or null if
+     * the device has no output port at that index.
+     *
+     * Concrete subclasses obtain this from their owning service's [getOutputPortReceivers] array
+     * (inherited from [MidiDeviceService] / [MidiUmpDeviceService]).
+     */
+    abstract fun getOutputPortReceiver(portIndex: Int): MidiReceiver?
 
     // There is no logical mappings between MIDI device name in "midi_device_info.xml" (or whatever
     // for the metadata) and the plugin display name.

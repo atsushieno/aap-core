@@ -2,6 +2,7 @@
 #ifndef AAP_MIDI_DEVICE_SERVICE_AAPMIDIPROCESSOR_H
 #define AAP_MIDI_DEVICE_SERVICE_AAPMIDIPROCESSOR_H
 
+#include <functional>
 #include <vector>
 #include <zix/ring.h>
 #pragma clang diagnostic push
@@ -13,6 +14,7 @@
 #include <aap/core/host/audio-plugin-host.h>
 #include <aap/core/aapxs/extension-service.h>
 #include <aap/unstable/utility.h>
+#include "AAPMidiCISession.h"
 
 namespace aap::midi {
     // keep it compatible with Oboe
@@ -96,6 +98,14 @@ namespace aap::midi {
         // returns 0 if translation did not happen. Otherwise return the size of translated buffer in translation_buffer.
         size_t runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length);
 
+        // MIDI-CI session (set up in activate() after plugin instantiation).
+        std::unique_ptr<AAPMidiCISession> ci_session{nullptr};
+        void setupCISession();
+
+        // Called by the CI session to send CI response bytes back to the host.
+        // Set from JNI via setMidiOutputSender().
+        std::function<void(const uint8_t*, size_t, size_t, uint64_t)> midi_output_sender{};
+
         // Outputs
         ZixRing *aap_input_ring_buffer{nullptr};
         float *interleave_buffer{nullptr};
@@ -134,6 +144,12 @@ namespace aap::midi {
         inline int32_t getChannelCount() { return channel_count; }
 
         inline int32_t getAAPFrameSize() { return aap_frame_size; }
+
+        // Register the callback used to write MIDI-CI response bytes back to
+        // the Android MIDI host (forwarded via JNI from Kotlin).
+        void setMidiOutputSender(std::function<void(const uint8_t*, size_t, size_t, uint64_t)> sender) {
+            midi_output_sender = std::move(sender);
+        }
     };
 }
 

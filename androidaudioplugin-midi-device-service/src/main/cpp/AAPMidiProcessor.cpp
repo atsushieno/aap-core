@@ -112,6 +112,8 @@ namespace aap::midi {
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "detected unexpected instance_id: %d",
                              instance_data->instance_id);
         }
+        ci_session.reset();
+
         if (aap_input_ring_buffer)
             zix_ring_free(aap_input_ring_buffer);
         if (interleave_buffer)
@@ -241,6 +243,28 @@ namespace aap::midi {
         return 0;
     }
 
+    // Set up the MIDI-CI session for the first instrument instance found.
+    // Called from activate() before audio streaming starts.
+    void AAPMidiProcessor::setupCISession() {
+        if (ci_session)
+            return; // already set up
+        for (int i = 0; i < client->getInstanceCount(); i++) {
+            auto instance = client->getInstanceByIndex(i);
+            if (!instance->getPluginInformation()->isInstrument())
+                continue;
+            ci_session = std::make_unique<AAPMidiCISession>(
+                &instance->getStandardExtensions(),
+                instance->getPluginInformation(),
+                /*isUmp=*/ receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2);
+            ci_session->setupMidiCISession(
+                [this](const uint8_t* data, size_t offset, size_t length, uint64_t ts) {
+                    if (midi_output_sender)
+                        midi_output_sender(data, offset, length, ts);
+                });
+            break;
+        }
+    }
+
     // Activate audio processing. Starts audio (oboe) streaming, CPU-intensive operations happen from here.
     void AAPMidiProcessor::activate() {
         if (state != AAP_MIDI_PROCESSOR_STATE_INACTIVE) {
@@ -251,6 +275,10 @@ namespace aap::midi {
         }
 
         current_mapping_policy = getInstrumentMidiMappingPolicy();
+
+        // Set up the MIDI-CI session before starting audio streaming so that
+        // property lists are ready before any host can connect and query them.
+        setupCISession();
 
         auto startStreamingResult = pal()->startStreaming();
         if (startStreamingResult) {
@@ -516,6 +544,15 @@ namespace aap::midi {
         struct timespec curtime{};
         clock_gettime(CLOCK_REALTIME, &curtime);
         pal()->midiInputReceived(bytes, offset, length, timestampInNanoseconds);
+
+        // Route raw MIDI 1 bytes through the MIDI-CI session BEFORE any translation.
+        // CI messages from the host are MIDI 1 SysEx (F0 7E … F7); midicci's MIDI1
+        // transport parses those directly and produces MIDI 1 SysEx responses.
+        // If we passed the post-UMP-conversion SysEx7 packets instead, midicci
+        // would never see the CI inquiries and responses would be garbled UMP bytes.
+        if (ci_session)
+            ci_session->interceptInput(bytes, offset, length,
+                                       static_cast<uint64_t>(timestampInNanoseconds));
 
         size_t translated = translateMidiBufferIfNeeded(bytes, offset, length);
         if (translated > 0)
