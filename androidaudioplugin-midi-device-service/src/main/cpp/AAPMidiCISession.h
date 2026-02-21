@@ -5,8 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <aap/core/aapxs/standard-extensions.h>
-#include <aap/core/plugin-information.h>
+#include <aap/core/host/plugin-instance.h>
 
 namespace aap::midi {
 
@@ -19,8 +18,8 @@ namespace aap::midi {
  *
  * Lifecycle
  * ---------
- *  1. Construct with a pointer to the instrument's StandardExtensions and its
- *     PluginInformation (both must outlive this object).
+ *  1. Construct with a pointer to the instrument's PluginInstance (must outlive
+ *     this object); PluginInformation and StandardExtensions are obtained from it.
  *  2. Call setupMidiCISession() once, supplying a sender callback that will
  *     write CI response bytes back to the connected host.
  *  3. Call interceptInput() for every incoming buffer, BEFORE the MIDI1→UMP
@@ -41,13 +40,13 @@ public:
     using MidiSender = std::function<void(const uint8_t*, size_t, size_t, uint64_t)>;
 
     /**
-     * @param isUmp  true when the owning device service is a MidiUmpDeviceService
-     *               (full UMP byte-stream, no MIDI 1 conversion); false for a plain
-     *               MidiDeviceService (MIDI 1 SysEx byte-stream).
+     * @param instance  The instrument plugin instance.  Must outlive this object.
+     *                  PluginInformation and StandardExtensions are obtained from it.
+     * @param isUmp     true when the owning device service is a MidiUmpDeviceService
+     *                  (full UMP byte-stream, no MIDI 1 conversion); false for a plain
+     *                  MidiDeviceService (MIDI 1 SysEx byte-stream).
      */
-    AAPMidiCISession(xs::StandardExtensions* extensions,
-                     const PluginInformation* pluginInfo,
-                     bool isUmp);
+    AAPMidiCISession(aap::PluginInstance* instance, bool isUmp);
     ~AAPMidiCISession();
 
     // Non-copyable, movable

@@ -58,6 +58,10 @@ class AudioPluginMidiDeviceInstance private constructor(
             // declared (outputPortReceiver == null) the lambda is a no-op and CI
             // responses are silently discarded; the native guard `if (midi_output_sender)`
             // still fires correctly because the sender function object is non-empty.
+            //
+            // Pacing (inter-chunk sleep) is handled in C++ by the JNI sender via
+            // std::this_thread::sleep_for(), so we forward bytes directly here without
+            // any additional buffering or thread switching to preserve message ordering.
             ret.setMidiOutputCallback(MidiOutputCallback { data, offset, count, timestamp ->
                 outputPortReceiver?.send(data, offset, count, timestamp)
             })

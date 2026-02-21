@@ -31,16 +31,15 @@ namespace aap::midi {
 // ---------------------------------------------------------------------------
 
 class AAPMidiCISession::Impl {
-    xs::StandardExtensions* extensions_;
-    const PluginInformation* pluginInfo_;
+    aap::PluginInstance* instance_;
     const bool is_ump_;
 
     std::unique_ptr<midicci::musicdevice::MidiCISession> ci_session_{};
     std::vector<midicci::musicdevice::MidiInputCallback> ci_input_forwarders_{};
 
 public:
-    Impl(xs::StandardExtensions* extensions, const PluginInformation* pluginInfo, bool isUmp)
-        : extensions_(extensions), pluginInfo_(pluginInfo), is_ump_(isUmp) {}
+    Impl(aap::PluginInstance* instance, bool isUmp)
+        : instance_(instance), is_ump_(isUmp) {}
 
     void setupMidiCISession(MidiSender outputSender);
     void interceptInput(const uint8_t* data, size_t offset, size_t length,
@@ -54,18 +53,13 @@ public:
 
 static void setupParameterList(const std::string& controlType,
                                 std::vector<MidiCIControl>& allCtrlList,
-                                xs::StandardExtensions& extensions,
+                                aap::PluginInstance* instance,
                                 bool perNoteOnly,
                                 MidiCIDevice& ciDevice) {
+    auto& extensions = instance->getStandardExtensions();
     const int32_t count = extensions.getParameterCount();
     for (int32_t i = 0; i < count; i++) {
         aap_parameter_info_t param = extensions.getParameter(i);
-
-        // Treat negative priority as "hidden / not automatable" — skip.
-        double priority = extensions.getParameterProperty(param.stable_id,
-                                                          AAP_PARAMETER_PROPERTY_PRIORITY);
-        if (priority < 0)
-            continue;
 
         // Separate pass for normal vs per-note parameters.
         if (param.per_note_enabled != perNoteOnly)
@@ -120,9 +114,11 @@ static void setupParameterList(const std::string& controlType,
 
 void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
     // --- Device configuration -------------------------------------------
-    const std::string deviceName = pluginInfo_->getDisplayName();
-    const std::string manufacturer = pluginInfo_->getDeveloperName();
-    const std::string version = pluginInfo_->getVersion();
+    const auto* pluginInfo = instance_->getPluginInformation();
+    auto& extensions = instance_->getStandardExtensions();
+    const std::string deviceName = pluginInfo->getDisplayName();
+    const std::string manufacturer = pluginInfo->getDeveloperName();
+    const std::string version = pluginInfo->getVersion();
 
     midicci::MidiCIDeviceConfiguration ci_config{
         midicci::DEFAULT_RECEIVABLE_MAX_SYSEX_SIZE,
@@ -194,11 +190,11 @@ void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
     std::vector<MidiCIControl> allCtrlList{};
 
     // Normal (non-per-note) parameters → NRPN
-    setupParameterList(MidiCIControlType::NRPN, allCtrlList, *extensions_,
+    setupParameterList(MidiCIControlType::NRPN, allCtrlList, instance_,
                        /*perNoteOnly=*/false, ciDevice);
 
     // Per-note-enabled parameters → PNAC
-    setupParameterList(MidiCIControlType::PNAC, allCtrlList, *extensions_,
+    setupParameterList(MidiCIControlType::PNAC, allCtrlList, instance_,
                        /*perNoteOnly=*/true, ciDevice);
 
     StandardPropertiesExtensions::setAllCtrlList(ciDevice, allCtrlList);
@@ -209,12 +205,12 @@ void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
     // >= 0x80 we use the upper bit of the bank-MSB byte (bit 6 set) to
     // signal that this byte carries the upper bits of the preset index,
     // matching the same encoding UAPMD uses for index-based presets.
-    const int32_t presetCount = extensions_->getPresetCount();
+    const int32_t presetCount = extensions.getPresetCount();
     std::vector<MidiCIProgram> programList{};
     programList.reserve(static_cast<size_t>(presetCount));
     for (int32_t i = 0; i < presetCount; i++) {
         aap_preset_t preset{};
-        extensions_->getPreset(i, preset);
+        extensions.getPreset(i, preset);
 
         if (preset.id < (1 << 13)) {
             const auto msb  = static_cast<uint8_t>(preset.id >= 0x80
@@ -245,7 +241,7 @@ void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
                  "MIDI-CI session ready for plugin \"%s\" "
                  "(%d parameters, %d presets)",
                  deviceName.c_str(),
-                 extensions_->getParameterCount(),
+                 extensions.getParameterCount(),
                  presetCount);
 }
 
@@ -264,10 +260,8 @@ void AAPMidiCISession::Impl::interceptInput(const uint8_t* data, size_t offset,
 // AAPMidiCISession public interface (forwards to Impl)
 // ---------------------------------------------------------------------------
 
-AAPMidiCISession::AAPMidiCISession(xs::StandardExtensions* extensions,
-                                   const PluginInformation* pluginInfo,
-                                   bool isUmp)
-    : impl_(std::make_unique<Impl>(extensions, pluginInfo, isUmp)) {}
+AAPMidiCISession::AAPMidiCISession(aap::PluginInstance* instance, bool isUmp)
+    : impl_(std::make_unique<Impl>(instance, isUmp)) {}
 
 AAPMidiCISession::~AAPMidiCISession() = default;
 

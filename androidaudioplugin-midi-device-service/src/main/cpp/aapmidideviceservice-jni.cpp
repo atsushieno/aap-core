@@ -3,6 +3,9 @@
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
 
+#include <chrono>
+#include <thread>
+
 #include <aap/core/host/audio-plugin-host.h>
 #include <aap/core/host/android/audio-plugin-host-android.h>
 #include <aap/core/android/android-application-context.h>
@@ -177,6 +180,11 @@ Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_setM
     }
 
     // Register the native sender that bridges to the Kotlin callback.
+    //
+    // Mirrors LibreMidiIODevice::send() in UAPMD: send at most CHUNK_BYTES bytes at a
+    // time and sleep SYSEX_DELAY_US microseconds between chunks so that the receiving
+    // end (e.g. ktmidi-ci-tool) has time to process each fragment before the next one
+    // arrives.  No trailing sleep is inserted after the final (possibly short) chunk.
     auto sender = [](const uint8_t* data, size_t offset, size_t length, uint64_t timestamp) {
         if (!g_midi_output_callback || !g_midi_output_send_method || !g_jvm)
             return;
@@ -185,18 +193,31 @@ Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_setM
         bool attached = getJniEnv(&env);
         if (!env) return;
 
-        jbyteArray arr = env->NewByteArray(static_cast<jsize>(length));
-        if (arr) {
-            env->SetByteArrayRegion(arr, 0,
-                                    static_cast<jsize>(length),
-                                    reinterpret_cast<const jbyte*>(data + offset));
-            env->CallVoidMethod(g_midi_output_callback,
-                                g_midi_output_send_method,
-                                arr,
-                                static_cast<jint>(0),
-                                static_cast<jint>(length),
-                                static_cast<jlong>(timestamp));
-            env->DeleteLocalRef(arr);
+        static constexpr size_t CHUNK_BYTES   = 256;
+        static constexpr int    SYSEX_DELAY_US = 1000;
+
+        size_t sent = 0;
+        while (sent < length) {
+            const size_t chunk = std::min(CHUNK_BYTES, length - sent);
+
+            jbyteArray arr = env->NewByteArray(static_cast<jsize>(chunk));
+            if (arr) {
+                env->SetByteArrayRegion(arr, 0,
+                                        static_cast<jsize>(chunk),
+                                        reinterpret_cast<const jbyte*>(data + offset + sent));
+                env->CallVoidMethod(g_midi_output_callback,
+                                    g_midi_output_send_method,
+                                    arr,
+                                    static_cast<jint>(0),
+                                    static_cast<jint>(chunk),
+                                    static_cast<jlong>(timestamp));
+                env->DeleteLocalRef(arr);
+            }
+
+            sent += chunk;
+            // Pace delivery: sleep between chunks, but not after the last one.
+            if (sent < length)
+                std::this_thread::sleep_for(std::chrono::microseconds(SYSEX_DELAY_US));
         }
 
         if (attached)

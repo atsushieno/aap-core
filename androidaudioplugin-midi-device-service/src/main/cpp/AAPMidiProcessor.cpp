@@ -253,8 +253,7 @@ namespace aap::midi {
             if (!instance->getPluginInformation()->isInstrument())
                 continue;
             ci_session = std::make_unique<AAPMidiCISession>(
-                &instance->getStandardExtensions(),
-                instance->getPluginInformation(),
+                instance,
                 /*isUmp=*/ receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2);
             ci_session->setupMidiCISession(
                 [this](const uint8_t* data, size_t offset, size_t length, uint64_t ts) {
