@@ -42,7 +42,7 @@ internal class AudioPluginMidi1Device(private val owner: AudioPluginMidiDeviceSe
     override val midiProtocol = 1
 
     override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
-        val receivers = owner.getOutputPortReceivers()
+        val receivers = owner.outputPortReceivers
         return if (portIndex < receivers.size) receivers[portIndex] else null
     }
 }
@@ -54,7 +54,7 @@ internal class AudioPluginMidi2Device(private val owner: AudioPluginMidiUmpDevic
     override val midiProtocol = 2
 
     override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
-        val receivers = owner.getOutputPortReceivers()
+        val receivers = owner.outputPortReceivers
         return if (portIndex < receivers.size) receivers[portIndex] else null
     }
 }

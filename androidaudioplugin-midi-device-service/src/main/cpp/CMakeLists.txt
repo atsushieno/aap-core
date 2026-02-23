@@ -13,7 +13,7 @@ set(_AAPMIDS_OLD_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
 CPMAddPackage(
         NAME            midicci
-        GIT_TAG         4e2ecfb
+        GIT_TAG         1e5a693
         GIT_REPOSITORY  https://github.com/atsushieno/midicci
         OPTIONS         "MIDICCI_SKIP_TOOLS ON"
         EXCLUDE_FROM_ALL

@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <aap/core/host/plugin-instance.h>
+#include <umppi/umppi.hpp>
 
 namespace aap::midi {
 
@@ -22,10 +23,10 @@ namespace aap::midi {
  *     this object); PluginInformation and StandardExtensions are obtained from it.
  *  2. Call setupMidiCISession() once, supplying a sender callback that will
  *     write CI response bytes back to the connected host.
- *  3. Call interceptInput() for every incoming buffer, BEFORE the MIDI1→UMP
- *     translation step.  For MIDI 1 devices the CI layer sees the original SysEx
- *     byte stream; for UMP devices the bytes are already in UMP format.  Non-CI
- *     bytes are silently ignored and continue to flow to the plugin normally.
+ *  3. Call interceptInput() for every incoming buffer after it has been converted
+ *     to UMP words.  For legacy MIDI 1 transports this means performing a MIDI1→UMP
+ *     translation upstream.  Non-CI messages are ignored and continue to flow to
+ *     the plugin normally.
  *
  * MIDI output requirement
  * -----------------------
@@ -36,8 +37,8 @@ namespace aap::midi {
  */
 class AAPMidiCISession {
 public:
-    // (data, offset, length, timestamp_ns) — matches midicci's MidiInputCallback signature
-    using MidiSender = std::function<void(const uint8_t*, size_t, size_t, uint64_t)>;
+    // UMP sender used to forward CI responses; translation to MIDI1 happens upstream.
+    using MidiSender = std::function<void(umppi::UmpWordSpan, uint64_t)>;
 
     /**
      * @param instance  The instrument plugin instance.  Must outlive this object.
@@ -46,7 +47,7 @@ public:
      *                  (full UMP byte-stream, no MIDI 1 conversion); false for a plain
      *                  MidiDeviceService (MIDI 1 SysEx byte-stream).
      */
-    AAPMidiCISession(aap::PluginInstance* instance, bool isUmp);
+    AAPMidiCISession(aap::PluginInstance* instance);
     ~AAPMidiCISession();
 
     // Non-copyable, movable
@@ -75,8 +76,7 @@ public:
      * The CI session only acts on MIDI-CI SysEx / SysEx8 messages; all other
      * bytes are silently ignored.
      */
-    void interceptInput(const uint8_t* data, size_t offset, size_t length,
-                        uint64_t timestampInNanoseconds);
+    void interceptInput(umppi::UmpWordSpan words, uint64_t timestampInNanoseconds);
 
 private:
     class Impl;

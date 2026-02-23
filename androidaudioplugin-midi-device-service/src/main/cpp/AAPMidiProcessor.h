@@ -100,6 +100,8 @@ namespace aap::midi {
 
         // MIDI-CI session (set up in activate() after plugin instantiation).
         std::unique_ptr<AAPMidiCISession> ci_session{nullptr};
+        std::vector<uint32_t> ci_input_word_buffer{};
+        std::vector<uint8_t> ci_output_byte_buffer{};
         void setupCISession();
 
         // Called by the CI session to send CI response bytes back to the host.

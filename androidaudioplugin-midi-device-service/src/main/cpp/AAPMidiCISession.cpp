@@ -32,18 +32,16 @@ namespace aap::midi {
 
 class AAPMidiCISession::Impl {
     aap::PluginInstance* instance_;
-    const bool is_ump_;
 
     std::unique_ptr<midicci::musicdevice::MidiCISession> ci_session_{};
     std::vector<midicci::musicdevice::MidiInputCallback> ci_input_forwarders_{};
 
 public:
-    Impl(aap::PluginInstance* instance, bool isUmp)
-        : instance_(instance), is_ump_(isUmp) {}
+    explicit Impl(aap::PluginInstance* instance)
+        : instance_(instance) {}
 
     void setupMidiCISession(MidiSender outputSender);
-    void interceptInput(const uint8_t* data, size_t offset, size_t length,
-                        uint64_t timestampInNanoseconds);
+    void interceptInput(umppi::UmpWordSpan words, uint64_t timestampInNanoseconds);
 };
 
 // ---------------------------------------------------------------------------
@@ -139,26 +137,19 @@ void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
         ci_input_forwarders_.push_back(std::move(callback));
     };
 
-    // The sender writes CI responses back to the connected host.
-    auto sender = [outputSender](const uint8_t* data, size_t offset, size_t length,
-                                 uint64_t timestamp) {
-        if (outputSender)
-            outputSender(data, offset, length, timestamp);
+    auto sender = [outputSender = std::move(outputSender)](
+                      umppi::UmpWordSpan words, uint64_t timestamp) {
+        if (outputSender && !words.empty()) {
+            outputSender(words, timestamp);
+        }
     };
 
-    // Choose the transport protocol to match the owning device service:
-    //   MidiDeviceService    → MIDI 1 SysEx byte-stream (F0 7E … F7)
-    //   MidiUmpDeviceService → UMP SysEx8 packets (message type 5)
-    const auto protocol = is_ump_
-        ? midicci::musicdevice::MidiTransportProtocol::UMP
-        : midicci::musicdevice::MidiTransportProtocol::Midi1;
     midicci::musicdevice::MidiCISessionSource source{
-        protocol,
         input_listener_adder,
         sender
     };
 
-    ci_session_ = createMidiCiSession(source, muid, std::move(ci_config),
+    ci_session_ = createMidiCiSession(source, muid, ci_config,
         [](const LogData& log) {
             auto msg = std::get_if<std::reference_wrapper<const Message>>(&log.data);
             if (msg)
@@ -249,19 +240,21 @@ void AAPMidiCISession::Impl::setupMidiCISession(MidiSender outputSender) {
 // Impl::interceptInput
 // ---------------------------------------------------------------------------
 
-void AAPMidiCISession::Impl::interceptInput(const uint8_t* data, size_t offset,
-                                            size_t length,
+void AAPMidiCISession::Impl::interceptInput(umppi::UmpWordSpan words,
                                             uint64_t timestampInNanoseconds) {
+    if (ci_input_forwarders_.empty() || words.empty())
+        return;
+
     for (auto& forwarder : ci_input_forwarders_)
-        forwarder(data, offset, length, timestampInNanoseconds);
+        forwarder(words, timestampInNanoseconds);
 }
 
 // ---------------------------------------------------------------------------
 // AAPMidiCISession public interface (forwards to Impl)
 // ---------------------------------------------------------------------------
 
-AAPMidiCISession::AAPMidiCISession(aap::PluginInstance* instance, bool isUmp)
-    : impl_(std::make_unique<Impl>(instance, isUmp)) {}
+AAPMidiCISession::AAPMidiCISession(aap::PluginInstance* instance)
+    : impl_(std::make_unique<Impl>(instance)) {}
 
 AAPMidiCISession::~AAPMidiCISession() = default;
 
@@ -269,10 +262,9 @@ void AAPMidiCISession::setupMidiCISession(MidiSender outputSender) {
     impl_->setupMidiCISession(std::move(outputSender));
 }
 
-void AAPMidiCISession::interceptInput(const uint8_t* data, size_t offset,
-                                      size_t length,
+void AAPMidiCISession::interceptInput(umppi::UmpWordSpan words,
                                       uint64_t timestampInNanoseconds) {
-    impl_->interceptInput(data, offset, length, timestampInNanoseconds);
+    impl_->interceptInput(words, timestampInNanoseconds);
 }
 
 } // namespace aap::midi

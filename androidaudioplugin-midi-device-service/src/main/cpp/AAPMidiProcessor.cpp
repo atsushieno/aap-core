@@ -3,6 +3,7 @@
 #include "aap/unstable/logging.h"
 #include "aap/ext/midi.h"
 #include "AAPMidiProcessor.h"
+#include <umppi/umppi.hpp>
 
 #define LOG_TAG "AAPMidiProcessor"
 
@@ -252,13 +253,39 @@ namespace aap::midi {
             auto instance = client->getInstanceByIndex(i);
             if (!instance->getPluginInformation()->isInstrument())
                 continue;
-            ci_session = std::make_unique<AAPMidiCISession>(
-                instance,
-                /*isUmp=*/ receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2);
+            ci_session = std::make_unique<AAPMidiCISession>(instance);
             ci_session->setupMidiCISession(
-                [this](const uint8_t* data, size_t offset, size_t length, uint64_t ts) {
-                    if (midi_output_sender)
-                        midi_output_sender(data, offset, length, ts);
+                [this](umppi::UmpWordSpan words, uint64_t ts) {
+                    if (!midi_output_sender || words.empty())
+                        return;
+
+                    auto sendBytes = [this, ts](const std::vector<uint8_t>& bytes) {
+                        if (!bytes.empty())
+                            midi_output_sender(bytes.data(), 0, bytes.size(), ts);
+                    };
+
+                    if (receiver_midi_protocol == CMIDI2_PROTOCOL_TYPE_MIDI2) {
+                        ci_output_byte_buffer.resize(words.size() * sizeof(uint32_t));
+                        memcpy(ci_output_byte_buffer.data(), words.data(),
+                               ci_output_byte_buffer.size());
+                        sendBytes(ci_output_byte_buffer);
+                        return;
+                    }
+
+                    auto umps = umppi::parseUmpsFromWords(words);
+                    if (umps.empty())
+                        return;
+
+                    ci_output_byte_buffer.clear();
+                    const int result = umppi::UmpTranslator::translateUmpToMidi1Bytes(
+                        ci_output_byte_buffer, umps);
+                    if (result != umppi::UmpTranslationResult::OK) {
+                        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                                     "Failed to convert CI response UMP to MIDI1 bytes (err=%d)",
+                                     result);
+                        return;
+                    }
+                    sendBytes(ci_output_byte_buffer);
                 });
             break;
         }
@@ -544,18 +571,30 @@ namespace aap::midi {
         clock_gettime(CLOCK_REALTIME, &curtime);
         pal()->midiInputReceived(bytes, offset, length, timestampInNanoseconds);
 
-        // Route raw MIDI 1 bytes through the MIDI-CI session BEFORE any translation.
-        // CI messages from the host are MIDI 1 SysEx (F0 7E … F7); midicci's MIDI1
-        // transport parses those directly and produces MIDI 1 SysEx responses.
-        // If we passed the post-UMP-conversion SysEx7 packets instead, midicci
-        // would never see the CI inquiries and responses would be garbled UMP bytes.
-        if (ci_session)
-            ci_session->interceptInput(bytes, offset, length,
-                                       static_cast<uint64_t>(timestampInNanoseconds));
-
         size_t translated = translateMidiBufferIfNeeded(bytes, offset, length);
         if (translated > 0)
             length = translated;
+
+        if (ci_session && length >= 4) {
+            if ((length % 4) != 0) {
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                             "Dropping %zu-byte CI packet (not aligned to 4-byte UMP words)",
+                             length);
+            } else {
+                const size_t word_count = length / 4;
+                ci_input_word_buffer.resize(word_count);
+                for (size_t word_index = 0; word_index < word_count; ++word_index) {
+                    const size_t pos = offset + word_index * 4;
+                    uint32_t word;
+                    memcpy(&word, bytes + pos, sizeof(uint32_t));
+                    ci_input_word_buffer[word_index] = word;
+                }
+                umppi::UmpWordSpan span{ci_input_word_buffer.data(), ci_input_word_buffer.size()};
+                ci_session->interceptInput(span,
+                                           static_cast<uint64_t>(timestampInNanoseconds));
+            }
+        }
+
         translated = runThroughMidi2UmpForMidiMapping(bytes, offset, length);
         if (translated > 0)
             length = translated;

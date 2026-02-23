@@ -180,11 +180,6 @@ Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_setM
     }
 
     // Register the native sender that bridges to the Kotlin callback.
-    //
-    // Mirrors LibreMidiIODevice::send() in UAPMD: send at most CHUNK_BYTES bytes at a
-    // time and sleep SYSEX_DELAY_US microseconds between chunks so that the receiving
-    // end (e.g. ktmidi-ci-tool) has time to process each fragment before the next one
-    // arrives.  No trailing sleep is inserted after the final (possibly short) chunk.
     auto sender = [](const uint8_t* data, size_t offset, size_t length, uint64_t timestamp) {
         if (!g_midi_output_callback || !g_midi_output_send_method || !g_jvm)
             return;
@@ -197,6 +192,12 @@ Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_setM
         static constexpr int    SYSEX_DELAY_US = 1000;
 
         size_t sent = 0;
+        /*
+        std::stringstream os{};
+        for (size_t i = 0, n = length - offset; i < n; i++)
+            os << std::hex << '[' << (uint32_t) data[offset + i] << ']';
+        aap::a_log(AAP_LOG_LEVEL_INFO, "AAP_UMP", os.str().c_str());
+         */
         while (sent < length) {
             const size_t chunk = std::min(CHUNK_BYTES, length - sent);
 
@@ -216,8 +217,10 @@ Java_org_androidaudioplugin_midideviceservice_AudioPluginMidiDeviceInstance_setM
 
             sent += chunk;
             // Pace delivery: sleep between chunks, but not after the last one.
-            if (sent < length)
+            if (sent < length) {
+                std::this_thread::yield();
                 std::this_thread::sleep_for(std::chrono::microseconds(SYSEX_DELAY_US));
+            }
         }
 
         if (attached)

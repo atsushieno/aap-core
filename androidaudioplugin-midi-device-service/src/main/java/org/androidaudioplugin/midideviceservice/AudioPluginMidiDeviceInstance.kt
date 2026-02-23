@@ -63,7 +63,9 @@ class AudioPluginMidiDeviceInstance private constructor(
             // std::this_thread::sleep_for(), so we forward bytes directly here without
             // any additional buffering or thread switching to preserve message ordering.
             ret.setMidiOutputCallback(MidiOutputCallback { data, offset, count, timestamp ->
-                outputPortReceiver?.send(data, offset, count, timestamp)
+                val out = outputPortReceiver ?: return@MidiOutputCallback
+                out.send(data, offset, count, timestamp)
+                //println("KT midiOutputCallback ${ data.hashCode() } ${ data.drop(offset).take(count).joinToString { it.toHexString() } }")
             })
 
             return ret
