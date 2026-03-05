@@ -57,9 +57,7 @@ aap::xs::AAPXSDefinition_State::aapxs_state_get_plugin_proxy(struct AAPXSDefinit
                                                              AAPXSInitiatorInstance *aapxsInstance,
                                                              AAPXSSerializationContext *serialization) {
     auto client = (AAPXSDefinition_State*) feature->aapxs_context;
-    if (!client->typed_client)
-        client->typed_client = std::make_unique<StateClientAAPXS>(aapxsInstance, serialization);
-    *client->typed_client = StateClientAAPXS(aapxsInstance, serialization);
+    client->typed_client = std::make_unique<StateClientAAPXS>(aapxsInstance, serialization);
     client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_parameters_as_plugin_extension};
     return client->client_proxy;
 }

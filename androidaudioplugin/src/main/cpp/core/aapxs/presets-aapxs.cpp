@@ -96,9 +96,7 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_plugin_proxy(struct AAPXSDef
                                                                  AAPXSInitiatorInstance *aapxsInstance,
                                                                  AAPXSSerializationContext *serialization) {
     auto client = (AAPXSDefinition_Presets*) feature->aapxs_context;
-    if (!client->typed_client)
-        client->typed_client = std::make_unique<PresetsClientAAPXS>(aapxsInstance, serialization);
-    *client->typed_client = PresetsClientAAPXS(aapxsInstance, serialization);
+    client->typed_client = std::make_unique<PresetsClientAAPXS>(aapxsInstance, serialization);
     client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_presets_as_plugin_extension};
     return client->client_proxy;
 }
@@ -108,9 +106,7 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefin
                                                                AAPXSInitiatorInstance *aapxsInstance,
                                                                AAPXSSerializationContext *serialization) {
     auto service = (AAPXSDefinition_Presets*) feature->aapxs_context;
-    if (!service->typed_service)
-        service->typed_service = std::make_unique<PresetsServiceAAPXS>(aapxsInstance, serialization);
-    *service->typed_service = PresetsServiceAAPXS(aapxsInstance, serialization);
+    service->typed_service = std::make_unique<PresetsServiceAAPXS>(aapxsInstance, serialization);
     service->service_proxy = AAPXSExtensionServiceProxy{&service->typed_service, aapxs_presets_as_host_extension};
     return service->service_proxy;
 }

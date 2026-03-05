@@ -80,8 +80,8 @@ namespace aap::xs {
         void callVoidFunctionSynchronously(int32_t opcode) {
             std::promise<int32_t> promise{};
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            auto future = promise.get_future();
             WithPromise<void, int32_t> callbackData{serialization->data, &promise};
+            auto future = promise.get_future();
             AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, aapxs_instance->urid, uri, requestId, opcode};
 
             if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))

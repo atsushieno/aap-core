@@ -54,9 +54,7 @@ aap::xs::AAPXSDefinition_Midi::aapxs_midi_get_plugin_proxy(struct AAPXSDefinitio
                                                            AAPXSInitiatorInstance *aapxsInstance,
                                                            AAPXSSerializationContext *serialization) {
     auto client = (AAPXSDefinition_Midi*) feature->aapxs_context;
-    if (!client->typed_client)
-        client->typed_client = std::make_unique<MidiClientAAPXS>(aapxsInstance, serialization);
-    *client->typed_client = MidiClientAAPXS(aapxsInstance, serialization);
+    client->typed_client = std::make_unique<MidiClientAAPXS>(aapxsInstance, serialization);
     client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_midi_as_plugin_extension};
     return client->client_proxy;
 }
