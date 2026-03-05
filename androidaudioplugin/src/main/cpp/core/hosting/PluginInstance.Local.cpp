@@ -118,14 +118,17 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
     if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
         // merge input from native UI into the host's MIDI inputs
+        memset(event_midi2_merge_buffer, 0, event_midi2_buffer_size);
         merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
                             event_midi2_buffer, event_midi2_buffer_offset,
                             getAudioPluginBuffer(), this);
         event_midi2_buffer_offset = 0;
+        memset(event_midi2_buffer, 0, event_midi2_buffer_offset);
     }
 
     // retrieve AAPXS SysEx8 requests and start extension calls, if any.
     // (might be synchronously done)
+    AAPMidiBufferHeader* mbh{nullptr};
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
         auto port = getPort(i);
         if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
@@ -134,9 +137,13 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         auto aapBuffer = getAudioPluginBuffer();
         void *data = aapBuffer->get_buffer(*aapBuffer, i);
         aapxs_midi2_in_session.process(data);
+        mbh = (AAPMidiBufferHeader*) data;
     }
 
     plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+
+    if (mbh) // make sure to reset incoming length here
+        mbh->length = 0;
 
     // before sending back to host, merge AAPXS SysEx8 UMPs from async extension calls
     // into the plugin's MIDI output buffer.
