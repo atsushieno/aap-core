@@ -8,17 +8,16 @@ namespace aap {
 std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
 {
     std::vector<PluginInformation*> ret{};
-    if (!jPluginInfos) {
-        AAP_ASSERT_FALSE;
-        return ret;
-    }
     JNIEnv *env;
     aap::get_android_jvm()->AttachCurrentThread(&env, nullptr);
+    if (!jPluginInfos)
+        return ret;
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
         ret.emplace_back(AAPJniFacade::getInstance()->pluginInformation_fromJava(env, jPluginInfo));
     }
+    env->DeleteGlobalRef(jPluginInfos);
     return ret;
 }
 

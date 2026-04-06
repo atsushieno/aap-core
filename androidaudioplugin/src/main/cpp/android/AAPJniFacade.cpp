@@ -2,6 +2,7 @@
 #include "../core/AAPJniFacade.h"
 #include "ALooperMessage.h"
 #include "aap/core/host/audio-plugin-host.h"
+#include <string>
 
 namespace aap {
     const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
@@ -11,6 +12,10 @@ namespace aap {
             *java_port_information_class_name = "org/androidaudioplugin/PortInformation",
             *java_audio_plugin_service_class_name = "org/androidaudioplugin/AudioPluginServiceHelper",
             *java_native_remote_plugin_instance_class_name = "org/androidaudioplugin/hosting/NativeRemotePluginInstance";
+
+    static jobject getContextClassLoader(JNIEnv* env);
+    static jclass getAppClass(JNIEnv* env, const char* className);
+    extern std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scope;
 
     static jmethodID
             j_method_is_out_process,
@@ -340,8 +345,8 @@ namespace aap {
 
     jobjectArray AAPJniFacade::queryInstalledPluginsJNI() {
         return usingJNIEnv<jobjectArray>([](JNIEnv *env) {
-            jclass java_audio_plugin_host_helper_class = env->FindClass(
-                    "org/androidaudioplugin/hosting/AudioPluginHostHelper");
+            jclass java_audio_plugin_host_helper_class = getAppClass(
+                    env, "org/androidaudioplugin/hosting/AudioPluginHostHelper");
             if (!java_audio_plugin_host_helper_class)
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_query_audio_plugins = env->GetStaticMethodID(
@@ -349,9 +354,18 @@ namespace aap {
                     "(Landroid/content/Context;)[Lorg/androidaudioplugin/PluginInformation;");
             if (!j_method_query_audio_plugins)
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
-            return (jobjectArray) env->CallStaticObjectMethod(java_audio_plugin_host_helper_class,
-                                                              j_method_query_audio_plugins,
-                                                              aap::get_android_application_context());
+            auto result = (jobjectArray) env->CallStaticObjectMethod(
+                    java_audio_plugin_host_helper_class,
+                    j_method_query_audio_plugins,
+                    aap::get_android_application_context());
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                env->ExceptionClear();
+                return (jobjectArray) nullptr;
+            }
+            if (!result)
+                return (jobjectArray) nullptr;
+            return (jobjectArray) env->NewGlobalRef(result);
         });
     }
 
@@ -411,9 +425,9 @@ namespace aap {
 
     void* AAPJniFacade::getRemoteWebView(PluginClient* client, RemotePluginInstance* instance) {
         return usingJNIEnv<jobject>([client,instance](JNIEnv* env) {
-            auto clzInstance = env->FindClass(java_native_remote_plugin_instance_class_name);
+            auto clzInstance = getAppClass(env, java_native_remote_plugin_instance_class_name);
             auto jniNativePeer = env->CallStaticObjectMethod(clzInstance, j_method_remote_plugin_instance_create_from_native, instance->getInstanceId(), (jlong) client);
-            auto clzHelper = env->FindClass("org/androidaudioplugin/ui/web/WebUIHostHelper");
+            auto clzHelper = getAppClass(env, "org/androidaudioplugin/ui/web/WebUIHostHelper");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return (jobject) nullptr;
@@ -431,7 +445,7 @@ namespace aap {
 
     void* AAPJniFacade::createSurfaceControl() {
         return usingJNIEnv<jobject>([](JNIEnv* env) {
-            auto clzHelper = env->FindClass("org/androidaudioplugin/hosting/AudioPluginHostHelper");
+            auto clzHelper = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginHostHelper");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return (jobject) nullptr;
@@ -459,7 +473,7 @@ namespace aap {
     void* AAPJniFacade::getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance) {
 
         return usingJNIEnv<jobject>([instance](JNIEnv* env) {
-            auto clzControl = env->FindClass("org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return (jobject) nullptr;
@@ -486,7 +500,7 @@ namespace aap {
     void AAPJniFacade::connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height) {
 
         usingJNIEnv<int32_t>([instance, width, height](JNIEnv* env) {
-            auto clzControl = env->FindClass("org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 return 0;
@@ -517,6 +531,47 @@ namespace aap {
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }
 
+    static jobject getContextClassLoader(JNIEnv* env) {
+        auto context = aap::get_android_application_context();
+        auto contextClass = env->FindClass("android/content/Context");
+        if (!contextClass)
+            return nullptr;
+        auto getClassLoader = env->GetMethodID(contextClass, "getClassLoader",
+                                               "()Ljava/lang/ClassLoader;");
+        if (!getClassLoader)
+            return nullptr;
+        return env->CallObjectMethod(context, getClassLoader);
+    }
+
+    static jclass getAppClass(JNIEnv* env, const char* className) {
+        auto contextClassLoader = getContextClassLoader(env);
+        CLEAR_JNI_ERROR(env)
+        if (!contextClassLoader)
+            return nullptr;
+
+        auto classLoaderClass = env->FindClass("java/lang/ClassLoader");
+        CLEAR_JNI_ERROR(env)
+        if (!classLoaderClass)
+            return nullptr;
+
+        auto loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass",
+                                                "(Ljava/lang/String;)Ljava/lang/Class;");
+        CLEAR_JNI_ERROR(env)
+        if (!loadClassMethod)
+            return nullptr;
+
+        std::string binaryName{className};
+        for (auto& ch : binaryName)
+            if (ch == '/')
+                ch = '.';
+
+        auto classNameString = env->NewStringUTF(binaryName.c_str());
+        auto klass = (jclass) env->CallObjectMethod(contextClassLoader, loadClassMethod,
+                                                    classNameString);
+        CLEAR_JNI_ERROR(env)
+        return klass;
+    }
+
 // It is required where the current Dalvik thread cannot resolve classes from current Context (app)...
 // JNI_OnLoad() at AudioPluginService does not seem to work enough to resolve classes in the apk, unlike
 // explained at https://developer.android.com/training/articles/perf-jni#faq:-why-didnt-findclass-find-my-class
@@ -524,25 +579,8 @@ namespace aap {
         JNIEnv *env;
         aap::get_android_jvm()->GetEnv((void **) &env, JNI_VERSION_1_6);
 
-        auto context = aap::get_android_application_context();
-        auto contextClass = env->FindClass("android/content/Context");
-        auto getClassLoader = env->GetMethodID(contextClass, "getClassLoader",
-                                               "()Ljava/lang/ClassLoader;");
-        auto contextClassLoader = env->CallObjectMethod(context, getClassLoader);
-
-        auto classLoaderClass = env->FindClass("java/lang/ClassLoader");
-        CLEAR_JNI_ERROR(env)
-        if (!classLoaderClass)
-            AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
-        auto findClassMethod = env->GetMethodID(classLoaderClass, "findClass",
-                                                "(Ljava/lang/String;)Ljava/lang/Class;");
-        CLEAR_JNI_ERROR(env)
-        if (!findClassMethod)
-            AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
-        auto settingsClassObj = env->CallObjectMethod(contextClassLoader, findClassMethod,
-                                                      env->NewStringUTF(
-                                                              "org/androidaudioplugin/hosting/AudioPluginMidiSettings"));
-        CLEAR_JNI_ERROR(env)
+        auto settingsClassObj = getAppClass(
+                env, "org/androidaudioplugin/hosting/AudioPluginMidiSettings");
         if (!settingsClassObj)
             AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
         return (jclass) settingsClassObj;
@@ -559,10 +597,9 @@ namespace aap {
         inProgressCallbacks[servicePackageName] = callback;
 
         usingJNIEnv<void *>([&](JNIEnv *env) {
-
             if (audio_plugin_service_connector == nullptr) {
-                jclass connector_class = env->FindClass(
-                        "org/androidaudioplugin/hosting/AudioPluginServiceConnector");
+                jclass connector_class = getAppClass(
+                        env, "org/androidaudioplugin/hosting/AudioPluginServiceConnector");
                 jmethodID constructor = env->GetMethodID(connector_class, "<init>",
                                                          "(Landroid/content/Context;)V");
                 audio_plugin_service_connector = env->NewGlobalRef(
@@ -570,8 +607,20 @@ namespace aap {
                                        aap::get_android_application_context()));
             }
 
-            jclass java_audio_plugin_host_helper_class = env->FindClass(
-                    "org/androidaudioplugin/hosting/AudioPluginHostHelper");
+            auto requestedList = getPluginConnectionListFromJni(connectorInstanceId, true);
+            jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
+            jfieldID service_connection_id_field = env->GetFieldID(connector_class, "serviceConnectionId", "I");
+            if (service_connection_id_field) {
+                jint actualConnectorInstanceId = env->GetIntField(
+                        audio_plugin_service_connector,
+                        service_connection_id_field);
+                if (actualConnectorInstanceId != connectorInstanceId) {
+                    client_connection_list_per_scope[actualConnectorInstanceId] = requestedList;
+                }
+            }
+
+            jclass java_audio_plugin_host_helper_class = getAppClass(
+                    env, "org/androidaudioplugin/hosting/AudioPluginHostHelper");
             if (!java_audio_plugin_host_helper_class)
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_ensure_instance_created = env->GetStaticMethodID(
@@ -584,6 +633,14 @@ namespace aap {
                                       j_method_ensure_instance_created,
                                       env->NewStringUTF(servicePackageName.c_str()),
                                       audio_plugin_service_connector);
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                auto throwable = env->ExceptionOccurred();
+                env->ExceptionClear();
+                std::string error{"ensureBinderConnected threw Java exception"};
+                if (throwable)
+                    callback(error);
+            }
             return nullptr;
         });
     }

@@ -169,11 +169,19 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
     }
 	auto client = (aap::PluginClient*) (void*) clientPointer;
 	std::string pluginIdString = jstringToStdString(env, plugin_id);
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
+                 "createRemotePluginInstance: pluginId=%s sampleRate=%d",
+                 pluginIdString.c_str(), sampleRate);
 	auto result = client->createInstance(pluginIdString.c_str(), sampleRate, true);
 	if (!result.error.empty()) {
-		aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, result.error.c_str());
+		aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                     "createRemotePluginInstance failed: pluginId=%s error=%s",
+                     pluginIdString.c_str(), result.error.c_str());
 		return (jlong) -1;
 	}
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
+                 "createRemotePluginInstance: pluginId=%s instanceId=%d",
+                 pluginIdString.c_str(), result.value);
 	auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(result.value));
     if (!instance) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "instance for id %i not found.", result.value);

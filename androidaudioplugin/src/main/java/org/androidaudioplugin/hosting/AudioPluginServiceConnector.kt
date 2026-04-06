@@ -82,12 +82,34 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             "AudioPluginHost",
             "bindAudioPluginService: ${service.packageName} | ${service.className}"
         )
-        // start as FGS only if it is applicable
-        if (context is Activity)
-            assert(context.startForegroundService(intent) != null)
-        else
+        try {
+            // start as FGS only if it is applicable
+            if (context is Activity && context.startForegroundService(intent) == null) {
+                val error = "AudioPluginServiceConnector: startForegroundService returned null for ${service.packageName}/${service.className}"
+                Log.e("AAP", error)
+                continuation.resumeWith(Result.failure(AudioPluginException(error)))
+                return@suspendCoroutine
+            }
+        } catch (ex: Throwable) {
+            Log.e("AAP", "AudioPluginServiceConnector: startForegroundService failed for ${service.packageName}/${service.className}", ex)
+            continuation.resumeWith(Result.failure(ex))
+            return@suspendCoroutine
+        }
+
+        if (context !is Activity)
             Log.d("AAP", "AudioPluginServiceConnector: not as foreground service - context is not Activity.")
-        assert(context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
+
+        try {
+            if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
+                val error = "AudioPluginServiceConnector: bindService returned false for ${service.packageName}/${service.className}"
+                Log.e("AAP", error)
+                continuation.resumeWith(Result.failure(AudioPluginException(error)))
+                return@suspendCoroutine
+            }
+        } catch (ex: Throwable) {
+            Log.e("AAP", "AudioPluginServiceConnector: bindService threw for ${service.packageName}/${service.className}", ex)
+            continuation.resumeWith(Result.failure(ex))
+        }
     }
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
@@ -112,8 +134,11 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
 
     private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
 
-    fun findExistingServiceConnection(packageName: String) =
-        connectedServices.firstOrNull { conn -> conn.serviceInfo.packageName == packageName && conn.serviceInfo.className == AudioPluginService::class.qualifiedName }
+    fun findExistingServiceConnection(packageName: String, className: String? = null) =
+        connectedServices.firstOrNull { conn ->
+            conn.serviceInfo.packageName == packageName &&
+                (className == null || conn.serviceInfo.className == className)
+        }
 
     fun unbindAudioPluginService(packageName: String) {
         val conn = findExistingServiceConnection(packageName) ?: return

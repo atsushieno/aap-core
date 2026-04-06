@@ -8,7 +8,7 @@ import android.content.pm.ServiceInfo
 import android.os.Bundle
 import android.util.Log
 import kotlinx.coroutines.runBlocking
-import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.ExtensionInformation
 import org.androidaudioplugin.ParameterInformation
@@ -197,13 +197,13 @@ object AudioPluginHostHelper {
     @JvmStatic
     fun queryAudioPluginServices(context: Context, packageNameFilter: String? = null): Array<PluginServiceInformation> {
         val intent = Intent(AAP_ACTION_NAME)
-        if (packageNameFilter != null)
-            intent.setPackage(packageNameFilter)
         val resolveInfos =
             context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
         val plugins = mutableListOf<PluginServiceInformation>()
         for (ri in resolveInfos) {
             val serviceInfo = ri.serviceInfo
+            if (packageNameFilter != null && serviceInfo.packageName != packageNameFilter)
+                continue
             val pluginServiceInfo = createAudioPluginServiceInformation(context, serviceInfo)
             if (pluginServiceInfo == null) {
                 Log.w(
@@ -258,12 +258,14 @@ object AudioPluginHostHelper {
             return
 
         runBlocking {
-            val conn = connector.bindAudioPluginService(service)
-            AudioPluginNatives.addBinderForClient(
-                connector.serviceConnectionId,
-                service.packageName,
-                service.className,
-                conn.binder
+            Log.i(
+                "AAP",
+                "ensureBinderConnected: binding ${service.packageName}/${service.className}"
+            )
+            connector.bindAudioPluginService(service)
+            Log.i(
+                "AAP",
+                "ensureBinderConnected: binder connected for ${service.packageName}/${service.className}"
             )
         }
     }
@@ -271,4 +273,3 @@ object AudioPluginHostHelper {
     @JvmStatic
     fun createSurfaceControl(context: Context) = AudioPluginSurfaceControlClient(context)
 }
-
