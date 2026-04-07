@@ -63,14 +63,36 @@ class AndroidPluginClientConnectionData {
     ndk::SpAIBinder spAIBinder;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
     std::shared_ptr<AudioPluginInterfaceCallbackImpl> callback;
+    bool valid_{false};
 public:
     AndroidPluginClientConnectionData(AIBinder* aiBinder) {
+        if (!aiBinder) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
+                       "AndroidPluginClientConnectionData: null binder");
+            return;
+        }
         spAIBinder.set(aiBinder);
         proxy = aidl::org::androidaudioplugin::BpAudioPluginInterface::fromBinder(spAIBinder);
+        if (!proxy) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
+                       "AndroidPluginClientConnectionData: failed to create binder proxy");
+            return;
+        }
         callback = ndk::SharedRefBase::make<AudioPluginInterfaceCallbackImpl>(this);
-        proxy->setCallback(callback->ref<AudioPluginInterfaceCallbackImpl>());
+        auto status = proxy->setCallback(callback->ref<AudioPluginInterfaceCallbackImpl>());
+        if (!status.isOk()) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
+                         "AndroidPluginClientConnectionData: setCallback failed: %s",
+                         status.getDescription().c_str());
+            proxy.reset();
+            callback.reset();
+            return;
+        }
+        valid_ = true;
     }
     virtual ~AndroidPluginClientConnectionData() {}
+
+    bool isValid() const { return valid_; }
 
     std::function<::ndk::ScopedAStatus(int32_t instanceId)> request_process;
     std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode)> host_extension;

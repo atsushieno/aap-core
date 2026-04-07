@@ -26,7 +26,7 @@ public:
     virtual ~AudioPluginServiceCallbackAndroid() {}
 
     void setProxy(std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterfaceCallback> newProxy) {
-        if (!proxy)
+        if (proxy)
             aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG,
                        "setCallback() is already invoked. "
                        "The Service connection is at suspicious state e.g. initialized twice");

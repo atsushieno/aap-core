@@ -650,7 +650,9 @@ namespace aap {
         if (entry != inProgressCallbacks.end()) {
             // FIXME: what kind of error propagation could be achieved here?
             std::string empty{};
-            entry->second(empty);
+            auto callback = entry->second;
+            inProgressCallbacks.erase(entry);
+            callback(empty);
         }
     }
 

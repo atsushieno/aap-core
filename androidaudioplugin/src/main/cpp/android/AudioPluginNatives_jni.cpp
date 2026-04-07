@@ -84,6 +84,12 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
     std::string packageNameString = jstringToStdString(env, packageName);
     std::string classNameString = jstringToStdString(env, className);
 	auto aiBinder = AIBinder_fromJavaBinder(env, binder);
+    if (!aiBinder) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                     "addBinderForClient: failed to convert Java binder for %s/%s",
+                     packageNameString.c_str(), classNameString.c_str());
+        return;
+    }
 	aap::AndroidPluginClientConnectionData* connectionData = nullptr;
 	for (auto &pair : live_connection_data)
 		if (pair.first == aiBinder)
@@ -91,6 +97,13 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
     if (!connectionData) {
         // FIXME: we need to assign request_process() and host_extension() to this connectionData.
         connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
+        if (!connectionData->isValid()) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                         "addBinderForClient: failed to initialize binder client for %s/%s",
+                         packageNameString.c_str(), classNameString.c_str());
+            delete connectionData;
+            return;
+        }
         live_connection_data[aiBinder] = connectionData;
 		AIBinder_incStrong(aiBinder);
     }
