@@ -26,6 +26,8 @@
 
 namespace aap {
 
+    static constexpr int32_t DEFAULT_EVENT_MIDI2_INPUT_BUFFER_SIZE = DEFAULT_CONTROL_BUFFER_SIZE;
+
     class PluginInstance;
     class LocalPluginInstance;
 
@@ -52,12 +54,12 @@ namespace aap {
 
         std::vector<PluginInstance*> instances{};
         PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
-        int32_t event_midi2_input_buffer_size{4096};
+        int32_t event_midi2_input_buffer_size{DEFAULT_EVENT_MIDI2_INPUT_BUFFER_SIZE};
 
     public:
         PluginHost(PluginListSnapshot* contextPluginList,
                    xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry,
-                   int32_t eventMidi2InputBufferSize = 4096);
+                   int32_t eventMidi2InputBufferSize = DEFAULT_EVENT_MIDI2_INPUT_BUFFER_SIZE);
 
         virtual ~PluginHost() {}
 

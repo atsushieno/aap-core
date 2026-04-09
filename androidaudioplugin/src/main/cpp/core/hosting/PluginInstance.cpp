@@ -1,6 +1,7 @@
 
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include <algorithm>
 #include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Instance"
@@ -202,8 +203,15 @@ void aap::PluginInstance::deactivate() {
 
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
     const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};
-    if (event_midi2_buffer_offset + size > event_midi2_buffer_size)
+    if (event_midi2_buffer_offset + size > event_midi2_buffer_size) {
+        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                     "Dropping %d-byte UMP input: pending queue overflow (%d + %d > %d)",
+                     size,
+                     event_midi2_buffer_offset,
+                     size,
+                     event_midi2_buffer_size);
         return;
+    }
     memcpy((uint8_t *) event_midi2_buffer + event_midi2_buffer_offset,
            input, size);
     event_midi2_buffer_offset += size;
@@ -216,9 +224,26 @@ void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, 
         auto port = instance->getPort(i);
         if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == portDirection) {
             auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
-            size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeBufSize,
+            auto portBufferSize = buffer->get_buffer_size(*buffer, i);
+            auto midiCapacity = portBufferSize > static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) ?
+                    portBufferSize - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) : 0;
+            auto mergeCapacity = std::min(mergeBufSize, midiCapacity);
+            if (mergeCapacity <= 0) {
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                             "Dropping merged MIDI input: destination port %d has no payload capacity.",
+                             i);
+                mbh->length = 0;
+                return;
+            }
+            size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeCapacity,
                                                         (cmidi2_ump*) sequence, (size_t) sequenceSize,
                                                         (cmidi2_ump*) (mbh + 1), (size_t) mbh->length);
+            if (newSize == static_cast<size_t>(mergeCapacity) &&
+                (sequenceSize > 0 || mbh->length > 0))
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                             "Merged MIDI input for port %d reached payload capacity (%d bytes). Input may be truncated.",
+                             i,
+                             mergeCapacity);
             mbh->length = newSize;
             if (newSize > 0)
                 memcpy(mbh + 1, mergeTmp, newSize);

@@ -130,6 +130,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
                             event_midi2_buffer, event_midi2_buffer_offset,
                             getAudioPluginBuffer(), this);
+        memset(event_midi2_buffer, 0, event_midi2_buffer_offset);
         event_midi2_buffer_offset = 0;
     }
 
