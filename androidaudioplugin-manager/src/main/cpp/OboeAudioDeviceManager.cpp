@@ -164,11 +164,14 @@ oboe::DataCallbackResult
 aap::OboeAudioDevice::onAudioInputReady(oboe::AudioStream *audioStream, void *oboeAudioData,
                                         int32_t numFrames) {
     if (aap_callback != nullptr) {
+        auto interleavedBytes = static_cast<size_t>(numFrames) *
+                                static_cast<size_t>(audioStream->getChannelCount()) *
+                                sizeof(float);
         aap_buffer.audio.clear();
         memset(aap_buffer.midi_in, 0, aap_buffer.midi_capacity);
         memset(aap_buffer.midi_out, 0, aap_buffer.midi_capacity);
 
-        memset(oboeAudioData, 0, numFrames * sizeof(float));
+        memset(oboeAudioData, 0, interleavedBytes);
 
         auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copy(aap_buffer.audio.getStart(numFrames), oboeView);
@@ -191,15 +194,18 @@ aap::OboeAudioDevice::onAudioOutputReady(oboe::AudioStream *audioStream, void *o
             clock_gettime(CLOCK_REALTIME, &timeSpecBegin);
         }
 #endif
+        auto interleavedBytes = static_cast<size_t>(numFrames) *
+                                static_cast<size_t>(audioStream->getChannelCount()) *
+                                sizeof(float);
 
         aap_buffer.audio.clear();
         memset(aap_buffer.midi_in, 0, aap_buffer.midi_capacity);
         memset(aap_buffer.midi_out, 0, aap_buffer.midi_capacity);
-        memset(oboeAudioData, 0, numFrames * sizeof(float));
+        memset(oboeAudioData, 0, interleavedBytes);
 
         aap_callback(callback_context, &aap_buffer, numFrames);
 
-        memset(oboeAudioData, 0, numFrames * sizeof(float));
+        memset(oboeAudioData, 0, interleavedBytes);
 
         auto oboeView = choc::buffer::createInterleavedView((float*) oboeAudioData, audioStream->getChannelCount(), numFrames);
         choc::buffer::copy(oboeView, aap_buffer.audio.getStart(numFrames));
