@@ -617,6 +617,19 @@ namespace aap::midi {
                 uint32_t currentOffset = savedOffset;
                 int32_t tIter = 0;
                 auto headerSize = sizeof(AAPMidiBufferHeader);
+                auto totalTicks = actualTimestamp / (1000000000 / 31250);
+                auto jrTimestampCount = totalTicks > 0 ? static_cast<uint32_t>((totalTicks - 1) / 31250 + 1) : 0;
+                auto requiredBytes = headerSize + currentOffset + jrTimestampCount * static_cast<uint32_t>(sizeof(uint32_t)) + static_cast<uint32_t>(length);
+                if (requiredBytes > sizeof(midi_input_buffer)) {
+                    aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                                 "Dropping %zu-byte MIDI event at %lld ns due to input buffer overflow (%u > %zu)",
+                                 length,
+                                 static_cast<long long>(actualTimestamp),
+                                 requiredBytes,
+                                 sizeof(midi_input_buffer));
+                    return;
+                }
+
                 for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
                      ticks > 0; ticks -= 31250, tIter++) {
                     *(int32_t *) (dst8 + headerSize + currentOffset + tIter * 4) =

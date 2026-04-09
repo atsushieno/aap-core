@@ -1,4 +1,7 @@
 #include "AudioGraph.h"
+#include <aap/unstable/logging.h>
+
+#define LOG_TAG "AAP.AudioGraph.Midi"
 
 aap::MidiSourceNode::MidiSourceNode(AudioGraph* ownerGraph,
                                     RemotePluginInstance* instance,
@@ -20,6 +23,7 @@ aap::MidiSourceNode::~MidiSourceNode() {
 }
 
 void aap::MidiSourceNode::processAudio(AudioBuffer *audioData, int32_t numFrames) {
+    clock_gettime(CLOCK_REALTIME, &last_aap_process_time);
     auto dstBuffer = (AAPMidiBufferHeader*) audioData->midi_in;
     // MIDI event might be being added, so we wait a bit using "almost-spin" lock (uses nano-sleep).
     if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
@@ -71,6 +75,19 @@ void aap::MidiSourceNode::addMidiEvent(uint8_t *bytes, int32_t length, int64_t t
             uint32_t currentOffset = savedOffset;
             int32_t tIter = 0;
             auto headerSize = sizeof(AAPMidiBufferHeader);
+            auto totalTicks = actualTimestamp / (1000000000 / 31250);
+            auto jrTimestampCount = totalTicks > 0 ? static_cast<uint32_t>((totalTicks - 1) / 31250 + 1) : 0;
+            auto requiredBytes = headerSize + currentOffset + jrTimestampCount * static_cast<uint32_t>(sizeof(uint32_t)) + static_cast<uint32_t>(actualLength);
+            if (requiredBytes > static_cast<uint32_t>(capacity)) {
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                             "Dropping %d-byte MIDI event at %lld ns due to input buffer overflow (%u > %d)",
+                             static_cast<int32_t>(actualLength),
+                             static_cast<long long>(actualTimestamp),
+                             requiredBytes,
+                             capacity);
+                return;
+            }
+
             for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
                  ticks > 0; ticks -= 31250, tIter++) {
                 *(int32_t * )(dst8 + headerSize + currentOffset + tIter * 4) =
@@ -133,4 +150,3 @@ void aap::MidiDestinationNode::start() {
 void aap::MidiDestinationNode::pause() {
 
 }
-
