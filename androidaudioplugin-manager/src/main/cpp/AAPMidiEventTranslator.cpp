@@ -21,10 +21,10 @@ aap::AAPMidiEventTranslator::~AAPMidiEventTranslator() {
 int32_t aap::AAPMidiEventTranslator::translateMidiEvent(uint8_t * bytes, int32_t length) {
     size_t translated = translateMidiBufferIfNeeded(bytes, 0, length);
     if (translated > 0)
-        length = translated;
+        length = static_cast<int32_t>(translated);
     translated = runThroughMidi2UmpForMidiMapping(bytes, 0, length);
     if (translated > 0)
-        length = translated;
+        length = static_cast<int32_t>(translated);
     return length;
 }
 
@@ -87,6 +87,12 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
                         OPCODE_SET_PRESET_INDEX,
                         (const uint8_t *) aapxsInstance->serialization->data,
                         aapxsInstance->serialization->data_size);
+                if (translatedIndex + static_cast<int32_t>(size) > midi_buffer_size) {
+                    aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG,
+                                 "Dropping translated preset event due to translation buffer overflow (%d + %zu > %d)",
+                                 translatedIndex, size, midi_buffer_size);
+                    break;
+                }
                 translatedIndex += size;
             }
             else
@@ -96,10 +102,22 @@ size_t aap::AAPMidiEventTranslator::runThroughMidi2UmpForMidiMapping(uint8_t* by
         // If a translated AAP parameter change message is detected, then output sysex8.
         if (parameterIndex < 0) {
             auto size = cmidi2_ump_get_message_size_bytes(ump);
+            if (translatedIndex + size > midi_buffer_size) {
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG,
+                             "Dropping MIDI event due to translation buffer overflow (%d + %d > %d)",
+                             translatedIndex, size, midi_buffer_size);
+                break;
+            }
             memcpy(translation_buffer + translatedIndex, ump, size);
             translatedIndex += size;
         }
         else {
+            if (translatedIndex + 16 > midi_buffer_size) {
+                aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_MANAGER_LOG_TAG,
+                             "Dropping parameter-mapped MIDI event due to translation buffer overflow (%d + 16 > %d)",
+                             translatedIndex, midi_buffer_size);
+                break;
+            }
             auto intBuf = (uint32_t*) ((uint8_t*) translation_buffer + translatedIndex);
             aapMidi2ParameterSysex8(intBuf, intBuf + 1, intBuf + 2, intBuf + 3,
                                     cmidi2_ump_get_group(ump), cmidi2_ump_get_channel(ump), parameterKey, parameterExtra, parameterIndex, *(float*) (void*) &parameterValueI32);
@@ -147,7 +165,7 @@ size_t aap::AAPMidiEventTranslator::translateMidiBufferIfNeeded(uint8_t* bytes, 
         context.midi_protocol = CMIDI2_PROTOCOL_TYPE_MIDI2;
         context.midi1_num_bytes = length;
         context.ump = (cmidi2_ump*) translation_buffer;
-        context.ump_num_bytes = sizeof(translation_buffer);
+        context.ump_num_bytes = midi_buffer_size;
         context.group = 0;
 
         auto result = cmidi2_convert_midi1_to_ump(&context);
