@@ -21,6 +21,11 @@ import kotlin.coroutines.suspendCoroutine
   Native hosts also use this class to instantiate plugins and manage them.
  */
 class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
+    private data class PendingServiceConnection(
+        val packageName: String,
+        val className: String
+    )
+
     /*
     The ServiceConnection implementation class for AudioPluginService.
      */
@@ -56,6 +61,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
     var serviceConnectionId = serial++
 
     val connectedServices = mutableListOf<PluginServiceConnection>()
+    private val pendingServices = mutableSetOf<PendingServiceConnection>()
 
     val onConnectedListeners = mutableListOf<(PluginServiceConnection) -> Unit>()
     val onDisconnectingListeners = mutableListOf<(PluginServiceConnection) -> Unit>()
@@ -65,6 +71,21 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
     suspend fun bindAudioPluginService(service: PluginServiceInformation) = suspendCoroutine { continuation ->
         assert(!isClosed)
 
+        val pendingKey = PendingServiceConnection(service.packageName, service.className)
+        val existing = findExistingServiceConnection(service.packageName, service.className)
+        if (existing != null) {
+            continuation.resume(existing)
+            return@suspendCoroutine
+        }
+        synchronized(pendingServices) {
+            if (!pendingServices.add(pendingKey)) {
+                continuation.resumeWith(Result.failure(AudioPluginException(
+                    "AudioPluginService is already being bound: ${service.packageName}/${service.className}"
+                )))
+                return@suspendCoroutine
+            }
+        }
+
         val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
         intent.component = ComponentName(
             service.packageName,
@@ -72,6 +93,9 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
         )
 
         val conn = Connection(this, service) { pluginServiceConnection ->
+            synchronized(pendingServices) {
+                pendingServices.remove(pendingKey)
+            }
             if (pluginServiceConnection != null)
                 continuation.resume(pluginServiceConnection)
             else
@@ -87,11 +111,17 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             if (context is Activity && context.startForegroundService(intent) == null) {
                 val error = "AudioPluginServiceConnector: startForegroundService returned null for ${service.packageName}/${service.className}"
                 Log.e("AAP", error)
+                synchronized(pendingServices) {
+                    pendingServices.remove(pendingKey)
+                }
                 continuation.resumeWith(Result.failure(AudioPluginException(error)))
                 return@suspendCoroutine
             }
         } catch (ex: Throwable) {
             Log.e("AAP", "AudioPluginServiceConnector: startForegroundService failed for ${service.packageName}/${service.className}", ex)
+            synchronized(pendingServices) {
+                pendingServices.remove(pendingKey)
+            }
             continuation.resumeWith(Result.failure(ex))
             return@suspendCoroutine
         }
@@ -103,16 +133,31 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
                 val error = "AudioPluginServiceConnector: bindService returned false for ${service.packageName}/${service.className}"
                 Log.e("AAP", error)
+                synchronized(pendingServices) {
+                    pendingServices.remove(pendingKey)
+                }
                 continuation.resumeWith(Result.failure(AudioPluginException(error)))
                 return@suspendCoroutine
             }
         } catch (ex: Throwable) {
             Log.e("AAP", "AudioPluginServiceConnector: bindService threw for ${service.packageName}/${service.className}", ex)
+            synchronized(pendingServices) {
+                pendingServices.remove(pendingKey)
+            }
             continuation.resumeWith(Result.failure(ex))
         }
     }
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
+        val existing = findExistingServiceConnection(serviceInfo.packageName, serviceInfo.className)
+        if (existing != null) {
+            Log.w(
+                "AAP",
+                "AudioPluginServiceConnector: duplicate connection ignored for ${serviceInfo.packageName}/${serviceInfo.className}"
+            )
+            context.unbindService(serviceConnection)
+            return existing
+        }
         val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder)
         // A Java IBinder object created by Service framework is converted to NdkBinder object here.
         // It must happen somewhere within `ServiceConnection.onServiceConnected()`.
