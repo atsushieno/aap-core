@@ -79,6 +79,10 @@ open class AudioPluginService : Service()
         if (foregroundServiceType != 0)
             stopForeground(STOP_FOREGROUND_REMOVE)
 
+        for (ext in extensions)
+            ext.cleanup()
+        extensions.clear()
+
         super.onDestroy()
     }
 
@@ -113,9 +117,6 @@ open class AudioPluginService : Service()
 
         if (foregroundServiceType != 0)
             stopForeground(STOP_FOREGROUND_REMOVE)
-
-        for(ext in extensions)
-            ext.cleanup()
 
         AudioPluginNatives.stopNativeLooper()
         if (eventProcessorLooper?.thread?.isAlive == true)
