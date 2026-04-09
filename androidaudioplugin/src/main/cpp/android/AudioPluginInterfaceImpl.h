@@ -84,11 +84,16 @@ public:
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,
                                      int32_t *_aidl_return) override {
         *_aidl_return = svc->createInstance(in_pluginId, in_sampleRate);
-        auto instance = svc->getLocalInstance(*_aidl_return);
-        instance->setIpcExtensionMessageSender(aapxs_host_ipc_sender_func, this);
         if (*_aidl_return < 0)
-        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
+
+        auto instance = svc->getLocalInstance(*_aidl_return);
+        if (instance == nullptr)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED,
+                    "failed to retrieve created AAP service instance.");
+        instance->setIpcExtensionMessageSender(aapxs_host_ipc_sender_func, this);
 
         return ndk::ScopedAStatus::ok();
     }
@@ -130,6 +135,10 @@ public:
         // We need to call completeInstantiation() *before* setupAAPXS() because service standard extensions require AndroidAudioPlugin*.
         instance->setupAAPXSInstances();
         instance->completeInstantiation();
+        if (instance->getInstanceState() != PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED,
+                    "failed to instantiate AAP service plugin backend.");
         instance->setupAAPXS();
         instance->startPortConfiguration();
         return ndk::ScopedAStatus::ok();

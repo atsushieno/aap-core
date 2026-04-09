@@ -11,5 +11,11 @@ int32_t aap::PluginService::createInstance(std::string identifier, int sampleRat
         return -1;
     }
     auto instance = instantiateLocalPlugin(info, sampleRate);
+    if (!instance) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                     "aap::PluginService: Failed to instantiate plugin: %s",
+                     identifier.c_str());
+        return -1;
+    }
     return instance->getInstanceId();
 }
