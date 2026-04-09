@@ -51,6 +51,6 @@ open class AudioPluginClientBase(private val context: Context) {
         AudioPluginNatives.initializeAAPJni(context.applicationContext)
 
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
+        sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 48000
     }
 }

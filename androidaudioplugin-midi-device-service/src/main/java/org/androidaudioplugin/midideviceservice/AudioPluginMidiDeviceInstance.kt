@@ -35,7 +35,7 @@ class AudioPluginMidiDeviceInstance private constructor(
                            midiTransport: Int,
                            outputPortReceiver: MidiReceiver? = null) : AudioPluginMidiDeviceInstance {
             val audioManager = ownerService.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 44100
+            val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 48000
             val oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
 
             val client = AudioPluginClientBase(ownerService.applicationContext)

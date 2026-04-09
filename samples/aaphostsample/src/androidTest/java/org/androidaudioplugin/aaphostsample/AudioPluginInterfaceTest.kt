@@ -41,9 +41,9 @@ class AudioPluginInterfaceTest {
 
         val frameCount = 4096
 
-        val instanceId = iface.beginCreate(pluginId, 44100)
+        val instanceId = iface.beginCreate(pluginId, 48000)
         assert(instanceId >= 0)
-        val instanceId2 = iface.beginCreate(pluginId, 44100) // can create multiple times
+        val instanceId2 = iface.beginCreate(pluginId, 48000) // can create multiple times
         assert(instanceId2 >= 0)
         assert(instanceId != instanceId2)
 

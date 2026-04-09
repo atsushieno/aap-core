@@ -29,7 +29,7 @@ namespace aap {
  * It manages AAPXS and the audio/MIDI2 buffers (by PluginSharedMemoryStore).
  */
     class PluginInstance {
-        int sample_rate{44100};
+        int sample_rate{48000};
 
         AndroidAudioPluginFactory *plugin_factory;
 
