@@ -1,23 +1,23 @@
 <!DOCTYPE html>
-<html class="no-js">
+<html class="no-js" lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
     <title>PluginInformation</title>
     <link href="../../../images/logo-icon.svg" rel="icon" type="image/svg">
-    <script>var pathToRoot = "../../../";</script>
-    <script>document.documentElement.classList.replace("no-js","js");</script>
+        <script>var pathToRoot = "../../../";</script>
+    <script>document.documentElement.classList.replace("no-js", "js");</script>
     <script>const storage = localStorage.getItem("dokka-dark-mode")
-    if (storage == null) {
+      if (storage == null) {
         const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
         if (osDarkSchemePreferred === true) {
-            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
         }
-    } else {
+      } else {
         const savedDarkMode = JSON.parse(storage)
-        if(savedDarkMode === true) {
-            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        if (savedDarkMode === true) {
+          document.getElementsByTagName("html")[0].classList.add("theme-dark")
         }
-    }
+      }
     </script>
 <script type="text/javascript" src="https://unpkg.com/kotlin-playground@1/dist/playground.min.js" async="async"></script>
 <script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async="async"></script>
@@ -25,20 +25,18 @@
 <link href="../../../styles/main.css" rel="Stylesheet">
 <link href="../../../styles/prism.css" rel="Stylesheet">
 <link href="../../../styles/logo-styles.css" rel="Stylesheet">
-<link href="../../../styles/font-jb-sans-auto.css" rel="Stylesheet">
 <link href="../../../ui-kit/ui-kit.min.css" rel="Stylesheet">
-<script type="text/javascript" src="../../../scripts/clipboard.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/safe-local-storage_blocking.js"></script>
 <script type="text/javascript" src="../../../scripts/navigation-loader.js" async="async"></script>
 <script type="text/javascript" src="../../../scripts/platform-content-handler.js" async="async"></script>
 <script type="text/javascript" src="../../../scripts/main.js" defer="defer"></script>
 <script type="text/javascript" src="../../../scripts/prism.js" async="async"></script>
 <script type="text/javascript" src="../../../ui-kit/ui-kit.min.js" defer="defer"></script>
-<script type="text/javascript" src="../../../scripts/symbol-parameters-wrapper_deferred.js" defer="defer"></script>
 </head>
 <body>
-    <div class="root">
-    <nav class="navigation theme-dark" id="navigation-wrapper">
-            <a class="library-name--link" href="../../../index.html">
+<div class="root">
+    <header class="navigation theme-dark" id="navigation-wrapper" role="banner">
+            <a class="library-name--link" href="../../../index.html" tabindex="1">
                     androidaudioplugin
             </a>
         <button class="navigation-controls--btn navigation-controls--btn_toc ui-kit_mobile-only" id="toc-toggle"
@@ -46,11 +44,11 @@
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
         <div class="library-version" id="library-version">
-        </div>
+0.9.4        </div>
         <div class="navigation-controls">
-        <div class="filter-section filter-section_loading" id="filter-section">
-                <button class="platform-tag platform-selector jvm-like" data-active=""
-                        data-filter=":androidaudioplugin:dokkaHtml/release">androidJvm</button>
+        <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
+                <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true"
+                        data-filter=":androidaudioplugin/main">androidJvm</button>
             <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
                 <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox"
                         data-role="dropdown-toggle"
@@ -59,16 +57,16 @@
                         aria-expanded="false"
                         aria-label="Toggle source sets"
                 ></button>
-                <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox">
-                    <div class="dropdown--header"><span>Platform filter</span>
-                        <button class="button" data-role="dropdown-toggle" aria-label="Close platform filter">
+                <ul role="listbox" id="platform-tags-listbox" class="dropdown--list" data-role="dropdown-listbox" aria-label="Target filter">
+                    <div class="dropdown--header"><span>Target filter</span>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close target filter">
                             <i class="ui-kit-icon ui-kit-icon_cross"></i>
                         </button>
                     </div>
                         <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
                             <label class="checkbox">
-                                <input type="checkbox" class="checkbox--input" id=":androidaudioplugin:dokkaHtml/release"
-                                       data-filter=":androidaudioplugin:dokkaHtml/release"/>
+                                <input type="checkbox" class="checkbox--input" id=":androidaudioplugin/main"
+                                       data-filter=":androidaudioplugin/main"/>
                                 <span class="checkbox--icon"></span>
                                 androidJvm
                             </label>
@@ -76,7 +74,7 @@
                 </ul>
                 <div class="dropdown--overlay"></div>
             </div>
-        </div>
+        </ul>
             <button class="navigation-controls--btn navigation-controls--btn_theme" id="theme-toggle-button"
                     type="button">Switch theme
             </button>
@@ -84,48 +82,50 @@
                 API
             </div>
         </div>
-    </nav>
-        <div id="container">
-            <div class="sidebar" id="leftColumn">
-                <div class="dropdown theme-dark_mobile" data-role="dropdown" id="toc-dropdown">
-                    <ul role="listbox" id="toc-listbox" class="dropdown--list dropdown--list_toc-list"
-                        data-role="dropdown-listbox">
-                        <div class="dropdown--header">
+    </header>
+    <div id="container">
+        <nav id="leftColumn" class="sidebar" data-item-type="SECTION" data-item-config='{"defaultSize": 280, "minSize": 200, "maxSize": 400}'>
+            <a class="toc--skip-link" href="#main">Skip to content</a>
+            <div class="dropdown theme-dark_mobile" data-role="dropdown" id="toc-dropdown">
+                <ul role="listbox" id="toc-listbox" class="dropdown--list dropdown--list_toc-list"
+                    data-role="dropdown-listbox" aria-label="Table of contents">
+                    <div class="dropdown--header">
                             <span>
                                     androidaudioplugin
                             </span>
-                            <button class="button" data-role="dropdown-toggle" aria-label="Close table of contents">
-                                <i class="ui-kit-icon ui-kit-icon_cross"></i>
-                            </button>
-                        </div>
-                        <div class="sidebar--inner" id="sideMenu"></div>
-                    </ul>
-                    <div class="dropdown--overlay"></div>
-                </div>
+                        <button class="button" data-role="dropdown-toggle" aria-label="Close table of contents">
+                            <i class="ui-kit-icon ui-kit-icon_cross"></i>
+                        </button>
+                    </div>
+                    <div class="sidebar--inner" id="sideMenu"></div>
+                </ul>
+                <div class="dropdown--overlay"></div>
             </div>
-            <div id="main">
-<div class="main-content" data-page-type="classlike" id="content" pageIds="androidaudioplugin::org.androidaudioplugin/PluginInformation///PointingToDeclaration//1993869484">
+        </nav>
+        <div id="resizer" class="resizer" data-item-type="BAR"></div>
+        <div id="main" data-item-type="SECTION" role="main">
+<div class="main-content" data-page-type="classlike" id="content" pageIds="androidaudioplugin::org.androidaudioplugin/PluginInformation///PointingToDeclaration//-2088260241">
   <div class="breadcrumbs"><a href="../../../index.html">androidaudioplugin</a><span class="delimiter">/</span><a href="../index.html">org.androidaudioplugin</a><span class="delimiter">/</span><span class="current">PluginInformation</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Plugin</span><wbr></wbr><span><span>Information</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">PluginInformation</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">var </span>packageName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>localName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>displayName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>version<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>category<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>developer<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>sharedLibraryName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>libraryEntryPoint<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiViewFactory<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiActivity<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiWeb<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>isOutProcess<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a><span class="token operator"> = </span><span class="token boolean">true</span></span></span><span class="token punctuation">)</span></div><p class="paragraph">Plugin information structure. The members mostly correspond to attributes and content elements in a <code class="lang-kotlin">&lt;plugin&gt;</code> element in <code class="lang-kotlin">aap_metadata.xml</code>.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">PluginInformation</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">var </span>packageName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>localName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>displayName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>version<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>category<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>developer<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>sharedLibraryName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>libraryEntryPoint<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiViewFactory<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiActivity<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>uiWeb<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">var </span>isOutProcess<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a><span class="token operator"> = </span><span class="token boolean">true</span></span></span><span class="token punctuation">)</span></div><p class="paragraph">Plugin information structure. The members mostly correspond to attributes and content elements in a <code class="lang-kotlin">&lt;plugin&gt;</code> element in <code class="lang-kotlin">aap_metadata.xml</code>.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="CONSTRUCTOR">
-        <h2 class="">Constructors</h2>
-        <div class="table"><a data-name="-1686254865%2FConstructors%2F1993869484" anchor-label="PluginInformation" id="-1686254865%2FConstructors%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-togglable="CONSTRUCTOR" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+        <h2 class="tableheader">Constructors</h2>
+        <div class="table"><a data-name="-1686254865%2FConstructors%2F-2088260241" anchor-label="PluginInformation" id="-1686254865%2FConstructors%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-plugin-information.html"><span>Plugin</span><wbr></wbr><span><span>Information</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1686254865%2FConstructors%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1686254865%2FConstructors%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">packageName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">localName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">displayName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">version<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">category<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">developer<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">sharedLibraryName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">libraryEntryPoint<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">uiViewFactory<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">uiActivity<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">uiWeb<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">isOutProcess<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a><span class="token operator"> = </span><span class="token boolean">true</span></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">packageName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">localName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">displayName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">version<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">category<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">developer<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">sharedLibraryName<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">libraryEntryPoint<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">uiViewFactory<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">uiActivity<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">uiWeb<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span><span class="token operator"> = </span>null<span class="token punctuation">, </span></span><span class="parameter ">isOutProcess<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a><span class="token operator"> = </span><span class="token boolean">true</span></span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
@@ -133,18 +133,18 @@
         </div>
       </div>
       <div data-togglable="TYPE">
-        <h2 class="">Types</h2>
-        <div class="table"><a data-name="662832165%2FClasslikes%2F1993869484" anchor-label="Companion" id="662832165%2FClasslikes%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+        <h2 class="tableheader">Types</h2>
+        <div class="table"><a data-name="662832165%2FClasslikes%2F-2088260241" anchor-label="Companion" id="662832165%2FClasslikes%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-companion/index.html"><span><span>Companion</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="662832165%2FClasslikes%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="662832165%2FClasslikes%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">object </span><a href="-companion/index.html">Companion</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">object </span><a href="-companion/index.html">Companion</a></div></div></div>
                 </div>
               </div>
             </div>
@@ -152,243 +152,243 @@
         </div>
       </div>
       <div data-togglable="PROPERTY">
-        <h2 class="">Properties</h2>
-        <div class="table"><a data-name="-16488130%2FProperties%2F1993869484" anchor-label="category" id="-16488130%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+        <h2 class="tableheader">Properties</h2>
+        <div class="table"><a data-name="-16488130%2FProperties%2F-2088260241" anchor-label="category" id="-16488130%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="category.html"><span><span>category</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-16488130%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-16488130%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="category.html">category</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">category label. Right now <code class="lang-kotlin">Instrument</code> or <code class="lang-kotlin">Effect</code> are the expected values.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="category.html">category</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">category label. Right now <code class="lang-kotlin">Instrument</code> or <code class="lang-kotlin">Effect</code> are the expected values.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="693224020%2FProperties%2F1993869484" anchor-label="developer" id="693224020%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="693224020%2FProperties%2F-2088260241" anchor-label="developer" id="693224020%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="developer.html"><span><span>developer</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="693224020%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="693224020%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="developer.html">developer</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">developer name (such as personal name, company name, team name)</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="developer.html">developer</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">developer name (such as personal name, company name, team name)</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-820560687%2FProperties%2F1993869484" anchor-label="displayName" id="-820560687%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-820560687%2FProperties%2F-2088260241" anchor-label="displayName" id="-820560687%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="display-name.html"><span>display</span><wbr></wbr><span><span>Name</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-820560687%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-820560687%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="display-name.html">displayName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">human readable name of the plugin</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="display-name.html">displayName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">human readable name of the plugin</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-519992536%2FProperties%2F1993869484" anchor-label="extensions" id="-519992536%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-519992536%2FProperties%2F-2088260241" anchor-label="extensions" id="-519992536%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="extensions.html"><span><span>extensions</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-519992536%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-519992536%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="extensions.html">extensions</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-extension-information/index.html">ExtensionInformation</a><span class="token operator">&gt;</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="extensions.html">extensions</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-extension-information/index.html">ExtensionInformation</a><span class="token operator">&gt;</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1862498129%2FProperties%2F1993869484" anchor-label="isOutProcess" id="1862498129%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1862498129%2FProperties%2F-2088260241" anchor-label="isOutProcess" id="1862498129%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="is-out-process.html"><span>is</span><wbr></wbr><span>Out</span><wbr></wbr><span><span>Process</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1862498129%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1862498129%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="is-out-process.html">isOutProcess</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">indicates if it is in-process plugin or not</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="is-out-process.html">isOutProcess</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">indicates if it is in-process plugin or not</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-1710825307%2FProperties%2F1993869484" anchor-label="libraryEntryPoint" id="-1710825307%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-1710825307%2FProperties%2F-2088260241" anchor-label="libraryEntryPoint" id="-1710825307%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="library-entry-point.html"><span>library</span><wbr></wbr><span>Entry</span><wbr></wbr><span><span>Point</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1710825307%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1710825307%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="library-entry-point.html">libraryEntryPoint</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">AAP factory entrypoint function name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="library-entry-point.html">libraryEntryPoint</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">AAP factory entrypoint function name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-797391096%2FProperties%2F1993869484" anchor-label="localName" id="-797391096%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-797391096%2FProperties%2F-2088260241" anchor-label="localName" id="-797391096%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="local-name.html"><span>local</span><wbr></wbr><span><span>Name</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-797391096%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-797391096%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="local-name.html">localName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">Android class name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="local-name.html">localName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">Android class name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1509523405%2FProperties%2F1993869484" anchor-label="packageName" id="1509523405%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1509523405%2FProperties%2F-2088260241" anchor-label="packageName" id="1509523405%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="package-name.html"><span>package</span><wbr></wbr><span><span>Name</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1509523405%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1509523405%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="package-name.html">packageName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">Android package name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="package-name.html">packageName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">Android package name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-684371438%2FProperties%2F1993869484" anchor-label="parameters" id="-684371438%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-684371438%2FProperties%2F-2088260241" anchor-label="parameters" id="-684371438%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="parameters.html"><span><span>parameters</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-684371438%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-684371438%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="parameters.html">parameters</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-parameter-information/index.html">ParameterInformation</a><span class="token operator">&gt;</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="parameters.html">parameters</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-parameter-information/index.html">ParameterInformation</a><span class="token operator">&gt;</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1615664270%2FProperties%2F1993869484" anchor-label="pluginId" id="1615664270%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1615664270%2FProperties%2F-2088260241" anchor-label="pluginId" id="1615664270%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="plugin-id.html"><span>plugin</span><wbr></wbr><span><span>Id</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1615664270%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1615664270%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="plugin-id.html">pluginId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">plugin identifier, typically a URN</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="plugin-id.html">pluginId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">plugin identifier, typically a URN</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-1287369844%2FProperties%2F1993869484" anchor-label="ports" id="-1287369844%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-1287369844%2FProperties%2F-2088260241" anchor-label="ports" id="-1287369844%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="ports.html"><span><span>ports</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1287369844%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1287369844%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="ports.html">ports</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-port-information/index.html">PortInformation</a><span class="token operator">&gt;</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="ports.html">ports</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-mutable-list/index.html">MutableList</a><span class="token operator">&lt;</span><a href="../-port-information/index.html">PortInformation</a><span class="token operator">&gt;</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-644897603%2FProperties%2F1993869484" anchor-label="sharedLibraryName" id="-644897603%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-644897603%2FProperties%2F-2088260241" anchor-label="sharedLibraryName" id="-644897603%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="shared-library-name.html"><span>shared</span><wbr></wbr><span>Library</span><wbr></wbr><span><span>Name</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-644897603%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-644897603%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="shared-library-name.html">sharedLibraryName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">the shared library name that needs to be loaded when AudioPluginService is initialized.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="shared-library-name.html">sharedLibraryName</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">the shared library name that needs to be loaded when AudioPluginService is initialized.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-449652647%2FProperties%2F1993869484" anchor-label="uiActivity" id="-449652647%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-449652647%2FProperties%2F-2088260241" anchor-label="uiActivity" id="-449652647%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="ui-activity.html"><span>ui</span><wbr></wbr><span><span>Activity</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-449652647%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-449652647%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-activity.html">uiActivity</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-plugin-process UI Activity class name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-activity.html">uiActivity</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-plugin-process UI Activity class name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="2044042253%2FProperties%2F1993869484" anchor-label="uiViewFactory" id="2044042253%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="2044042253%2FProperties%2F-2088260241" anchor-label="uiViewFactory" id="2044042253%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="ui-view-factory.html"><span>ui</span><wbr></wbr><span>View</span><wbr></wbr><span><span>Factory</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2044042253%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2044042253%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-view-factory.html">uiViewFactory</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-plugin-process UI View factory class name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-view-factory.html">uiViewFactory</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-plugin-process UI View factory class name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-578157762%2FProperties%2F1993869484" anchor-label="uiWeb" id="-578157762%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-578157762%2FProperties%2F-2088260241" anchor-label="uiWeb" id="-578157762%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="ui-web.html"><span>ui</span><wbr></wbr><span><span>Web</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-578157762%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-578157762%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-web.html">uiWeb</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-host-process Web UI archive name</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="ui-web.html">uiWeb</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">in-host-process Web UI archive name</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="2127629638%2FProperties%2F1993869484" anchor-label="version" id="2127629638%2FProperties%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="2127629638%2FProperties%2F-2088260241" anchor-label="version" id="2127629638%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="version.html"><span><span>version</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2127629638%2FProperties%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2127629638%2FProperties%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">var </span><a href="version.html">version</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">human readable version code</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">var </span><a href="version.html">version</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">human readable version code</p></div></div></div>
                 </div>
               </div>
             </div>
@@ -396,93 +396,93 @@
         </div>
       </div>
       <div data-togglable="FUNCTION">
-        <h2 class="">Functions</h2>
-        <div class="table"><a data-name="1900481057%2FFunctions%2F1993869484" anchor-label="getDeclaredParameter" id="1900481057%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+        <h2 class="tableheader">Functions</h2>
+        <div class="table"><a data-name="1900481057%2FFunctions%2F-2088260241" anchor-label="getDeclaredParameter" id="1900481057%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-declared-parameter.html"><span>get</span><wbr></wbr><span>Declared</span><wbr></wbr><span><span>Parameter</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1900481057%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1900481057%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-parameter.html"><span class="token function">getDeclaredParameter</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-parameter-information/index.html">ParameterInformation</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-parameter.html"><span class="token function">getDeclaredParameter</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-parameter-information/index.html">ParameterInformation</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1372265704%2FFunctions%2F1993869484" anchor-label="getDeclaredParameterCount" id="1372265704%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1372265704%2FFunctions%2F-2088260241" anchor-label="getDeclaredParameterCount" id="1372265704%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-declared-parameter-count.html"><span>get</span><wbr></wbr><span>Declared</span><wbr></wbr><span>Parameter</span><wbr></wbr><span><span>Count</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1372265704%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1372265704%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-parameter-count.html"><span class="token function">getDeclaredParameterCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-parameter-count.html"><span class="token function">getDeclaredParameterCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-669172149%2FFunctions%2F1993869484" anchor-label="getDeclaredPort" id="-669172149%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-669172149%2FFunctions%2F-2088260241" anchor-label="getDeclaredPort" id="-669172149%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-declared-port.html"><span>get</span><wbr></wbr><span>Declared</span><wbr></wbr><span><span>Port</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-669172149%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-669172149%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-port.html"><span class="token function">getDeclaredPort</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-port-information/index.html">PortInformation</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-port.html"><span class="token function">getDeclaredPort</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-port-information/index.html">PortInformation</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1346074238%2FFunctions%2F1993869484" anchor-label="getDeclaredPortCount" id="1346074238%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1346074238%2FFunctions%2F-2088260241" anchor-label="getDeclaredPortCount" id="1346074238%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-declared-port-count.html"><span>get</span><wbr></wbr><span>Declared</span><wbr></wbr><span>Port</span><wbr></wbr><span><span>Count</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1346074238%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1346074238%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-port-count.html"><span class="token function">getDeclaredPortCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-declared-port-count.html"><span class="token function">getDeclaredPortCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1422336369%2FFunctions%2F1993869484" anchor-label="getExtension" id="1422336369%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="1422336369%2FFunctions%2F-2088260241" anchor-label="getExtension" id="1422336369%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-extension.html"><span>get</span><wbr></wbr><span><span>Extension</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1422336369%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1422336369%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-extension.html"><span class="token function">getExtension</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-extension-information/index.html">ExtensionInformation</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-extension.html"><span class="token function">getExtension</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">index<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-extension-information/index.html">ExtensionInformation</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-489835624%2FFunctions%2F1993869484" anchor-label="getExtensionCount" id="-489835624%2FFunctions%2F1993869484" data-filterable-set=":androidaudioplugin:dokkaHtml/release"></a>
-          <div class="table-row" data-filterable-current=":androidaudioplugin:dokkaHtml/release" data-filterable-set=":androidaudioplugin:dokkaHtml/release">
+<a data-name="-489835624%2FFunctions%2F-2088260241" anchor-label="getExtensionCount" id="-489835624%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="get-extension-count.html"><span>get</span><wbr></wbr><span>Extension</span><wbr></wbr><span><span>Count</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-489835624%2FFunctions%2F1993869484"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-489835624%2FFunctions%2F-2088260241"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-extension-count.html"><span class="token function">getExtensionCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="get-extension-count.html"><span class="token function">getExtensionCount</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
@@ -493,17 +493,21 @@
   </div>
 </div>
     <div class="footer">
-        <a href="#content" id="go-to-top-link" class="footer--button footer--button_go-to-top"></a>
-        <span>© 2025 Copyright</span>
-        <span class="pull-right">
-            <span>Generated by </span>
-            <a class="footer--link footer--link_external" href="https://github.com/Kotlin/dokka">
-                <span>dokka</span>
-            </a>
-        </span>
-    </div>
+        <div class="footer--container">
+            <a href="#content" id="go-to-top-link" class="footer--button footer--button_go-to-top"></a>
+            <div class="footer--content">
+                <div>
+                    <span>Generated by </span>
+                    <a class="footer--link footer--link_external" href="https://github.com/Kotlin/dokka">
+                        Dokka
+                    </a>
+                    <div>© 2026 Copyright</div>
+                </div>
             </div>
         </div>
     </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
