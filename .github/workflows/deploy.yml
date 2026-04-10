@@ -3,11 +3,13 @@ name: deploy to Maven Central
 on: workflow_dispatch
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: checkout
         uses: actions/checkout@v4
