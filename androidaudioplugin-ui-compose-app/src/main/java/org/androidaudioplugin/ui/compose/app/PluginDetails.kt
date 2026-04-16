@@ -132,6 +132,11 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     surfaceUIScope = SurfaceControlUIScope.create(scope, contentWidthPx, contentHeightPx)
                 }
             } else {
+                val surfaceContentWidth = with(density) { uiScope.width.toDp() }
+                val surfaceContentHeight = with(density) { uiScope.height.toDp() }
+                val surfaceViewportWidth = surfaceContentWidth.coerceAtMost(surfaceWidth)
+                val surfaceViewportHeight = surfaceContentHeight.coerceAtMost(surfaceHeight)
+
                 DisposableEffect(uiScope) {
                     onDispose {
                         uiScope.close()
@@ -141,10 +146,10 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                 // We can call this composable only after we create the SurfaceControl client.
                 PluginSurfaceControlUI(
                     pluginInfo,
-                    viewportWidth = surfaceWidth,
-                    viewportHeight = surfaceHeight,
-                    contentWidth = contentWidth,
-                    contentHeight = contentHeight,
+                    viewportWidth = surfaceViewportWidth,
+                    viewportHeight = surfaceViewportHeight,
+                    contentWidth = surfaceContentWidth,
+                    contentHeight = surfaceContentHeight,
                     createSurfaceView = { _ -> uiScope.surfaceControl!!.surfaceView },
                     detachSurfaceView = { _ -> surfaceUIConnected = false },
                     onViewportChanged = { viewportWidth, viewportHeight, contentWidth, contentHeight, scrollX, scrollY ->

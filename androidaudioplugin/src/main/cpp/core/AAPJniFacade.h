@@ -60,6 +60,7 @@ namespace aap {
         void showSurfaceControlView(void* handle);
         void hideSurfaceControlView(void* handle);
         void* getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance);
+        bool getRemoteNativeViewPreferredSize(PluginClient* client, RemotePluginInstance* instance, int32_t& width, int32_t& height);
         void connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height);
 
         void handleServiceConnectedCallback(std::string servicePackageName);

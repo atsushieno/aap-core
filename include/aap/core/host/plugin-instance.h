@@ -13,6 +13,8 @@
 #include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
 
+#define AAP_CORE_REMOTE_NATIVE_UI_PREFERRED_SIZE 1
+
 #if ANDROID
 #include <android/trace.h>
 #endif
@@ -329,6 +331,8 @@ namespace aap {
         // Client will have to call this to just return the SurfaceView, to attach to current window (either directly or indirectly).
         // (And this will have to be provided independently of initialization anyways, so it is a separate function).
         void* getRemoteNativeView();
+        // Returns the plugin view's preferred Android pixel size before host window decoration.
+        bool getRemoteNativeViewPreferredSize(int32_t& width, int32_t& height);
         // Then lastly, client connects to the SurfaceControlViewHost using binder.
         // Note that the SurfaceView needs to have a valid display ID by the time.
         // These steps will have to be done separately, because each of them will involve UI loop.

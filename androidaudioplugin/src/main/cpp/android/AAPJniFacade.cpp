@@ -527,6 +527,51 @@ namespace aap {
         });
     }
 
+    bool AAPJniFacade::getRemoteNativeViewPreferredSize(PluginClient* client, RemotePluginInstance* instance, int32_t& width, int32_t& height) {
+
+        return usingJNIEnv<bool>([instance, &width, &height](JNIEnv* env) {
+            auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return false;
+            }
+            auto getPreferredSize = env->GetMethodID(clzControl, "getPreferredSize", "(Ljava/lang/String;Ljava/lang/String;I)[I");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return false;
+            }
+            auto uiController = instance->getNativeUIController();
+            if (!uiController) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "createSurfaceControl() was not invoked yet.");
+                return false;
+            }
+            auto controlClient = (jobject) uiController->getHandle();
+            if (!controlClient) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "Native UI controller does not exist. Maybe the UI factory is not configured properly?");
+                return false;
+            }
+            auto jPluginId = env->NewStringUTF(instance->getPluginInformation()->getPluginID().c_str());
+            auto jPackageName = env->NewStringUTF(instance->getPluginInformation()->getPluginPackageName().c_str());
+            auto result = (jintArray) env->CallObjectMethod((jobject) controlClient, getPreferredSize, jPackageName, jPluginId, instance->getInstanceId());
+            env->DeleteLocalRef(jPluginId);
+            env->DeleteLocalRef(jPackageName);
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return false;
+            }
+            if (!result || env->GetArrayLength(result) < 2)
+                return false;
+            jint values[2] = {};
+            env->GetIntArrayRegion(result, 0, 2, values);
+            env->DeleteLocalRef(result);
+            if (values[0] <= 0 || values[1] <= 0)
+                return false;
+            width = values[0];
+            height = values[1];
+            return true;
+        });
+    }
+
 // --------------------------------------------------
 
 #define CLEAR_JNI_ERROR(env) { if (env->ExceptionOccurred()) { env->ExceptionDescribe(); env->ExceptionClear(); } }

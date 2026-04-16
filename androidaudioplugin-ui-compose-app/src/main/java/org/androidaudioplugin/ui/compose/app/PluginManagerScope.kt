@@ -121,11 +121,25 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
  }
 
-class SurfaceControlUIScope private constructor(private val parentScope: PluginDetailsScope, private val width: Int, private val height: Int) : AutoCloseable {
+class SurfaceControlUIScope private constructor(
+    private val parentScope: PluginDetailsScope,
+    val width: Int,
+    val height: Int
+) : AutoCloseable {
     companion object {
-        fun create(parentScope: PluginDetailsScope, width: Int, height: Int): SurfaceControlUIScope {
+        suspend fun create(parentScope: PluginDetailsScope, fallbackWidth: Int, fallbackHeight: Int): SurfaceControlUIScope {
+            val surfaceControl = AudioPluginHostHelper.createSurfaceControl(parentScope.manager.context)
+            val pluginInfo = parentScope.pluginInfo
+            val instanceId = parentScope.instance.value!!.instanceId
+            val preferredSize =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    surfaceControl.getPreferredSizeNoHandler(pluginInfo.packageName, pluginInfo.pluginId!!, instanceId)
+                else
+                    intArrayOf(0, 0)
+            val width = preferredSize.getOrNull(0)?.takeIf { it > 0 } ?: fallbackWidth
+            val height = preferredSize.getOrNull(1)?.takeIf { it > 0 } ?: fallbackHeight
             val scope = SurfaceControlUIScope(parentScope, width, height)
-            scope.surfaceControl = AudioPluginHostHelper.createSurfaceControl(parentScope.manager.context)
+            scope.surfaceControl = surfaceControl
             return scope
         }
     }

@@ -2,6 +2,7 @@ package org.androidaudioplugin
 
 import android.content.ComponentName
 import android.content.Context
+import android.util.Size
 import android.view.View
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 
@@ -20,7 +21,14 @@ object AudioPluginServiceHelper {
 
     // It is used by AudioPluginViewService (which makes use of SurfaceControlViewHost).
     @JvmStatic
-    fun createNativeView(context: Context, pluginId: String, instanceId: Int): View {
+    fun getNativeViewPreferredSize(context: Context, pluginId: String, instanceId: Int): Size? =
+        createNativeViewFactory(context, pluginId).getPreferredSize(context, pluginId, instanceId)
+
+    @JvmStatic
+    fun createNativeView(context: Context, pluginId: String, instanceId: Int): View =
+        createNativeViewFactory(context, pluginId).createView(context, pluginId, instanceId)
+
+    private fun createNativeViewFactory(context: Context, pluginId: String): AudioPluginViewFactory {
         val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
             ?: throw AudioPluginException("Specified plugin '$pluginId' was not found")
         val factoryClassName = pluginInfo.uiViewFactory
@@ -29,6 +37,6 @@ object AudioPluginServiceHelper {
         if (!AudioPluginViewFactory::class.java.isAssignableFrom(cls))
             throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
         val factory = cls.getConstructor().newInstance() as AudioPluginViewFactory
-        return factory.createView(context, pluginId, instanceId)
+        return factory
     }
 }

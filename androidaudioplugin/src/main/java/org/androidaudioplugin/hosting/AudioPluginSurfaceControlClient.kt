@@ -23,11 +23,13 @@ import androidx.annotation.WorkerThread
 import androidx.core.os.bundleOf
 import androidx.core.view.isEmpty
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.androidaudioplugin.AudioPluginViewService
@@ -118,11 +120,45 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 Log.w(LOG_TAG, "SurfaceView is not attached to a display. It is most likely that it is not attached to a live view tree. Resubmitting messaging handler")
                 context.mainLooper.queue.addIdleHandler(messageSender!!)
             } else {
-                connectUISendMessage(pluginId, instanceId)
+                connectUISendMessage(pluginId, instanceId, width, height)
             }
             false
         }
         context.mainLooper.queue.addIdleHandler (messageSender)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun getPreferredSize(pluginPackageName: String, pluginId: String, instanceId: Int): IntArray =
+        runBlocking {
+            getPreferredSizeNoHandler(pluginPackageName, pluginId, instanceId)
+        }
+
+    @WorkerThread
+    @RequiresApi(Build.VERSION_CODES.R)
+    suspend fun getPreferredSizeNoHandler(pluginPackageName: String, pluginId: String, instanceId: Int): IntArray {
+        val connection = bindPluginViewService(pluginPackageName)
+        val result = CompletableDeferred<IntArray>()
+        val replyMessenger = Messenger(object : Handler(messageHandlerThread.looper) {
+            override fun handleMessage(msg: Message) {
+                result.complete(intArrayOf(
+                    msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_PREFERRED_WIDTH),
+                    msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_PREFERRED_HEIGHT)
+                ))
+            }
+        })
+        try {
+            connection.outgoingMessenger.send(Message.obtain().apply {
+                data = bundleOf(
+                    AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_GET_PREFERRED_SIZE,
+                    AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
+                    AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId
+                )
+                replyTo = replyMessenger
+            })
+            return withTimeoutOrNull(3000) { result.await() } ?: intArrayOf(0, 0)
+        } finally {
+            context.unbindService(connection)
+        }
     }
 
     // connectUI without idle handler
@@ -133,7 +169,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
         connectUIBindService(pluginPackageName)
 
-        connectUISendMessage(pluginId, instanceId)
+        connectUISendMessage(pluginId, instanceId, width, height)
     }
 
         private fun connectUIPrepareLayout(width: Int, height: Int) {
@@ -144,17 +180,21 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
         @RequiresApi(Build.VERSION_CODES.R)
         private suspend fun connectUIBindService(pluginPackageName: String) {
-            surface.connection = suspendCoroutine { continuation ->
+            surface.connection = bindPluginViewService(pluginPackageName)
+        }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private suspend fun bindPluginViewService(pluginPackageName: String): HostConnection =
+            suspendCoroutine { continuation ->
                 context.bindService(
                     Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
                     HostConnection(onConnected = { continuation.resume(it) }),
                     Context.BIND_AUTO_CREATE
                 )
             }
-        }
 
         @RequiresApi(Build.VERSION_CODES.R)
-        private fun connectUISendMessage(pluginId: String, instanceId: Int) {
+        private fun connectUISendMessage(pluginId: String, instanceId: Int, width: Int, height: Int) {
             connectedPluginId = pluginId
             connectedInstanceId = instanceId
             val message = Message.obtain().apply {
@@ -164,8 +204,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                     AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surface.display.displayId,
                     AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
                     AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
-                    AudioPluginViewService.MESSAGE_KEY_WIDTH to surface.width,
-                    AudioPluginViewService.MESSAGE_KEY_HEIGHT to surface.height
+                    AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
+                    AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
                 )
                 replyTo = incomingMessenger
             }

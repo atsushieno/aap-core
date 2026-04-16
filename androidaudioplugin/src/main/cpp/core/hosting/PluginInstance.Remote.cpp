@@ -103,6 +103,20 @@ void* aap::RemotePluginInstance::getRemoteNativeView()  {
 #endif
 }
 
+bool aap::RemotePluginInstance::getRemoteNativeViewPreferredSize(int32_t& width, int32_t& height)  {
+#if ANDROID
+    if (!native_ui_controller) {
+        AAP_ASSERT_FALSE; // should not happen
+        return false;
+    }
+    return AAPJniFacade::getInstance()->getRemoteNativeViewPreferredSize(client, this, width, height);
+#else
+    (void) width;
+    (void) height;
+    return false;
+#endif
+}
+
 void aap::RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t height)  {
 #if ANDROID
     if (!native_ui_controller) {

@@ -35,6 +35,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val OPCODE_DISCONNECT = 1
         const val OPCODE_RESIZE = 2
         const val OPCODE_CONFIGURE_VIEWPORT = 3
+        const val OPCODE_GET_PREFERRED_SIZE = 4
 
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
@@ -53,6 +54,8 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         // replies
         const val MESSAGE_KEY_GUI_INSTANCE_ID = "guiInstanceId"
         const val MESSAGE_KEY_SURFACE_PACKAGE = "surfacePackage"
+        const val MESSAGE_KEY_PREFERRED_WIDTH = "preferredWidth"
+        const val MESSAGE_KEY_PREFERRED_HEIGHT = "preferredHeight"
     }
 
     private lateinit var messenger: Messenger
@@ -92,6 +95,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 OPCODE_CONFIGURE_VIEWPORT -> {
                     owner.handleConfigureViewportRequest(msg)
                 }
+                OPCODE_GET_PREFERRED_SIZE -> {
+                    owner.handleGetPreferredSizeRequest(msg)
+                }
                 else -> {}
             }
         }
@@ -115,6 +121,18 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         }
         controllers[instanceId] = controller
         controller.initialize(messenger, hostToken, displayId, width, height)
+    }
+
+    private fun handleGetPreferredSizeRequest(msg: Message) {
+        val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID)!!
+        val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
+        val preferredSize = AudioPluginServiceHelper.getNativeViewPreferredSize(this, pluginId, instanceId)
+        msg.replyTo?.send(Message.obtain().apply {
+            data = bundleOf(
+                MESSAGE_KEY_PREFERRED_WIDTH to (preferredSize?.width ?: 0),
+                MESSAGE_KEY_PREFERRED_HEIGHT to (preferredSize?.height ?: 0)
+            )
+        })
     }
 
     private fun handleDisposeRequest(msg: Message) {
