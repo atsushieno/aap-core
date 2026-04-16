@@ -153,6 +153,12 @@ class SurfaceControlUIScope private constructor(private val parentScope: PluginD
         surfaceControl?.surfaceView?.visibility = View.GONE
     }
 
+    fun resizeSurfaceGUI(width: Int, height: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            surfaceControl?.resizeUI(parentScope.instance.value!!.instanceId, width, height)
+        }
+    }
+
     override fun close() {
         surfaceControl?.close()
     }

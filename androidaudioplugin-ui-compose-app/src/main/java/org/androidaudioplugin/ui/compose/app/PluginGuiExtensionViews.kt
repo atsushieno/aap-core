@@ -20,12 +20,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.ui.web.WebUIHostHelper
@@ -39,36 +42,37 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
-    Column(
-        Modifier
-            .padding(10.dp)
-            .offset { IntOffset(offsetX.toInt(), offsetY.toInt()) }
-
+    Popup(
+        alignment = Alignment.TopStart,
+        offset = IntOffset(offsetX.toInt(), offsetY.toInt()),
+        properties = PopupProperties(clippingEnabled = false)
     ) {
-        // title bar
-        Row(Modifier
-            .padding(0.dp)
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    offsetX += dragAmount.x
-                    offsetY += dragAmount.y
+        Column(Modifier.padding(10.dp)) {
+            // title bar
+            Row(Modifier
+                .padding(0.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        offsetX += dragAmount.x
+                        offsetY += dragAmount.y
+                    }
                 }
+                .fillMaxWidth()
+                .background(Color.DarkGray.copy(alpha = 0.5f))
+                .border(1.dp, Color.Black)
+            ) {
+                TextButton(onClick = { onCloseClick() }) {
+                    Text("[X]")
+                }
+                Text(pluginInfo.displayName)
             }
-            .fillMaxWidth()
-            .background(Color.DarkGray.copy(alpha = 0.5f))
-            .border(1.dp, Color.Black)
-        ) {
-            TextButton(onClick = { onCloseClick() }) {
-                Text("[X]")
-            }
-            Text(pluginInfo.displayName)
+            AndroidView(modifier = Modifier.border(1.dp, Color.Black),
+                factory = { ctx -> createSurfaceView(ctx) },
+                onRelease = { view: View -> detachSurfaceView(view) },
+                onReset = { _: View -> }
+            )
         }
-        AndroidView(modifier = Modifier.border(1.dp, Color.Black),
-            factory = { ctx -> createSurfaceView(ctx) },
-            onRelease = { view: View -> detachSurfaceView(view) },
-            onReset = { _: View -> }
-        )
     }
 }
 
@@ -107,4 +111,3 @@ fun PluginWebUI(packageName: String, pluginId: String, native: NativeRemotePlugi
         )
     }
 }
-

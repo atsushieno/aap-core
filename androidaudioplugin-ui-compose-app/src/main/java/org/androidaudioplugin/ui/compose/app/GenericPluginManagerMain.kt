@@ -6,9 +6,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -92,10 +92,10 @@ fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String
             Scaffold(
                 topBar = { TopAppBar(title = { Text(text = "Plugins") }) },
                 content = {
-                    Column(
+                    Box(
                         Modifier
                             .padding(it)
-                            .verticalScroll(rememberScrollState())) {
+                            .fillMaxSize()) {
                         val pluginId = Uri.decode(entry.arguments!!.getString("pluginId"))
                         val pluginInfo = scope.pluginServices.flatMap { it.plugins }.first { it.pluginId == pluginId }
                         PluginDetails(pluginInfo, scope)

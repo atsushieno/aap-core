@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -69,7 +70,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     val instance = scope.instance.value!!
     var surfaceUIScope by remember { mutableStateOf<SurfaceControlUIScope?>(null) }
 
-    Box {
+    Box(Modifier.fillMaxSize()) {
         // We show the Web UI and the native UI *outside* any of the sequential layout contexts e.g.
         // Column() or Row(), so we have WebUI and SurfaceControl UI on top level along with the main content.
         //

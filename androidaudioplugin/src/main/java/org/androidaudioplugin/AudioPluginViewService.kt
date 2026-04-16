@@ -31,6 +31,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
         const val OPCODE_CONNECT = 0
         const val OPCODE_DISCONNECT = 1
+        const val OPCODE_RESIZE = 2
 
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
@@ -76,6 +77,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 OPCODE_DISCONNECT -> {
                     owner.handleDisposeRequest(msg)
                 }
+                OPCODE_RESIZE -> {
+                    owner.handleResizeRequest(msg)
+                }
                 else -> {}
             }
         }
@@ -109,6 +113,14 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val controller = controllers.remove(instanceId)
             ?: throw IllegalArgumentException("Attempt to dispose non-existent GUI controller for $pluginId / instanceId: $instanceId (guiInstanceId: $guiInstanceId)")
         controller.close()
+    }
+
+    private fun handleResizeRequest(msg: Message) {
+        val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
+        val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
+        val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
+
+        controllers[instanceId]?.resize(width, height)
     }
 
     /*
@@ -149,6 +161,12 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                     }
                     false
                 }
+            }
+        }
+
+        fun resize(width: Int, height: Int) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                viewHost?.relayout(width, height)
             }
         }
 

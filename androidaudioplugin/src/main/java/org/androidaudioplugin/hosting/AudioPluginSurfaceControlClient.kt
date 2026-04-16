@@ -147,7 +147,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         private fun connectUISendMessage(pluginId: String, instanceId: Int) {
             val message = Message.obtain().apply {
                 data = bundleOf(
-                    AudioPluginViewService.MESSAGE_KEY_OPCODE to 0,
+                    AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONNECT,
                     AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surface.hostToken,
                     AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surface.display.displayId,
                     AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
@@ -159,6 +159,21 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             }
             surface.connection?.outgoingMessenger?.send(message)
         }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun resizeUI(instanceId: Int, width: Int, height: Int) {
+        connectUIPrepareLayout(width, height)
+
+        val message = Message.obtain().apply {
+            data = bundleOf(
+                AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_RESIZE,
+                AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
+                AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
+                AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
+            )
+        }
+        surface.connection?.outgoingMessenger?.send(message)
+    }
 
     internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {
