@@ -132,6 +132,18 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     contentHeight = contentHeight,
                     createSurfaceView = { _ -> uiScope.surfaceControl!!.surfaceView },
                     detachSurfaceView = { _ -> surfaceUIConnected = false },
+                    onViewportChanged = { viewportWidth, viewportHeight, contentWidth, contentHeight, scrollX, scrollY ->
+                        if (surfaceUIConnected) {
+                            uiScope.configureSurfaceGUIViewport(
+                                viewportWidth,
+                                viewportHeight,
+                                contentWidth,
+                                contentHeight,
+                                scrollX,
+                                scrollY
+                            )
+                        }
+                    },
                     onCloseClick = { showSurfaceUI = false })
 
                 if (!surfaceUIConnected) {
@@ -143,10 +155,6 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     }
                 }
 
-                LaunchedEffect(uiScope, surfaceUIConnected, contentWidthPx, contentHeightPx) {
-                    if (surfaceUIConnected)
-                        uiScope.resizeSurfaceGUI(contentWidthPx, contentHeightPx)
-                }
             }
         }
     }

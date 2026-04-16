@@ -10,6 +10,8 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import android.view.SurfaceControlViewHost
+import android.view.View
+import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.core.os.bundleOf
 import androidx.lifecycle.LifecycleService
@@ -32,6 +34,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val OPCODE_CONNECT = 0
         const val OPCODE_DISCONNECT = 1
         const val OPCODE_RESIZE = 2
+        const val OPCODE_CONFIGURE_VIEWPORT = 3
 
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
@@ -41,6 +44,12 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val MESSAGE_KEY_INSTANCE_ID = "instanceId"
         const val MESSAGE_KEY_WIDTH = "width"
         const val MESSAGE_KEY_HEIGHT = "height"
+        const val MESSAGE_KEY_VIEWPORT_WIDTH = "viewportWidth"
+        const val MESSAGE_KEY_VIEWPORT_HEIGHT = "viewportHeight"
+        const val MESSAGE_KEY_CONTENT_WIDTH = "contentWidth"
+        const val MESSAGE_KEY_CONTENT_HEIGHT = "contentHeight"
+        const val MESSAGE_KEY_SCROLL_X = "scrollX"
+        const val MESSAGE_KEY_SCROLL_Y = "scrollY"
         // replies
         const val MESSAGE_KEY_GUI_INSTANCE_ID = "guiInstanceId"
         const val MESSAGE_KEY_SURFACE_PACKAGE = "surfacePackage"
@@ -79,6 +88,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 }
                 OPCODE_RESIZE -> {
                     owner.handleResizeRequest(msg)
+                }
+                OPCODE_CONFIGURE_VIEWPORT -> {
+                    owner.handleConfigureViewportRequest(msg)
                 }
                 else -> {}
             }
@@ -123,6 +135,25 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         controllers[instanceId]?.resize(width, height)
     }
 
+    private fun handleConfigureViewportRequest(msg: Message) {
+        val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
+        val viewportWidth = msg.data.getInt(MESSAGE_KEY_VIEWPORT_WIDTH)
+        val viewportHeight = msg.data.getInt(MESSAGE_KEY_VIEWPORT_HEIGHT)
+        val contentWidth = msg.data.getInt(MESSAGE_KEY_CONTENT_WIDTH)
+        val contentHeight = msg.data.getInt(MESSAGE_KEY_CONTENT_HEIGHT)
+        val scrollX = msg.data.getInt(MESSAGE_KEY_SCROLL_X)
+        val scrollY = msg.data.getInt(MESSAGE_KEY_SCROLL_Y)
+
+        controllers[instanceId]?.configureViewport(
+            viewportWidth,
+            viewportHeight,
+            contentWidth,
+            contentHeight,
+            scrollX,
+            scrollY
+        )
+    }
+
     /*
      represents a service side GUI instance that uses SurfaceControlViewHost.
 
@@ -134,6 +165,8 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val instanceId: Int
     ) : AutoCloseable {
         private var viewHost: SurfaceControlViewHost? = null
+        private var viewportView: FrameLayout? = null
+        private var pluginView: View? = null
 
         // FIXME: there could be more than one in the future, but so far 1:1 for instance:gui.
         val guiInstanceId: Int
@@ -147,11 +180,21 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 service.mainLooper.queue.addIdleHandler {
                     viewHost = SurfaceControlViewHost(service, display, hostToken).apply {
                         val view = AudioPluginServiceHelper.createNativeView(service, pluginId, instanceId)
+                        val viewport = FrameLayout(service).apply {
+                            clipChildren = true
+                            clipToPadding = true
+                            addView(view, FrameLayout.LayoutParams(width, height))
+                        }
 
                         view.setViewTreeLifecycleOwner(service)
                         view.setViewTreeSavedStateRegistryOwner(service)
+                        viewport.setViewTreeLifecycleOwner(service)
+                        viewport.setViewTreeSavedStateRegistryOwner(service)
 
-                        setView(view, width, height)
+                        pluginView = view
+                        viewportView = viewport
+
+                        setView(viewport, width, height)
 
                         messengerToSendReply.send(Message.obtain().apply {
                             data = bundleOf(
@@ -166,7 +209,29 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
         fun resize(width: Int, height: Int) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                viewHost?.relayout(width, height)
+                configureViewport(width, height, width, height, 0, 0)
+            }
+        }
+
+        fun configureViewport(
+            viewportWidth: Int,
+            viewportHeight: Int,
+            contentWidth: Int,
+            contentHeight: Int,
+            scrollX: Int,
+            scrollY: Int
+        ) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val view = pluginView ?: return
+                viewHost?.relayout(viewportWidth, viewportHeight)
+
+                val layoutParams = view.layoutParams
+                if (layoutParams == null || layoutParams.width != contentWidth || layoutParams.height != contentHeight)
+                    view.layoutParams = FrameLayout.LayoutParams(contentWidth, contentHeight)
+
+                view.translationX = -scrollX.toFloat()
+                view.translationY = -scrollY.toFloat()
+                viewportView?.invalidate()
             }
         }
 

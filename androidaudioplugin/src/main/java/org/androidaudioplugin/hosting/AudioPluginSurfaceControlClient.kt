@@ -61,7 +61,9 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     private val messageHandlerThread = HandlerThread("IncomingMessengerHandler").apply { start() }
     private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            surfacePackage = it
             surface.setChildSurfacePackage(it)
+            pendingViewportConfiguration?.let(::sendConfigureViewport)
             Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
             connectedListeners.forEach { it() }
         }
@@ -70,6 +72,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     val connectedListeners = mutableListOf<() -> Unit>()
 
     private var surface = createSurfaceView()
+    private var surfacePackage: SurfaceControlViewHost.SurfacePackage? = null
+    private var pendingViewportConfiguration: ViewportConfiguration? = null
     val surfaceView: View
         get() = surface
 
@@ -163,7 +167,28 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     @RequiresApi(Build.VERSION_CODES.R)
     fun resizeUI(instanceId: Int, width: Int, height: Int) {
         connectUIPrepareLayout(width, height)
+        resizeRemoteUI(instanceId, width, height)
+    }
 
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun configureViewport(instanceId: Int, viewportWidth: Int, viewportHeight: Int,
+                          contentWidth: Int, contentHeight: Int, scrollX: Int, scrollY: Int) {
+        connectUIPrepareLayout(viewportWidth, viewportHeight)
+        val configuration = ViewportConfiguration(
+            instanceId,
+            viewportWidth,
+            viewportHeight,
+            contentWidth,
+            contentHeight,
+            scrollX,
+            scrollY
+        )
+        pendingViewportConfiguration = configuration
+        sendConfigureViewport(configuration)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun resizeRemoteUI(instanceId: Int, width: Int, height: Int) {
         val message = Message.obtain().apply {
             data = bundleOf(
                 AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_RESIZE,
@@ -174,6 +199,34 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
         surface.connection?.outgoingMessenger?.send(message)
     }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun sendConfigureViewport(configuration: ViewportConfiguration) {
+        val outgoingMessenger = surface.connection?.outgoingMessenger ?: return
+        val message = Message.obtain().apply {
+            data = bundleOf(
+                AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONFIGURE_VIEWPORT,
+                AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to configuration.instanceId,
+                AudioPluginViewService.MESSAGE_KEY_VIEWPORT_WIDTH to configuration.viewportWidth,
+                AudioPluginViewService.MESSAGE_KEY_VIEWPORT_HEIGHT to configuration.viewportHeight,
+                AudioPluginViewService.MESSAGE_KEY_CONTENT_WIDTH to configuration.contentWidth,
+                AudioPluginViewService.MESSAGE_KEY_CONTENT_HEIGHT to configuration.contentHeight,
+                AudioPluginViewService.MESSAGE_KEY_SCROLL_X to configuration.scrollX,
+                AudioPluginViewService.MESSAGE_KEY_SCROLL_Y to configuration.scrollY
+            )
+        }
+        outgoingMessenger.send(message)
+    }
+
+    private data class ViewportConfiguration(
+        val instanceId: Int,
+        val viewportWidth: Int,
+        val viewportHeight: Int,
+        val contentWidth: Int,
+        val contentHeight: Int,
+        val scrollX: Int,
+        val scrollY: Int
+    )
 
     internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {

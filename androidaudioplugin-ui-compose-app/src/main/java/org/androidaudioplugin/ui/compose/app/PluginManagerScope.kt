@@ -159,6 +159,22 @@ class SurfaceControlUIScope private constructor(private val parentScope: PluginD
         }
     }
 
+    fun configureSurfaceGUIViewport(viewportWidth: Int, viewportHeight: Int,
+                                    contentWidth: Int, contentHeight: Int,
+                                    scrollX: Int, scrollY: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            surfaceControl?.configureViewport(
+                parentScope.instance.value!!.instanceId,
+                viewportWidth,
+                viewportHeight,
+                contentWidth,
+                contentHeight,
+                scrollX,
+                scrollY
+            )
+        }
+    }
+
     override fun close() {
         surfaceControl?.close()
     }
