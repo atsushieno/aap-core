@@ -74,10 +74,12 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
-        val surfaceWidth = (maxWidth - 20.dp).coerceAtLeast(1.dp)
-        val surfaceHeight = (maxHeight - 72.dp).coerceAtLeast(1.dp)
-        val surfaceWidthPx = with(density) { surfaceWidth.roundToPx() }
-        val surfaceHeightPx = with(density) { surfaceHeight.roundToPx() }
+        val surfaceWidth = (maxWidth - 32.dp).coerceAtLeast(1.dp)
+        val surfaceHeight = (maxHeight - 84.dp).coerceAtLeast(1.dp)
+        val contentWidth = surfaceWidth.coerceAtLeast(866.dp)
+        val contentHeight = surfaceHeight.coerceAtLeast(674.dp)
+        val contentWidthPx = with(density) { contentWidth.roundToPx() }
+        val contentHeightPx = with(density) { contentHeight.roundToPx() }
 
         // We show the Web UI and the native UI *outside* any of the sequential layout contexts e.g.
         // Column() or Row(), so we have WebUI and SurfaceControl UI on top level along with the main content.
@@ -117,15 +119,17 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         if (showSurfaceUI) {
             val uiScope = surfaceUIScope
             if (uiScope == null) {
-                LaunchedEffect(scope, surfaceWidthPx, surfaceHeightPx) {
-                    surfaceUIScope = SurfaceControlUIScope.create(scope, surfaceWidthPx, surfaceHeightPx)
+                LaunchedEffect(scope, contentWidthPx, contentHeightPx) {
+                    surfaceUIScope = SurfaceControlUIScope.create(scope, contentWidthPx, contentHeightPx)
                 }
             } else {
                 // We can call this composable only after we create the SurfaceControl client.
                 PluginSurfaceControlUI(
                     pluginInfo,
-                    width = surfaceWidth,
-                    height = surfaceHeight,
+                    viewportWidth = surfaceWidth,
+                    viewportHeight = surfaceHeight,
+                    contentWidth = contentWidth,
+                    contentHeight = contentHeight,
                     createSurfaceView = { _ -> uiScope.surfaceControl!!.surfaceView },
                     detachSurfaceView = { _ -> surfaceUIConnected = false },
                     onCloseClick = { showSurfaceUI = false })
@@ -139,9 +143,9 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     }
                 }
 
-                LaunchedEffect(uiScope, surfaceUIConnected, surfaceWidthPx, surfaceHeightPx) {
+                LaunchedEffect(uiScope, surfaceUIConnected, contentWidthPx, contentHeightPx) {
                     if (surfaceUIConnected)
-                        uiScope.resizeSurfaceGUI(surfaceWidthPx, surfaceHeightPx)
+                        uiScope.resizeSurfaceGUI(contentWidthPx, contentHeightPx)
                 }
             }
         }
