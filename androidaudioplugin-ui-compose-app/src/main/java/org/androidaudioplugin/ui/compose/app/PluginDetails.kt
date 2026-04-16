@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,7 +72,13 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     val instance = scope.instance.value!!
     var surfaceUIScope by remember { mutableStateOf<SurfaceControlUIScope?>(null) }
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val surfaceWidth = (maxWidth - 20.dp).coerceAtLeast(1.dp)
+        val surfaceHeight = (maxHeight - 72.dp).coerceAtLeast(1.dp)
+        val surfaceWidthPx = with(density) { surfaceWidth.roundToPx() }
+        val surfaceHeightPx = with(density) { surfaceHeight.roundToPx() }
+
         // We show the Web UI and the native UI *outside* any of the sequential layout contexts e.g.
         // Column() or Row(), so we have WebUI and SurfaceControl UI on top level along with the main content.
         //
@@ -109,14 +117,15 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         if (showSurfaceUI) {
             val uiScope = surfaceUIScope
             if (uiScope == null) {
-                LaunchedEffect(scope) {
-                    // FIXME: pass appropriate sizes here
-                    surfaceUIScope = SurfaceControlUIScope.create(scope, 1000, 800)
+                LaunchedEffect(scope, surfaceWidthPx, surfaceHeightPx) {
+                    surfaceUIScope = SurfaceControlUIScope.create(scope, surfaceWidthPx, surfaceHeightPx)
                 }
             } else {
                 // We can call this composable only after we create the SurfaceControl client.
                 PluginSurfaceControlUI(
                     pluginInfo,
+                    width = surfaceWidth,
+                    height = surfaceHeight,
                     createSurfaceView = { _ -> uiScope.surfaceControl!!.surfaceView },
                     detachSurfaceView = { _ -> surfaceUIConnected = false },
                     onCloseClick = { showSurfaceUI = false })
@@ -128,6 +137,11 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                         uiScope.connectSurfaceControlUI()
                         surfaceUIConnected = true
                     }
+                }
+
+                LaunchedEffect(uiScope, surfaceUIConnected, surfaceWidthPx, surfaceHeightPx) {
+                    if (surfaceUIConnected)
+                        uiScope.resizeSurfaceGUI(surfaceWidthPx, surfaceHeightPx)
                 }
             }
         }

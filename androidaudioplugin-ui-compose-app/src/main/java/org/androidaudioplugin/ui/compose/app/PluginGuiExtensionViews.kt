@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
@@ -36,6 +39,8 @@ import org.androidaudioplugin.ui.web.WebUIHostHelper
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
+                           width: Dp,
+                           height: Dp,
                            createSurfaceView: (Context) -> View,
                            detachSurfaceView: (View) -> Unit,
                            onCloseClick: () -> Unit = {}) {
@@ -51,6 +56,7 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
             // title bar
             Row(Modifier
                 .padding(0.dp)
+                .width(width)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
@@ -67,7 +73,10 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
                 }
                 Text(pluginInfo.displayName)
             }
-            AndroidView(modifier = Modifier.border(1.dp, Color.Black),
+            AndroidView(modifier = Modifier
+                .width(width)
+                .height(height)
+                .border(1.dp, Color.Black),
                 factory = { ctx -> createSurfaceView(ctx) },
                 onRelease = { view: View -> detachSurfaceView(view) },
                 onReset = { _: View -> }
