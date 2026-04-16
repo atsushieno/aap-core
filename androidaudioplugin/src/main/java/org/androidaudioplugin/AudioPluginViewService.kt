@@ -118,7 +118,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private fun handleDisposeRequest(msg: Message) {
-        val pluginId = msg.data.getInt(MESSAGE_KEY_PLUGIN_ID)
+        val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID) ?: ""
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
         val guiInstanceId = msg.data.getInt(MESSAGE_KEY_GUI_INSTANCE_ID)
 
@@ -238,6 +238,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         override fun close() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 viewHost?.release()
+                viewHost = null
+                viewportView = null
+                pluginView = null
             }
         }
     }

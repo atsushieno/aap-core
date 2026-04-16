@@ -71,6 +71,12 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     var surfaceUIConnected by remember { mutableStateOf(false) }
     val instance = scope.instance.value!!
     var surfaceUIScope by remember { mutableStateOf<SurfaceControlUIScope?>(null) }
+    val closeSurfaceUI = {
+        showSurfaceUI = false
+        surfaceUIConnected = false
+        surfaceUIScope?.close()
+        surfaceUIScope = null
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -104,7 +110,10 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     Button(onClick = {
-                        showSurfaceUI = !showSurfaceUI
+                        if (showSurfaceUI)
+                            closeSurfaceUI()
+                        else
+                            showSurfaceUI = true
                     }) {
                         Text(if (showSurfaceUI) "Hide Native UI" else "Show Native UI")
                     }
@@ -123,6 +132,12 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     surfaceUIScope = SurfaceControlUIScope.create(scope, contentWidthPx, contentHeightPx)
                 }
             } else {
+                DisposableEffect(uiScope) {
+                    onDispose {
+                        uiScope.close()
+                    }
+                }
+
                 // We can call this composable only after we create the SurfaceControl client.
                 PluginSurfaceControlUI(
                     pluginInfo,
@@ -144,7 +159,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                             )
                         }
                     },
-                    onCloseClick = { showSurfaceUI = false })
+                    onCloseClick = { closeSurfaceUI() })
 
                 if (!surfaceUIConnected) {
                     LaunchedEffect(uiScope) {
