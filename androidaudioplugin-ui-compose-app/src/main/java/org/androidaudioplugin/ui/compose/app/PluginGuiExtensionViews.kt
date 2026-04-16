@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
@@ -160,6 +161,8 @@ private fun ScrollbarTrack(
     var trackSize by remember { mutableStateOf(0) }
     var dragStartScrollValue by remember { mutableStateOf(0) }
     var dragTotal by remember { mutableStateOf(0f) }
+    val currentScrollValue by rememberUpdatedState(scrollValue)
+    val currentOnScrollValueChange by rememberUpdatedState(onScrollValueChange)
     val density = LocalDensity.current
 
     Box(modifier
@@ -178,16 +181,22 @@ private fun ScrollbarTrack(
                 .width(with(density) { thumbSize.toDp() })
                 .fillMaxHeight()
                 .offset(x = with(density) { thumbOffset.toDp() })
-                .pointerInput(maxValue, maxThumbOffset, scrollValue) {
+                .pointerInput(maxValue, maxThumbOffset) {
                     detectDragGestures(
                         onDragStart = {
-                            dragStartScrollValue = scrollValue
+                            dragStartScrollValue = currentScrollValue
                             dragTotal = 0f
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
                             dragTotal += dragAmount.x
-                            updateScrollFromDrag(dragStartScrollValue, dragTotal, maxValue, maxThumbOffset, onScrollValueChange)
+                            updateScrollFromDrag(
+                                dragStartScrollValue,
+                                dragTotal,
+                                maxValue,
+                                maxThumbOffset,
+                                currentOnScrollValueChange
+                            )
                         }
                     )
                 }
@@ -196,16 +205,22 @@ private fun ScrollbarTrack(
                 .fillMaxWidth()
                 .height(with(density) { thumbSize.toDp() })
                 .offset(y = with(density) { thumbOffset.toDp() })
-                .pointerInput(maxValue, maxThumbOffset, scrollValue) {
+                .pointerInput(maxValue, maxThumbOffset) {
                     detectDragGestures(
                         onDragStart = {
-                            dragStartScrollValue = scrollValue
+                            dragStartScrollValue = currentScrollValue
                             dragTotal = 0f
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
                             dragTotal += dragAmount.y
-                            updateScrollFromDrag(dragStartScrollValue, dragTotal, maxValue, maxThumbOffset, onScrollValueChange)
+                            updateScrollFromDrag(
+                                dragStartScrollValue,
+                                dragTotal,
+                                maxValue,
+                                maxThumbOffset,
+                                currentOnScrollValueChange
+                            )
                         }
                     )
                 }
