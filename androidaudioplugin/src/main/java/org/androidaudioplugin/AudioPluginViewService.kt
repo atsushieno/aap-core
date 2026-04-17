@@ -104,6 +104,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private val controllers = mutableMapOf<Int,Controller>()
+    private var nextGuiInstanceId = 1
 
     private fun handleCreateRequest(msg: Message) {
         val messenger = msg.replyTo
@@ -114,7 +115,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
 
-        val controller = Controller(this, pluginId, instanceId)
+        val controller = Controller(this, pluginId, instanceId, nextGuiInstanceId++)
         if (controllers[instanceId] != null) {
             Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId was alive. Terminating it.")
             controllers[instanceId]?.close()
@@ -140,8 +141,16 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
         val guiInstanceId = msg.data.getInt(MESSAGE_KEY_GUI_INSTANCE_ID)
 
-        val controller = controllers.remove(instanceId)
-            ?: throw IllegalArgumentException("Attempt to dispose non-existent GUI controller for $pluginId / instanceId: $instanceId (guiInstanceId: $guiInstanceId)")
+        val controller = controllers[instanceId]
+        if (controller == null) {
+            Log.w(LOG_TAG, "Ignoring dispose request for non-existent GUI controller for $pluginId / instanceId: $instanceId (guiInstanceId: $guiInstanceId)")
+            return
+        }
+        if (controller.guiInstanceId != guiInstanceId) {
+            Log.w(LOG_TAG, "Ignoring stale dispose request for $pluginId / instanceId: $instanceId (current guiInstanceId: ${controller.guiInstanceId}, requested guiInstanceId: $guiInstanceId)")
+            return
+        }
+        controllers.remove(instanceId)
         controller.close()
     }
 
@@ -180,15 +189,12 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     class Controller(
         val service: AudioPluginViewService,
         val pluginId: String,
-        val instanceId: Int
+        val instanceId: Int,
+        val guiInstanceId: Int
     ) : AutoCloseable {
         private var viewHost: SurfaceControlViewHost? = null
         private var viewportView: FrameLayout? = null
         private var pluginView: View? = null
-
-        // FIXME: there could be more than one in the future, but so far 1:1 for instance:gui.
-        val guiInstanceId: Int
-            get() = instanceId
 
         fun initialize(messengerToSendReply: Messenger, hostToken: IBinder, displayId: Int, width: Int, height: Int) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

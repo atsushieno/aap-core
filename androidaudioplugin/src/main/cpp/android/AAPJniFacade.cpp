@@ -461,6 +461,32 @@ namespace aap {
     }
 
     void AAPJniFacade::disposeSurfaceControl(void* handle) {
+        if (!handle)
+            return;
+
+        usingJNIEnv<int32_t>([handle](JNIEnv* env) {
+            auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                env->ExceptionClear();
+                env->DeleteGlobalRef((jobject) handle);
+                return 0;
+            }
+            auto close = env->GetMethodID(clzControl, "close", "()V");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                env->ExceptionClear();
+                env->DeleteGlobalRef((jobject) handle);
+                return 0;
+            }
+            env->CallVoidMethod((jobject) handle, close);
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                env->ExceptionClear();
+            }
+            env->DeleteGlobalRef((jobject) handle);
+            return 0;
+        });
     }
 
     void AAPJniFacade::showSurfaceControlView(void* handle) {

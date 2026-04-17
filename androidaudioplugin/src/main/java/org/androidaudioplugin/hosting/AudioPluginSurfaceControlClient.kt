@@ -43,16 +43,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         val alwaysReconnectSurfaceControl = Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
     }
 
-    internal class AudioPluginSurfaceView(context: Context) : SurfaceView(context) {
+    internal class AudioPluginSurfaceView(context: Context, private val owner: AudioPluginSurfaceControlClient) : SurfaceView(context) {
         var connection: HostConnection? = null
 
         override fun onDetachedFromWindow() {
             super.onDetachedFromWindow()
-            val conn = connection
-            if (conn != null) {
-                connection = null
-                context.unbindService(conn)
-            }
+            owner.handleSurfaceDetachedFromWindow()
         }
         init {
             setZOrderOnTop(true)
@@ -66,6 +62,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) { guiInstanceId, surfacePackage ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             connectedGuiInstanceId = guiInstanceId
+            this.surfacePackage?.release()
             this.surfacePackage = surfacePackage
             surface.setChildSurfacePackage(surfacePackage)
             pendingViewportConfiguration?.let(::sendConfigureViewport)
@@ -85,7 +82,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     val surfaceView: View
         get() = surface
 
-    private fun createSurfaceView() = AudioPluginSurfaceView(context)
+    private fun createSurfaceView() = AudioPluginSurfaceView(context, this)
 
     // It is intended to be invoked via AAPJniFacade, not for general users.
     @RequiresApi(Build.VERSION_CODES.R)
@@ -284,6 +281,22 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         outgoingMessenger.send(message)
     }
 
+    private fun handleSurfaceDetachedFromWindow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            disconnectRemoteUI()
+            surfacePackage?.release()
+        }
+        surfacePackage = null
+        pendingViewportConfiguration = null
+        connectedPluginId = null
+        connectedInstanceId = -1
+        connectedGuiInstanceId = -1
+        surface.connection?.let {
+            surface.connection = null
+            context.unbindService(it)
+        }
+    }
+
     private data class ViewportConfiguration(
         val instanceId: Int,
         val viewportWidth: Int,
@@ -319,19 +332,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
     override fun close() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            disconnectRemoteUI()
-            surfacePackage?.release()
-        }
-        surfacePackage = null
-        pendingViewportConfiguration = null
-        connectedPluginId = null
-        connectedInstanceId = -1
-        connectedGuiInstanceId = -1
-        surface.connection?.let {
-            surface.connection = null
-            context.unbindService(it)
-        }
+        handleSurfaceDetachedFromWindow()
         messageHandlerThread.quitSafely()
     }
 }
