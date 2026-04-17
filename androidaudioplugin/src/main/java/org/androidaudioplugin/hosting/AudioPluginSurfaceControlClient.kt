@@ -319,9 +319,10 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
     override fun close() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             disconnectRemoteUI()
-        surfacePackage?.release()
+            surfacePackage?.release()
+        }
         surfacePackage = null
         pendingViewportConfiguration = null
         connectedPluginId = null
