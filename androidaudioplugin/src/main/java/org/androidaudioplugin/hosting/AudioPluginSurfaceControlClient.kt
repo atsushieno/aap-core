@@ -170,8 +170,10 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
         private fun connectUIPrepareLayout(width: Int, height: Int) {
-            surface.layoutParams.width = width
-            surface.layoutParams.height = height
+            val layoutParams = surface.layoutParams
+                ?: LayoutParams(width, height).also { surface.layoutParams = it }
+            layoutParams.width = width
+            layoutParams.height = height
             surface.requestLayout()
         }
 

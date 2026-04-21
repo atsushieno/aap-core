@@ -62,6 +62,15 @@ namespace aap {
         void* getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance);
         bool getRemoteNativeViewPreferredSize(PluginClient* client, RemotePluginInstance* instance, int32_t& width, int32_t& height);
         void connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height);
+        void configureRemoteNativeView(
+            PluginClient* client,
+            RemotePluginInstance* instance,
+            int32_t viewportWidth,
+            int32_t viewportHeight,
+            int32_t contentWidth,
+            int32_t contentHeight,
+            int32_t scrollX,
+            int32_t scrollY);
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 

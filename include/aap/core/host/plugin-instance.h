@@ -337,6 +337,13 @@ namespace aap {
         // Note that the SurfaceView needs to have a valid display ID by the time.
         // These steps will have to be done separately, because each of them will involve UI loop.
         void connectRemoteNativeView(int32_t width, int32_t height);
+        void configureRemoteNativeView(
+            int32_t viewportWidth,
+            int32_t viewportHeight,
+            int32_t contentWidth,
+            int32_t contentHeight,
+            int32_t scrollX,
+            int32_t scrollY);
 
 
         // AAPXS v2

@@ -129,6 +129,38 @@ void aap::RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t h
 #endif
 }
 
+void aap::RemotePluginInstance::configureRemoteNativeView(
+    int32_t viewportWidth,
+    int32_t viewportHeight,
+    int32_t contentWidth,
+    int32_t contentHeight,
+    int32_t scrollX,
+    int32_t scrollY)
+{
+#if ANDROID
+    if (!native_ui_controller) {
+        AAP_ASSERT_FALSE; // should not happen
+        return;
+    }
+    AAPJniFacade::getInstance()->configureRemoteNativeView(
+        client,
+        this,
+        viewportWidth,
+        viewportHeight,
+        contentWidth,
+        contentHeight,
+        scrollX,
+        scrollY);
+#else
+    (void) viewportWidth;
+    (void) viewportHeight;
+    (void) contentWidth;
+    (void) contentHeight;
+    (void) scrollX;
+    (void) scrollY;
+#endif
+}
+
 void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
     const char* remote_trace_name = "AAP::RemotePluginInstance_process";
     struct timespec timeSpecBegin{}, timeSpecEnd{};

@@ -553,6 +553,53 @@ namespace aap {
         });
     }
 
+    void AAPJniFacade::configureRemoteNativeView(
+        PluginClient* client,
+        RemotePluginInstance* instance,
+        int32_t viewportWidth,
+        int32_t viewportHeight,
+        int32_t contentWidth,
+        int32_t contentHeight,
+        int32_t scrollX,
+        int32_t scrollY)
+    {
+        (void) client;
+        usingJNIEnv<int32_t>(
+            [instance, viewportWidth, viewportHeight, contentWidth, contentHeight, scrollX, scrollY](JNIEnv* env) {
+                auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+                if (env->ExceptionOccurred()) {
+                    env->ExceptionDescribe();
+                    return 0;
+                }
+                auto configureViewport = env->GetMethodID(clzControl, "configureViewport", "(IIIIIII)V");
+                if (env->ExceptionOccurred()) {
+                    env->ExceptionDescribe();
+                    return 0;
+                }
+                auto uiController = instance->getNativeUIController();
+                if (!uiController) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "createSurfaceControl() was not invoked yet.");
+                    return 0;
+                }
+                auto controlClient = (jobject) uiController->getHandle();
+                if (!controlClient) {
+                    aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "Native UI controller does not exist. Maybe the UI factory is not configured properly?");
+                    return 0;
+                }
+                env->CallVoidMethod(
+                    controlClient,
+                    configureViewport,
+                    instance->getInstanceId(),
+                    viewportWidth,
+                    viewportHeight,
+                    contentWidth,
+                    contentHeight,
+                    scrollX,
+                    scrollY);
+                return 0;
+            });
+    }
+
     bool AAPJniFacade::getRemoteNativeViewPreferredSize(PluginClient* client, RemotePluginInstance* instance, int32_t& width, int32_t& height) {
 
         return usingJNIEnv<bool>([instance, &width, &height](JNIEnv* env) {
