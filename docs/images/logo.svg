@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>AAP concept 11 — plugin rectangle with MIDI (♪) and audio (|||) I/O on both sides</title>
+  <defs>
+    <linearGradient id="bg11" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#14532D"/>
+    </linearGradient>
+    <linearGradient id="node11" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="white" stop-opacity="0.12"/>
+      <stop offset="50%"  stop-color="white" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="115" fill="url(#bg11)"/>
+
+  <!-- Buses between side nodes and the big plugin rectangle -->
+  <g stroke="white" stroke-opacity="0.4" stroke-width="10" stroke-linecap="round">
+    <line x1="126" y1="156" x2="148" y2="156"/>
+    <line x1="126" y1="356" x2="148" y2="356"/>
+    <line x1="364" y1="156" x2="386" y2="156"/>
+    <line x1="364" y1="356" x2="386" y2="356"/>
+  </g>
+
+  <!-- Port dots at the plugin rect inlets/outlets -->
+  <g fill="white" fill-opacity="0.7">
+    <circle cx="148" cy="156" r="5"/>
+    <circle cx="148" cy="356" r="5"/>
+    <circle cx="364" cy="156" r="5"/>
+    <circle cx="364" cy="356" r="5"/>
+  </g>
+
+  <!-- Four side nodes -->
+  <g>
+    <!-- Left top (MIDI inlet) -->
+    <rect x="54" y="126" width="72" height="60" rx="10" fill="url(#node11)"/>
+    <rect x="54" y="126" width="72" height="60" rx="10" fill="none" stroke="white" stroke-opacity="0.5" stroke-width="1.5"/>
+    <!-- Left bottom (audio inlet) -->
+    <rect x="54" y="326" width="72" height="60" rx="10" fill="url(#node11)"/>
+    <rect x="54" y="326" width="72" height="60" rx="10" fill="none" stroke="white" stroke-opacity="0.5" stroke-width="1.5"/>
+    <!-- Right top (MIDI outlet) -->
+    <rect x="386" y="126" width="72" height="60" rx="10" fill="url(#node11)"/>
+    <rect x="386" y="126" width="72" height="60" rx="10" fill="none" stroke="white" stroke-opacity="0.5" stroke-width="1.5"/>
+    <!-- Right bottom (audio outlet) -->
+    <rect x="386" y="326" width="72" height="60" rx="10" fill="url(#node11)"/>
+    <rect x="386" y="326" width="72" height="60" rx="10" fill="none" stroke="white" stroke-opacity="0.5" stroke-width="1.5"/>
+  </g>
+
+  <!-- ♪ eighth notes in the top nodes -->
+  <g fill="white">
+    <!-- Left ♪ -->
+    <g transform="translate(85 156)">
+      <rect x="8" y="-16" width="3" height="28"/>
+      <ellipse cx="0" cy="12" rx="11" ry="7" transform="rotate(-20 0 12)"/>
+      <path d="M 11 -16 Q 25 -12 22 -2" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <!-- Right ♪ -->
+    <g transform="translate(417 156)">
+      <rect x="8" y="-16" width="3" height="28"/>
+      <ellipse cx="0" cy="12" rx="11" ry="7" transform="rotate(-20 0 12)"/>
+      <path d="M 11 -16 Q 25 -12 22 -2" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- ||| waveform bars in the bottom nodes -->
+  <g fill="white">
+    <g transform="translate(90 356)">
+      <rect x="-22" y="-7"  width="3.5" height="14" rx="1.5"/>
+      <rect x="-15" y="-13" width="3.5" height="26" rx="1.5"/>
+      <rect x="-8"  y="-4"  width="3.5" height="8"  rx="1.5"/>
+      <rect x="-1"  y="-10" width="3.5" height="20" rx="1.5"/>
+      <rect x="6"   y="-6"  width="3.5" height="12" rx="1.5"/>
+      <rect x="13"  y="-12" width="3.5" height="24" rx="1.5"/>
+      <rect x="20"  y="-8"  width="3.5" height="16" rx="1.5"/>
+    </g>
+    <g transform="translate(422 356)">
+      <rect x="-22" y="-7"  width="3.5" height="14" rx="1.5"/>
+      <rect x="-15" y="-13" width="3.5" height="26" rx="1.5"/>
+      <rect x="-8"  y="-4"  width="3.5" height="8"  rx="1.5"/>
+      <rect x="-1"  y="-10" width="3.5" height="20" rx="1.5"/>
+      <rect x="6"   y="-6"  width="3.5" height="12" rx="1.5"/>
+      <rect x="13"  y="-12" width="3.5" height="24" rx="1.5"/>
+      <rect x="20"  y="-8"  width="3.5" height="16" rx="1.5"/>
+    </g>
+  </g>
+
+  <!-- Big center plugin rectangle -->
+  <rect x="148" y="116" width="216" height="280" rx="20" fill="url(#node11)"/>
+  <rect x="148" y="116" width="216" height="280" rx="20" fill="none" stroke="white" stroke-opacity="0.55" stroke-width="2.5"/>
+
+  <!-- Droid — centered in the big rect (bbox center at 256,256) -->
+  <g transform="translate(256 308)">
+    <path d="M -70 10 A 70 70 0 0 1 70 10 Z" fill="white"/>
+    <circle cx="-26" cy="-24" r="6" fill="#0F766E"/>
+    <circle cx=" 26" cy="-24" r="6" fill="#0F766E"/>
+
+    <g transform="rotate(-35) translate(0 -70)">
+      <rect x="-11" y="-58" width="22" height="58" fill="white"/>
+      <rect x="-11" y="-46" width="22" height="5" fill="#0F766E"/>
+      <rect x="-11" y="-28" width="22" height="5" fill="#0F766E"/>
+      <path d="M -11 -58 L 11 -58 L 7 -70 L -7 -70 Z" fill="white"/>
+    </g>
+    <g transform="rotate(35) translate(0 -70)">
+      <rect x="-11" y="-58" width="22" height="58" fill="white"/>
+      <rect x="-11" y="-46" width="22" height="5" fill="#0F766E"/>
+      <rect x="-11" y="-28" width="22" height="5" fill="#0F766E"/>
+      <path d="M -11 -58 L 11 -58 L 7 -70 L -7 -70 Z" fill="white"/>
+    </g>
+  </g>
+</svg>
