@@ -10,20 +10,6 @@
 #include "jni.h"
 
 namespace aap {
-
-    int getGuiInstanceSerial();
-
-    class GuiInstance {
-    public:
-
-        volatile void* view;
-        std::string pluginId;
-        int32_t instanceId;
-        int32_t externalGuiInstanceId;
-        int32_t internalGuiInstanceId;
-        std::string lastError{""};
-    };
-
     class AAPJniFacade {
 
         jclass getAudioPluginMidiSettingsClass();

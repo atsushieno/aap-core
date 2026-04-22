@@ -52,7 +52,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val MESSAGE_KEY_SCROLL_X = "scrollX"
         const val MESSAGE_KEY_SCROLL_Y = "scrollY"
         // replies
-        const val MESSAGE_KEY_GUI_INSTANCE_ID = "guiInstanceId"
+        const val MESSAGE_KEY_GUI_SESSION_ID = "guiSessionId"
+        // Compatibility alias for older clients that still use the old wire name.
+        const val LEGACY_MESSAGE_KEY_GUI_SESSION_ID = "guiInstanceId"
         const val MESSAGE_KEY_SURFACE_PACKAGE = "surfacePackage"
         const val MESSAGE_KEY_PREFERRED_WIDTH = "preferredWidth"
         const val MESSAGE_KEY_PREFERRED_HEIGHT = "preferredHeight"
@@ -84,10 +86,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         override fun handleMessage(msg: Message) {
             when (msg.data.getInt(MESSAGE_KEY_OPCODE)) {
                 OPCODE_CONNECT -> {
-                    owner.handleCreateRequest(msg)
+                    owner.handleConnectRequest(msg)
                 }
                 OPCODE_DISCONNECT -> {
-                    owner.handleDisposeRequest(msg)
+                    owner.handleDisconnectRequest(msg)
                 }
                 OPCODE_RESIZE -> {
                     owner.handleResizeRequest(msg)
@@ -104,9 +106,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private val controllers = mutableMapOf<Int,Controller>()
+    private var nextGuiSessionId = 1
     private var nextGuiInstanceId = 1
 
-    private fun handleCreateRequest(msg: Message) {
+    private fun handleConnectRequest(msg: Message) {
         val messenger = msg.replyTo
         val hostToken = msg.data.getBinder(MESSAGE_KEY_HOST_TOKEN)!!
         val displayId = msg.data.getInt(MESSAGE_KEY_DISPLAY_ID)
@@ -115,7 +118,13 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
 
-        val controller = Controller(this, pluginId, instanceId, nextGuiInstanceId++)
+        val controller = Controller(
+            this,
+            pluginId,
+            instanceId,
+            nextGuiInstanceId++,
+            nextGuiSessionId++
+        )
         if (controllers[instanceId] != null) {
             Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId was alive. Terminating it.")
             controllers[instanceId]?.close()
@@ -136,18 +145,25 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         })
     }
 
-    private fun handleDisposeRequest(msg: Message) {
+    private fun handleDisconnectRequest(msg: Message) {
         val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID) ?: ""
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
-        val guiInstanceId = msg.data.getInt(MESSAGE_KEY_GUI_INSTANCE_ID)
+        val guiSessionId = if (msg.data.containsKey(MESSAGE_KEY_GUI_SESSION_ID))
+            msg.data.getInt(MESSAGE_KEY_GUI_SESSION_ID)
+        else
+            msg.data.getInt(LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
 
         val controller = controllers[instanceId]
         if (controller == null) {
-            Log.w(LOG_TAG, "Ignoring dispose request for non-existent GUI controller for $pluginId / instanceId: $instanceId (guiInstanceId: $guiInstanceId)")
+            Log.w(LOG_TAG, "Ignoring disconnect request for non-existent GUI controller for $pluginId / instanceId: $instanceId (guiSessionId: $guiSessionId)")
             return
         }
-        if (controller.guiInstanceId != guiInstanceId) {
-            Log.w(LOG_TAG, "Ignoring stale dispose request for $pluginId / instanceId: $instanceId (current guiInstanceId: ${controller.guiInstanceId}, requested guiInstanceId: $guiInstanceId)")
+        if (controller.guiSessionId != guiSessionId) {
+            Log.w(
+                LOG_TAG,
+                "Ignoring stale disconnect request for $pluginId / instanceId: $instanceId " +
+                    "(guiInstanceId: ${controller.guiInstanceId}, current guiSessionId: ${controller.guiSessionId}, requested guiSessionId: $guiSessionId)"
+            )
             return
         }
         controllers.remove(instanceId)
@@ -181,16 +197,14 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         )
     }
 
-    /*
-     represents a service side GUI instance that uses SurfaceControlViewHost.
-
-     It is created per plugin GUI instance.
-     */
+    // Represents a service-side live GUI instance plus the session that attached it
+    // to a specific plugin-host surface connection.
     class Controller(
         val service: AudioPluginViewService,
         val pluginId: String,
         val instanceId: Int,
-        val guiInstanceId: Int
+        val guiInstanceId: Int,
+        val guiSessionId: Int
     ) : AutoCloseable {
         private var viewHost: SurfaceControlViewHost? = null
         private var viewportView: FrameLayout? = null
@@ -222,7 +236,8 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
                         messengerToSendReply.send(Message.obtain().apply {
                             data = bundleOf(
-                                MESSAGE_KEY_GUI_INSTANCE_ID to guiInstanceId,
+                                MESSAGE_KEY_GUI_SESSION_ID to guiSessionId,
+                                LEGACY_MESSAGE_KEY_GUI_SESSION_ID to guiSessionId,
                                 MESSAGE_KEY_SURFACE_PACKAGE to surfacePackage)
                         })
                     }

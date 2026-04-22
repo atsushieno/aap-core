@@ -420,9 +420,6 @@ namespace aap {
         });
     }
 
-    int32_t gui_instance_id_serial;
-    int32_t getGuiInstanceSerial() { return gui_instance_id_serial++; }
-
     void* AAPJniFacade::getRemoteWebView(PluginClient* client, RemotePluginInstance* instance) {
         return usingJNIEnv<jobject>([client,instance](JNIEnv* env) {
             auto clzInstance = getAppClass(env, java_native_remote_plugin_instance_class_name);

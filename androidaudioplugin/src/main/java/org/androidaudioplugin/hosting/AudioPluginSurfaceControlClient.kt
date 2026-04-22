@@ -59,9 +59,9 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
     private val messageHandlerThread = HandlerThread("IncomingMessengerHandler").apply { start() }
-    private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) { guiInstanceId, surfacePackage ->
+    private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) { guiSessionId, surfacePackage ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            connectedGuiInstanceId = guiInstanceId
+            connectedGuiSessionId = guiSessionId
             this.surfacePackage?.release()
             this.surfacePackage = surfacePackage
             surface.setChildSurfacePackage(surfacePackage)
@@ -78,7 +78,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     private var pendingViewportConfiguration: ViewportConfiguration? = null
     private var connectedPluginId: String? = null
     private var connectedInstanceId: Int = -1
-    private var connectedGuiInstanceId: Int = -1
+    private var connectedGuiSessionId: Int = -1
     val surfaceView: View
         get() = surface
 
@@ -277,7 +277,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_DISCONNECT,
                 AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
                 AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to connectedInstanceId,
-                AudioPluginViewService.MESSAGE_KEY_GUI_INSTANCE_ID to connectedGuiInstanceId
+                AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID to connectedGuiSessionId
             )
         }
         outgoingMessenger.send(message)
@@ -292,7 +292,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         pendingViewportConfiguration = null
         connectedPluginId = null
         connectedInstanceId = -1
-        connectedGuiInstanceId = -1
+        connectedGuiSessionId = -1
         surface.connection?.let {
             surface.connection = null
             context.unbindService(it)
@@ -327,9 +327,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     internal class ClientReplyHandler(looper: Looper, private val onSurfacePackageReceived: (Int, SurfaceControlViewHost.SurfacePackage) -> Unit) : Handler(looper) {
         override fun handleMessage(msg: Message) {
-            val guiInstanceId = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_INSTANCE_ID)
+            val guiSessionId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID))
+                msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID)
+            else
+                msg.data.getInt(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
             val pkg = msg.data.getParcelable(AudioPluginViewService.MESSAGE_KEY_SURFACE_PACKAGE) as SurfaceControlViewHost.SurfacePackage?
-            pkg?.let { onSurfacePackageReceived(guiInstanceId, it) }
+            pkg?.let { onSurfacePackageReceived(guiSessionId, it) }
         }
     }
 

@@ -12,7 +12,7 @@ extern "C" {
 
 typedef int32_t aap_gui_instance_id;
 
-// some pre-defined error codes
+// Some predefined result/error codes for the GUI extension callbacks.
 #define AAP_GUI_RESULT_OK 0
 #define AAP_GUI_ERROR_NO_DETAILS -1
 #define AAP_GUI_ERROR_NO_GUI_DEFINED -2
@@ -23,30 +23,60 @@ typedef int32_t aap_gui_instance_id;
 #define AAP_GUI_ERROR_NO_RESIZE_DEFINED -13
 #define AAP_GUI_ERROR_NO_DESTROY_DEFINED -14
 
-// In-process GUI extension using Android View and WindowManager.
-// FIXME: guiInstanceId may not be required as there should not be more than one AudioPluginView.
+// Generic GUI lifecycle extension for AAP plugins.
+//
+// This header exposes the C-level extension surface that native/JNI code can see.
+// It should not be read as the authoritative description of the current Android
+// embedded-view hosting implementation.
+//
+// In current AAP code, the modern embedded native View path is primarily driven
+// by Kotlin/Android-side components such as AudioPluginViewService and
+// AudioPluginSurfaceControlClient. Those components use their own internal
+// Messenger protocol and their own session identifiers.
+//
+// Therefore:
+// - aap_gui_instance_id identifies an instance managed by this extension layer.
+// - It is not the same thing as the guiSessionId used by AudioPluginViewService.
+// - The exact meaning of create/show/hide/resize/destroy is implementation
+//   dependent beyond the basic lifecycle intent documented below.
+// - Callbacks are RT_UNSAFE and must not be invoked from the audio thread.
 
 typedef struct aap_gui_extension_t {
     void* aapxs_context;
-    // creates a new GUI View internally. It will be shown as an overlay window later (by `show()`).
-    // returns > 0 for a new GUI instance ID or <0 for error code e.g. already instantiated or no GUI found.
-    // Note that audioPluginView parameter is used only between AAPXS service and the plugin.
-    // The plugin client process has no access to the View in the AudioPluginService process.
-    // The actual instantiation could be asynchronously done.
+
+    // Creates or connects a GUI instance for the given plugin instance.
+    //
+    // Returns a positive extension-layer GUI instance ID on success, or a
+    // negative error code on failure.
+    //
+    // audioPluginView is an implementation-defined opaque handle used by some
+    // host/service bridges. It must not be assumed to be a directly accessible
+    // Android View across processes.
+    //
+    // Implementations may complete the actual UI setup asynchronously.
     RT_UNSAFE aap_gui_instance_id (*create) (aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId, int32_t instance, void* audioPluginView);
 
-    // shows the view (using `WindowManager.addView()`).
-    // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
+    // Requests that a previously created GUI instance become visible/active.
+    //
+    // Returns AAP_GUI_RESULT_OK on success or a negative error code on failure.
     RT_UNSAFE int32_t (*show) (aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId);
 
-    // hides the view (using `WindowManager.removeView()`).
+    // Requests that a GUI instance become hidden/inactive while remaining alive.
     RT_UNSAFE void (*hide) (aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId);
 
-    // resizes the View (by using `WindowManager.updateViewLayout()`.
-    // returns AAP_GUI_RESULT_OK for success, or non-zero error code. e.g. AAP_GUI_ERROR_NO_DETAILS.
+    // Requests a new GUI size in implementation-defined units.
+    //
+    // For the current Android embedded-view path, higher-level viewport/content
+    // negotiation is handled outside this C header. Callers must not assume that
+    // this callback alone fully describes current SurfaceControlViewHost-based UI
+    // behavior.
+    //
+    // Returns AAP_GUI_RESULT_OK on success or a negative error code on failure.
     RT_UNSAFE int32_t (*resize) (aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId, int32_t width, int32_t height);
 
-    // frees the view.
+    // Destroys a GUI instance and releases resources associated with it.
+    //
+    // After destroy(), guiInstanceId is no longer valid.
     RT_UNSAFE void (*destroy) (aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, aap_gui_instance_id guiInstanceId);
 } aap_gui_extension_t;
 

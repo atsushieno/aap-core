@@ -1,6 +1,11 @@
 # GUI Internals
 
-This document describes the current GUI communication model, as established by the latest native-view work (primarily for aap-juce). It is primarily an internal note for our own maintenance, not a formal plugin-host/plugin specification (but we are not supposed to change much for backward compatibility).
+This document describes the current GUI communication model, as established by the latest native-view work (primarily for aap-juce).
+
+It now serves two roles:
+
+- a maintenance note for the implementation that runs today
+- and the current specification for the formalized Messenger protocol used for native embedded Android `View` hosting
 
 It intentionally separates:
 
@@ -18,13 +23,16 @@ This document covers:
 - current viewport and preferred-size negotiation
 - the status of the public GUI API (`aap/ext/gui.h`, plugin-host metadata, `NativeRemotePluginInstance`)
 
-This document does not try to explain Web UI in depth.
+This document also includes the current state of Web UI support, but only as a status/reference section. It is not yet the final long-term Web UI design document.
 
 ## Terminology
 
 - **plugin instance**: the audio processor instance, identified by AAP `instanceId`
 - **service-side GUI controller**: one `AudioPluginViewService.Controller` created for one plugin instance UI session
-- **service-side guiInstanceId**: a monotonically increasing integer allocated by `AudioPluginViewService` per connection session
+- **GUI service session ID**: a monotonically increasing integer allocated by `AudioPluginViewService` per connection session
+- **wire `guiSessionId` field**: the Messenger field/key name that carries the GUI service session ID
+- **legacy wire `guiInstanceId` field**: the older Messenger field/key name accepted for compatibility for the GUI service session ID
+- **GUI instance ID**: an identifier for a live GUI instance as exposed by GUI APIs such as `aap_gui_instance_id`; this is distinct from the GUI service session ID
 - **plugin-host surface view**: the plugin-host-owned `SurfaceView` that receives the child `SurfacePackage`
 - **plugin-side view host**: the `SurfaceControlViewHost` created inside `AudioPluginViewService`
 - **content size**: the plugin UI's own preferred/native size
@@ -141,7 +149,7 @@ These parts reflect the code path that is actually used today:
 
 ### What is still public but semantically stale
 
-The comments and implied model in `aap/ext/gui.h` are stale relative to the current implementation.
+The old comments and implied model in `aap/ext/gui.h` were stale relative to the current implementation.
 
 Examples:
 
@@ -166,15 +174,15 @@ Treat the C GUI extension API as:
 - still present in JNI/native bindings
 - but **not the authoritative description of embedded remote native-view hosting anymore**
 
-If a future cleanup happens, the headers/comments in `aap/ext/gui.h` should be rewritten to avoid describing the old overlay/window-manager model as if it were the current truth.
+That header has now been updated so it no longer describes the old overlay/window-manager model as if it were the current truth.
 
-## The latest established internal protocol
+## Formalized Messenger protocol
 
 This section describes the real plugin host <-> `AudioPluginViewService` protocol.
 
-This protocol is internal.
+This protocol is now treated as a formalized compatibility surface for native embedded Android `View` hosting.
 
-It is not a compatibility promise for external plugin hosts. It is the current implementation contract inside `aap-core`.
+The implementation still lives in `aap-core`, but the message flow, opcodes, field names, and session semantics described here should be considered the intended contract for compatible plugin hosts and plugins.
 
 ## Transport
 
@@ -225,10 +233,17 @@ Defined in `AudioPluginViewService`:
 
 ### Reply keys
 
-- `MESSAGE_KEY_GUI_INSTANCE_ID = "guiInstanceId"`
+- `MESSAGE_KEY_GUI_SESSION_ID = "guiSessionId"`
 - `MESSAGE_KEY_SURFACE_PACKAGE = "surfacePackage"`
 - `MESSAGE_KEY_PREFERRED_WIDTH = "preferredWidth"`
 - `MESSAGE_KEY_PREFERRED_HEIGHT = "preferredHeight"`
+
+Important naming note:
+
+- the formalized wire key name is `guiSessionId`
+- semantically, in this protocol, that value is the **GUI service session ID**
+- it must not be confused with extension-layer `aap_gui_instance_id`
+- current code also accepts the legacy key `guiInstanceId` for compatibility during transition
 
 ## Plugin-host-to-service flows
 
@@ -276,23 +291,24 @@ Plugin-host steps:
 
 Service steps:
 
-1. allocate a fresh `guiInstanceId`
-2. if another controller already exists for the same `instanceId`, close it first
-3. create a new `Controller`
-4. enqueue initialization on the service main looper via `queue.addIdleHandler`
-5. inside initialization:
+1. allocate a fresh GUI instance ID
+2. allocate a fresh GUI service session ID
+3. if another controller already exists for the same `instanceId`, close it first
+4. create a new `Controller`
+5. enqueue initialization on the service main looper via `queue.addIdleHandler`
+6. inside initialization:
    - obtain `Display` from `DisplayManager`
    - create `SurfaceControlViewHost(service, display, hostToken)`
    - instantiate plugin `View` via `AudioPluginServiceHelper.createNativeView(service, pluginId, instanceId)`
    - create clipping `FrameLayout` viewport
    - add plugin view to viewport with initial `width` / `height`
    - call `setView(viewport, width, height)` on the plugin-side view host
-   - reply with `guiInstanceId` and `surfacePackage`
+   - reply with `guiSessionId` and `surfacePackage`
 
 Plugin-host completion:
 
 1. receive reply on `incomingMessenger`
-2. store `connectedGuiInstanceId`
+2. store the returned GUI service session ID
 3. release any previous `SurfacePackage`
 4. call `surface.setChildSurfacePackage(surfacePackage)`
 5. if a viewport configuration had already been queued, send it now
@@ -351,16 +367,16 @@ Plugin host sends `OPCODE_DISCONNECT` with:
 
 - `pluginId`
 - `instanceId`
-- `guiInstanceId`
+- `guiSessionId`
 
 Service behavior:
 
 1. find controller by `instanceId`
 2. if not found, ignore
-3. if `guiInstanceId` is stale, ignore
+3. if the GUI service session ID is stale, ignore
 4. otherwise close controller and remove it from map
 
-The `guiInstanceId` check exists specifically to avoid tearing down a newly-created controller because of a delayed stale disconnect from an older session.
+The GUI service session ID check exists specifically to avoid tearing down a newly-created controller because of a delayed stale disconnect from an older session.
 
 ## Controller identity rules
 
@@ -368,18 +384,24 @@ The `guiInstanceId` check exists specifically to avoid tearing down a newly-crea
 
 - `controllers: MutableMap<Int, Controller>` keyed by `instanceId`
 
-Additionally, each controller gets a service-side `guiInstanceId`.
+Additionally, each controller gets:
+
+- a service-side GUI instance ID
+- a service-side `guiSessionId`
 
 Current rules:
 
 - at most one controller is kept alive per plugin `instanceId`
 - reconnecting the same plugin instance replaces the previous controller
-- `guiInstanceId` exists mainly for stale-disconnect filtering
-- `guiInstanceId` is not the same thing as the C GUI extension's `aap_gui_instance_id`
+- the service-side GUI instance ID identifies the live GUI instance
+- the GUI service session ID exists mainly for stale-disconnect filtering and connection/session identity
+- the GUI service session ID is not the same thing as the C GUI extension's `aap_gui_instance_id`
+- future API expansion may allow more than one GUI instance per plugin instance; the session ID and GUI instance ID must remain distinct concepts
 
 That distinction matters.
 
-The service-side `guiInstanceId` is an internal session token for Messenger protocol safety.
+The service-side `guiSessionId` value is the current wire representation of the GUI service session ID.
+The current Messenger protocol exchanges the session ID, not the service-side GUI instance ID.
 
 ## View factory resolution
 
@@ -508,7 +530,38 @@ The service owns:
 - exposing a `SurfacePackage`
 - maintaining one active controller per plugin instance
 - applying viewport geometry requests
-- ignoring stale disconnects through `guiInstanceId`
+- ignoring stale disconnects through the GUI service session ID
+
+## Current Web UI status
+
+Web UI is a separate GUI path from native embedded `View` hosting.
+
+The current exposed pieces are:
+
+- metadata field `gui:ui-web`
+- `PluginInformation.uiWeb`
+- JNI/native host support via `AAPJniFacade::getRemoteWebView()`
+- host-side helper `org.androidaudioplugin.ui.web.WebUIHostHelper.getWebView()`
+- plugin-side asset packaging through `androidaudioplugin-ui-web`
+
+Current practical interpretation:
+
+- Web UI remains the portable fallback, especially on API levels where `SurfaceControlViewHost` embedding is unavailable
+- Web UI hosting is based on a host-owned `WebView`, not `AudioPluginViewService`
+- Web UI is not part of the Messenger protocol described above
+- Web UI and native embedded `View` hosting should be documented as separate transport/runtime models even though both are part of AAP GUI support
+
+Current limitations/status:
+
+- the implementation exists, but its documentation is thinner and older than the native embedded `View` path documentation
+- `androidaudioplugin-ui-web` is still treated as experimental in repository-level documentation
+- the long-term Web UI protocol and packaging details may still evolve
+
+So, for current maintenance work:
+
+- treat Web UI as supported but separately scoped
+- do not mix Web UI behavior into the native embedded `View` Messenger protocol
+- prefer separate documentation sections and future standalone documentation for Web UI
 
 ## Relationship to Compose plugin-host app behavior
 
@@ -559,15 +612,24 @@ The supported path is:
 - query preferred size first if useful
 - treat plugin-host title bar/scrollbars/viewport as plugin-host concerns
 - use `configureViewport()` for scrolling and clipping
-- use `guiInstanceId` from service reply when disconnecting
+- use the GUI service session ID from the service reply when disconnecting
+
+### If a plugin host wants Web UI today
+
+The current path is:
+
+- provide/access the plugin's `gui:ui-web` metadata
+- package Web UI assets through `androidaudioplugin-ui-web`
+- create the host-side `WebView` through `WebUIHostHelper.getWebView()`
+- treat Web UI as a separate hosting path from `AudioPluginViewService`
 
 ### If editing the public GUI headers
 
 Keep in mind:
 
-- `aap/ext/gui.h` is exposed, but its comments currently describe an older model
-- any attempt to "fix" the header comments should be careful not to claim semantics the runtime no longer uses
-- if the API is kept, the comments should describe it as a legacy/general GUI extension surface, not as the exact control plane for `AudioPluginViewService`
+- `aap/ext/gui.h` is exposed, but it is not the exact control plane for `AudioPluginViewService`
+- the header comments have been updated to describe it as a generic/legacy-facing GUI extension surface
+- future changes should keep the distinction between GUI instance IDs and GUI service session IDs explicit
 
 ## Mismatches with older documents
 
@@ -585,11 +647,8 @@ So when this document conflicts with the older design note, prefer this document
 
 The following would reduce confusion later:
 
-1. update `aap/ext/gui.h` comments so they do not describe the old overlay/window-manager model as the primary truth
-2. decide whether the Messenger protocol should eventually be formalized or remain internal
-3. clarify naming so service-side Messenger `guiInstanceId` cannot be confused with extension-layer GUI ids
-4. document Web UI separately from native embedded view hosting
-5. move more of the current plugin-host-side viewport policy into a reusable internal helper if more hosts adopt the same pattern
+1. expand the Web UI documentation from the current state-of-union section into a fuller standalone document
+2. create a common reusable GUI hosting helper in the `androidaudioplugin` module for the current plugin-host-side viewport and hosting policy
 
 ## Quick reference
 
@@ -605,13 +664,29 @@ The following would reduce confusion later:
 - Metadata:
   - `gui:ui-view-factory`
 
-### Current internal control messages
+### Current formalized control messages
 
 - `CONNECT`
 - `DISCONNECT`
 - `RESIZE`
 - `CONFIGURE_VIEWPORT`
 - `GET_PREFERRED_SIZE`
+
+### Session identity rules
+
+- `instanceId` identifies the plugin instance
+- wire `guiSessionId` identifies the GUI service session ID for the Messenger protocol
+- legacy wire `guiInstanceId` is accepted as a compatibility alias for `guiSessionId`
+- `aap_gui_instance_id` identifies a GUI instance at the extension/API layer
+
+### Current Web UI path
+
+- Metadata:
+  - `gui:ui-web`
+- Host helper:
+  - `WebUIHostHelper.getWebView()`
+- Packaging/module:
+  - `androidaudioplugin-ui-web`
 
 ### Current geometry model
 
