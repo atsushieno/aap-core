@@ -261,26 +261,24 @@ void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *c
         auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
+        aapxsInstance->serialization->data_size = context->dataSize;
         controlExtension(context->urid, context->uri, context->opcode, context->request_id);
-/*
-        // FIXME: this should be called only at the *end* of controlExtension()
-        //  which should be asynchronously handled.
         aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
                                         this,
+                                        context->urid,
                                         context->uri,
                                         context->group,
                                         context->request_id,
                                         aapxsInstance->serialization->data,
-                                        context->dataSize,
-                                        context->opcode
-        );
-*/
+                                        aapxsInstance->serialization->data_size,
+                                        context->opcode);
     } else {
         // host reply
         auto& dispatcher = getAAPXSDispatcher();
         auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
+        aapxsInstance->serialization->data_size = context->dataSize;
 
         auto registry = feature_registry.get()->items();
         auto def = context->urid != 0 ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);

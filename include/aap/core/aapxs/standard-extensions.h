@@ -12,7 +12,10 @@
 
 namespace aap::xs {
     class StandardExtensions {
+    protected:
         aap_state_t tmp_state{nullptr, 0};
+        size_t tmp_state_capacity{0};
+
     public:
         virtual ~StandardExtensions() {
             if (tmp_state.data)
@@ -40,11 +43,13 @@ namespace aap::xs {
         virtual aap_state_t getState() = 0;
         virtual void setState(aap_state_t& stateToLoad) = 0;
         void setState(void* stateToLoad, int32_t dataSize) {
-            if (tmp_state.data_size < dataSize) {
+            if (tmp_state_capacity < static_cast<size_t>(dataSize)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
                 tmp_state.data = calloc(1, dataSize);
+                tmp_state_capacity = dataSize;
             }
+            tmp_state.data_size = dataSize;
             memcpy(tmp_state.data, stateToLoad, dataSize);
             setState(tmp_state);
         }
@@ -102,9 +107,15 @@ namespace aap::xs {
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
         aap_state_t getState() override {
-            aap_state_t stateToSave;
-            state->getState(stateToSave);
-            return stateToSave;
+            if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
+                if (tmp_state.data)
+                    free(tmp_state.data);
+                tmp_state.data = calloc(1, STATE_SHARED_MEMORY_SIZE);
+                tmp_state_capacity = STATE_SHARED_MEMORY_SIZE;
+            }
+            tmp_state.data_size = tmp_state_capacity;
+            state->getState(tmp_state);
+            return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { return state->setState(stateToLoad); }
 
@@ -158,10 +169,16 @@ namespace aap::xs {
         // State
         int32_t getStateSize() override { return state ? state->get_state_size(state, plugin) : 0; }
         aap_state_t getState() override {
-            aap_state_t stateToSave{};
+            auto stateSize = getStateSize();
+            if (tmp_state.data_size < static_cast<size_t>(stateSize)) {
+                if (tmp_state.data)
+                    free(tmp_state.data);
+                tmp_state.data = calloc(1, stateSize);
+            }
+            tmp_state.data_size = stateSize;
             if (state)
-                state->get_state(state, plugin, &stateToSave);
-            return stateToSave;
+                state->get_state(state, plugin, &tmp_state);
+            return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { if (state) state->set_state(state, plugin, &stateToLoad); }
 

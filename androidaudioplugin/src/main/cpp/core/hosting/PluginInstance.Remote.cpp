@@ -336,6 +336,8 @@ void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *
         if (context->opcode >= 0) {
             // plugin AAPXS reply
             auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
+            memcpy(aapxsInstance->serialization->data, context->data, context->dataSize);
+            aapxsInstance->serialization->data_size = context->dataSize;
             AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_plugin_aapxs_reply)
                 aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
@@ -344,6 +346,8 @@ void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *
         } else {
             // host AAPXS request
             auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
+            memcpy(aapxsInstance->serialization->data, context->data, context->dataSize);
+            aapxsInstance->serialization->data_size = context->dataSize;
             AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_host_aapxs_request)
                 aapxs->process_incoming_host_aapxs_request(aapxs, aapxsInstance, &plugin_host_facade, &request);
