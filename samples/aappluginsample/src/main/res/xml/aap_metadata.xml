@@ -5,6 +5,7 @@
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
     <extensions>
+      <extension uri="urn://androidaudioplugin.org/extensions/state/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/presets/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/parameters/v3" />
@@ -40,6 +41,7 @@
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
     <extensions>
+      <extension uri="urn://androidaudioplugin.org/extensions/state/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/midi2/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/parameters/v3" />
       <extension uri="urn://androidaudioplugin.org/extensions/port-config/v3" />

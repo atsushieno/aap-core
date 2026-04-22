@@ -44,6 +44,17 @@ typedef struct AyumiHandle {
     int32_t audio_out_r_port{-1};
 } AyumiHandle;
 
+typedef struct AyumiState {
+    uint32_t version;
+    int32_t mixer[3];
+    int32_t envelope;
+    int32_t pitchbend;
+    int32_t preset_index;
+    uint8_t note_on_state[3];
+} AyumiState;
+
+static constexpr uint32_t AYUMI_STATE_VERSION = 1;
+
 
 void sample_plugin_delete(
         AndroidAudioPluginFactory *pluginFactory,
@@ -328,16 +339,52 @@ aap_plugin_info_t sample_plugin_get_plugin_info(AndroidAudioPlugin *plugin) {
 // State extension
 
 size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
-    // FIXME: implement
-    return 0;
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "get_state_size -> %zu", sizeof(AyumiState));
+    return sizeof(AyumiState);
 }
 
 void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* state) {
-    // FIXME: implement
+    auto context = (AyumiHandle*) plugin->plugin_specific;
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "get_state requested buffer=%zu", state ? state->data_size : 0);
+    auto output = (AyumiState*) state->data;
+    output->version = AYUMI_STATE_VERSION;
+    for (int i = 0; i < 3; i++) {
+        output->mixer[i] = context->mixer[i];
+        output->note_on_state[i] = context->note_on_state[i] ? 1 : 0;
+    }
+    output->envelope = context->envelope;
+    output->pitchbend = context->pitchbend;
+    output->preset_index = context->preset_index;
+    state->data_size = sizeof(AyumiState);
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "get_state wrote %zu bytes", state->data_size);
 }
 
 void sample_plugin_set_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* input) {
-    // FIXME: implement
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "set_state size=%zu", input ? input->data_size : 0);
+    if (!input || !input->data || input->data_size < sizeof(AyumiState))
+        return;
+
+    auto context = (AyumiHandle*) plugin->plugin_specific;
+    auto state = (AyumiState*) input->data;
+    if (state->version != AYUMI_STATE_VERSION)
+        return;
+
+    context->envelope = state->envelope;
+    context->pitchbend = state->pitchbend;
+    context->preset_index = state->preset_index;
+    ayumi_set_envelope(context->impl, context->envelope);
+    for (int i = 0; i < 3; i++) {
+        context->mixer[i] = state->mixer[i];
+        context->note_on_state[i] = state->note_on_state[i] != 0;
+        auto mixer = context->mixer[i] >> 5;
+        auto tone_switch = mixer & 1;
+        auto noise_switch = (mixer >> 1) & 1;
+        auto env_switch = (mixer >> 2) & 1;
+        if (!context->note_on_state[i])
+            ayumi_set_mixer(context->impl, i, 1, 1, 0);
+        else
+            ayumi_set_mixer(context->impl, i, tone_switch, noise_switch, env_switch);
+    }
 }
 
 aap_state_extension_t state_extension{nullptr,

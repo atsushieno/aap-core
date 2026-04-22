@@ -42,6 +42,18 @@ typedef struct SamplePluginSpecific {
     }
 } SamplePluginSpecific;
 
+typedef struct SamplePluginState {
+    uint32_t version;
+    float modL;
+    float modR;
+    uint32_t delayL;
+    uint32_t delayR;
+    float modL_pn[128];
+    float modR_pn[128];
+} SamplePluginState;
+
+static constexpr uint32_t SAMPLE_PLUGIN_STATE_VERSION = 1;
+
 void sample_plugin_delete(
         AndroidAudioPluginFactory *pluginFactory,
         AndroidAudioPlugin *instance) {
@@ -225,15 +237,37 @@ void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {}
 // state extension
 
 size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
-    return 0;
+    return sizeof(SamplePluginState);
 }
 
 void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* state) {
-    // FIXME: implement
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
+    auto output = (SamplePluginState*) state->data;
+    output->version = SAMPLE_PLUGIN_STATE_VERSION;
+    output->modL = ctx->modL;
+    output->modR = ctx->modR;
+    output->delayL = ctx->delayL;
+    output->delayR = ctx->delayR;
+    memcpy(output->modL_pn, ctx->modL_pn, sizeof(output->modL_pn));
+    memcpy(output->modR_pn, ctx->modR_pn, sizeof(output->modR_pn));
+    state->data_size = sizeof(SamplePluginState);
 }
 
 void sample_plugin_set_state(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* input) {
-    // FIXME: implement
+    if (!input || !input->data || input->data_size < sizeof(SamplePluginState))
+        return;
+
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
+    auto state = (SamplePluginState*) input->data;
+    if (state->version != SAMPLE_PLUGIN_STATE_VERSION)
+        return;
+
+    ctx->modL = state->modL;
+    ctx->modR = state->modR;
+    ctx->delayL = state->delayL;
+    ctx->delayR = state->delayR;
+    memcpy(ctx->modL_pn, state->modL_pn, sizeof(ctx->modL_pn));
+    memcpy(ctx->modR_pn, state->modR_pn, sizeof(ctx->modR_pn));
 }
 
 aap_state_extension_t state_extension{nullptr,
