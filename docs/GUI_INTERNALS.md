@@ -107,6 +107,7 @@ Current public Kotlin entry points are:
 
 - `AudioPluginHostHelper.createSurfaceControl(context)`
 - `AudioPluginSurfaceControlClient`
+- `GuiHelper`
 
 The client exposes:
 
@@ -131,6 +132,7 @@ And the C extension surface still exists in:
 
 - `include/aap/ext/gui.h`
 - `include/aap/core/aapxs/gui-aapxs.h`
+- `include/aap/core/host/gui-helper.h`
 
 However, for the current native embedded `View` path, these APIs are no longer the main control plane.
 
@@ -143,6 +145,7 @@ These parts reflect the code path that is actually used today:
 - `AudioPluginViewFactory`
 - `AudioPluginViewService`
 - `AudioPluginSurfaceControlClient`
+- `GuiHelper.NativeEmbeddedSurfaceControlHost`
 - metadata field `gui:ui-view-factory`
 - optional preferred-size negotiation through `AudioPluginViewFactory.getPreferredSize()`
 - viewport configuration through Messenger opcodes
@@ -165,6 +168,8 @@ The modern embedded flow is instead:
 - plugin host and service exchange Messenger messages
 - service instantiates the plugin's view factory directly
 - plugin host controls viewport and attachment through `SurfaceControlViewHost`
+
+On the native host side, `include/aap/core/host/gui-helper.h` is intentionally limited to shared value/policy helpers such as viewport clamping and preferred-size fallback. Actual GUI operations remain on `RemotePluginInstance`.
 
 ### Practical status of the C GUI extension
 
@@ -569,7 +574,7 @@ The Compose sample plugin host currently uses this pattern:
 
 1. ask preferred size first
 2. use fallback width/height if preferred size is missing
-3. create `SurfaceControlUIScope` with chosen content size
+3. create `GuiHelper.NativeEmbeddedSurfaceControlHost` and wrap it in `SurfaceControlUIScope`
 4. once `AndroidView` is attached, connect the surface-control client
 5. compute viewport vs content geometry from plugin-host UI state
 6. call `configureSurfaceGUIViewport()` whenever viewport/scroll changes
@@ -608,7 +613,8 @@ The supported path is:
 
 The supported path is:
 
-- use `AudioPluginSurfaceControlClient`
+- use `GuiHelper.NativeEmbeddedSurfaceControlHost` for the reusable host-side helper path
+- or use `AudioPluginSurfaceControlClient` directly for lower-level control
 - query preferred size first if useful
 - treat plugin-host title bar/scrollbars/viewport as plugin-host concerns
 - use `configureViewport()` for scrolling and clipping
@@ -648,13 +654,13 @@ So when this document conflicts with the older design note, prefer this document
 The following would reduce confusion later:
 
 1. expand the Web UI documentation from the current state-of-union section into a fuller standalone document
-2. create a common reusable GUI hosting helper in the `androidaudioplugin` module for the current plugin-host-side viewport and hosting policy
 
 ## Quick reference
 
 ### Current canonical native embedded UI path
 
 - Plugin host:
+  - `GuiHelper.NativeEmbeddedSurfaceControlHost`
   - `AudioPluginHostHelper.createSurfaceControl()`
   - `AudioPluginSurfaceControlClient`
 - Service:

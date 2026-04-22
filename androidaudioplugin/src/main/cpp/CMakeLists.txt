@@ -10,6 +10,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/PluginInstance.cpp"
 	"core/hosting/PluginInstance.Local.cpp"
 	"core/hosting/PluginInstance.Remote.cpp"
+	"core/hosting/gui-helper.cpp"
 	"core/hosting/aap_midi2_helper.cpp"
 	"core/hosting/audio-plugin-host.cpp"
 	"core/hosting/PluginHost.cpp"

@@ -5,6 +5,6 @@
 
 #include "plugin-host.h"
 #include "plugin-instance.h"
+#include "gui-helper.h"
 
 #endif // _ANDROID_AUDIO_PLUGIN_HOST_HPP_
-

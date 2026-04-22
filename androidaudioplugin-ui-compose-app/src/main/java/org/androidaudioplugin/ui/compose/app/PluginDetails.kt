@@ -150,7 +150,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     viewportHeight = surfaceViewportHeight,
                     contentWidth = surfaceContentWidth,
                     contentHeight = surfaceContentHeight,
-                    createSurfaceView = { _ -> uiScope.surfaceControl!!.surfaceView },
+                    createSurfaceView = { _ -> uiScope.guiHost!!.surfaceView },
                     detachSurfaceView = { _ -> surfaceUIConnected = false },
                     onViewportChanged = { viewportWidth, viewportHeight, contentWidth, contentHeight, scrollX, scrollY ->
                         if (surfaceUIConnected) {

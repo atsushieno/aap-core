@@ -3,7 +3,6 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
-import android.view.View
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
@@ -11,9 +10,8 @@ import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
 import org.androidaudioplugin.hosting.AudioPluginClientBase
-import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
-import org.androidaudioplugin.hosting.AudioPluginSurfaceControlClient
+import org.androidaudioplugin.hosting.GuiHelper
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.PluginServiceConnection
 import org.androidaudioplugin.manager.PluginPlayer
@@ -128,48 +126,46 @@ class SurfaceControlUIScope private constructor(
 ) : AutoCloseable {
     companion object {
         suspend fun create(parentScope: PluginDetailsScope, fallbackWidth: Int, fallbackHeight: Int): SurfaceControlUIScope {
-            val surfaceControl = AudioPluginHostHelper.createSurfaceControl(parentScope.manager.context)
             val pluginInfo = parentScope.pluginInfo
             val instanceId = parentScope.instance.value!!.instanceId
+            val guiHost = GuiHelper.NativeEmbeddedSurfaceControlHost(
+                parentScope.manager.context,
+                pluginInfo.packageName,
+                pluginInfo.pluginId!!,
+                instanceId
+            )
             val preferredSize =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                    surfaceControl.getPreferredSizeNoHandler(pluginInfo.packageName, pluginInfo.pluginId!!, instanceId)
+                    guiHost.getPreferredSizeOrFallback(fallbackWidth, fallbackHeight)
                 else
-                    intArrayOf(0, 0)
-            val width = preferredSize.getOrNull(0)?.takeIf { it > 0 } ?: fallbackWidth
-            val height = preferredSize.getOrNull(1)?.takeIf { it > 0 } ?: fallbackHeight
+                    GuiHelper.Size(fallbackWidth, fallbackHeight)
+            val width = preferredSize.width
+            val height = preferredSize.height
             val scope = SurfaceControlUIScope(parentScope, width, height)
-            scope.surfaceControl = surfaceControl
+            scope.guiHost = guiHost
             return scope
         }
     }
 
-    var surfaceControl: AudioPluginSurfaceControlClient? = null
+    var guiHost: GuiHelper.NativeEmbeddedSurfaceControlHost? = null
 
     suspend fun connectSurfaceControlUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val pluginInfo = parentScope.pluginInfo
-            surfaceControl!!.connectUINoHandler(
-                pluginInfo.packageName,
-                pluginInfo.pluginId!!,
-                parentScope.instance.value!!.instanceId,
-                width,
-                height
-            )
+            guiHost!!.connect(width, height)
         }
     }
 
     fun showSurfaceGUI() {
-        surfaceControl?.surfaceView?.visibility = View.VISIBLE
+        guiHost?.show()
     }
 
     fun hideSurfaceGUI() {
-        surfaceControl?.surfaceView?.visibility = View.GONE
+        guiHost?.hide()
     }
 
     fun resizeSurfaceGUI(width: Int, height: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            surfaceControl?.resizeUI(parentScope.instance.value!!.instanceId, width, height)
+            guiHost?.resize(width, height)
         }
     }
 
@@ -177,19 +173,20 @@ class SurfaceControlUIScope private constructor(
                                     contentWidth: Int, contentHeight: Int,
                                     scrollX: Int, scrollY: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            surfaceControl?.configureViewport(
-                parentScope.instance.value!!.instanceId,
-                viewportWidth,
-                viewportHeight,
-                contentWidth,
-                contentHeight,
-                scrollX,
-                scrollY
+            guiHost?.configureViewport(
+                GuiHelper.ViewportConfiguration(
+                    viewportWidth,
+                    viewportHeight,
+                    contentWidth,
+                    contentHeight,
+                    scrollX,
+                    scrollY
+                )
             )
         }
     }
 
     override fun close() {
-        surfaceControl?.close()
+        guiHost?.close()
     }
 }
