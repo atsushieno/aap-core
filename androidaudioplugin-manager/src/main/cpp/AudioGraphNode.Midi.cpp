@@ -91,8 +91,7 @@ void aap::MidiSourceNode::addMidiEvent(uint8_t *bytes, int32_t length, int64_t t
             for (int64_t ticks = actualTimestamp / (1000000000 / 31250);
                  ticks > 0; ticks -= 31250, tIter++) {
                 *(int32_t * )(dst8 + headerSize + currentOffset + tIter * 4) =
-                        (int32_t) cmidi2_ump_jr_timestamp_direct(0,
-                                                                 ticks > 31250 ? 31250 : ticks);
+                        (int32_t) cmidi2_ump_jr_timestamp_direct(ticks > 31250 ? 31250 : ticks);
             }
             currentOffset += tIter * 4;
             memcpy(dst8 + headerSize + currentOffset, actualData, actualLength);

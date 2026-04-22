@@ -219,7 +219,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         uint32_t intValue;
         bool relative{false};
         if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
-            cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
+            cmidi2_ump_get_status_code(ump) == CMIDI2_UTILITY_STATUS_JR_TIMESTAMP) {
             uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
             auto numFrames = buffer->num_frames(*buffer);
             max = max < numFrames ? max : numFrames;

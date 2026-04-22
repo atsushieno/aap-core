@@ -132,7 +132,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             bool relative;
             switch (cmidi2_ump_get_message_type(ump)) {
                 case CMIDI2_MESSAGE_TYPE_UTILITY:
-                    if (cmidi2_ump_get_status_code(ump) == CMIDI2_JR_TIMESTAMP) {
+                    if (cmidi2_ump_get_status_code(ump) == CMIDI2_UTILITY_STATUS_JR_TIMESTAMP) {
                         // FIXME: ideally there should be timestamp-based sample accuracy adjustment here
                         //  and the audio processing code later should take care of it, but we're lazy here...
                     }
