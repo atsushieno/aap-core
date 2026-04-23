@@ -35,6 +35,7 @@ namespace aap {
     public:
         virtual ~AudioPluginServiceCallback() {}
 
+        virtual void extensionReply(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId) = 0;
         virtual void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) = 0;
         virtual void requestProcess(int32_t in_instanceId) = 0;
     };

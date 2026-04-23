@@ -51,6 +51,10 @@ class AndroidPluginClientConnectionData {
 
             ~AudioPluginInterfaceCallbackImpl() {}
 
+            ::ndk::ScopedAStatus extensionReply(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId) override {
+                return owner->handleExtensionReply(in_instanceId, in_uri, in_opcode, in_requestId);
+            }
+
             ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
                 return owner->handleRequestProcess(in_instanceId);
             }
@@ -94,11 +98,20 @@ public:
 
     bool isValid() const { return valid_; }
 
+    std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode, int32_t requestId)> extension_reply;
     std::function<::ndk::ScopedAStatus(int32_t instanceId)> request_process;
     std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode)> host_extension;
     std::function<::ndk::ScopedAStatus(::ndk::ScopedAParcel message)> handleMiscellaneousMessage;
 
     aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
+
+    ::ndk::ScopedAStatus handleExtensionReply(int32_t instanceId, const std::string& uri, int32_t opcode, int32_t requestId) {
+        if (!extension_reply) {
+            AAP_ASSERT_FALSE;
+            return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "null extension_reply");
+        }
+        return extension_reply(instanceId, uri, opcode, requestId);
+    }
 
     ::ndk::ScopedAStatus handleRequestProcess(int32_t instanceId) {
         if (!request_process) {

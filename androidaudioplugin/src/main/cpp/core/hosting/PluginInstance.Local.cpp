@@ -207,7 +207,12 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
                                         request->serialization->data_size,
                                         request->opcode);
     } else {
-        // it is synchronously handled at Binder IPC, nothing to process here.
+        if (ipc_send_plugin_reply_func)
+            ipc_send_plugin_reply_func(ipc_send_extension_message_context,
+                                       request->uri,
+                                       getInstanceId(),
+                                       request->opcode,
+                                       request->request_id);
     }
 }
 
@@ -222,7 +227,12 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
         return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-        ipc_send_extension_message_func(ipc_send_extension_message_context, request->uri, getInstanceId(), request->opcode);
+        if (ipc_send_host_request_func)
+            ipc_send_host_request_func(ipc_send_extension_message_context,
+                                       request->uri,
+                                       getInstanceId(),
+                                       request->opcode,
+                                       request->request_id);
         return false;
     }
 }

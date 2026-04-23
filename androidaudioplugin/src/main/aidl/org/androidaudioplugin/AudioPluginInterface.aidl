@@ -26,7 +26,7 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive(int instanceID);
 
-	void extension(int instanceID, String uri, int opcode);
+	oneway void extension(int instanceID, String uri, int opcode, int requestId);
 
 	// Indicates thaat it begins "prepare" step, to plugin.
 	// When received, plugin finishes port configuration.
@@ -40,4 +40,3 @@ interface AudioPluginInterface {
 	
 	void destroy(int instanceID);
 }
-

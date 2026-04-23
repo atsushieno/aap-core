@@ -36,6 +36,9 @@ public:
     void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
         proxy->hostExtension(in_instanceId, in_uri, in_opcode);
     }
+    void extensionReply(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId) override {
+        proxy->extensionReply(in_instanceId, in_uri, in_opcode, in_requestId);
+    }
     void requestProcess(int32_t in_instanceId) override {
         proxy->requestProcess(in_instanceId);
     }
@@ -74,10 +77,20 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    static void aapxs_host_ipc_sender_func(void* context,
-                                           const char* uri,
-                                           int32_t instanceId,
-                                           int32_t opcode) {
+    static void aapxs_plugin_reply_ipc_sender_func(void* context,
+                                                   const char* uri,
+                                                   int32_t instanceId,
+                                                   int32_t opcode,
+                                                   uint32_t requestId) {
+        ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->extensionReply(instanceId, uri, opcode, requestId);
+    }
+
+    static void aapxs_host_request_ipc_sender_func(void* context,
+                                                   const char* uri,
+                                                   int32_t instanceId,
+                                                   int32_t opcode,
+                                                   uint32_t requestId) {
+        (void) requestId;
         ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->hostExtension(instanceId, uri, opcode);
     }
 
@@ -93,7 +106,9 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED,
                     "failed to retrieve created AAP service instance.");
-        instance->setIpcExtensionMessageSender(aapxs_host_ipc_sender_func, this);
+        instance->setIpcExtensionMessageSenders(aapxs_plugin_reply_ipc_sender_func,
+                                               aapxs_host_request_ipc_sender_func,
+                                               this);
 
         return ndk::ScopedAStatus::ok();
     }
@@ -227,11 +242,11 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override {
+    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId) override {
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->controlExtension(0, in_uri, in_opcode, 0); // no requestId is assigned for synchronous Binder calls.
+        instance->controlExtension(0, in_uri, in_opcode, in_requestId);
         return ndk::ScopedAStatus::ok();
     }
 

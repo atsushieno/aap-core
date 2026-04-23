@@ -46,8 +46,8 @@ public:
   ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override {
     return _impl->isPluginAlive(in_instanceID, _aidl_return);
   }
-  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override {
-    return _impl->extension(in_instanceID, in_uri, in_opcode);
+  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId) override {
+    return _impl->extension(in_instanceID, in_uri, in_opcode, in_requestId);
   }
   ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) override {
     return _impl->beginPrepare(in_instanceID);

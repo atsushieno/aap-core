@@ -88,6 +88,10 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             instances.emplace_back(instance);
             instance->setupAAPXS(); // this needs to be done before setupAAPXSInstances() which is invoked by completeInstantiation() in binder-client-as-plugin.
             instance->completeInstantiation();
+            if (instance->getInstanceState() == PLUGIN_INSTANTIATION_STATE_ERROR) {
+                destroyInstance(instance);
+                return Result<int32_t>{-1, std::string{"failed to instantiate remote plugin bridge"}};
+            }
             instance->configurePorts();
             instance->scanParametersAndBuildList();
 
@@ -102,4 +106,3 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
     else
         return internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
 }
-

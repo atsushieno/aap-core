@@ -76,6 +76,8 @@ Java_org_androidaudioplugin_AudioPluginNatives_stopNativeLooper(JNIEnv *env, jcl
 // --------------------------------------------------
 
 std::map<AIBinder*,aap::AndroidPluginClientConnectionData*> live_connection_data{};
+aap::PluginListSnapshot cached_plugin_list{};
+static std::map<jint, aap::PluginClient*> live_plugin_clients{};
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -95,7 +97,6 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 		if (pair.first == aiBinder)
 			connectionData = pair.second;
     if (!connectionData) {
-        // FIXME: we need to assign request_process() and host_extension() to this connectionData.
         connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
         if (!connectionData->isValid()) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
@@ -104,6 +105,44 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
             delete connectionData;
             return;
         }
+        connectionData->extension_reply = [connectorInstanceId](int32_t instanceId, const std::string& uri, int32_t opcode, int32_t requestId) {
+            auto it = live_plugin_clients.find(connectorInstanceId);
+            if (it == live_plugin_clients.end() || !it->second)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "plugin client not found");
+            auto* instance = dynamic_cast<aap::RemotePluginInstance*>(it->second->getInstanceById(instanceId));
+            if (!instance)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote plugin instance not found");
+            instance->processPluginAAPXSReplyFromIpc(uri.c_str(), opcode, static_cast<uint32_t>(requestId));
+            return ::ndk::ScopedAStatus::ok();
+        };
+        connectionData->host_extension = [connectorInstanceId](int32_t instanceId, const std::string& uri, int32_t opcode) {
+            auto it = live_plugin_clients.find(connectorInstanceId);
+            if (it == live_plugin_clients.end() || !it->second)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "plugin client not found");
+            auto* instance = dynamic_cast<aap::RemotePluginInstance*>(it->second->getInstanceById(instanceId));
+            if (!instance)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote plugin instance not found");
+
+            auto& dispatcher = instance->getAAPXSDispatcher();
+            auto* aapxsInstance = dispatcher.getHostAAPXSByUri(uri.c_str());
+            if (!aapxsInstance)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "host AAPXS instance not found");
+            auto urid = instance->getAAPXSRegistry()->items()->getUridMapping()->getUrid(uri.c_str());
+
+            AAPXSRequestContext request{nullptr,
+                                        nullptr,
+                                        aapxsInstance->serialization,
+                                        urid,
+                                        uri.c_str(),
+                                        0,
+                                        opcode};
+            instance->processHostAAPXSRequest(&request);
+            return ::ndk::ScopedAStatus::ok();
+        };
+        connectionData->request_process = [](int32_t) {
+            // Android hosts process continuously; requestProcess is advisory here.
+            return ::ndk::ScopedAStatus::ok();
+        };
         live_connection_data[aiBinder] = connectionData;
 		AIBinder_incStrong(aiBinder);
     }
@@ -143,12 +182,6 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_AudioPluginNatives_closeSharedMemoryFD(JNIEnv *env, jclass clazz, int fd) {
 	close(fd);
 }
-
-
-
-aap::PluginListSnapshot cached_plugin_list{};
-
-
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_androidaudioplugin_hosting_NativePluginClient_newInstance(JNIEnv *env, jclass clazz,
@@ -160,7 +193,9 @@ Java_org_androidaudioplugin_hosting_NativePluginClient_newInstance(JNIEnv *env, 
     }
 	if (cached_plugin_list.getNumPluginInformation() == 0)
 		cached_plugin_list = aap::PluginListSnapshot::queryServices();
-	return (jlong) (void*) new aap::PluginClient(connections, &cached_plugin_list);
+    auto* client = new aap::PluginClient(connections, &cached_plugin_list);
+    live_plugin_clients[serviceConnectionId] = client;
+	return (jlong) (void*) client;
 }
 
 extern "C"
@@ -168,6 +203,12 @@ JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativePluginClient_destroyInstance(JNIEnv *env, jclass clazz,
 																	   jlong native) {
 	auto client = (aap::PluginClient*) native;
+    for (auto it = live_plugin_clients.begin(); it != live_plugin_clients.end(); ) {
+        if (it->second == client)
+            it = live_plugin_clients.erase(it);
+        else
+            ++it;
+    }
 	delete client;
 }
 

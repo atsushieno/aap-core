@@ -278,13 +278,25 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
                                  this, request);
         return true;
     } else {
+        if (request->callback) {
+            const std::lock_guard<std::mutex> lock{pending_ipc_callbacks_mutex};
+            pending_ipc_callbacks[request->request_id] = PendingAAPXSCallback{
+                    request->callback,
+                    request->callback_user_data
+            };
+        }
         // Here we have to get a native plugin instance and send extension message.
         // It is kind af annoying because we used to implement Binder-specific part only within the
         // plugin API (binder-client-as-plugin.cpp)...
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
-        ipc_send_extension_message_impl(plugin->plugin_specific, request->uri, getInstanceId(), request->serialization->data_size, request->opcode);
-        return false;
+        ipc_send_extension_message_impl(plugin->plugin_specific,
+                                        request->uri,
+                                        getInstanceId(),
+                                        request->serialization->data_size,
+                                        request->opcode,
+                                        request->request_id);
+        return true;
     }
 }
 
@@ -297,6 +309,35 @@ aap::RemotePluginInstance::processPluginAAPXSReply(AAPXSRequestContext* request)
     } else {
         // nothing to do when non-realtime mode; extension functions are called synchronously.
     }
+}
+
+void
+aap::RemotePluginInstance::processPluginAAPXSReplyFromIpc(const char* uri, int32_t opcode, uint32_t requestId) {
+    auto& dispatcher = getAAPXSDispatcher();
+    auto registry = feature_registry->items();
+    auto aapxs = registry->getByUri(uri);
+    if (!aapxs)
+        return;
+
+    auto aapxsInstance = dispatcher.getPluginAAPXSByUri(uri);
+    PendingAAPXSCallback callback{nullptr, nullptr};
+    {
+        const std::lock_guard<std::mutex> lock{pending_ipc_callbacks_mutex};
+        if (auto it = pending_ipc_callbacks.find(requestId); it != pending_ipc_callbacks.end()) {
+            callback = it->second;
+            pending_ipc_callbacks.erase(it);
+        }
+    }
+
+    AAPXSRequestContext request{callback.callback,
+                                callback.callback_user_data,
+                                aapxsInstance->serialization,
+                                aapxsInstance->urid,
+                                uri,
+                                requestId,
+                                opcode};
+    if (aapxs->process_incoming_plugin_aapxs_reply)
+        aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
 }
 
 void
@@ -316,8 +357,37 @@ aap::RemotePluginInstance::sendHostAAPXSReply(AAPXSRequestContext* request) {
 
 void
 aap::RemotePluginInstance::processHostAAPXSRequest(AAPXSRequestContext* context) {
-    // FIXME: implement
-    throw std::runtime_error("FIXME: implement");
+    auto registry = feature_registry->items();
+    auto aapxs = context->urid != 0 ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);
+    if (!aapxs) {
+        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                     "AAPXS for host request %s is not registered (opcode: %d)",
+                     context->uri, context->opcode);
+        return;
+    }
+
+    auto& dispatcher = getAAPXSDispatcher();
+    auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
+    if (!aapxsInstance) {
+        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                     "Host AAPXS instance for %s is not ready (opcode: %d)",
+                     context->uri, context->opcode);
+        return;
+    }
+
+    AAPXSRequestContext request{context->callback,
+                                context->callback_user_data,
+                                aapxsInstance->serialization,
+                                context->urid,
+                                context->uri,
+                                context->request_id,
+                                context->opcode};
+    if (aapxs->process_incoming_host_aapxs_request)
+        aapxs->process_incoming_host_aapxs_request(aapxs, aapxsInstance, &plugin_host_facade, &request);
+    else
+        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
+                     "AAPXS %s does not have a host request handler (opcode: %d)",
+                     context->uri, context->opcode);
 }
 
 aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegistry() {

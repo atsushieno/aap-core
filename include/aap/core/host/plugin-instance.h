@@ -156,10 +156,16 @@ namespace aap {
                                      int32_t messageSize);
     };
 
-    typedef void(*aapxs_host_ipc_sender)(void* context,
-                                         const char* uri,
-                                         int32_t instanceId,
-                                         int32_t opcode);
+typedef void(*aapxs_host_request_ipc_sender)(void* context,
+                                             const char* uri,
+                                             int32_t instanceId,
+                                             int32_t opcode,
+                                             uint32_t requestId);
+typedef void(*aapxs_plugin_reply_ipc_sender)(void* context,
+                                             const char* uri,
+                                             int32_t instanceId,
+                                             int32_t opcode,
+                                             uint32_t requestId);
 
 /**
  * A plugin instance that could use dlopen() and dlsym().
@@ -187,8 +193,9 @@ namespace aap {
         static void internalRequestProcess(AndroidAudioPluginHost *host);
 
         /** it is an unwanted exposure, but we need this internal-only member as public. You are not supposed to use it. */
-        aapxs_host_ipc_sender ipc_send_extension_message_func;
-        void* ipc_send_extension_message_context;
+        aapxs_plugin_reply_ipc_sender ipc_send_plugin_reply_func{nullptr};
+        aapxs_host_request_ipc_sender ipc_send_host_request_func{nullptr};
+        void* ipc_send_extension_message_context{nullptr};
 
         void setupUrids();
 
@@ -247,8 +254,11 @@ namespace aap {
         // there will not be any RT-safe return mode across multiple `process()` calls.
         bool sendHostAAPXSRequest(AAPXSRequestContext* request);
 
-        void setIpcExtensionMessageSender(aapxs_host_ipc_sender sender, void* context) {
-            ipc_send_extension_message_func = sender;
+        void setIpcExtensionMessageSenders(aapxs_plugin_reply_ipc_sender replySender,
+                                           aapxs_host_request_ipc_sender requestSender,
+                                           void* context) {
+            ipc_send_plugin_reply_func = replySender;
+            ipc_send_host_request_func = requestSender;
             ipc_send_extension_message_context = context;
         }
 
@@ -259,9 +269,15 @@ namespace aap {
                           const char* uri,
                           int32_t instanceId,
                           int32_t messageSize,
-                          int32_t opcode);
+                          int32_t opcode,
+                          uint32_t requestId);
 
     class RemotePluginInstance : public PluginInstance {
+        struct PendingAAPXSCallback {
+            aapxs_completion_callback callback;
+            void* callback_user_data;
+        };
+
         // holds AudioPluginSurfaceControlClient for plugin instance lifetime.
         class RemotePluginNativeUIController {
             void* handle;
@@ -278,6 +294,8 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         AAPXSMidi2InitiatorSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
+        std::mutex pending_ipc_callbacks_mutex{};
+        std::map<uint32_t, PendingAAPXSCallback> pending_ipc_callbacks{};
 
         void* internalGetHostExtension(uint8_t urid, const char *uri);
 
@@ -368,6 +386,7 @@ namespace aap {
         // or false if it is synchronously completed.
         bool sendPluginAAPXSRequest(AAPXSRequestContext* context);
         void processPluginAAPXSReply(AAPXSRequestContext* context);
+        void processPluginAAPXSReplyFromIpc(const char* uri, int32_t opcode, uint32_t requestId);
         void sendHostAAPXSReply(AAPXSRequestContext* context);
         void processHostAAPXSRequest(AAPXSRequestContext* context);
 

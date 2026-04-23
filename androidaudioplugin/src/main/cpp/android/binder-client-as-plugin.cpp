@@ -157,19 +157,36 @@ void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)
 // because it is about Binder `extension()` call...
 void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char *uri)
 {
-	auto ctx = (AAPClientContext*) plugin->plugin_specific;
+    if (!plugin || !uri)
+        return nullptr;
+    auto ctx = (AAPClientContext*) plugin->plugin_specific;
+    if (!ctx)
+        return nullptr;
     auto instance = (aap::RemotePluginInstance*) ctx->host.context;
-    auto aapxsDefinition = instance->getAAPXSRegistry()->items()->getByUri(uri);
-    if (!aapxsDefinition) {
+    if (!instance)
+        return nullptr;
+
+    auto* registry = instance->getAAPXSRegistry()->items();
+    auto urid = registry->getUridMapping()->getUrid(uri);
+    if (urid == aap::xs::UridMapping::UNMAPPED_URID) {
         aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_PXORY_LOG_TAG,
                      "unregistered extension requested: %s",
                      uri ? uri : "(null)");
         return nullptr;
     }
+    auto aapxsDefinition = registry->getByUrid(urid);
     if (!aapxsDefinition->get_plugin_extension_proxy)
         return nullptr;
-    auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUri(uri);
+    auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUrid(urid);
+    if (!aapxsInstance || !aapxsInstance->serialization) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_PXORY_LOG_TAG,
+                     "AAPXS client instance is not ready for extension: %s",
+                     uri);
+        return nullptr;
+    }
     auto proxy = aapxsDefinition->get_plugin_extension_proxy(aapxsDefinition, aapxsInstance, aapxsInstance->serialization);
+    if (!proxy.as_plugin_extension)
+        return nullptr;
     return proxy.as_plugin_extension(&proxy);
 }
 
@@ -186,10 +203,11 @@ void aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           const char* uri,
                                                           int32_t instanceId,
                                                           int32_t messageSize,
-                                                          int32_t opcode) {
+                                                          int32_t opcode,
+                                                          uint32_t requestId) {
     auto ctx = (AAPClientContext*) context;
     if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        auto stat = ctx->getProxy()->extension(instanceId, uri, opcode);
+        auto stat = ctx->getProxy()->extension(instanceId, uri, opcode, requestId);
         if (!stat.isOk()) {
             aap_bcap_log_error_with_details("extension() failed", stat);
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
@@ -265,6 +283,11 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             }
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
+    }
+
+    if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+        delete ctx;
+        return nullptr;
     }
 
 	return new AndroidAudioPlugin {

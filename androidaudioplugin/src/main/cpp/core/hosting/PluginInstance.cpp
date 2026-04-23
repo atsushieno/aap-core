@@ -144,6 +144,8 @@ void aap::PluginInstance::startPortConfiguration() {
 }
 
 void aap::PluginInstance::scanParametersAndBuildList() {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ERROR || plugin == nullptr)
+        return;
     if (cached_parameters) {
         AAP_ASSERT_FALSE;
         return;
