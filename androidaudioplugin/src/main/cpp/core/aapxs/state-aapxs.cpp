@@ -29,6 +29,7 @@ void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_plugin_aapxs_r
             state.data_size = request->serialization->data_size;
             ext->set_state(ext, plugin, &state);
             request->serialization->data_size = 0;
+            aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         }
     }
