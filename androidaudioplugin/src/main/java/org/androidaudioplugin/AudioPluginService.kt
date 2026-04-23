@@ -58,11 +58,13 @@ open class AudioPluginService : Service()
     private val notificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
     private val CHANNEL_ID by lazy { applicationInfo.packageName + ":" + javaClass.name }
     private val NOTIFICATION_ID by lazy { CHANNEL_ID.hashCode() }
+    private var isForegroundStarted = false
 
     override fun onCreate() {
         initialize(this)
-        
+
         createNotificationChannel()
+        maybeStartForegroundService()
 
         val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
         si.extensions.forEach { e ->
@@ -76,8 +78,7 @@ open class AudioPluginService : Service()
     }
 
     override fun onDestroy() {
-        if (foregroundServiceType != 0)
-            stopForeground(STOP_FOREGROUND_REMOVE)
+        stopForegroundServiceIfStarted()
 
         for (ext in extensions)
             ext.cleanup()
@@ -107,17 +108,10 @@ open class AudioPluginService : Service()
             this.contextClassLoader = contextClassLoader
             this.start()
         }
-
-        maybeStartForegroundService()
-
         return nativeBinder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-
-        if (foregroundServiceType != 0)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-
         AudioPluginNatives.stopNativeLooper()
         if (eventProcessorLooper?.thread?.isAlive == true)
             eventProcessorLooper?.quitSafely()
@@ -142,14 +136,24 @@ open class AudioPluginService : Service()
     }
     
     private fun maybeStartForegroundService() {
-        if (declaredForegroundServiceType != 0) {
-            val notification = createNotification()
-            try {
-                startForeground(NOTIFICATION_ID, notification, declaredForegroundServiceType)
-            } catch (ex: Exception) {
-                android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
-            }
+        if (isForegroundStarted || declaredForegroundServiceType == 0)
+            return
+
+        val notification = createNotification()
+        try {
+            startForeground(NOTIFICATION_ID, notification, declaredForegroundServiceType)
+            isForegroundStarted = true
+        } catch (ex: Exception) {
+            android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
         }
+    }
+
+    private fun stopForegroundServiceIfStarted() {
+        if (!isForegroundStarted)
+            return
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        isForegroundStarted = false
     }
     
     private fun createNotification(): Notification {
