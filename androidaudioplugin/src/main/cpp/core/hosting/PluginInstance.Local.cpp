@@ -195,6 +195,9 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
 
 void
 aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
+    if (request->request_id == 0)
+        return;
+
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
         aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
                                         this,
