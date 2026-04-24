@@ -2,12 +2,8 @@
 #ifndef AAP_CORE_STATE_AAPXS_H
 #define AAP_CORE_STATE_AAPXS_H
 
-#include <cstring>
 #include <functional>
 #include <future>
-#include <memory>
-#include <thread>
-#include <vector>
 #include "aap/aapxs.h"
 #include "../../ext/state.h"
 #include "typed-aapxs.h"
@@ -39,17 +35,6 @@ namespace aap::xs {
                                                   staticGetState,
                                                   staticSetState};
 
-        struct CallbackData {
-            StateClientAAPXS* context{nullptr};
-            std::function<void(aap_state_t)> state_callback{};
-            std::function<void()> completion_callback{};
-        };
-
-        CallbackData pending_calls[UINT8_MAX];
-        static void completeWithStateCallback(void* callbackData, void* pluginOrHost);
-        static void completeWithCompletionCallback(void* callbackData, void* pluginOrHost);
-        CallbackData* allocateCallbackData();
-
     public:
         StateClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : TypedAAPXS(AAP_STATE_EXTENSION_URI, initiatorInstance, serialization) {
@@ -58,8 +43,6 @@ namespace aap::xs {
         size_t getStateSize();
         void getState(aap_state_t& stateToSave);
         void setState(aap_state_t& stateToLoad);
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback);
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback);
 
         aap_state_extension_t * asPluginExtension() { return &as_plugin_extension; }
     };

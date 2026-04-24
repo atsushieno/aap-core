@@ -9,8 +9,6 @@
 #include "midi-aapxs.h"
 #include "gui-aapxs.h"
 #include "urid-aapxs.h"
-#include <algorithm>
-#include <functional>
 
 namespace aap::xs {
     class StandardExtensions {
@@ -44,8 +42,6 @@ namespace aap::xs {
         virtual int32_t getStateSize() = 0;
         virtual aap_state_t getState() = 0;
         virtual void setState(aap_state_t& stateToLoad) = 0;
-        virtual int32_t requestStateAsync(std::function<void(aap_state_t)> callback) = 0;
-        virtual int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) = 0;
         void setState(void* stateToLoad, int32_t dataSize) {
             if (tmp_state_capacity < static_cast<size_t>(dataSize)) {
                 if (tmp_state.data)
@@ -111,38 +107,17 @@ namespace aap::xs {
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
         aap_state_t getState() override {
-            auto stateSize = getStateSize();
-            if (tmp_state_capacity < static_cast<size_t>(stateSize)) {
+            if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
-                tmp_state.data = calloc(1, stateSize);
-                tmp_state_capacity = stateSize;
+                tmp_state.data = calloc(1, STATE_SHARED_MEMORY_SIZE);
+                tmp_state_capacity = STATE_SHARED_MEMORY_SIZE;
             }
-            tmp_state.data_size = stateSize;
+            tmp_state.data_size = tmp_state_capacity;
             state->getState(tmp_state);
             return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { return state->setState(stateToLoad); }
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
-            std::thread([this, callback = std::move(callback)]() mutable {
-                auto receivedState = getState();
-                if (callback)
-                    callback(receivedState);
-            }).detach();
-            return 0;
-        }
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
-            auto stateData = std::make_shared<std::vector<uint8_t>>(stateToLoad.data_size);
-            if (!stateData->empty())
-                memcpy(stateData->data(), stateToLoad.data, stateData->size());
-            std::thread([this, stateData = std::move(stateData), callback = std::move(callback)]() mutable {
-                aap_state_t stateObj{stateData->data(), stateData->size()};
-                setState(stateObj);
-                if (callback)
-                    callback();
-            }).detach();
-            return 0;
-        }
 
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui->createGui(pluginId, instanceId, audioPluginView); }
@@ -206,18 +181,6 @@ namespace aap::xs {
             return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { if (state) state->set_state(state, plugin, &stateToLoad); }
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
-            auto ret = getState();
-            if (callback)
-                callback(ret);
-            return 0;
-        }
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
-            setState(stateToLoad);
-            if (callback)
-                callback();
-            return 0;
-        }
 
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView) : -1; }
