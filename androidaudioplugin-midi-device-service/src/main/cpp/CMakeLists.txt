@@ -13,9 +13,9 @@ set(_AAPMIDS_OLD_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
 CPMAddPackage(
         NAME            midicci
-        GIT_TAG         1e5a693
+        GIT_TAG         3ebdcea
         GIT_REPOSITORY  https://github.com/atsushieno/midicci
-        OPTIONS         "MIDICCI_SKIP_TOOLS ON"
+        OPTIONS         "MIDICCI_SKIP_TOOLS ON", "MIDICCI_BUILD_SHARED OFF"
         EXCLUDE_FROM_ALL
 )
 # Restore BUILD_SHARED_LIBS
