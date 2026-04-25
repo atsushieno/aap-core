@@ -1,1 +1,1 @@
-sourceset_dependencies='{":androidaudioplugin/debug":[],":androidaudioplugin/main":[],":androidaudioplugin/release":[]}'
+sourceset_dependencies='{":androidaudioplugin/main":[],":androidaudioplugin/release":[]}'
