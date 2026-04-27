@@ -3,13 +3,9 @@
 
 ![](https://github.com/atsushieno/aap-core/workflows/build%20dist/badge.svg)
 
+![AAP Wavetable on UAPMD v0.4](docs/images/uapmd-app-v0.4-sshot.png)
+
 [![aap-juce-helio in action 2023.5](https://img.youtube.com/vi/OlaihZJq8hU/0.jpg)](https://www.youtube.com/watch?v=OlaihZJq8hU "aap-juce-helio + aap-lv2 MDA Piano")
-
-[![AAP demo 20200708](http://img.youtube.com/vi/gKCpHvYzupU/0.jpg)](http://www.youtube.com/watch?v=gKCpHvYzupU  "AAP demo 20200708")
-
-![AAP-LV2-MDA](https://i.imgur.com/OXc6J7R.png)
-
-![AAPHostSample (old)](./docs/images/aaphostsample.png)
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
