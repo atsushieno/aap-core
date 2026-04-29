@@ -1,6 +1,9 @@
 package org.androidaudioplugin.ui.compose.app
 
 import android.os.Build
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +69,7 @@ fun PluginDetailsInstancing(pluginInfo: PluginInformation) {
 @Composable
 fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     val pluginInfo = scope.pluginInfo
+    val context = LocalContext.current
 
     var showWebUI by remember { mutableStateOf(false) }
     var showSurfaceUI by remember { mutableStateOf(false) }
@@ -76,6 +81,32 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         surfaceUIConnected = false
         surfaceUIScope?.close()
         surfaceUIScope = null
+    }
+    val saveStateLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        if (uri == null)
+            return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.use {
+                scope.saveStateTo(it)
+            }
+        }.onFailure {
+            Log.e("AAPPluginManager", "Failed to save plugin state", it)
+        }
+    }
+    val loadStateLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null)
+            return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.use {
+                scope.loadStateFrom(it)
+            }
+        }.onFailure {
+            Log.e("AAPPluginManager", "Failed to load plugin state", it)
+        }
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -106,6 +137,17 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     showWebUI = !showWebUI
                 }) {
                     Text(if (showWebUI) "Hide Web UI" else "Show Web UI")
+                }
+                Button(onClick = {
+                    val stateName = "${pluginInfo.displayName}.aapstate"
+                    saveStateLauncher.launch(stateName)
+                }) {
+                    Text("Save State")
+                }
+                Button(onClick = {
+                    loadStateLauncher.launch(arrayOf("*/*"))
+                }) {
+                    Text("Load State")
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

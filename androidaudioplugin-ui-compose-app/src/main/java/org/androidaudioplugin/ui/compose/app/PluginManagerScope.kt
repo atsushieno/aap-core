@@ -3,6 +3,8 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import java.io.InputStream
+import java.io.OutputStream
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
@@ -116,6 +118,24 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
 
     fun setNoteState(note: Int, isNoteOn: Boolean) {
         pluginPlayer.setNoteState(note, 0xF800, isNoteOn)
+    }
+
+    fun saveStateTo(output: OutputStream) {
+        val ins = instance.value ?: return
+        val size = ins.getStateSize()
+        if (size <= 0)
+            return
+        val data = ByteArray(size)
+        ins.getState(data)
+        output.write(data)
+        output.flush()
+    }
+
+    fun loadStateFrom(input: InputStream) {
+        val ins = instance.value ?: return
+        val data = input.readBytes()
+        if (data.isNotEmpty())
+            ins.setState(data)
     }
  }
 
