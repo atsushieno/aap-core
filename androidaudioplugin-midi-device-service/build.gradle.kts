@@ -8,9 +8,7 @@ plugins {
 
 apply { from ("../common.gradle") }
 
-// What a mess...
 version = libs.versions.aap.core.get()
-val enable_asan: Boolean by rootProject
 
 android {
     namespace = "org.androidaudioplugin.midideviceservice"
@@ -19,7 +17,7 @@ android {
     defaultConfig {
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DANDROID_STL=c++_shared")
             }
         }
     }

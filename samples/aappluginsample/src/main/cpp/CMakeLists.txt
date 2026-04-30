@@ -41,16 +41,4 @@ foreach(TheTarget ${target-plugins})
             androidaudioplugin::androidaudioplugin
     )
 
-    # You can set it via build.gradle
-    if (${AAP_ENABLE_ASAN})
-        target_compile_options (${TheTarget} PRIVATE
-                -fsanitize=address -fno-omit-frame-pointer
-        )
-        target_link_options(${TheTarget} PRIVATE
-                -fsanitize=address
-        )
-        target_set_properties(${TheTarget} PRIVATE
-                LINK_FLAGS -fsanitize=address
-        )
-    endif()
 endforeach ()

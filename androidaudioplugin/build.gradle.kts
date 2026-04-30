@@ -8,8 +8,6 @@ plugins {
 
 apply { from ("../common.gradle") }
 
-// What a mess...
-val enable_asan: Boolean by rootProject
 version = libs.versions.aap.core.get()
 
 android {
@@ -20,7 +18,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_HOME=" + android.sdkDirectory.path, "-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DANDROID_HOME=" + android.sdkDirectory.path, "-DANDROID_STL=c++_shared")
             }
         }
     }

@@ -5,9 +5,6 @@ plugins {
 
 apply { from ("../../common.gradle") }
 
-// What a mess...
-val enable_asan: Boolean by rootProject
-
 android {
     namespace = "org.androidaudioplugin.aapinstrumentsample"
     defaultConfig {
@@ -15,7 +12,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DANDROID_STL=c++_shared")
             }
         }
     }
@@ -40,8 +37,6 @@ android {
         resources {
             excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
         }
-        if (enable_asan)
-            jniLibs.useLegacyPackaging = true
     }
 
     // FIXME: it is annoying to copy this everywhere, but publish-pom.gradle.kts is incapable of importing this fragment...

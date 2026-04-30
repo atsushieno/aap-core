@@ -316,23 +316,6 @@ The diagram below illustrates how remote plugins are instantiated. (NOTE: this d
 
 It usually does not matter, but sometimes it does - when you would like to debug your AudioPluginServices *without launching MainActivity*, an important thing to note is that services (plugins) are not debuggable until you invoke `android.os.Debug.waitForDebugger()`, and you cannot invoke this method when you are NOT debugging (it will wait forever!) as long as the host and client are different apps. This also applies to native debugging via lldb (to my understanding).
 
-### Build with AddressSanitizer
-
-When debugging AAP framework itself (and probably plugins too), AddressSanitizer (ASan) is very helpful to investigate the native code issues. [The official Android NDK documentation](https://developer.android.com/ndk/guides/asan) should work as an up-to-date normative reference.
-
-To enable asan in this project, there are three things to do:
-
-- In `aap-core` repo, which is maybe submoduled:
-  - run `./setup-asan-for-debugging.sh` to copy asan runtime shared libraries from NDK. You might have to adjust some variables in the script.
-  - In the top-level `build.gradle.kts`, change `enable_asan` value to `true`. It will delegate the option to cmake as well as enable the ASAN settings in the library modules as well as sample apps.
-- In your app module (or ours outside this repo e.g. `aap-juce-plugin-host/app`):
-  - Similarly to `./setup-asan-for-debugging.sh` in this repo, you will have to copy ASAN libraries and `wrap.sh` into the app module. For more details, see [NDK documentation](https://developer.android.com/ndk/guides/asan).
-    - **WARNING**: as of May 2022 there is a blocking NDK bug that prevents you from debugging ASAN-enabled code. See [this issue](https://github.com/android/ndk/issues/933) and find the latest script fix. We now have a temporary fix and actually use the script from there, but as it often happens, such a stale file could lead to future issues when the issue is fixed in the NDK upgrades. It should be removed whenever the issue goes away.
-  - Add `android { packagingOptions { jniLibs { useLegacyPackaging = true } } }` (you would most likely have to copy "part of" this script in your existing build script e.g. only within `androoid { ... }` part)
-  - Add `android:extractNativeLibs='true'` on `<application>` element in `AndroidManifest.xml`
-
-Note that the ASAN options are specified only for `libandroidaudioplugin.so` and the plugin e.g. `libaapbareboneplugin.so`. To enable ASAN in other projects and their dependencies, pass appropriate build arguments to them as well.
-
 ### Profiling audio processing
 
 AAP offers simple profiling results using [ATrace](https://developer.android.com/ndk/reference/group/tracing) API.

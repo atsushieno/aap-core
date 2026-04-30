@@ -37,4 +37,3 @@ for sample in "${ALL_APPS[@]}"; do
 done
 
 echo "done."
-echo "NOTE: do not forget to reset "enable_asan" in the root build.gradle.kts."

@@ -5,9 +5,6 @@ plugins {
 
 apply { from ("../../common.gradle") }
 
-// What a mess...
-val enable_asan: Boolean by rootProject
-
 android {
     namespace = "org.androidaudioplugin.aaphostsample"
     defaultConfig {
@@ -27,11 +24,6 @@ android {
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    packaging {
-        if (enable_asan)
-            jniLibs.useLegacyPackaging = true
-    }
-
     // FIXME: it is annoying to copy this everywhere, but publish-pom.gradle.kts is incapable of importing this fragment...
     // It's been long time until I got this working, and I have no idea why it started working.
     //  If you don't get this working, you are not alone: https://github.com/atsushieno/aap-core/issues/85

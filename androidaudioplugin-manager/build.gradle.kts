@@ -8,8 +8,6 @@ plugins {
 
 apply { from ("../common.gradle") }
 
-// What a mess...
-val enable_asan: Boolean by rootProject
 version = libs.versions.aap.core.get()
 
 android {
@@ -19,7 +17,7 @@ android {
     defaultConfig {
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_STL=c++_shared", "-DAAP_ENABLE_ASAN=" + (if (enable_asan) "1" else "0"))
+                arguments ("-DANDROID_STL=c++_shared")
             }
         }
     }

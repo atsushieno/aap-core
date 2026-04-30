@@ -69,20 +69,3 @@ target_link_libraries (androidaudioplugin-manager
 		android
 		)
 endif (ANDROID)
-
-# You can set it via build.gradle.
-if (${AAP_ENABLE_ASAN})
-target_compile_options (androidaudioplugin-manager
-		PUBLIC
-		-fsanitize=address -fno-omit-frame-pointer
-		)
-
-target_link_options(androidaudioplugin-manager
-		PUBLIC
-		-fsanitize=address
-		)
-
-set_target_properties(androidaudioplugin-manager
-		PROPERTIES LINK_FLAGS -fsanitize=address
-		)
-endif()

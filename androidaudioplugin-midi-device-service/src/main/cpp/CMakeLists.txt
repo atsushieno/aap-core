@@ -64,8 +64,6 @@ target_compile_options (aapmidideviceservice
         -std=c++20
         -Wall
         -Wshadow
-        # uncomment this if you want to enable AddressSanitizer
-        #-fsanitize=address -fno-omit-frame-pointer
 		-DHAVE_MLOCK=1
         )
 
@@ -83,21 +81,3 @@ target_compile_definitions (aapmidideviceservice
 		PUBLIC
 		ANDROID=${ANDROID}
 		)
-
-
-# You can set it via build.gradle
-if (${AAP_ENABLE_ASAN})
-	target_compile_options (aapmidideviceservice
-			PUBLIC
-			-fsanitize=address -fno-omit-frame-pointer
-			)
-
-	target_link_options(aapmidideviceservice
-			PUBLIC
-			-fsanitize=address
-			)
-
-	set_target_properties(aapmidideviceservice
-			PROPERTIES LINK_FLAGS -fsanitize=address
-			)
-endif()

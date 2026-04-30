@@ -8,10 +8,6 @@ plugins {
     alias(libs.plugins.vanniktech.maven.publish).apply(false)
 }
 
-buildscript {
-    val enable_asan: Boolean by extra(false)
-}
-
 apply { from ("${rootDir}/publish-root.gradle") }
 
 subprojects {
