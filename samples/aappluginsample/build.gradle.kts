@@ -50,10 +50,10 @@ android {
     // Also note that you have to use custom sdk channel so far: ./gradlew testDevice1DebugAndroidTest -Pandroid.sdk.channel=3
     testOptions {
         managedDevices {
-            devices {
-                maybeCreate<com.android.build.api.dsl.ManagedVirtualDevice> ("testDevice1").apply {
-                    device = "Pixel 2"
-                    apiLevel = 30
+            localDevices {
+                maybeCreate("testDevice1").apply {
+                    device = "Resizable (Experimental)"
+                    apiLevel = 36
                     systemImageSource = "aosp-atd"
                 }
             }
