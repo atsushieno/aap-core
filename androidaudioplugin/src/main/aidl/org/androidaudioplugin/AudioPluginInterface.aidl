@@ -1,5 +1,6 @@
 package org.androidaudioplugin;
 import org.androidaudioplugin.AudioPluginInterfaceCallback;
+import org.androidaudioplugin.AudioPluginExtensionCallback;
 
 interface AudioPluginInterface {
     const int AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID = 1;
@@ -26,7 +27,7 @@ interface AudioPluginInterface {
 
 	boolean isPluginAlive(int instanceID);
 
-	void extension(int instanceID, String uri, int opcode);
+	oneway void extension(int instanceID, String uri, int opcode, int requestId, in AudioPluginExtensionCallback callback);
 
 	// Indicates thaat it begins "prepare" step, to plugin.
 	// When received, plugin finishes port configuration.
@@ -40,4 +41,3 @@ interface AudioPluginInterface {
 	
 	void destroy(int instanceID);
 }
-

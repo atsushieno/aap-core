@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /Users/atsushi/Library/Android/sdk/build-tools/35.0.1/aidl --lang=ndk -o /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen -h /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen/include -I /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/ /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterface.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.aidl
+ * Using: /Users/atsushi/Library/Android/sdk/build-tools/35.0.1/aidl --lang=ndk -o /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen -h /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen/include -I /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/ /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterface.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginExtensionCallback.aidl
  */
 #pragma once
 
@@ -46,8 +46,8 @@ public:
   ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override {
     return _impl->isPluginAlive(in_instanceID, _aidl_return);
   }
-  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override {
-    return _impl->extension(in_instanceID, in_uri, in_opcode);
+  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override {
+    return _impl->extension(in_instanceID, in_uri, in_opcode, in_requestId, in_callback);
   }
   ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) override {
     return _impl->beginPrepare(in_instanceID);

@@ -4,20 +4,19 @@
  */
 #pragma once
 
-#include "aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h"
+#include "aidl/org/androidaudioplugin/AudioPluginExtensionCallback.h"
 
 #include <android/binder_ibinder.h>
 
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
-class BpAudioPluginInterfaceCallback : public ::ndk::BpCInterface<IAudioPluginInterfaceCallback> {
+class BpAudioPluginExtensionCallback : public ::ndk::BpCInterface<IAudioPluginExtensionCallback> {
 public:
-  explicit BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder);
-  virtual ~BpAudioPluginInterfaceCallback();
+  explicit BpAudioPluginExtensionCallback(const ::ndk::SpAIBinder& binder);
+  virtual ~BpAudioPluginExtensionCallback();
 
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override;
-  ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
+  ::ndk::ScopedAStatus completed(int32_t in_instanceId, int32_t in_requestId, const std::string& in_errorMessage) override;
 };
 }  // namespace androidaudioplugin
 }  // namespace org

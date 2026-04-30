@@ -283,7 +283,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
         // plugin API (binder-client-as-plugin.cpp)...
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
-        ipc_send_extension_message_impl(plugin->plugin_specific, request->uri, getInstanceId(), request->serialization->data_size, request->opcode);
+        ipc_send_extension_message_impl(plugin->plugin_specific, request->uri, getInstanceId(), request->serialization->data_size, request->request_id, request->opcode);
         return false;
     }
 }

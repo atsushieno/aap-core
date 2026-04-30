@@ -19,7 +19,7 @@ import org.xmlpull.v1.XmlPullParser
 
 object AudioPluginHostHelper {
 
-    const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V3"
+    const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V4"
     const val AAP_METADATA_NAME_PLUGINS = "$AAP_ACTION_NAME#Plugins"
     const val AAP_METADATA_NAME_EXTENSIONS = "$AAP_ACTION_NAME#Extensions"
     const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"

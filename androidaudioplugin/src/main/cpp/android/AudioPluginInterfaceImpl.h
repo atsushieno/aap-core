@@ -2,6 +2,7 @@
 #define ANDROIDAUDIOPLUGIN_AUDIOPLUGININTERFACEIMPL_H
 
 #include <sstream>
+#include <utility>
 #include <android/sharedmem.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_ibinder_jni.h>
@@ -227,11 +228,34 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
-    ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override {
+    ::ndk::ScopedAStatus extension(
+            int32_t in_instanceID,
+            const std::string& in_uri,
+            int32_t in_opcode,
+            int32_t in_requestId,
+            const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override {
         auto instance = svc->getLocalInstance(in_instanceID);
-        CHECK_INSTANCE(instance, in_instanceID)
+        if (instance == nullptr) {
+            if (in_callback)
+                in_callback->completed(in_instanceID, in_requestId, "The specified instance does not exist.");
+            std::stringstream msg;
+            msg << "The specified instance " << in_instanceID << " does not exist.";
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG, msg.str().c_str());
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_UNEXPECTED_INSTANCE_ID, msg.str().c_str());
+        }
 
-        instance->controlExtension(0, in_uri, in_opcode, 0); // no requestId is assigned for synchronous Binder calls.
+        std::string error{};
+        try {
+            instance->controlExtension(0, in_uri, in_opcode, in_requestId);
+        } catch (const std::exception& ex) {
+            error = ex.what();
+        } catch (...) {
+            error = "Unknown extension error";
+        }
+
+        if (in_callback)
+            in_callback->completed(in_instanceID, in_requestId, error);
         return ndk::ScopedAStatus::ok();
     }
 

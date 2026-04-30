@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /Users/atsushi/Library/Android/sdk/build-tools/35.0.1/aidl --lang=ndk -o /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen -h /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen/include -I /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/ /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterface.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.aidl
+ * Using: /Users/atsushi/Library/Android/sdk/build-tools/35.0.1/aidl --lang=ndk -o /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen -h /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/cpp/android/gen/include -I /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/ /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterface.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.aidl /Users/atsushi/sources/AAP/aap-core/androidaudioplugin/src/main/aidl/org/androidaudioplugin/AudioPluginExtensionCallback.aidl
  */
 #pragma once
 
@@ -10,12 +10,14 @@
 #include <string>
 #include <vector>
 #include <android/binder_interface_utils.h>
+#include <aidl/org/androidaudioplugin/AudioPluginExtensionCallback.h>
 #include <aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h>
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
 
 namespace aidl::org::androidaudioplugin {
+class IAudioPluginExtensionCallback;
 class IAudioPluginInterfaceCallback;
 }  // namespace aidl::org::androidaudioplugin
 namespace aidl {
@@ -63,7 +65,7 @@ public:
   virtual ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) = 0;
   virtual ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) = 0;
-  virtual ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) = 0;
+  virtual ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) = 0;
   virtual ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) = 0;
   virtual ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) = 0;
   virtual ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) = 0;
@@ -81,7 +83,7 @@ public:
   ::ndk::ScopedAStatus addExtension(int32_t in_instanceID, const std::string& in_uri, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD, int32_t in_size) override;
   ::ndk::ScopedAStatus endCreate(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus isPluginAlive(int32_t in_instanceID, bool* _aidl_return) override;
-  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode) override;
+  ::ndk::ScopedAStatus extension(int32_t in_instanceID, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override;
   ::ndk::ScopedAStatus beginPrepare(int32_t in_instanceID) override;
   ::ndk::ScopedAStatus prepareMemory(int32_t in_instanceID, int32_t in_shmFDIndex, const ::ndk::ScopedFileDescriptor& in_sharedMemoryFD) override;
   ::ndk::ScopedAStatus endPrepare(int32_t in_instanceID, int32_t in_frameCount) override;

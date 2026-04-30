@@ -259,6 +259,7 @@ namespace aap {
                           const char* uri,
                           int32_t instanceId,
                           int32_t messageSize,
+                          int32_t requestId,
                           int32_t opcode);
 
     class RemotePluginInstance : public PluginInstance {

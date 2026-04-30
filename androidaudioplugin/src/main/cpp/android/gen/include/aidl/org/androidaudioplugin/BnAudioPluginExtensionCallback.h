@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "aidl/org/androidaudioplugin/AudioPluginInterfaceCallback.h"
+#include "aidl/org/androidaudioplugin/AudioPluginExtensionCallback.h"
 
 #include <android/binder_ibinder.h>
 #include <cassert>
@@ -18,28 +18,25 @@
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
-class BnAudioPluginInterfaceCallback : public ::ndk::BnCInterface<IAudioPluginInterfaceCallback> {
+class BnAudioPluginExtensionCallback : public ::ndk::BnCInterface<IAudioPluginExtensionCallback> {
 public:
-  BnAudioPluginInterfaceCallback();
-  virtual ~BnAudioPluginInterfaceCallback();
+  BnAudioPluginExtensionCallback();
+  virtual ~BnAudioPluginExtensionCallback();
 protected:
   ::ndk::SpAIBinder createBinder() override;
 private:
 };
-class IAudioPluginInterfaceCallbackDelegator : public BnAudioPluginInterfaceCallback {
+class IAudioPluginExtensionCallbackDelegator : public BnAudioPluginExtensionCallback {
 public:
-  explicit IAudioPluginInterfaceCallbackDelegator(const std::shared_ptr<IAudioPluginInterfaceCallback> &impl) : _impl(impl) {
+  explicit IAudioPluginExtensionCallbackDelegator(const std::shared_ptr<IAudioPluginExtensionCallback> &impl) : _impl(impl) {
   }
 
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-    return _impl->hostExtension(in_instanceId, in_uri, in_opcode);
-  }
-  ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
-    return _impl->requestProcess(in_instanceId);
+  ::ndk::ScopedAStatus completed(int32_t in_instanceId, int32_t in_requestId, const std::string& in_errorMessage) override {
+    return _impl->completed(in_instanceId, in_requestId, in_errorMessage);
   }
 protected:
 private:
-  std::shared_ptr<IAudioPluginInterfaceCallback> _impl;
+  std::shared_ptr<IAudioPluginExtensionCallback> _impl;
 };
 
 }  // namespace androidaudioplugin

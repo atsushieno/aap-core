@@ -1,10 +1,12 @@
 
 #include <sys/mman.h>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <android/sharedmem.h>
 #include <android/log.h>
 #include <aidl/org/androidaudioplugin/BpAudioPluginInterface.h>
+#include <aidl/org/androidaudioplugin/BnAudioPluginExtensionCallback.h>
 #include <aidl/org/androidaudioplugin/BnAudioPluginInterface.h>
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/android/audio-plugin-host-android.h"
@@ -30,6 +32,20 @@ public:
     ~AAPClientContext();
 
 	aidl::org::androidaudioplugin::IAudioPluginInterface* getProxy() { return connection_data->getProxy(); }
+};
+
+class AudioPluginExtensionCallbackImpl : public aidl::org::androidaudioplugin::BnAudioPluginExtensionCallback {
+    std::promise<void>* promise;
+public:
+    explicit AudioPluginExtensionCallbackImpl(std::promise<void>* promise) : promise(promise) {}
+
+    ::ndk::ScopedAStatus completed(int32_t in_instanceId, int32_t in_requestId, const std::string& in_errorMessage) override {
+        (void) in_instanceId;
+        (void) in_requestId;
+        (void) in_errorMessage;
+        promise->set_value();
+        return ::ndk::ScopedAStatus::ok();
+    }
 };
 
 
@@ -186,14 +202,21 @@ void aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           const char* uri,
                                                           int32_t instanceId,
                                                           int32_t messageSize,
+                                                          int32_t requestId,
                                                           int32_t opcode) {
+    (void) messageSize;
     auto ctx = (AAPClientContext*) context;
     if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        auto stat = ctx->getProxy()->extension(instanceId, uri, opcode);
+        std::promise<void> promise{};
+        auto future = promise.get_future();
+        auto callback = ndk::SharedRefBase::make<AudioPluginExtensionCallbackImpl>(&promise);
+        auto stat = ctx->getProxy()->extension(instanceId, uri, opcode, requestId, callback->ref<AudioPluginExtensionCallbackImpl>());
         if (!stat.isOk()) {
             aap_bcap_log_error_with_details("extension() failed", stat);
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+            return;
         }
+        future.wait();
     }
 }
 
