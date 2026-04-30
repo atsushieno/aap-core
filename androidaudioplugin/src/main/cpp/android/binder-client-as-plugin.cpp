@@ -222,7 +222,7 @@ bool aap_client_as_plugin_send_extension_message_delegate(void* context,
     if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
         return false;
 
-    bool asyncState = strcmp(uri, AAP_STATE_EXTENSION_URI) == 0;
+    bool asyncState = strcmp(uri, AAP_STATE_EXTENSION_URI) == 0 && callback != nullptr;
     std::promise<void> promise{};
     auto future = promise.get_future();
     auto binderCallback = ndk::SharedRefBase::make<AudioPluginExtensionCallbackImpl>(

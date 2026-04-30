@@ -295,8 +295,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setState(JNIEnv *
 	jboolean wasCopy;
 	auto buf = env->GetByteArrayElements(data, &wasCopy);
 	instance->getStandardExtensions().setState(buf, length);
-	if (wasCopy)
-		free(buf);
+	env->ReleaseByteArrayElements(data, buf, JNI_ABORT);
 }
 
 // Presets extensions

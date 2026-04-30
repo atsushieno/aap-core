@@ -16,11 +16,17 @@ void aap::xs::AAPXSDefinition_State::aapxs_state_process_incoming_plugin_aapxs_r
             break;
         case OPCODE_GET_STATE: {
             aap_state_t state;
-            state.data = (uint8_t*) request->serialization->data + sizeof(int32_t);
-            state.data_size = request->serialization->data_capacity - sizeof(int32_t);
+            auto serializedData = (uint8_t*) request->serialization->data;
+            auto payload = serializedData + sizeof(int32_t);
+            auto payloadCapacity = request->serialization->data_capacity - sizeof(int32_t);
+            state.data = payload;
+            state.data_size = payloadCapacity;
             ext->get_state(ext, plugin, &state);
-            *((int32_t*) request->serialization->data) = static_cast<int32_t>(state.data_size);
-            request->serialization->data_size = state.data_size + sizeof(int32_t);
+            auto copySize = std::min(state.data_size, payloadCapacity);
+            if (copySize > 0 && state.data != payload)
+                memcpy(payload, state.data, copySize);
+            *((int32_t*) serializedData) = static_cast<int32_t>(copySize);
+            request->serialization->data_size = copySize + sizeof(int32_t);
             if (request->request_id == 0)
                 aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
