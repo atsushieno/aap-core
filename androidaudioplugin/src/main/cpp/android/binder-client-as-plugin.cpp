@@ -28,6 +28,7 @@ public:
 	aap::AndroidPluginClientConnectionData* connection_data{nullptr};
     aap::PluginInstantiationState proxy_state{aap::PLUGIN_INSTANTIATION_STATE_INITIAL};
 	AndroidAudioPluginHost host;
+    AndroidAudioPlugin* plugin{nullptr};
 
     ~AAPClientContext();
 
@@ -36,14 +37,24 @@ public:
 
 class AudioPluginExtensionCallbackImpl : public aidl::org::androidaudioplugin::BnAudioPluginExtensionCallback {
     std::promise<void>* promise;
+    aapxs_completion_callback callback{nullptr};
+    void* callbackData{nullptr};
+    AndroidAudioPlugin* plugin{nullptr};
 public:
-    explicit AudioPluginExtensionCallbackImpl(std::promise<void>* promise) : promise(promise) {}
+    explicit AudioPluginExtensionCallbackImpl(std::promise<void>* promise,
+                                             aapxs_completion_callback callback,
+                                             void* callbackData,
+                                             AndroidAudioPlugin* plugin)
+            : promise(promise), callback(callback), callbackData(callbackData), plugin(plugin) {}
 
     ::ndk::ScopedAStatus completed(int32_t in_instanceId, int32_t in_requestId, const std::string& in_errorMessage) override {
         (void) in_instanceId;
         (void) in_requestId;
         (void) in_errorMessage;
-        promise->set_value();
+        if (callback)
+            callback(callbackData, plugin);
+        else if (promise)
+            promise->set_value();
         return ::ndk::ScopedAStatus::ok();
     }
 };
@@ -198,26 +209,39 @@ aap_plugin_info_t aap_client_as_plugin_get_plugin_info(AndroidAudioPlugin *plugi
 
 // we do not care much about realtime safety breakage by lack of URID support here,
 // because it is about Binder `extension()` call...
-void aap_client_as_plugin_send_extension_message_delegate(void* context,
+bool aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           const char* uri,
                                                           int32_t instanceId,
                                                           int32_t messageSize,
                                                           int32_t requestId,
-                                                          int32_t opcode) {
+                                                          int32_t opcode,
+                                                          aapxs_completion_callback callback,
+                                                          void* callbackData) {
     (void) messageSize;
     auto ctx = (AAPClientContext*) context;
-    if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        std::promise<void> promise{};
-        auto future = promise.get_future();
-        auto callback = ndk::SharedRefBase::make<AudioPluginExtensionCallbackImpl>(&promise);
-        auto stat = ctx->getProxy()->extension(instanceId, uri, opcode, requestId, callback->ref<AudioPluginExtensionCallbackImpl>());
-        if (!stat.isOk()) {
-            aap_bcap_log_error_with_details("extension() failed", stat);
-            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
-            return;
-        }
-        future.wait();
+    if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+        return false;
+
+    bool asyncState = strcmp(uri, AAP_STATE_EXTENSION_URI) == 0;
+    std::promise<void> promise{};
+    auto future = promise.get_future();
+    auto binderCallback = ndk::SharedRefBase::make<AudioPluginExtensionCallbackImpl>(
+            asyncState ? nullptr : &promise,
+            asyncState ? callback : nullptr,
+            asyncState ? callbackData : nullptr,
+            ctx->plugin);
+    auto stat = ctx->getProxy()->extension(instanceId, uri, opcode, requestId, binderCallback->ref<AudioPluginExtensionCallbackImpl>());
+    if (!stat.isOk()) {
+        aap_bcap_log_error_with_details("extension() failed", stat);
+        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        return false;
     }
+
+    if (asyncState && callback)
+        return true;
+
+    future.wait();
+    return false;
 }
 
 AndroidAudioPlugin* aap_client_as_plugin_new(
@@ -290,7 +314,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         }
     }
 
-	return new AndroidAudioPlugin {
+	auto result = new AndroidAudioPlugin {
 		ctx,
 		aap_client_as_plugin_prepare,
 		aap_client_as_plugin_activate,
@@ -299,6 +323,8 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_get_extension,
 		aap_client_as_plugin_get_plugin_info
 		};
+    ctx->plugin = result;
+    return result;
 }
 
 void aap_client_as_plugin_delete(

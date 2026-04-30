@@ -255,12 +255,14 @@ namespace aap {
         void handleAAPXSInput(aap_midi2_aapxs_parse_context *context);
     };
 
-    typedef void(*aapxs_client_ipc_sender)(void* context,
+    typedef bool(*aapxs_client_ipc_sender)(void* context,
                           const char* uri,
                           int32_t instanceId,
                           int32_t messageSize,
                           int32_t requestId,
-                          int32_t opcode);
+                          int32_t opcode,
+                          aapxs_completion_callback callback,
+                          void* callbackData);
 
     class RemotePluginInstance : public PluginInstance {
         // holds AudioPluginSurfaceControlClient for plugin instance lifetime.

@@ -269,6 +269,16 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri,
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) {
+    if (strcmp(request->uri, AAP_STATE_EXTENSION_URI) == 0)
+        return ipc_send_extension_message_impl(plugin->plugin_specific,
+                                               request->uri,
+                                               getInstanceId(),
+                                               request->serialization->data_size,
+                                               request->request_id,
+                                               request->opcode,
+                                               request->callback,
+                                               request->callback_user_data);
+
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
@@ -283,8 +293,14 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
         // plugin API (binder-client-as-plugin.cpp)...
         // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
         // assign its implementation details that handle Binder messaging as a std::function.
-        ipc_send_extension_message_impl(plugin->plugin_specific, request->uri, getInstanceId(), request->serialization->data_size, request->request_id, request->opcode);
-        return false;
+        return ipc_send_extension_message_impl(plugin->plugin_specific,
+                                               request->uri,
+                                               getInstanceId(),
+                                               request->serialization->data_size,
+                                               request->request_id,
+                                               request->opcode,
+                                               request->callback,
+                                               request->callback_user_data);
     }
 }
 

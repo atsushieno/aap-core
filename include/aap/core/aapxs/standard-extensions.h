@@ -9,6 +9,7 @@
 #include "midi-aapxs.h"
 #include "gui-aapxs.h"
 #include "urid-aapxs.h"
+#include <functional>
 
 namespace aap::xs {
     class StandardExtensions {
@@ -42,6 +43,8 @@ namespace aap::xs {
         virtual int32_t getStateSize() = 0;
         virtual aap_state_t getState() = 0;
         virtual void setState(aap_state_t& stateToLoad) = 0;
+        virtual int32_t requestStateAsync(std::function<void(aap_state_t)> callback) = 0;
+        virtual int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) = 0;
         void setState(void* stateToLoad, int32_t dataSize) {
             if (tmp_state_capacity < static_cast<size_t>(dataSize)) {
                 if (tmp_state.data)
@@ -118,6 +121,12 @@ namespace aap::xs {
             return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { return state->setState(stateToLoad); }
+        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
+            return state->requestStateAsync(std::move(callback));
+        }
+        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
+            return state->setStateAsync(stateToLoad, std::move(callback));
+        }
 
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui->createGui(pluginId, instanceId, audioPluginView); }
@@ -181,6 +190,18 @@ namespace aap::xs {
             return tmp_state;
         }
         void setState(aap_state_t& stateToLoad) override { if (state) state->set_state(state, plugin, &stateToLoad); }
+        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
+            auto ret = getState();
+            if (callback)
+                callback(ret);
+            return 0;
+        }
+        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
+            setState(stateToLoad);
+            if (callback)
+                callback();
+            return 0;
+        }
 
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView) : -1; }
