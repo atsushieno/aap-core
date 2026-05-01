@@ -7,6 +7,12 @@
 #define LOG_TAG "AAP.Remote.Instance"
 
 namespace {
+bool isBinderOnlyExtension(const char* uri) {
+    return uri &&
+           (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0 ||
+            strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0);
+}
+
 void filterOutAAPXSReplies(void* buffer) {
     auto mbh = (AAPMidiBufferHeader*) buffer;
     auto* data = (uint8_t*) (mbh + 1);
@@ -315,7 +321,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri,
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) {
-    if (strcmp(request->uri, AAP_STATE_EXTENSION_URI) == 0)
+    if (isBinderOnlyExtension(request->uri))
         return ipc_send_extension_message_impl(plugin->plugin_specific,
                                                request->uri,
                                                getInstanceId(),

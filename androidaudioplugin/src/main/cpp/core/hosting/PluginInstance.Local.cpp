@@ -20,6 +20,12 @@ struct GuiListenerMidiBuffer {
 std::mutex gui_listener_registry_mutex;
 std::unordered_map<aap::LocalPluginInstance*, std::unique_ptr<GuiListenerMidiBuffer>> gui_listener_registry;
 
+bool isBinderOnlyExtension(const char* uri) {
+    return uri &&
+           (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0 ||
+            strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0);
+}
+
 GuiListenerMidiBuffer* getGuiListenerMidiBuffer(aap::LocalPluginInstance* instance) {
     const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
     auto it = gui_listener_registry.find(instance);
@@ -282,6 +288,11 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
+    if (isBinderOnlyExtension(request->uri)) {
+        ipc_send_extension_message_func(ipc_send_extension_message_context, request->uri, getInstanceId(), request->opcode);
+        return false;
+    }
+
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
