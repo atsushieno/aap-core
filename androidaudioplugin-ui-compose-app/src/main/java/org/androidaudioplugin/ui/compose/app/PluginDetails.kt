@@ -143,8 +143,6 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                 scope, pluginInfo, instance
             )
 
-            PluginOutputMessages(scope)
-
             Row {
                 Button(onClick = {
                     showWebUI = !showWebUI
@@ -234,25 +232,6 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         }
     }
 }
-
-@Composable
-private fun PluginOutputMessages(scope: PluginDetailsScope) {
-    if (scope.outputMessages.isEmpty())
-        return
-
-    Column(
-        Modifier
-            .padding(vertical = 8.dp)
-            .border(1.dp, Color.LightGray)
-            .padding(8.dp)
-    ) {
-        Text("Plugin MIDI2 Output", fontWeight = FontWeight.Bold)
-        scope.outputMessages.forEach { message ->
-            Text(message, fontSize = 12.sp)
-        }
-    }
-}
-
 
 private val headerModifier = Modifier.width(120.dp)
 
