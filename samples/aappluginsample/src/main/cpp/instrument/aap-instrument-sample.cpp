@@ -42,6 +42,17 @@ typedef struct AyumiHandle {
     int32_t midi2_out_port{-1};
     int32_t audio_out_l_port{-1};
     int32_t audio_out_r_port{-1};
+    static constexpr size_t max_pending_parameter_outputs = 16;
+    struct PendingParameterOutput {
+        uint8_t group;
+        uint8_t channel;
+        uint8_t key;
+        uint16_t extra;
+        uint16_t index;
+        uint32_t raw_value;
+    };
+    PendingParameterOutput pending_parameter_outputs[max_pending_parameter_outputs];
+    size_t pending_parameter_output_count{0};
 } AyumiHandle;
 
 typedef struct AyumiState {
@@ -54,6 +65,56 @@ typedef struct AyumiState {
 } AyumiState;
 
 static constexpr uint32_t AYUMI_STATE_VERSION = 1;
+
+static void enqueue_parameter_output(AyumiHandle* context,
+                                     uint8_t group,
+                                     uint8_t channel,
+                                     uint16_t index,
+                                     uint32_t rawValue,
+                                     uint8_t key = 0,
+                                     uint16_t extra = 0) {
+    if (context->pending_parameter_output_count >= AyumiHandle::max_pending_parameter_outputs)
+        return;
+    context->pending_parameter_outputs[context->pending_parameter_output_count++] = {
+            group, channel, key, extra, index, rawValue};
+}
+
+static void enqueue_state_parameter_outputs(AyumiHandle* context) {
+    for (uint8_t channel = 0; channel < 3; ++channel)
+        enqueue_parameter_output(context, 0, channel, CMIDI2_CC_BANK_SELECT, context->mixer[channel] >> 5);
+    enqueue_parameter_output(context, 0, 0, AYUMI_AAP_PARAM_ENVELOPE, static_cast<uint32_t>(context->envelope & 0xFFFF));
+}
+
+static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) {
+    if (context->midi2_out_port < 0)
+        return;
+    auto outHeader = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, context->midi2_out_port);
+    if (!outHeader)
+        return;
+    outHeader->length = 0;
+    auto outputCapacity = buffer->get_buffer_size(*buffer, context->midi2_out_port);
+    if (outputCapacity <= static_cast<int32_t>(sizeof(AAPMidiBufferHeader)))
+        return;
+    auto outputBytes = (uint8_t*) outHeader + sizeof(AAPMidiBufferHeader);
+    auto remainingCapacity = static_cast<size_t>(outputCapacity - sizeof(AAPMidiBufferHeader));
+    size_t written = 0;
+    for (size_t i = 0; i < context->pending_parameter_output_count; ++i) {
+        if (written + 16 > remainingCapacity)
+            break;
+        auto message = (uint32_t*) (outputBytes + written);
+        auto floatValue = *(float*) (void*) &context->pending_parameter_outputs[i].raw_value;
+        aapMidi2ParameterSysex8(message, message + 1, message + 2, message + 3,
+                                context->pending_parameter_outputs[i].group,
+                                context->pending_parameter_outputs[i].channel,
+                                context->pending_parameter_outputs[i].key,
+                                context->pending_parameter_outputs[i].extra,
+                                context->pending_parameter_outputs[i].index,
+                                floatValue);
+        written += 16;
+    }
+    outHeader->length = written;
+    context->pending_parameter_output_count = 0;
+}
 
 static void apply_ayumi_state(AyumiHandle* context, const AyumiState& state) {
     context->envelope = state.envelope;
@@ -72,6 +133,7 @@ static void apply_ayumi_state(AyumiHandle* context, const AyumiState& state) {
         else
             ayumi_set_mixer(context->impl, i, tone_switch, noise_switch, env_switch);
     }
+    enqueue_state_parameter_outputs(context);
 }
 
 
@@ -232,6 +294,8 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     auto context = (AyumiHandle*) plugin->plugin_specific;
     if (!context->active)
         return;
+
+    flush_parameter_outputs(context, buffer);
 
     volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, context->midi2_in_port);
 
@@ -429,6 +493,12 @@ int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudi
 }
 
 void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, aap_preset_t* preset, aapxs_completion_callback, void*) {
+    auto count = sample_plugin_get_preset_count(ext, nullptr);
+    if (index < 0 || index >= count) {
+        preset->id = -1;
+        preset->name[0] = 0;
+        return;
+    }
     preset->id = presets[index].id;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
 }
@@ -439,12 +509,12 @@ int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudi
 }
 
 void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
-    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "Preset changed to %d", index);
     if (index < 0 || index >= sample_plugin_get_preset_count(ext, plugin))
         return;
     auto& preset = presets[index];
     aap_state_t state{const_cast<void*>(preset.data), static_cast<size_t>(preset.data_size)};
     sample_plugin_set_state(&state_extension, plugin, &state);
+    aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "Preset changed to %d", index);
 }
 
 aap_presets_extension_t presets_extension{nullptr,

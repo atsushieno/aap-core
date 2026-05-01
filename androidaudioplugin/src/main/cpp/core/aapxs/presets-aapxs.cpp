@@ -1,6 +1,4 @@
-
 #include "aap/core/aapxs/presets-aapxs.h"
-
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
@@ -125,6 +123,7 @@ void aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset)
     // request
     // - 0..3: index
     *(int32_t*) (serialization->data) = index;
+    serialization->data_size = sizeof(int32_t);
 
     callVoidFunctionSynchronously(OPCODE_GET_PRESET_DATA);
 
@@ -138,6 +137,7 @@ void aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset)
 
 void aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
     *(int32_t*) (serialization->data) = index;
+    serialization->data_size = sizeof(int32_t);
     callVoidFunctionSynchronously(OPCODE_SET_PRESET_INDEX);
 }
 
