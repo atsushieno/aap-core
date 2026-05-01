@@ -1,7 +1,12 @@
 <html>
 <head>
     <style type='text/css'>
+body { font-family: sans-serif; }
+table { border-collapse: collapse; }
+th, td { padding: 4px 8px; vertical-align: top; }
 webaudio-knob { padding: 5px; }
+.parameter-control { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 96px; }
+.parameter-value { min-height: 1em; font-size: 12px; color: #666; text-align: center; }
 </style>
     <script type='text/javascript'><!--
     /* debugging aid
@@ -21,6 +26,28 @@ webaudio-knob { padding: 5px; }
   var midiChannel = 0;
   var octave = 4;
   var noteVelocity = 100;
+  var parameterControls = {};
+  var parameterValueLabels = {};
+
+  function formatParameterValue(value) {
+    var rounded = Number(value);
+    if (!Number.isFinite(rounded))
+      return "";
+    if (Math.abs(rounded) >= 100 || Number.isInteger(rounded))
+      return rounded.toString();
+    return rounded.toFixed(3).replace(/\.?0+$/, '');
+  }
+
+  function updateParameterControl(parameterId, value) {
+    var knob = parameterControls[parameterId];
+    if (!knob)
+      return;
+    knob.setAttribute('value', value);
+    knob.value = value;
+    var label = parameterValueLabels[parameterId];
+    if (label)
+      label.textContent = formatParameterValue(value);
+  }
 
   function initialize() {
     AAPInterop.onInitialize();
@@ -52,16 +79,26 @@ webaudio-knob { padding: 5px; }
       tr.appendChild(th);
       var td = document.createElement('td');
       tr.appendChild(td);
+      var control = document.createElement('div');
+      control.className = 'parameter-control';
       var knob = document.createElement('webaudio-knob');
-      knob.aapParameterIndex = para.getId();
+      knob.aapParameterId = para.getId();
       knob.setAttribute('min', para.getMinValue());
       knob.setAttribute('max', para.getMaxValue());
       knob.setAttribute('value', para.getDefaultValue());
       knob.setAttribute('src', 'bright_life.png');
       knob.addEventListener("change", (ev) => {
-        AAPInterop.setParameter(ev.target.aapParameterIndex, ev.target.value);
+        AAPInterop.setParameter(ev.target.aapParameterId, Number(ev.target.value));
+        updateParameterControl(ev.target.aapParameterId, Number(ev.target.value));
       });
-      td.appendChild(knob);
+      var valueLabel = document.createElement('div');
+      valueLabel.className = 'parameter-value';
+      parameterControls[knob.aapParameterId] = knob;
+      parameterValueLabels[knob.aapParameterId] = valueLabel;
+      control.appendChild(knob);
+      control.appendChild(valueLabel);
+      td.appendChild(control);
+      updateParameterControl(knob.aapParameterId, para.getDefaultValue());
     }
   }
 
@@ -73,6 +110,14 @@ webaudio-knob { padding: 5px; }
     var arr = Uint8Array.from(state ? [0x90 + midiChannel, note, noteVelocity] : [0x80 + midiChannel, note, 0]);
     AAPInterop.sendMidi1(arr, 0, arr.length);
   }
+
+  window.AAPInteropHost = {
+    updateParameters: function(values) {
+      Object.keys(values).forEach(function(parameterId) {
+        updateParameterControl(parameterId, values[parameterId]);
+      });
+    }
+  };
 //--></script>
     <script type='text/javascript' src='webcoomponents-lite.js'></script>
     <script type='text/javascript' src='webaudio-controls.js'></script>

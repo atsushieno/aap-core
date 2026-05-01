@@ -1,6 +1,7 @@
 package org.androidaudioplugin.ui.compose.app
 
 import android.content.Context
+import android.webkit.WebView
 import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -245,9 +247,21 @@ private fun updateScrollFromDrag(
 
 @Composable
 fun PluginWebUI(packageName: String, pluginId: String, native: NativeRemotePluginInstance,
+                parameterValues: List<Double>,
                 onCloseClick: () -> Unit = {}) {
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
+
+    LaunchedEffect(native, webView) {
+        val currentWebView = webView ?: return@LaunchedEffect
+        snapshotFlow { parameterValues.toList() }.collect { values ->
+            val valuesByParameterId = values.mapIndexed { index, value ->
+                native.getParameter(index).id to value
+            }.toMap()
+            WebUIHostHelper.updateParameterValues(currentWebView, valuesByParameterId)
+        }
+    }
 
     Column(
         Modifier
@@ -274,7 +288,10 @@ fun PluginWebUI(packageName: String, pluginId: String, native: NativeRemotePlugi
         }
         AndroidView(
             modifier = Modifier.border(1.dp, Color.Black),
-            factory = { ctx: Context -> WebUIHostHelper.getWebView(ctx, pluginId, packageName, native) }
+            factory = { ctx: Context ->
+                WebUIHostHelper.getWebView(ctx, pluginId, packageName, native).also { webView = it }
+            },
+            update = { webView = it }
         )
     }
 }

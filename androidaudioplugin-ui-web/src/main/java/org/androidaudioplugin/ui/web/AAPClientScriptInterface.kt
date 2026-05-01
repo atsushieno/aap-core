@@ -16,7 +16,22 @@ import java.nio.ByteBuffer
  * The AudioPluginInstance is responsible to store those event inputs and deal with above.
  */
 @Suppress("unused")
-class AAPClientScriptInterface(private val instance: NativeRemotePluginInstance) : AAPScriptInterface() {
+class AAPClientScriptInterface(
+    private val instance: NativeRemotePluginInstance,
+    private val lifecycleListener: WebUIParameterSync? = null
+) : AAPScriptInterface() {
+    @JavascriptInterface
+    override fun onInitialize() {
+        super.onInitialize()
+        lifecycleListener?.onWebUiInitialized()
+    }
+
+    @JavascriptInterface
+    override fun onCleanup() {
+        lifecycleListener?.onWebUiCleanedUp()
+        super.onCleanup()
+    }
+
     override fun addEventUmpInput(data: ByteBuffer, size: Int) {
         instance.addEventUmpInput(data, size)
     }

@@ -39,12 +39,12 @@ abstract class AAPScriptInterface {
     }
 
     @JavascriptInterface
-    fun onInitialize() {
+    open fun onInitialize() {
         Log.i(AAP_LOG_TAG, "onInitialize() invoked.")
     }
 
     @JavascriptInterface
-    fun onCleanup() {
+    open fun onCleanup() {
         Log.i(AAP_LOG_TAG, "onCleanup() invoked.")
     }
 

@@ -175,7 +175,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         }
 
         if (showWebUI)
-            PluginWebUI(pluginInfo.packageName, pluginInfo.pluginId!!, instance,
+            PluginWebUI(pluginInfo.packageName, pluginInfo.pluginId!!, instance, scope.parameterValues,
                 onCloseClick = { showWebUI = false })
 
         if (showSurfaceUI) {

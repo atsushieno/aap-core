@@ -12,8 +12,11 @@ import androidx.webkit.WebViewAssetLoader
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import java.io.FileInputStream
+import java.util.WeakHashMap
 
 object WebUIHostHelper {
+    private val parameterSyncs = WeakHashMap<WebView, WebUIParameterSync>()
+
     fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
         val pluginInfo =
             (if (packageName != null) AudioPluginHostHelper.queryAudioPluginService(
@@ -48,6 +51,8 @@ object WebUIHostHelper {
         supportInProcessAssets: Boolean = false
     ): WebView {
         return WebView(ctx).also { webView ->
+            val parameterSync = WebUIParameterSync(webView)
+            parameterSyncs[webView] = parameterSync
             val builder = WebViewAssetLoader.Builder()
             if (supportInProcessAssets)
             // it is used for local assets, meaning that it is not for remote plugin process.
@@ -68,9 +73,19 @@ object WebUIHostHelper {
             webView.settings.javaScriptEnabled = true
             webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
             webView.clearCache(true)
-            webView.addJavascriptInterface(AAPClientScriptInterface(native), "AAPInterop")
+            webView.addJavascriptInterface(AAPClientScriptInterface(native, parameterSync), "AAPInterop")
 
             webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
         }
+    }
+
+    @JvmStatic
+    fun updateParameterValue(webView: WebView, parameterId: Int, value: Double) {
+        parameterSyncs[webView]?.updateParameter(parameterId, value)
+    }
+
+    @JvmStatic
+    fun updateParameterValues(webView: WebView, values: Map<Int, Double>) {
+        parameterSyncs[webView]?.updateParameters(values)
     }
 }

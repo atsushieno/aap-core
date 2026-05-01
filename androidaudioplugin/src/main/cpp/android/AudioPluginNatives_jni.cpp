@@ -656,6 +656,26 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_setPresetIndex(JNIEnv *env
 
 extern "C"
 JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_readGuiListenerMidi2Output(JNIEnv *env,
+                                                                                 jclass clazz,
+                                                                                 jlong nativeService,
+                                                                                 jint instanceId,
+                                                                                 jobject buffer,
+                                                                                 jint size) {
+    if (!buffer || size <= 0)
+        return 0;
+    auto service = (aap::PluginService *) (void *) nativeService;
+    auto instance = static_cast<aap::LocalPluginInstance*>(service->getInstanceById(instanceId));
+    if (!instance)
+        return 0;
+    auto* output = env->GetDirectBufferAddress(buffer);
+    if (!output)
+        return 0;
+    return readLocalGuiListenerMidi2Output(instance, output, size);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_ui_compose_ComposeAudioPluginView_readParameterOutput(JNIEnv *env,
                                                                                   jobject thiz,
                                                                                   jstring pluginId,

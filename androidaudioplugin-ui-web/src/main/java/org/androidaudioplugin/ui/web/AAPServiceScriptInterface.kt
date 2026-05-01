@@ -15,8 +15,21 @@ import java.nio.ByteBuffer
  *
  * The NativeLocalPluginInstance is responsible to store those event inputs and deal with above.
  */
-class AAPServiceScriptInterface(private val instance: NativeLocalPluginInstance) : AAPScriptInterface() {
-    private val DEFAULT_BUFFER_SIZE = 8192
+class AAPServiceScriptInterface(
+    private val instance: NativeLocalPluginInstance,
+    private val lifecycleListener: WebUIParameterSync? = null
+) : AAPScriptInterface() {
+    @JavascriptInterface
+    override fun onInitialize() {
+        super.onInitialize()
+        lifecycleListener?.onWebUiInitialized()
+    }
+
+    @JavascriptInterface
+    override fun onCleanup() {
+        lifecycleListener?.onWebUiCleanedUp()
+        super.onCleanup()
+    }
 
     override fun addEventUmpInput(data: ByteBuffer, size: Int) =
         instance.addEventUmpInput(data, size)

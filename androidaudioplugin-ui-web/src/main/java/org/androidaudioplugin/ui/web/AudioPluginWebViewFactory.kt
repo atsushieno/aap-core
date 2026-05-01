@@ -2,6 +2,7 @@ package org.androidaudioplugin.ui.web
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -22,6 +23,7 @@ class AudioPluginWebViewFactory : AudioPluginViewFactory() {
         val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(ctx).plugins.firstOrNull { it.pluginId == pluginId }
             ?: throw AudioPluginException("Plugin '$pluginId' not found.")
         return WebView(ctx).also { webView ->
+            val parameterSync = WebUIParameterSync(webView)
             val builder = WebViewAssetLoader.Builder()
             // it is used for local assets, meaning that it is not for remote plugin process.
             builder.addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
@@ -40,7 +42,17 @@ class AudioPluginWebViewFactory : AudioPluginViewFactory() {
             }
             webView.settings.javaScriptEnabled = true
             val nativeInstance = NativePluginService(pluginId).getInstance(instanceId)
-            webView.addJavascriptInterface(AAPServiceScriptInterface(nativeInstance), "AAPInterop")
+            val parameterPoller = LocalWebUIParameterPoller(nativeInstance, parameterSync)
+            parameterPoller.start()
+            webView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) = Unit
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    parameterPoller.close()
+                    webView.removeOnAttachStateChangeListener(this)
+                }
+            })
+            webView.addJavascriptInterface(AAPServiceScriptInterface(nativeInstance, parameterSync), "AAPInterop")
 
             webView.loadUrl("https://appassets.androidplatform.net/zip/index.html")
         }

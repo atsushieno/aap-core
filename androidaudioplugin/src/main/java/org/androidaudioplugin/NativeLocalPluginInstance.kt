@@ -11,6 +11,8 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
     fun getParameter(index: Int) = getParameter(service.native, instanceId, index)
 
     fun addEventUmpInput(data: ByteBuffer, size: Int) = addEventUmpInput(service.native, instanceId, data, size)
+    fun readGuiListenerMidi2Output(buffer: ByteBuffer, size: Int) =
+        readGuiListenerMidi2Output(service.native, instanceId, buffer, size)
 
     // FIXME: we should probably generalize extension features, instead of defining functions and properties for all.
     fun getPresetCount() = getPresetCount(service.native, instanceId)
@@ -33,6 +35,8 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
 
         @JvmStatic
         private external fun addEventUmpInput(nativeService: Long, instanceId: Int, data: ByteBuffer, size: Int)
+        @JvmStatic
+        private external fun readGuiListenerMidi2Output(nativeService: Long, instanceId: Int, buffer: ByteBuffer, size: Int): Int
 
         // FIXME: we should probably generalize extension features, instead of defining functions and properties for all.
         @JvmStatic
