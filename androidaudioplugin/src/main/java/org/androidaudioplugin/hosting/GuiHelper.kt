@@ -43,7 +43,9 @@ object GuiHelper {
         private val pluginId: String,
         private val instanceId: Int
     ) : AutoCloseable {
-        private val surfaceControlClient = AudioPluginHostHelper.createSurfaceControl(context)
+        private val surfaceControlClient by lazy(LazyThreadSafetyMode.NONE) {
+            AudioPluginHostHelper.createSurfaceControl(context)
+        }
 
         val surfaceView: View
             get() = surfaceControlClient.surfaceView
