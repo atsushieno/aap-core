@@ -118,8 +118,10 @@ class WebUIParameterSync(private val webView: WebView) {
                     if (value !== undefined) {
                       knob.value = value;
                       knob.setAttribute('value', value);
+                      label.textContent = formatValue(value);
+                      return;
                     }
-                    label.textContent = formatValue(knob.value);
+                    label.textContent = formatValue(knob.value !== undefined ? knob.value : knob.getAttribute('value'));
                   }
 
                   function bindKnob(knob) {
