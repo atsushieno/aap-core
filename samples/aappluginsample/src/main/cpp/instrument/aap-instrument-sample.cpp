@@ -55,6 +55,25 @@ typedef struct AyumiState {
 
 static constexpr uint32_t AYUMI_STATE_VERSION = 1;
 
+static void apply_ayumi_state(AyumiHandle* context, const AyumiState& state) {
+    context->envelope = state.envelope;
+    context->pitchbend = state.pitchbend;
+    context->preset_index = state.preset_index;
+    ayumi_set_envelope(context->impl, context->envelope);
+    for (int i = 0; i < 3; i++) {
+        context->mixer[i] = state.mixer[i];
+        context->note_on_state[i] = state.note_on_state[i] != 0;
+        auto mixer = context->mixer[i] >> 5;
+        auto tone_switch = mixer & 1;
+        auto noise_switch = (mixer >> 1) & 1;
+        auto env_switch = (mixer >> 2) & 1;
+        if (!context->note_on_state[i])
+            ayumi_set_mixer(context->impl, i, 1, 1, 0);
+        else
+            ayumi_set_mixer(context->impl, i, tone_switch, noise_switch, env_switch);
+    }
+}
+
 
 void sample_plugin_delete(
         AndroidAudioPluginFactory *pluginFactory,
@@ -368,23 +387,7 @@ void sample_plugin_set_state(aap_state_extension_t* ext, AndroidAudioPlugin* plu
     auto state = (AyumiState*) input->data;
     if (state->version != AYUMI_STATE_VERSION)
         return;
-
-    context->envelope = state->envelope;
-    context->pitchbend = state->pitchbend;
-    context->preset_index = state->preset_index;
-    ayumi_set_envelope(context->impl, context->envelope);
-    for (int i = 0; i < 3; i++) {
-        context->mixer[i] = state->mixer[i];
-        context->note_on_state[i] = state->note_on_state[i] != 0;
-        auto mixer = context->mixer[i] >> 5;
-        auto tone_switch = mixer & 1;
-        auto noise_switch = (mixer >> 1) & 1;
-        auto env_switch = (mixer >> 2) & 1;
-        if (!context->note_on_state[i])
-            ayumi_set_mixer(context->impl, i, 1, 1, 0);
-        else
-            ayumi_set_mixer(context->impl, i, tone_switch, noise_switch, env_switch);
-    }
+    apply_ayumi_state(context, *state);
 }
 
 aap_state_extension_t state_extension{nullptr,
@@ -405,16 +408,20 @@ typedef struct preset_t {
     // preset name, might not be unique even within a plugin
     char name[AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH];
 
-    void* data;
+    const void* data;
     int32_t data_size;
 } preset_t;
 
-uint8_t preset_data[][3] {{10}, {20}, {30}};
+static constexpr AyumiState preset_data[] {
+    {AYUMI_STATE_VERSION, {1 << 5, 1 << 5, 1 << 5}, 0x0040, 0, 0, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {2 << 5, 2 << 5, 2 << 5}, 0x0200, 0, 1, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {3 << 5, 3 << 5, 3 << 5}, 0x0800, 0, 2, {0, 0, 0}},
+};
 
 preset_t presets[3] {
-    {0, "preset1", preset_data[0], sizeof(preset_data[0])},
-    {1, "preset2", preset_data[1], sizeof(preset_data[1])},
-    {2, "preset3", preset_data[2], sizeof(preset_data[2])}
+    {0, "preset1", &preset_data[0], sizeof(preset_data[0])},
+    {1, "preset2", &preset_data[1], sizeof(preset_data[1])},
+    {2, "preset3", &preset_data[2], sizeof(preset_data[2])}
 };
 
 int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/) {
@@ -422,7 +429,7 @@ int32_t sample_plugin_get_preset_count(aap_presets_extension_t* ext, AndroidAudi
 }
 
 void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* /*plugin*/, int32_t index, aap_preset_t* preset, aapxs_completion_callback, void*) {
-    preset->id = index;
+    preset->id = presets[index].id;
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
 }
 
@@ -432,9 +439,12 @@ int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudi
 }
 
 void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
-    auto handle = (AyumiHandle*) plugin->plugin_specific;
     aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "Preset changed to %d", index);
-    handle->preset_index = index;
+    if (index < 0 || index >= sample_plugin_get_preset_count(ext, plugin))
+        return;
+    auto& preset = presets[index];
+    aap_state_t state{const_cast<void*>(preset.data), static_cast<size_t>(preset.data_size)};
+    sample_plugin_set_state(&state_extension, plugin, &state);
 }
 
 aap_presets_extension_t presets_extension{nullptr,
