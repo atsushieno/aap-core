@@ -16,6 +16,8 @@
 
 #define LOG_TAG "AAP.JNI"
 
+int32_t readLocalGuiListenerMidi2Output(aap::LocalPluginInstance* instance, void* output, int32_t size);
+
 std::string jstringToStdString(JNIEnv* env, jstring s) {
     jboolean b{false};
     const char *u8 = env->GetStringUTFChars(s, &b);
@@ -650,4 +652,27 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_setPresetIndex(JNIEnv *env
     auto service = (aap::PluginService *) (void *) nativeService;
     auto instance = service->getInstanceById(instanceId);
     instance->getStandardExtensions().setCurrentPresetIndex(index);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_ui_compose_ComposeAudioPluginView_readParameterOutput(JNIEnv *env,
+                                                                                  jobject thiz,
+                                                                                  jstring pluginId,
+                                                                                  jint instanceId,
+                                                                                  jobject buffer,
+                                                                                  jint size) {
+    if (!pluginId || !buffer || size <= 0)
+        return 0;
+    auto pluginIdString = jstringToStdString(env, pluginId);
+    auto service = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str());
+    if (!service)
+        return 0;
+    auto instance = static_cast<aap::LocalPluginInstance*>(service->getInstanceById(instanceId));
+    if (!instance)
+        return 0;
+    auto* output = env->GetDirectBufferAddress(buffer);
+    if (!output)
+        return 0;
+    return readLocalGuiListenerMidi2Output(instance, output, size);
 }

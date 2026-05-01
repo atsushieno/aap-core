@@ -1,8 +1,60 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include <unordered_map>
+#include <vector>
 
 #define LOG_TAG "AAP.Local.Instance"
 
+namespace {
+struct GuiListenerMidiBuffer {
+    explicit GuiListenerMidiBuffer(int32_t capacityInBytes) :
+            capacity(capacityInBytes > 0 ? capacityInBytes : 0),
+            data(capacity > 0 ? static_cast<size_t>(capacity) : 0) {}
+
+    aap::NanoSleepLock mutex{};
+    int32_t capacity{0};
+    std::vector<uint8_t> data;
+    int32_t length{0};
+};
+
+std::mutex gui_listener_registry_mutex;
+std::unordered_map<aap::LocalPluginInstance*, std::unique_ptr<GuiListenerMidiBuffer>> gui_listener_registry;
+
+GuiListenerMidiBuffer* getGuiListenerMidiBuffer(aap::LocalPluginInstance* instance) {
+    const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
+    auto it = gui_listener_registry.find(instance);
+    return it != gui_listener_registry.end() ? it->second.get() : nullptr;
+}
+
+void appendGuiListenerMidiBuffer(aap::LocalPluginInstance* instance, const void* input, int32_t size) {
+    auto* buffer = getGuiListenerMidiBuffer(instance);
+    if (!buffer || !input || size <= 0)
+        return;
+    const std::lock_guard<aap::NanoSleepLock> lock{buffer->mutex};
+    if (buffer->length + size > buffer->capacity)
+        return;
+    memcpy(buffer->data.data() + buffer->length, input, size);
+    buffer->length += size;
+}
+}
+
+int32_t readLocalGuiListenerMidi2Output(aap::LocalPluginInstance* instance, void* output, int32_t size) {
+    auto* buffer = getGuiListenerMidiBuffer(instance);
+    if (!buffer || !output || size <= 0)
+        return 0;
+    if (std::unique_lock<aap::NanoSleepLock> tryLock(buffer->mutex, std::try_to_lock); tryLock.owns_lock()) {
+        auto readSize = std::min(buffer->length, size);
+        if (readSize <= 0)
+            return 0;
+        memcpy(output, buffer->data.data(), readSize);
+        auto remaining = buffer->length - readSize;
+        if (remaining > 0)
+            memmove(buffer->data.data(), buffer->data.data() + readSize, remaining);
+        buffer->length = remaining;
+        return readSize;
+    }
+    return 0;
+}
 
 void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2RecipientSession* processor, void* context, int32_t messageSize) {
     auto instance = (aap::LocalPluginInstance *) context;
@@ -27,6 +79,10 @@ aap::LocalPluginInstance::LocalPluginInstance(
     instance_id = instanceId;
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
     aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
+    {
+        const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
+        gui_listener_registry[this] = std::make_unique<GuiListenerMidiBuffer>(event_midi2_buffer_size);
+    }
 
     aapxs_midi2_in_session.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
         handleAAPXSInput(context);
@@ -38,6 +94,8 @@ aap::LocalPluginInstance::~LocalPluginInstance() {
         free(aapxs_out_midi2_buffer);
     if (aapxs_out_merge_buffer)
         free(aapxs_out_merge_buffer);
+    const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
+    gui_listener_registry.erase(this);
 }
 
 AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -152,6 +210,17 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
                             aapxs_out_midi2_buffer, aapxs_out_midi2_buffer_offset,
                             getAudioPluginBuffer(), this);
         aapxs_out_midi2_buffer_offset = 0;
+    }
+
+    auto aapBuffer = getAudioPluginBuffer();
+    for (auto i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
+            port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
+            continue;
+        auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(*aapBuffer, i);
+        if (data && data->length > 0)
+            appendGuiListenerMidiBuffer(this, data + 1, static_cast<int32_t>(data->length));
     }
 
 #if ANDROID

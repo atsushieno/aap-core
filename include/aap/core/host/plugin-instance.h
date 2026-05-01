@@ -230,7 +230,6 @@ namespace aap {
         }
 
         void addEventUmpOutput(void* input, int32_t size);
-
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 
         void requestProcessToHost();

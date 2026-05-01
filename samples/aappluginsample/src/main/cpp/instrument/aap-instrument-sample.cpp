@@ -30,7 +30,11 @@ extern "C" {
 typedef struct AyumiHandle {
     struct ayumi* impl;
     int mixer[3];
+    int32_t volume{14};
+    float pan{0.5f};
     int32_t envelope;
+    int32_t envelope_shape{14};
+    int32_t extra_enums{0};
     int32_t pitchbend;
     double sample_rate;
     bool active;
@@ -49,13 +53,17 @@ typedef struct AyumiHandle {
 typedef struct AyumiState {
     uint32_t version;
     int32_t mixer[3];
+    int32_t volume;
+    float pan;
     int32_t envelope;
+    int32_t envelope_shape;
+    int32_t extra_enums;
     int32_t pitchbend;
     int32_t preset_index;
     uint8_t note_on_state[3];
 } AyumiState;
 
-static constexpr uint32_t AYUMI_STATE_VERSION = 1;
+static constexpr uint32_t AYUMI_STATE_VERSION = 2;
 
 static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) {
     if (context->midi2_out_port < 0)
@@ -77,42 +85,53 @@ static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) 
                               uint8_t key,
                               uint16_t extra,
                               uint16_t index,
-                              uint32_t rawValue,
+                              float value,
                               size_t& written) {
         if (written + 16 > remainingCapacity)
             return false;
         auto message = (uint32_t*) (outputBytes + written);
-        auto floatValue = *(float*) (void*) &rawValue;
         aapMidi2ParameterSysex8(message, message + 1, message + 2, message + 3,
                                 group,
                                 channel,
                                 key,
                                 extra,
                                 index,
-                                floatValue);
+                                value);
         written += 16;
         return true;
     };
 
     size_t written = 0;
-    for (uint8_t channel = 0; channel < 3; ++channel) {
-        if (!writeParameter(0, channel, 0, 0, CMIDI2_CC_BANK_SELECT,
-                            static_cast<uint32_t>(context->mixer[channel] >> 5), written))
-            break;
-    }
+    writeParameter(0, 0, 0, 0, CMIDI2_CC_BANK_SELECT,
+                   static_cast<float>(context->mixer[0] >> 5), written);
+    writeParameter(0, 0, 0, 0, CMIDI2_CC_VOLUME,
+                   static_cast<float>(context->volume), written);
+    writeParameter(0, 0, 0, 0, CMIDI2_CC_PAN,
+                   context->pan, written);
     writeParameter(0, 0, 0, 0, AYUMI_AAP_PARAM_ENVELOPE,
-                   static_cast<uint32_t>(context->envelope & 0xFFFF), written);
+                   static_cast<float>(context->envelope & 0xFFFF), written);
+    writeParameter(0, 0, 0, 0, AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE,
+                   static_cast<float>(context->envelope_shape), written);
+    writeParameter(0, 0, 0, 0, AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE + 1,
+                   static_cast<float>(context->extra_enums), written);
     outHeader->length = written;
 }
 
 static void apply_ayumi_state(AyumiHandle* context, const AyumiState& state) {
+    context->volume = state.volume;
+    context->pan = state.pan;
     context->envelope = state.envelope;
+    context->envelope_shape = state.envelope_shape;
+    context->extra_enums = state.extra_enums;
     context->pitchbend = state.pitchbend;
     context->preset_index = state.preset_index;
     ayumi_set_envelope(context->impl, context->envelope);
+    ayumi_set_envelope_shape(context->impl, context->envelope_shape);
     for (int i = 0; i < 3; i++) {
         context->mixer[i] = state.mixer[i];
         context->note_on_state[i] = state.note_on_state[i] != 0;
+        ayumi_set_pan(context->impl, i, context->pan, 0);
+        ayumi_set_volume(context->impl, i, context->volume);
         auto mixer = context->mixer[i] >> 5;
         auto tone_switch = mixer & 1;
         auto noise_switch = (mixer >> 1) & 1;
@@ -315,7 +334,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             currentTicks = max;
             continue;
         } else if (readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra, &paramIndex, &paramValue, ump)) {
-            intValue = (int32_t) *(float*) &paramValue;
+            intValue = static_cast<int32_t>(paramValue);
         } else if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL) {
             switch (cmidi2_ump_get_status_code(ump)) {
                 // enable this if it supports per-note parameters.
@@ -338,7 +357,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             paramChannel = cmidi2_ump_get_channel(ump);
             paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
             intValue = cmidi2_ump_get_midi2_nrpn_data(ump);
-            paramValue = *(float*) &intValue;
+            paramValue = static_cast<float>(intValue);
         } else {
             // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
             uint8_t midi1Bytes[16];
@@ -357,27 +376,40 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                 context->mixer[paramChannel] = mixer << 5;
                 ayumi_set_mixer(context->impl, paramChannel, tone_switch, noise_switch,
                                 env_switch);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
                 break;
             }
             case CMIDI2_CC_PAN: {
                 float pan = *(float*) &paramValue; // 0.0..1.0
+                context->pan = pan;
                 ayumi_set_pan(context->impl, paramChannel, pan, 0);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
                 break;
             }
             case CMIDI2_CC_VOLUME: {
-                auto volume = (int32_t) *(float*) &paramValue; // there is no valur range mapping for this parameter.
+                auto volume = static_cast<int32_t>(paramValue);
+                context->volume = volume;
                 ayumi_set_volume(context->impl, paramChannel, volume);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
                 break;
             }
             case AYUMI_AAP_PARAM_ENVELOPE: {
-                auto env = ((int32_t) *(float *) &paramValue) & 0xFFFF;
+                auto env = static_cast<int32_t>(paramValue) & 0xFFFF;
                 context->envelope = env;
                 ayumi_set_envelope(context->impl, context->envelope);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
                 break;
             }
-            case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
-                auto shape = (int32_t) *(float*) &paramValue;
+            case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE: {
+                auto shape = static_cast<int32_t>(paramValue);
+                context->envelope_shape = shape;
                 ayumi_set_envelope_shape(context->impl, shape);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
+                break;
+            }
+            case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE + 1:
+                context->extra_enums = static_cast<int32_t>(paramValue);
+                context->state_parameter_outputs_pending.store(true, std::memory_order_release);
                 break;
         }
     }
@@ -424,7 +456,11 @@ void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plu
         output->mixer[i] = context->mixer[i];
         output->note_on_state[i] = context->note_on_state[i] ? 1 : 0;
     }
+    output->volume = context->volume;
+    output->pan = context->pan;
     output->envelope = context->envelope;
+    output->envelope_shape = context->envelope_shape;
+    output->extra_enums = context->extra_enums;
     output->pitchbend = context->pitchbend;
     output->preset_index = context->preset_index;
     state->data_size = sizeof(AyumiState);
@@ -466,9 +502,9 @@ typedef struct preset_t {
 } preset_t;
 
 static constexpr AyumiState preset_data[] {
-    {AYUMI_STATE_VERSION, {1 << 5, 1 << 5, 1 << 5}, 0x0040, 0, 0, {0, 0, 0}},
-    {AYUMI_STATE_VERSION, {2 << 5, 2 << 5, 2 << 5}, 0x0200, 0, 1, {0, 0, 0}},
-    {AYUMI_STATE_VERSION, {3 << 5, 3 << 5, 3 << 5}, 0x0800, 0, 2, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {1 << 5, 1 << 5, 1 << 5}, 14, 0.5f, 0x0040, 14, 0, 0, 0, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {2 << 5, 2 << 5, 2 << 5}, 10, 0.25f, 0x0200, 12, 2, 0, 1, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {3 << 5, 3 << 5, 3 << 5}, 6, 0.75f, 0x0800, 10, 4, 0, 2, {0, 0, 0}},
 };
 
 preset_t presets[3] {
@@ -570,12 +606,13 @@ AndroidAudioPlugin *sample_plugin_new(
     ayumi_set_noise(handle->impl, 4); // pink noise by default
     for (int i = 0; i < 3; i++) {
         handle->mixer[i] = 1 << 6; // tone, without envelope
-        ayumi_set_pan(handle->impl, i, 0.5, 0); // 0(L)...1(R)
+        ayumi_set_pan(handle->impl, i, handle->pan, 0); // 0(L)...1(R)
         ayumi_set_mixer(handle->impl, i, 1, 1, 0); // should be quiet by default
-        ayumi_set_envelope_shape(handle->impl, 14); // see http://fmpdoc.fmp.jp/%E3%82%A8%E3%83%B3%E3%83%99%E3%83%AD%E3%83%BC%E3%83%97%E3%83%8F%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A2/
+        ayumi_set_envelope_shape(handle->impl, handle->envelope_shape); // see http://fmpdoc.fmp.jp/%E3%82%A8%E3%83%B3%E3%83%99%E3%83%AD%E3%83%BC%E3%83%97%E3%83%8F%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A2/
         ayumi_set_envelope(handle->impl, 0x40); // somewhat slow
-        ayumi_set_volume(handle->impl, i, 14); // FIXME: max = 14?? 15 doesn't work
+        ayumi_set_volume(handle->impl, i, handle->volume); // FIXME: max = 14?? 15 doesn't work
     }
+    handle->envelope = 0x40;
 
     handle->midi_protocol = 2; // this is for testing MIDI2 in port.
 
