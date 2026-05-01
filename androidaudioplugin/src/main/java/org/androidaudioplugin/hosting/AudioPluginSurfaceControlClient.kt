@@ -64,7 +64,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             connectedGuiSessionId = guiSessionId
             this.surfacePackage?.release()
             this.surfacePackage = surfacePackage
-            surface.setChildSurfacePackage(surfacePackage)
+            getOrCreateSurfaceView().setChildSurfacePackage(surfacePackage)
             pendingViewportConfiguration?.let(::sendConfigureViewport)
             Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
             connectedListeners.forEach { it() }
@@ -73,16 +73,19 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     val connectedListeners = mutableListOf<() -> Unit>()
 
-    private var surface = createSurfaceView()
+    private var surface: AudioPluginSurfaceView? = null
     private var surfacePackage: SurfaceControlViewHost.SurfacePackage? = null
     private var pendingViewportConfiguration: ViewportConfiguration? = null
     private var connectedPluginId: String? = null
     private var connectedInstanceId: Int = -1
     private var connectedGuiSessionId: Int = -1
     val surfaceView: View
-        get() = surface
+        get() = getOrCreateSurfaceView()
 
     private fun createSurfaceView() = AudioPluginSurfaceView(context, this)
+
+    private fun getOrCreateSurfaceView(): AudioPluginSurfaceView =
+        surface ?: createSurfaceView().also { surface = it }
 
     // It is intended to be invoked via AAPJniFacade, not for general users.
     @RequiresApi(Build.VERSION_CODES.R)
@@ -98,7 +101,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     suspend fun connectUI(pluginPackageName: String, pluginId: String, instanceId: Int, width: Int, height: Int) {
         var handler: (() -> Boolean)? = null
         handler = {
-            if (surface.layoutParams == null) { // resubmit it
+            val surfaceView = getOrCreateSurfaceView()
+            if (surfaceView.layoutParams == null) { // resubmit it
                 Log.w(LOG_TAG, "It seems SurfaceView is created but not initialized yet. It is most likely that it is not attached to a live view tree. Resubmitting messaging handler")
                 context.mainLooper.queue.addIdleHandler(handler!!)
             } else {
@@ -113,7 +117,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
         var messageSender: (() -> Boolean)? = null
         messageSender = {
-            if (surface.display == null) { // resubmit it
+            if (getOrCreateSurfaceView().display == null) { // resubmit it
                 Log.w(LOG_TAG, "SurfaceView is not attached to a display. It is most likely that it is not attached to a live view tree. Resubmitting messaging handler")
                 context.mainLooper.queue.addIdleHandler(messageSender!!)
             } else {
@@ -170,16 +174,17 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
         private fun connectUIPrepareLayout(width: Int, height: Int) {
-            val layoutParams = surface.layoutParams
-                ?: LayoutParams(width, height).also { surface.layoutParams = it }
+            val surfaceView = getOrCreateSurfaceView()
+            val layoutParams = surfaceView.layoutParams
+                ?: LayoutParams(width, height).also { surfaceView.layoutParams = it }
             layoutParams.width = width
             layoutParams.height = height
-            surface.requestLayout()
+            surfaceView.requestLayout()
         }
 
         @RequiresApi(Build.VERSION_CODES.R)
         private suspend fun connectUIBindService(pluginPackageName: String) {
-            surface.connection = bindPluginViewService(pluginPackageName)
+            getOrCreateSurfaceView().connection = bindPluginViewService(pluginPackageName)
         }
 
         @RequiresApi(Build.VERSION_CODES.R)
@@ -194,13 +199,14 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
         @RequiresApi(Build.VERSION_CODES.R)
         private fun connectUISendMessage(pluginId: String, instanceId: Int, width: Int, height: Int) {
+            val surfaceView = getOrCreateSurfaceView()
             connectedPluginId = pluginId
             connectedInstanceId = instanceId
             val message = Message.obtain().apply {
                 data = bundleOf(
                     AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONNECT,
-                    AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surface.hostToken,
-                    AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surface.display.displayId,
+                    AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surfaceView.hostToken,
+                    AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surfaceView.display.displayId,
                     AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
                     AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
                     AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
@@ -208,7 +214,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 )
                 replyTo = incomingMessenger
             }
-            surface.connection?.outgoingMessenger?.send(message)
+            surfaceView.connection?.outgoingMessenger?.send(message)
         }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -244,12 +250,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
             )
         }
-        surface.connection?.outgoingMessenger?.send(message)
+        surface?.connection?.outgoingMessenger?.send(message)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun sendConfigureViewport(configuration: ViewportConfiguration) {
-        val outgoingMessenger = surface.connection?.outgoingMessenger ?: return
+        val outgoingMessenger = surface?.connection?.outgoingMessenger ?: return
         val message = Message.obtain().apply {
             data = bundleOf(
                 AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONFIGURE_VIEWPORT,
@@ -267,7 +273,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun disconnectRemoteUI() {
-        val outgoingMessenger = surface.connection?.outgoingMessenger ?: return
+        val surfaceView = surface ?: return
+        val outgoingMessenger = surfaceView.connection?.outgoingMessenger ?: return
         val pluginId = connectedPluginId ?: return
         if (connectedInstanceId < 0)
             return
@@ -293,8 +300,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         connectedPluginId = null
         connectedInstanceId = -1
         connectedGuiSessionId = -1
-        surface.connection?.let {
-            surface.connection = null
+        surface?.connection?.let {
+            surface?.connection = null
             context.unbindService(it)
         }
     }
