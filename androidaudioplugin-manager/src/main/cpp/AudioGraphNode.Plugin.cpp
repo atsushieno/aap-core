@@ -59,7 +59,9 @@ void aap::AudioPluginNode::processAudio(AudioBuffer *audioData, int32_t numFrame
             case AAP_CONTENT_TYPE_MIDI2: {
                 size_t midiSize = std::min(aapBuffer->get_buffer_size(*aapBuffer, i),
                                            audioData->midi_capacity);
-                memcpy(audioData->midi_out, aapBuffer->get_buffer(*aapBuffer, i), midiSize);
+                auto* midiBuffer = aapBuffer->get_buffer(*aapBuffer, i);
+                memcpy(audioData->midi_out, midiBuffer, midiSize);
+                ((AAPMidiBufferHeader*) midiBuffer)->length = 0;
                 break;
             }
             default:
@@ -81,4 +83,3 @@ void aap::AudioPluginNode::pause() {
 void aap::AudioPluginNode::setPresetIndex(int32_t index) {
     plugin->getStandardExtensions().setCurrentPresetIndex(index);
 }
-

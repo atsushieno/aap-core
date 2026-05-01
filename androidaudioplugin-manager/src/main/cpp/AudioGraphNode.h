@@ -179,6 +179,7 @@ namespace aap {
 
     class MidiDestinationNode : public AudioGraphNode {
         uint8_t* buffer;
+        int32_t capacity;
 
         NanoSleepLock midi_buffer_mutex{};
 
@@ -186,6 +187,8 @@ namespace aap {
         explicit MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize = AAP_PLUGIN_PLAYER_DEFAULT_MIDI_RING_BUFFER_SIZE);
 
         ~MidiDestinationNode() override;
+
+        int32_t readMidiEvents(uint8_t* dst, int32_t dstCapacity);
 
         void start() override;
         void pause() override;

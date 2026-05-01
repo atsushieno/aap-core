@@ -28,6 +28,8 @@ namespace aap {
         void enableAudioRecorder();
 
         void setPresetIndex(int index);
+
+        int32_t readMidiOutput(uint8_t* dst, int32_t dstCapacity);
     };
 }
 

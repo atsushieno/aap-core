@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -60,7 +59,7 @@ internal class RemotePluginViewScopeImpl(
         get() = instance.getParameterCount()
 
     override fun getParameter(parameterIndex: Int): PluginViewScopeParameter =
-        PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex] ?: 0.0)
+        PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex])
 
     override val portCount: Int
         get() = instance.getPortCount()
@@ -111,14 +110,9 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         }
     }
 
-    // FIXME: should this be hoisted out? It feels like performance loss
-    val parameters = remember { (0 until instance.getParameterCount())
-        .map { instance.getParameter(it).defaultValue }
-        .toMutableStateList() }
-    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, parameters, pluginInfo)) }
-    pluginViewScope.PluginView(getParameterValue = { parameters[it].toFloat() },
+    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo)) }
+    pluginViewScope.PluginView(getParameterValue = { scope.parameterValues[it].toFloat() },
         onParameterChange = { index, value ->
-            parameters[index] = value.toDouble()
             scope.setParameterValue(index, value)
                             },
         onPresetChange = { index -> scope.setPresetIndex(index) },

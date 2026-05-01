@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -70,6 +71,7 @@ fun PluginDetailsInstancing(pluginInfo: PluginInformation) {
 fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     val pluginInfo = scope.pluginInfo
     val context = LocalContext.current
+    val isProcessing by scope.isProcessing
 
     var showWebUI by remember { mutableStateOf(false) }
     var showSurfaceUI by remember { mutableStateOf(false) }
@@ -109,6 +111,15 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         }
     }
 
+    LaunchedEffect(scope, isProcessing) {
+        if (!isProcessing)
+            return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            scope.drainMidiOutput()
+        }
+    }
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val surfaceWidth = (maxWidth - 32.dp).coerceAtLeast(1.dp)
@@ -131,6 +142,8 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
             PluginInstanceControl(
                 scope, pluginInfo, instance
             )
+
+            PluginOutputMessages(scope)
 
             Row {
                 Button(onClick = {
@@ -218,6 +231,24 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                 }
 
             }
+        }
+    }
+}
+
+@Composable
+private fun PluginOutputMessages(scope: PluginDetailsScope) {
+    if (scope.outputMessages.isEmpty())
+        return
+
+    Column(
+        Modifier
+            .padding(vertical = 8.dp)
+            .border(1.dp, Color.LightGray)
+            .padding(8.dp)
+    ) {
+        Text("Plugin MIDI2 Output", fontWeight = FontWeight.Bold)
+        scope.outputMessages.forEach { message ->
+            Text(message, fontSize = 12.sp)
         }
     }
 }

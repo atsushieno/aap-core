@@ -118,7 +118,8 @@ void aap::MidiSourceNode::pause() {
 //--------
 
 aap::MidiDestinationNode::MidiDestinationNode(AudioGraph* ownerGraph, int32_t internalBufferSize) :
-        AudioGraphNode(ownerGraph) {
+        AudioGraphNode(ownerGraph),
+        capacity(internalBufferSize) {
     buffer = (uint8_t*) calloc(1, internalBufferSize);
 }
 
@@ -133,13 +134,34 @@ void aap::MidiDestinationNode::processAudio(AudioBuffer *audioData, int32_t numF
         auto srcBuffer = (AAPMidiBufferHeader*) audioData->midi_out;
         auto dstBuffer = (AAPMidiBufferHeader*) buffer;
         if (srcBuffer->length) {
-            memcpy(dstBuffer + 1, srcBuffer + 1, srcBuffer->length);
-            dstBuffer->length += srcBuffer->length;
+            auto appendable = std::min<int32_t>(srcBuffer->length, capacity - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) - static_cast<int32_t>(dstBuffer->length));
+            if (appendable > 0) {
+                memcpy((uint8_t*) (dstBuffer + 1) + dstBuffer->length, srcBuffer + 1, appendable);
+                dstBuffer->length += appendable;
+            }
         }
         srcBuffer->length = 0;
     } else {
         // failed to acquire lock; we skip copying and keep source length.
     }
+}
+
+int32_t aap::MidiDestinationNode::readMidiEvents(uint8_t* dst, int32_t dstCapacity) {
+    if (!dst || dstCapacity <= 0)
+        return 0;
+    if (std::unique_lock<NanoSleepLock> tryLock(midi_buffer_mutex, std::try_to_lock); tryLock.owns_lock()) {
+        auto srcBuffer = (AAPMidiBufferHeader*) buffer;
+        auto bytesToRead = std::min<int32_t>(srcBuffer->length, dstCapacity);
+        if (bytesToRead <= 0)
+            return 0;
+        memcpy(dst, srcBuffer + 1, bytesToRead);
+        auto remaining = static_cast<int32_t>(srcBuffer->length) - bytesToRead;
+        if (remaining > 0)
+            memmove(srcBuffer + 1, (uint8_t*) (srcBuffer + 1) + bytesToRead, remaining);
+        srcBuffer->length = remaining;
+        return bytesToRead;
+    }
+    return 0;
 }
 
 void aap::MidiDestinationNode::start() {

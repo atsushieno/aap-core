@@ -5,7 +5,10 @@ import android.media.AudioManager
 import android.os.Build
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import org.androidaudioplugin.PluginInformation
@@ -39,8 +42,13 @@ class PluginManagerScope(val context: Context,
 class PluginDetailsScope(val pluginInfo: PluginInformation,
                          val manager: PluginManagerScope) : AutoCloseable {
     var instance = mutableStateOf<NativeRemotePluginInstance?>(null)
+    var isProcessing = mutableStateOf(false)
+    val parameterValues = mutableStateListOf<Double>()
+    val outputMessages = mutableStateListOf<String>()
+    private val midiOutputScratch = ByteArray(8192)
+    private val parameterIdToIndex = mutableMapOf<Int, Int>()
 
-    private val pluginPlayer by lazy {
+    private val pluginPlayerDelegate = lazy {
         val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
         // It is for the audio processor's callback
@@ -56,6 +64,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             }
         }
     }
+    private val pluginPlayer by pluginPlayerDelegate
 
     private var alreadyDisposed = false
 
@@ -63,15 +72,24 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         if (alreadyDisposed)
             return
         alreadyDisposed = true
-        pluginPlayer.close()
+        if (pluginPlayerDelegate.isInitialized())
+            pluginPlayer.close()
     }
 
     suspend fun instantiatePlugin() {
         if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
             manager.client.connectToPluginService(pluginInfo.packageName)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
-        if (!alreadyDisposed)
+        if (!alreadyDisposed) {
             instance.value = result
+            if (parameterValues.isEmpty()) {
+                val values = (0 until result.getParameterCount()).map { index ->
+                    parameterIdToIndex[result.getParameter(index).id] = index
+                    result.getParameter(index).defaultValue
+                }
+                parameterValues.addAll(values)
+            }
+        }
     }
 
     fun setNewMidiMappingFlags(pluginId: String, newFlags: Int) {
@@ -87,11 +105,16 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
 
     fun startProcessing() {
+        if (alreadyDisposed)
+            return
         pluginPlayer.startProcessing()
+        isProcessing.value = true
     }
 
     fun pauseProcessing() {
-        pluginPlayer.pauseProcessing()
+        if (pluginPlayerDelegate.isInitialized())
+            pluginPlayer.pauseProcessing()
+        isProcessing.value = false
     }
 
     fun playPreloadedAudio() {
@@ -99,13 +122,19 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
 
     fun setPresetIndex(index: Int) {
-        pluginPlayer.setPresetIndex(index)
+        if (isProcessing.value)
+            pluginPlayer.setPresetIndex(index)
+        else
+            instance.value?.setCurrentPresetIndex(index)
     }
 
     fun setParameterValue(index: Int, value: Float) {
         val ins = instance.value
-        if (ins != null)
+        if (ins != null) {
+            if (index in parameterValues.indices)
+                parameterValues[index] = value.toDouble()
             pluginPlayer.setParameterValue(ins.getParameter(index).id.toUInt(), value)
+        }
     }
 
     fun processExpression(origin: DiatonicKeyboardNoteExpressionOrigin, note: Int, value: Float) {
@@ -136,6 +165,93 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         val data = input.readBytes()
         if (data.isNotEmpty())
             ins.setState(data)
+    }
+
+    fun drainMidiOutput() {
+        if (!isProcessing.value || !pluginPlayerDelegate.isInitialized())
+            return
+        val bytesRead = pluginPlayer.readMidiOutput(midiOutputScratch)
+        if (bytesRead <= 0)
+            return
+        val buffer = ByteBuffer.wrap(midiOutputScratch, 0, bytesRead).order(ByteOrder.nativeOrder())
+        while (buffer.remaining() >= Int.SIZE_BYTES) {
+            val offset = buffer.position()
+            val word0 = buffer.int
+            val messageType: Int = (word0 ushr 28) and 0xF
+            when (messageType) {
+                4 -> {
+                    if (buffer.remaining() < Int.SIZE_BYTES) {
+                        buffer.position(bytesRead)
+                        continue
+                    }
+                    val word1 = buffer.int
+                    val group: Int = (word0 ushr 24) and 0xF
+                    val status: Int = (word0 ushr 16) and 0xF0
+                    val channel: Int = (word0 ushr 16) and 0xF
+                    when (status) {
+                        0x30 -> {
+                            val parameterId = ((word0 ushr 8) and 0x7F) shl 7 or (word0 and 0x7F)
+                            val value = Float.fromBits(word1)
+                            if (channel == 0)
+                                parameterIdToIndex[parameterId]?.let { index ->
+                                    if (index in parameterValues.indices)
+                                        parameterValues[index] = value.toDouble()
+                                }
+                            appendOutputMessage("G$group ch$channel NRPN $parameterId = $value")
+                        }
+                        0xB0 -> {
+                            val parameterId = (word0 ushr 8) and 0x7F
+                            val value = Float.fromBits(word1)
+                            if (channel == 0)
+                                parameterIdToIndex[parameterId]?.let { index ->
+                                    if (index in parameterValues.indices)
+                                        parameterValues[index] = value.toDouble()
+                                }
+                            appendOutputMessage("G$group ch$channel CC $parameterId = $value")
+                        }
+                        else -> appendOutputMessage("G$group ch$channel status 0x${status.toString(16)}")
+                    }
+                }
+                5 -> {
+                    if (buffer.remaining() < Int.SIZE_BYTES * 3) {
+                        buffer.position(bytesRead)
+                        continue
+                    }
+                    val word1 = buffer.int
+                    val word2 = buffer.int
+                    val word3 = buffer.int
+                    val group: Int = (word0 ushr 24) and 0xF
+                    val channel: Int = word1 and 0xF
+                    if ((word0 and 0xFF) == 0x7E && word1 ushr 8 == 0x7F0000) {
+                        val parameterId = word2 and 0xFFFF
+                        val value = Float.fromBits(word3)
+                        if (channel == 0)
+                            parameterIdToIndex[parameterId]?.let { index ->
+                                if (index in parameterValues.indices)
+                                    parameterValues[index] = value.toDouble()
+                            }
+                        appendOutputMessage("G$group ch$channel SysEx8 $parameterId = $value")
+                    } else {
+                        appendOutputMessage("G$group SysEx8 message")
+                    }
+                }
+                else -> {
+                    val messageSize = when (messageType) {
+                        0, 1, 2, 6, 7 -> Int.SIZE_BYTES
+                        3, 4, 8, 9, 0xA -> Int.SIZE_BYTES * 2
+                        0xB, 0xC -> Int.SIZE_BYTES * 3
+                        else -> Int.SIZE_BYTES * 4
+                    }
+                    buffer.position((offset + messageSize).coerceAtMost(bytesRead))
+                }
+            }
+        }
+    }
+
+    private fun appendOutputMessage(message: String) {
+        outputMessages.add(0, message)
+        while (outputMessages.size > 16)
+            outputMessages.removeAt(outputMessages.lastIndex)
     }
  }
 

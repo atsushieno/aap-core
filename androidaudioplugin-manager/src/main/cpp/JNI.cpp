@@ -96,3 +96,19 @@ Java_org_androidaudioplugin_manager_PluginPlayer_setPresetIndexNative(JNIEnv *en
                                                                       jlong player, jint index) {
     ((aap::PluginPlayer*) player)->setPresetIndex(index);
 }
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_manager_PluginPlayer_readMidiOutputNative(JNIEnv *env, jobject thiz,
+                                                                      jlong player, jbyteArray bytes) {
+    if (!bytes)
+        return 0;
+    auto length = env->GetArrayLength(bytes);
+    if (length <= 0)
+        return 0;
+    jboolean isCopy{false};
+    auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isCopy);
+    auto result = ((aap::PluginPlayer*) player)->readMidiOutput(data, length);
+    env->ReleaseByteArrayElements(bytes, (jbyte*) data, 0);
+    return result;
+}

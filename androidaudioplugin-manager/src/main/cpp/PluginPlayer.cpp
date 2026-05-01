@@ -34,3 +34,7 @@ aap::PluginPlayer::addMidiEvents(uint8_t *data, int32_t dataLength, int64_t time
 void aap::PluginPlayer::setPresetIndex(int index) {
     graph.setPresetIndex(index);
 }
+
+int32_t aap::PluginPlayer::readMidiOutput(uint8_t* dst, int32_t dstCapacity) {
+    return graph.readMidiOutput(dst, dstCapacity);
+}

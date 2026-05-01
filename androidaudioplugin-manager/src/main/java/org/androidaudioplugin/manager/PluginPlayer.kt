@@ -96,4 +96,8 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
     fun setPresetIndex(index: Int) = setPresetIndexNative(native, index)
 
     private external fun setPresetIndexNative(native: Long, index: Int)
+
+    fun readMidiOutput(data: ByteArray): Int = readMidiOutputNative(native, data)
+
+    private external fun readMidiOutputNative(native: Long, data: ByteArray): Int
 }

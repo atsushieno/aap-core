@@ -1,8 +1,54 @@
 #include "aap/core/host/plugin-instance.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
+#include "aap/core/aap_midi2_helper.h"
+#include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Remote.Instance"
+
+namespace {
+void filterOutAAPXSReplies(void* buffer) {
+    auto mbh = (AAPMidiBufferHeader*) buffer;
+    auto* data = (uint8_t*) (mbh + 1);
+    uint32_t outputOffset = 0;
+    uint32_t inputOffset = 0;
+    uint8_t parseData[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
+    uint8_t parseConversion[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
+    aap_midi2_aapxs_parse_context parseContext{};
+    aap_midi2_aapxs_parse_context_prepare(&parseContext, parseData, parseConversion, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+
+    while (inputOffset < mbh->length) {
+        auto* iter = data + inputOffset;
+        auto remaining = mbh->length - inputOffset;
+        auto* ump = (cmidi2_ump*) iter;
+        auto messageSize = cmidi2_ump_get_message_size_bytes(ump);
+        if (messageSize <= 0)
+            break;
+        if (aap_midi2_parse_aapxs_sysex8(&parseContext, iter, remaining)) {
+            do {
+                inputOffset += messageSize;
+                if (inputOffset >= mbh->length)
+                    break;
+                iter = data + inputOffset;
+                ump = (cmidi2_ump*) iter;
+                if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
+                    break;
+                messageSize = cmidi2_ump_get_message_size_bytes(ump);
+            } while (cmidi2_ump_get_status_code(ump) < CMIDI2_SYSEX_END);
+            continue;
+        }
+
+        if (outputOffset + static_cast<uint32_t>(messageSize) > mbh->length)
+            break;
+        if (outputOffset != inputOffset)
+            memmove(data + outputOffset, iter, messageSize);
+        outputOffset += messageSize;
+        inputOffset += messageSize;
+    }
+
+    mbh->length = outputOffset;
+}
+}
 
 aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
                                                 xs::AAPXSDefinitionRegistry *aapxsRegistry,
@@ -193,7 +239,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         void* data = aapBuffer->get_buffer(*aapBuffer, i);
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
-        ((AAPMidiBufferHeader*) data)->length = 0;
+        filterOutAAPXSReplies(data);
     }
 
 #if ANDROID
