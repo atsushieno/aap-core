@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.androidaudioplugin.NativeLocalPluginInstance
+import org.androidaudioplugin.hosting.UmpHelper
 
 class WebUIParameterSync(private val webView: WebView) {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -170,6 +171,8 @@ internal class LocalWebUIParameterPoller(
     private val instance: NativeLocalPluginInstance,
     private val parameterSync: WebUIParameterSync
 ) {
+    private val parameterInfoById = (0 until instance.getParameterCount())
+        .associate { index -> instance.getParameter(index).id to instance.getParameter(index) }
     private val outputBuffer = ByteBuffer.allocateDirect(8192).order(ByteOrder.nativeOrder())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -223,11 +226,13 @@ internal class LocalWebUIParameterPoller(
                     when (status) {
                         0x30 -> {
                             val parameterId = ((word0 ushr 8) and 0x7F) shl 7 or (word0 and 0x7F)
-                            updates[parameterId] = Float.fromBits(word1).toDouble()
+                            val parameter = parameterInfoById[parameterId] ?: continue
+                            updates[parameterId] = UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1)
                         }
                         0xB0 -> {
                             val parameterId = (word0 ushr 8) and 0x7F
-                            updates[parameterId] = Float.fromBits(word1).toDouble()
+                            val parameter = parameterInfoById[parameterId] ?: continue
+                            updates[parameterId] = UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1)
                         }
                     }
                 }
@@ -240,8 +245,11 @@ internal class LocalWebUIParameterPoller(
                     val word2 = buffer.int
                     val word3 = buffer.int
                     val channel = word1 and 0xF
-                    if (channel == 0 && (word0 and 0xFF) == 0x7E && word1 ushr 8 == 0x7F0000)
-                        updates[word2 and 0xFFFF] = Float.fromBits(word3).toDouble()
+                    if (channel == 0 && (word0 and 0xFF) == 0x7E && word1 ushr 8 == 0x7F0000) {
+                        val parameterId = word2 and 0xFFFF
+                        val parameter = parameterInfoById[parameterId] ?: continue
+                        updates[parameterId] = UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word3)
+                    }
                 }
                 else -> {
                     val messageSize = when ((word0 ushr 28) and 0xF) {

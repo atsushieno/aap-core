@@ -93,8 +93,8 @@ Here is the XML content details:
   - `<port>` element
     - `id` attribute: the parameter id integer from `0` to `65535`. It is supposed to not change as long as parameter compatibility is kept. It does not have to be sorted in order, and can have skipped numbers.
     - `name` attribute: the display name.
-    - `minimum`, `maximum` attributes: specifies value ranges.
-    - `default` attribute: specifies the default value.
+    - `minimum`, `maximum` attributes: specifies plain value ranges. They are also used to normalize parameter values when they are transported over MIDI 2.0 UMP payloads.
+    - `default` attribute: specifies the plain default value.
     - `<enumeration>` element: specifies a candidate value. TODO: currently not implemented.
       - `label` attribute: value label that is shown to user.
       - `value` attribute: the actual value.
@@ -105,7 +105,7 @@ Here is the XML content details:
 
 `entrypoint` is an optional attribute to sprcify custom entrypoint function. `GetAndroidAudioPluginFactory()` is the default value. It is useful if your library has more than one plugin factory entrypoints (like our `libandroidaudioplugin.so` does).
 
-In the current specification, the parameter type is 32-bit float. `enumeration` will restrict the value options to the child `<enumeration>` element items. (TODO: not implemented yet)
+In the current specification, parameter values at the AAP API surface are plain values. When they are transported over MIDI 2.0 controller payloads or AAP parameter SysEx8 messages, they are normalized to 0.0-1.0 using their `minimum` and `maximum` values and encoded as 32-bit unsigned integers. `enumeration` will restrict the value options to the child `<enumeration>` element items. (TODO: not implemented yet)
 
 ## AAP Plugin API and implementation
 

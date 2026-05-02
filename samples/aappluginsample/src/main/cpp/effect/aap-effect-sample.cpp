@@ -105,11 +105,41 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
 
-bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t* extra, uint16_t *index, float *value, cmidi2_ump* ump) {
+static double get_parameter_min(uint16_t index) {
+    switch (index) {
+        case PARAM_ID_VOLUME_L:
+        case PARAM_ID_VOLUME_R:
+            return 0.0;
+        case PARAM_ID_DELAY_L:
+        case PARAM_ID_DELAY_R:
+            return 0.0;
+        default:
+            return 0.0;
+    }
+}
+
+static double get_parameter_max(uint16_t index) {
+    switch (index) {
+        case PARAM_ID_VOLUME_L:
+        case PARAM_ID_VOLUME_R:
+            return 1.0;
+        case PARAM_ID_DELAY_L:
+        case PARAM_ID_DELAY_R:
+            return 2048.0;
+        default:
+            return 1.0;
+    }
+}
+
+bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t* extra, uint16_t *index, double *value, cmidi2_ump* ump) {
     if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
         return false;
     auto raw = (uint32_t*) ump;
-    return aapReadMidi2ParameterSysex8(group, channel, key, extra, index, value, *raw, *(raw + 1), *(raw + 2), *(raw + 3));
+    uint32_t transportValue;
+    auto result = aapReadMidi2ParameterSysex8(group, channel, key, extra, index, &transportValue, *raw, *(raw + 1), *(raw + 2), *(raw + 3));
+    if (result)
+        *value = aapParameterTransportUint32ToPlain(get_parameter_min(*index), get_parameter_max(*index), transportValue);
+    return result;
 }
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
@@ -139,9 +169,9 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             auto ump = (cmidi2_ump*) iter;
             uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
             uint16_t paramIndex;
-            float paramValue;
-            uint32_t rawIntValue;
-            bool relative;
+            double paramValue;
+            uint32_t transportValue{0};
+            bool relative{false};
             switch (cmidi2_ump_get_message_type(ump)) {
                 case CMIDI2_MESSAGE_TYPE_UTILITY:
                     if (cmidi2_ump_get_status_code(ump) == CMIDI2_UTILITY_STATUS_JR_TIMESTAMP) {
@@ -153,7 +183,6 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     if (!readMidi2Parameter(&paramGroup, &paramChannel, &paramKey, &paramExtra,
                                             &paramIndex, &paramValue, ump))
                         continue;
-                    rawIntValue = *(uint32_t *) &paramValue;
                 } break;
                 case CMIDI2_MESSAGE_TYPE_MIDI_2_CHANNEL: {
                     switch (cmidi2_ump_get_status_code(ump)) {
@@ -173,41 +202,32 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                     paramChannel = cmidi2_ump_get_channel(ump);
 process_acc:
                     paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
-                    rawIntValue = cmidi2_ump_get_midi2_nrpn_data(ump);
-                    paramValue = *(float*) &rawIntValue;
+                    transportValue = cmidi2_ump_get_midi2_nrpn_data(ump);
+                    paramValue = aapParameterTransportUint32ToPlain(get_parameter_min(paramIndex), get_parameter_max(paramIndex), transportValue);
                 } break;
             }
-            float valueIn0To2048;
-            float mod;
-            uint32_t intValue;
             switch (paramIndex) {
                 case PARAM_ID_VOLUME_L:
-                    intValue = rawIntValue + (relative ? *(uint32_t*) (&ctx->modL) : 0);
-                    mod = *(float*) (&intValue);
                     if (paramKey != 0)
-                        ctx->modL_pn[paramKey] = mod;
+                        ctx->modL_pn[paramKey] = static_cast<float>(relative ? ctx->modL_pn[paramKey] + paramValue : paramValue);
                     else
-                        ctx->modL = mod;
+                        ctx->modL = static_cast<float>(relative ? ctx->modL + paramValue : paramValue);
                     break;
                 case PARAM_ID_VOLUME_R:
-                    intValue = rawIntValue + (relative ? *(uint32_t*) (&ctx->modR) : 0);
-                    mod = *(float*) (&intValue);
                     if (paramKey != 0)
-                        ctx->modR_pn[paramKey] = mod;
+                        ctx->modR_pn[paramKey] = static_cast<float>(relative ? ctx->modR_pn[paramKey] + paramValue : paramValue);
                     else
-                        ctx->modR = mod;
+                        ctx->modR = static_cast<float>(relative ? ctx->modR + paramValue : paramValue);
                     break;
                 case PARAM_ID_DELAY_L:
                     if (paramKey != 0)
                         break; // FIXME: implement or log it?
-                    valueIn0To2048 = *((float*) &rawIntValue);
-                    ctx->delayL = (uint32_t) valueIn0To2048 + (relative ? ctx->delayL : 0);
+                    ctx->delayL = static_cast<uint32_t>(paramValue) + (relative ? ctx->delayL : 0);
                     break;
                 case PARAM_ID_DELAY_R:
                     if (paramKey != 0)
                         break; // FIXME: implement or log it?
-                    valueIn0To2048 = *((float*) &rawIntValue);
-                    ctx->delayR = (uint32_t) valueIn0To2048 + (relative ? ctx->delayR : 0);
+                    ctx->delayR = static_cast<uint32_t>(paramValue) + (relative ? ctx->delayR : 0);
                     break;
                 default:
                     continue; // invalid parameter index FIXME: log it

@@ -19,6 +19,7 @@ import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.GuiHelper
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.PluginServiceConnection
+import org.androidaudioplugin.hosting.UmpHelper
 import org.androidaudioplugin.manager.PluginPlayer
 
 class PluginManagerScope(val context: Context,
@@ -133,7 +134,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         if (ins != null) {
             if (index in parameterValues.indices)
                 parameterValues[index] = value.toDouble()
-            pluginPlayer.setParameterValue(ins.getParameter(index).id.toUInt(), value)
+            pluginPlayer.setParameterValue(ins.getParameter(index), value.toDouble())
         }
     }
 
@@ -191,21 +192,29 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
                     when (status) {
                         0x30 -> {
                             val parameterId = ((word0 ushr 8) and 0x7F) shl 7 or (word0 and 0x7F)
-                            val value = Float.fromBits(word1)
+                            val value = parameterIdToIndex[parameterId]?.let { index ->
+                                instance.value!!.getParameter(index).let { parameter ->
+                                    UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1)
+                                }
+                            } ?: 0.0
                             if (channel == 0)
                                 parameterIdToIndex[parameterId]?.let { index ->
                                     if (index in parameterValues.indices)
-                                        parameterValues[index] = value.toDouble()
+                                        parameterValues[index] = value
                                 }
                             appendOutputMessage("G$group ch$channel NRPN $parameterId = $value")
                         }
                         0xB0 -> {
                             val parameterId = (word0 ushr 8) and 0x7F
-                            val value = Float.fromBits(word1)
+                            val value = parameterIdToIndex[parameterId]?.let { index ->
+                                instance.value!!.getParameter(index).let { parameter ->
+                                    UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1)
+                                }
+                            } ?: 0.0
                             if (channel == 0)
                                 parameterIdToIndex[parameterId]?.let { index ->
                                     if (index in parameterValues.indices)
-                                        parameterValues[index] = value.toDouble()
+                                        parameterValues[index] = value
                                 }
                             appendOutputMessage("G$group ch$channel CC $parameterId = $value")
                         }
@@ -224,11 +233,15 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
                     val channel: Int = word1 and 0xF
                     if ((word0 and 0xFF) == 0x7E && word1 ushr 8 == 0x7F0000) {
                         val parameterId = word2 and 0xFFFF
-                        val value = Float.fromBits(word3)
+                        val value = parameterIdToIndex[parameterId]?.let { index ->
+                            instance.value!!.getParameter(index).let { parameter ->
+                                UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word3)
+                            }
+                        } ?: 0.0
                         if (channel == 0)
                             parameterIdToIndex[parameterId]?.let { index ->
                                 if (index in parameterValues.indices)
-                                    parameterValues[index] = value.toDouble()
+                                    parameterValues[index] = value
                             }
                         appendOutputMessage("G$group ch$channel SysEx8 $parameterId = $value")
                     } else {

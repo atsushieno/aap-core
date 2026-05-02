@@ -3,6 +3,9 @@
 #define ANDROIDAUDIOPLUGIN_MIDI_EXTENSION_H_INCLUDED
 
 #include "../android-audio-plugin.h"
+#include "parameters.h"
+#include <math.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -79,7 +82,7 @@ typedef struct AAPMidiBufferHeader {
 //          If it is being used for note ID, host can assign a consistent number across note on/off
 //          w/ attribute and this message. But I find it ugly and impractical so far.
 //   - idx. : parameter index, 0-16383
-//   - value... : parameter value, 32-bit float
+//   - value... : normalized parameter value as 32-bit unsigned integer
 //
 // ## UI events
 //
@@ -127,22 +130,63 @@ enum aap_midi_mapping_policy {
     AAP_PARAMETERS_MAPPING_POLICY_PROGRAM = 8,
 };
 
-static inline void aapMidi2ParameterSysex8(uint32_t *dst1, uint32_t *dst2, uint32_t *dst3, uint32_t *dst4, uint8_t group, uint8_t channel, uint8_t key, uint16_t extra, uint16_t index, float value) {
+static inline double aapParameterPlainToNormalized(double minValue, double maxValue, double plainValue) {
+    if (!(maxValue > minValue))
+        return 0.0;
+    auto normalized = (plainValue - minValue) / (maxValue - minValue);
+    if (normalized < 0.0)
+        return 0.0;
+    if (normalized > 1.0)
+        return 1.0;
+    return normalized;
+}
+
+static inline double aapParameterNormalizedToPlain(double minValue, double maxValue, double normalizedValue) {
+    if (normalizedValue < 0.0)
+        normalizedValue = 0.0;
+    else if (normalizedValue > 1.0)
+        normalizedValue = 1.0;
+    if (!(maxValue > minValue))
+        return minValue;
+    return minValue + normalizedValue * (maxValue - minValue);
+}
+
+static inline uint32_t aapParameterNormalizedToUint32(double normalizedValue) {
+    if (normalizedValue <= 0.0)
+        return 0;
+    if (normalizedValue >= 1.0)
+        return UINT32_MAX;
+    return (uint32_t) llround(normalizedValue * (double) UINT32_MAX);
+}
+
+static inline double aapParameterUint32ToNormalized(uint32_t transportValue) {
+    return transportValue / (double) UINT32_MAX;
+}
+
+static inline uint32_t aapParameterPlainToTransportUint32(double minValue, double maxValue, double plainValue) {
+    return aapParameterNormalizedToUint32(aapParameterPlainToNormalized(minValue, maxValue, plainValue));
+}
+
+static inline double aapParameterTransportUint32ToPlain(double minValue, double maxValue, uint32_t transportValue) {
+    return aapParameterNormalizedToPlain(minValue, maxValue, aapParameterUint32ToNormalized(transportValue));
+}
+
+static inline void aapMidi2ParameterSysex8(uint32_t *dst1, uint32_t *dst2, uint32_t *dst3, uint32_t *dst4, uint8_t group, uint8_t channel, uint8_t key, uint16_t extra, uint16_t index, uint32_t normalizedValue) {
     *dst1 = ((0x50 + group) << 24) + (0x0F << 16) + 0x7E;
     *dst2 = 0x7F000000 + channel;
     *dst3 = (key << 24) + (extra << 16) + index;
-    *dst4 = *(uint32_t*) (void*) &value;
+    *dst4 = normalizedValue;
 }
 
 static inline bool aapReadMidi2ParameterSysex8(uint8_t* group, uint8_t* channel,
-                                               uint8_t* key, uint8_t* extra, uint16_t* index, float* value,
+                                               uint8_t* key, uint8_t* extra, uint16_t* index, uint32_t* normalizedValue,
                                                uint32_t src1, uint32_t src2, uint32_t src3, uint32_t src4) {
     *group = (uint8_t) (src1 >> 24) & 0xF;
     *channel = src2 & 0xF;
     *key = src3 >> 24;
     *extra = (src3 >> 16) & 0xFF;
     *index = src3 & 0xFFFF;
-    *value = *(float*) &src4;
+    *normalizedValue = src4;
     return (src1 >> 24) == 0x50 + *group && (src1 & 0xFF) == 0x7E && src2 == 0x7F000000 + *channel;
 }
 

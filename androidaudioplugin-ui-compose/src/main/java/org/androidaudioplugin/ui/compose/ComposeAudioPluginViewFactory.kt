@@ -47,6 +47,8 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
         .toMutableStateMap()
     private val parameterIndexById = (0 until instance.getParameterCount())
         .associate { index -> instance.getParameter(index).id to index }
+    private val parameterInfoById = (0 until instance.getParameterCount())
+        .associate { index -> instance.getParameter(index).id to instance.getParameter(index) }
     private val scope = PluginViewScopeImpl(context, instance, parameters)
     private val paramChangeBuffer = ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder()) // 16 should be fine as of V3 protocol
     private val parameterOutputBuffer = ByteBuffer.allocateDirect(8192).order(ByteOrder.nativeOrder())
@@ -72,7 +74,8 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                     scope.PluginView(
                         getParameterValue = { parameterIndex -> (parameters.toMap()[parameterIndex] ?: instance.getParameter(parameterIndex).defaultValue).toFloat() },
                         onParameterChange = { parameterIndex, value ->
-                            val ump = UmpHelper.aapUmpSysex8Parameter(instance.getParameter(parameterIndex).id.toUInt(), value)
+                            val parameter = instance.getParameter(parameterIndex)
+                            val ump = UmpHelper.aapUmpSysex8ParameterPlain(parameter.id.toUInt(), parameter.minimumValue, parameter.maximumValue, value.toDouble())
                             paramChangeBuffer.clear()
                             paramChangeBuffer.asIntBuffer().put(ump.toIntArray())
                             instance.addEventUmpInput(paramChangeBuffer, ump.size * 4)
@@ -110,7 +113,7 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                         mainHandler.post {
                             updates.forEach { update ->
                                 parameterIndexById[update.parameterId]?.let { index ->
-                                    parameters[index] = update.value.toDouble()
+                                    parameters[index] = update.value
                                 }
                             }
                         }
@@ -142,11 +145,13 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                     when (status) {
                         0x30 -> {
                             val parameterId = ((word0 ushr 8) and 0x7F) shl 7 or (word0 and 0x7F)
-                            updates += ParameterUpdate(parameterId, Float.fromBits(word1))
+                            val parameter = parameterInfoById[parameterId] ?: continue
+                            updates += ParameterUpdate(parameterId, UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1))
                         }
                         0xB0 -> {
                             val parameterId = (word0 ushr 8) and 0x7F
-                            updates += ParameterUpdate(parameterId, Float.fromBits(word1))
+                            val parameter = parameterInfoById[parameterId] ?: continue
+                            updates += ParameterUpdate(parameterId, UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word1))
                         }
                     }
                 }
@@ -160,7 +165,9 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
                     val word3 = buffer.int
                     val channel = word1 and 0xF
                     if (channel == 0 && (word0 and 0xFF) == 0x7E && word1 ushr 8 == 0x7F0000) {
-                        updates += ParameterUpdate(word2 and 0xFFFF, Float.fromBits(word3))
+                        val parameterId = word2 and 0xFFFF
+                        val parameter = parameterInfoById[parameterId] ?: continue
+                        updates += ParameterUpdate(parameterId, UmpHelper.transportUint32ToPlain(parameter.minimumValue, parameter.maximumValue, word3))
                     }
                 }
                 else -> {
@@ -177,7 +184,7 @@ internal class ComposeAudioPluginView(context: Context, pluginId: String, instan
         return updates
     }
 
-    private data class ParameterUpdate(val parameterId: Int, val value: Float)
+    private data class ParameterUpdate(val parameterId: Int, val value: Double)
 
     private external fun readParameterOutput(pluginId: String, instanceId: Int, buffer: ByteBuffer, size: Int): Int
 }

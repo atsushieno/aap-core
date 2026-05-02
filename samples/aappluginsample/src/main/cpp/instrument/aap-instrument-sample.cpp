@@ -65,6 +65,44 @@ typedef struct AyumiState {
 
 static constexpr uint32_t AYUMI_STATE_VERSION = 2;
 
+static double ayumi_parameter_min(uint16_t index) {
+    switch (index) {
+        case CMIDI2_CC_BANK_SELECT:
+            return 0.0;
+        case CMIDI2_CC_VOLUME:
+            return 0.0;
+        case CMIDI2_CC_PAN:
+            return 0.0;
+        case AYUMI_AAP_PARAM_ENVELOPE:
+            return 0.0;
+        case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
+            return 0.0;
+        case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE + 1:
+            return 0.0;
+        default:
+            return 0.0;
+    }
+}
+
+static double ayumi_parameter_max(uint16_t index) {
+    switch (index) {
+        case CMIDI2_CC_BANK_SELECT:
+            return 4.0;
+        case CMIDI2_CC_VOLUME:
+            return 14.0;
+        case CMIDI2_CC_PAN:
+            return 1.0;
+        case AYUMI_AAP_PARAM_ENVELOPE:
+            return 65535.0;
+        case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE:
+            return 15.0;
+        case AYUMI_AAP_MIDI_CC_ENVELOPE_SHAPE + 1:
+            return 4.0;
+        default:
+            return 1.0;
+    }
+}
+
 static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) {
     if (context->midi2_out_port < 0)
         return;
@@ -85,7 +123,7 @@ static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) 
                               uint8_t key,
                               uint16_t extra,
                               uint16_t index,
-                              float value,
+                              double value,
                               size_t& written) {
         if (written + 16 > remainingCapacity)
             return false;
@@ -96,7 +134,7 @@ static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) 
                                 key,
                                 extra,
                                 index,
-                                value);
+                                aapParameterPlainToTransportUint32(ayumi_parameter_min(index), ayumi_parameter_max(index), value));
         written += 16;
         return true;
     };
@@ -286,12 +324,16 @@ void ayumi_aap_process_midi_event(AyumiHandle *a, uint8_t *midi1Event) {
 }
 
 bool readMidi2Parameter(uint8_t *group, uint8_t* channel, uint8_t* key, uint8_t* extra,
-                        uint16_t *index, float *value, cmidi2_ump* ump) {
+                        uint16_t *index, double *value, cmidi2_ump* ump) {
     if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
         return false;
     auto raw = (uint32_t*) ump;
-    return aapReadMidi2ParameterSysex8(group, channel, key, extra, index, value,
+    uint32_t transportValue;
+    auto result = aapReadMidi2ParameterSysex8(group, channel, key, extra, index, &transportValue,
                                  *raw, *(raw + 1), *(raw + 2), *(raw + 3));
+    if (result)
+        *value = aapParameterTransportUint32ToPlain(ayumi_parameter_min(*index), ayumi_parameter_max(*index), transportValue);
+    return result;
 }
 
 void sample_plugin_process(AndroidAudioPlugin *plugin,
@@ -317,7 +359,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         auto ump = (cmidi2_ump *) ev;
         uint8_t paramGroup, paramChannel, paramKey{0}, paramExtra{0};
         uint16_t paramIndex;
-        float paramValue;
+        double paramValue;
         uint32_t intValue;
         bool relative{false};
         if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
@@ -356,8 +398,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
             paramGroup = cmidi2_ump_get_group(ump);
             paramChannel = cmidi2_ump_get_channel(ump);
             paramIndex = cmidi2_ump_get_midi2_nrpn_msb(ump) * 0x80 + cmidi2_ump_get_midi2_nrpn_lsb(ump);
-            intValue = cmidi2_ump_get_midi2_nrpn_data(ump);
-            paramValue = static_cast<float>(intValue);
+            intValue = (uint32_t) aapParameterTransportUint32ToPlain(ayumi_parameter_min(paramIndex), ayumi_parameter_max(paramIndex), cmidi2_ump_get_midi2_nrpn_data(ump));
         } else {
             // FIXME: fully down-convert to MIDI1 and process it (sysex can be lengthier)
             uint8_t midi1Bytes[16];
@@ -380,7 +421,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
                 break;
             }
             case CMIDI2_CC_PAN: {
-                float pan = *(float*) &paramValue; // 0.0..1.0
+                float pan = static_cast<float>(paramValue);
                 context->pan = pan;
                 ayumi_set_pan(context->impl, paramChannel, pan, 0);
                 context->state_parameter_outputs_pending.store(true, std::memory_order_release);

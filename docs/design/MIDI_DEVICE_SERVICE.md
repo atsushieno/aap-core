@@ -14,13 +14,13 @@ By default, AudioPluginMidiDeviceService implementation applies some MIDI mappin
 
 In short: you can set parameters via CCs, ACCs (NRPN) and/or Per-Note ACCs, and you can set presets via Program Changes, by default. Or, more precisely:
 
-- Control Changes are mapped to parameter changes. CC index (0-127) indicates parameter index, and CC data (32-bit) indicates the parameter value.
-- Assignable Controllers (ACCs, NRPNs) and Per-Note Assignable Controllers (PNACCs) are mapped to parameter changes. MSB and LSB combined together represent the parameter index (0-0x3FFF) and ACC/PNACC data value (32-bit) indicates the parameter value.
+- Control Changes are mapped to parameter changes. CC index (0-127) indicates parameter index, and CC data (32-bit) indicates the normalized parameter value.
+- Assignable Controllers (ACCs, NRPNs) and Per-Note Assignable Controllers (PNACCs) are mapped to parameter changes. MSB and LSB combined together represent the parameter index (0-0x3FFF) and ACC/PNACC data value (32-bit) indicates the normalized parameter value.
 - Program Changes are mapped to set preset index. Program (0-127) along with bank select indicates preset index. Bank MSB and LSB combined together represent higher digits than 0x80 for the index i.e. index = (Bank MSB * 0x80 + Bank LSB) * 0x80 + program.
 
 Note that they are in MIDI 2.0 semantics. As of current version, Android MidiDeviceService only accepts MIDI 1.0 inputs so they are first translated to MIDI 2.0 UMPs and then mapped along with the rules above.
 
-Also, MIDI 2.0 32-bit data is integer, but should be interpreted as float (raw bits are assigned, no type conversions in their value semantics happen).
+AAP parameter values remain plain values at the API surface. When they are carried over MIDI 2.0 controller payloads or AAP parameter SysEx8, hosts and wrappers normalize them to 0.0-1.0 using the parameter minimum/maximum values, encode that normalized value as `uint32_t`, and denormalize it back to a plain value on receipt.
 
 It is actually up to plugin whether they process those MIDI inputs by its own. It is configurable by AAP parameters extension `get_mapping_policy` function and the plugin settings in AudioPluginService (stored as its shared preference).
 
@@ -101,4 +101,3 @@ Like MIDI-CI Set New Protocol message, our implementation expects that UMP Strea
 As of writing this, there is no notification sent back to the "initiator" as (currently) MidiDeviceService is not designed to be bi-directional and thus there is no input port ("output port" in Android MIDI API wording).
 
 Note that this does not affect AAP MIDI processing which is *always* done in UMPs. It is only about users' MIDI client app to this MidiDeviceService.
-

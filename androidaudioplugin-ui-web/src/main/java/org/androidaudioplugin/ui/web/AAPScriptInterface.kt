@@ -74,7 +74,12 @@ abstract class AAPScriptInterface {
 
     @JavascriptInterface
     open fun setParameter(parameterId: Int, value: Double) {
-        val s8 = UmpHelper.aapUmpSysex8Parameter(parameterId.toUInt(), value.toFloat())
+        val parameter = (0 until parameterCount)
+            .asSequence()
+            .map { getParameter(it) }
+            .firstOrNull { it.id == parameterId }
+            ?: return
+        val s8 = UmpHelper.aapUmpSysex8ParameterPlain(parameter.id.toUInt(), parameter.minValue, parameter.maxValue, value)
         tmpBuffer.position(0)
         tmpBuffer.order(ByteOrder.nativeOrder())
         tmpBuffer.asIntBuffer().put(s8.toIntArray())
