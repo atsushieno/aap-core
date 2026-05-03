@@ -314,17 +314,6 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPresetCount(JN
 }
 
 extern "C"
-JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getCurrentPresetIndex(JNIEnv *env,
-																					 jclass clazz,
-																					 jlong nativeClient,
-																					 jint instanceId) {
-	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-	return instance->getStandardExtensions().getCurrentPresetIndex();
-}
-
-extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setCurrentPresetIndex(JNIEnv *env,
 																					 jclass clazz,

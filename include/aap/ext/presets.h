@@ -8,7 +8,7 @@ extern "C" {
 #include "../android-audio-plugin.h"
 #include "stdint.h"
 
-#define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v3"
+#define AAP_PRESETS_EXTENSION_URI "urn://androidaudioplugin.org/extensions/presets/v4"
 
 /*
 
@@ -68,7 +68,6 @@ typedef struct aap_presets_extension_t {
 
     RT_SAFE int32_t (*get_preset_count) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
     RT_UNSAFE void (*get_preset) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index, aap_preset_t *preset, aapxs_completion_callback aapxsCallback, void* callbackData);
-    RT_SAFE int32_t (*get_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin);
     RT_UNSAFE void (*set_preset_index) (aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index);
 } aap_presets_extension_t;
 

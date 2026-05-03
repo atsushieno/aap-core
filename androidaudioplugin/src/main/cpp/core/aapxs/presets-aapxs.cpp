@@ -9,11 +9,6 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
             // RT_SAFE. Send reply now.
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
-        case OPCODE_GET_PRESET_INDEX:
-            *((int32_t*) request->serialization->data) = ext ? ext->get_preset_index(ext, plugin) : 0;
-            // RT_SAFE. Send reply now.
-            aapxsInstance->send_aapxs_reply(aapxsInstance, request);
-            break;
         case OPCODE_SET_PRESET_INDEX: {
             if (ext) {
                 int32_t index = *((int32_t *) request->serialization->data);
@@ -113,10 +108,6 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefin
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetCount() {
     return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_PRESET_COUNT);
-}
-
-int32_t aap::xs::PresetsClientAAPXS::getPresetIndex() {
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_PRESET_INDEX);
 }
 
 void aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {

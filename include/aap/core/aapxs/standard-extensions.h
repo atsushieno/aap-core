@@ -36,7 +36,6 @@ namespace aap::xs {
         virtual int32_t getPresetCount() = 0;
         virtual void getPreset(int32_t index, aap_preset_t& preset) = 0;
         virtual std::string getPresetName(int32_t index) = 0;
-        virtual int32_t getCurrentPresetIndex() = 0;
         virtual void setCurrentPresetIndex(int32_t index) = 0;
 
         // State
@@ -104,7 +103,6 @@ namespace aap::xs {
             presets->getPreset(index, preset);
             return preset.name;
         }
-        int32_t getCurrentPresetIndex() override { return presets->getPresetIndex(); }
         void setCurrentPresetIndex(int32_t index) override { presets->setPresetIndex(index); }
 
         // State
@@ -172,7 +170,6 @@ namespace aap::xs {
             getPreset(index, preset);
             return preset.name;
         }
-        int32_t getCurrentPresetIndex() override { return presets ? presets->get_preset_index(presets, plugin) : 0; }
         void setCurrentPresetIndex(int32_t index) override { if (presets) presets->set_preset_index(presets, plugin, index); }
 
         // State

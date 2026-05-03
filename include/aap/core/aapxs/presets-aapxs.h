@@ -9,8 +9,7 @@
 // plugin extension opcodes
 const int32_t OPCODE_GET_PRESET_COUNT = 1;
 const int32_t OPCODE_GET_PRESET_DATA = 2;
-const int32_t OPCODE_GET_PRESET_INDEX = 3;
-const int32_t OPCODE_SET_PRESET_INDEX = 4;
+const int32_t OPCODE_SET_PRESET_INDEX = 3;
 
 // host extension opcodes
 const int32_t OPCODE_NOTIFY_PRESET_LOADED = -1;
@@ -30,16 +29,12 @@ namespace aap::xs {
             if (aapxsCallback)
                 aapxsCallback(callbackData, plugin);
         }
-        static int32_t staticGetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
-            return ((PresetsClientAAPXS*) ext->aapxs_context)->getPresetIndex();
-        }
         static void staticSetPresetIndex(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
             ((PresetsClientAAPXS*) ext->aapxs_context)->setPresetIndex(index);
         }
         aap_presets_extension_t as_plugin_extension{this,
                                                     staticGetPresetCount,
                                                     staticGetPreset,
-                                                    staticGetPresetIndex,
                                                     staticSetPresetIndex};
 
     public:
@@ -49,7 +44,6 @@ namespace aap::xs {
 
         int32_t getPresetCount();
         void getPreset(int32_t index, aap_preset_t& preset);
-        int32_t getPresetIndex();
         void setPresetIndex(int32_t index);
 
         aap_presets_extension_t* asPluginExtension() { return &as_plugin_extension; }

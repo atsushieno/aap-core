@@ -76,9 +76,6 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getPresetCount() = runCatchingRemoteException(0) {
         getPresetCount(client, instanceId)
     }
-    fun getCurrentPresetIndex() = runCatchingRemoteException(0) {
-        getCurrentPresetIndex(client, instanceId)
-    }
     fun setCurrentPresetIndex(index: Int) = runCatchingRemoteException {
         setCurrentPresetIndex(client, instanceId, index)
     }
@@ -185,8 +182,6 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         // presets
         @JvmStatic
         external fun getPresetCount(nativeClient: Long, instanceId: Int) : Int
-        @JvmStatic
-        external fun  getCurrentPresetIndex(nativeClient: Long, instanceId: Int) : Int
         @JvmStatic
         external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
         @JvmStatic

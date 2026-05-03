@@ -40,7 +40,6 @@ typedef struct AyumiHandle {
     bool active;
     bool note_on_state[3];
     int32_t midi_protocol;
-    int32_t preset_index{-1};
     AndroidAudioPluginHost host;
     std::string plugin_id;
     int32_t midi2_in_port{-1};
@@ -59,7 +58,6 @@ typedef struct AyumiState {
     int32_t envelope_shape;
     int32_t extra_enums;
     int32_t pitchbend;
-    int32_t preset_index;
     uint8_t note_on_state[3];
 } AyumiState;
 
@@ -162,7 +160,6 @@ static void apply_ayumi_state(AyumiHandle* context, const AyumiState& state) {
     context->envelope_shape = state.envelope_shape;
     context->extra_enums = state.extra_enums;
     context->pitchbend = state.pitchbend;
-    context->preset_index = state.preset_index;
     ayumi_set_envelope(context->impl, context->envelope);
     ayumi_set_envelope_shape(context->impl, context->envelope_shape);
     for (int i = 0; i < 3; i++) {
@@ -503,7 +500,6 @@ void sample_plugin_get_state(aap_state_extension_t* ext, AndroidAudioPlugin* plu
     output->envelope_shape = context->envelope_shape;
     output->extra_enums = context->extra_enums;
     output->pitchbend = context->pitchbend;
-    output->preset_index = context->preset_index;
     state->data_size = sizeof(AyumiState);
     aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "get_state wrote %zu bytes", state->data_size);
 }
@@ -543,9 +539,9 @@ typedef struct preset_t {
 } preset_t;
 
 static constexpr AyumiState preset_data[] {
-    {AYUMI_STATE_VERSION, {1 << 5, 1 << 5, 1 << 5}, 14, 0.5f, 0x0040, 14, 0, 0, 0, {0, 0, 0}},
-    {AYUMI_STATE_VERSION, {2 << 5, 2 << 5, 2 << 5}, 10, 0.25f, 0x0200, 12, 2, 0, 1, {0, 0, 0}},
-    {AYUMI_STATE_VERSION, {3 << 5, 3 << 5, 3 << 5}, 6, 0.75f, 0x0800, 10, 4, 0, 2, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {1 << 5, 1 << 5, 1 << 5}, 14, 0.5f, 0x0040, 14, 0, 0, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {2 << 5, 2 << 5, 2 << 5}, 10, 0.25f, 0x0200, 12, 2, 0, {0, 0, 0}},
+    {AYUMI_STATE_VERSION, {3 << 5, 3 << 5, 3 << 5}, 6, 0.75f, 0x0800, 10, 4, 0, {0, 0, 0}},
 };
 
 preset_t presets[3] {
@@ -569,11 +565,6 @@ void sample_plugin_get_preset(aap_presets_extension_t* ext, AndroidAudioPlugin* 
     strncpy(preset->name, presets[index].name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
 }
 
-int32_t sample_plugin_get_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin) {
-    auto handle = (AyumiHandle*) plugin->plugin_specific;
-    return handle->preset_index;
-}
-
 void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPlugin* plugin, int32_t index) {
     if (index < 0 || index >= sample_plugin_get_preset_count(ext, plugin))
         return;
@@ -586,7 +577,6 @@ void sample_plugin_set_preset_index(aap_presets_extension_t* ext, AndroidAudioPl
 aap_presets_extension_t presets_extension{nullptr,
                                           sample_plugin_get_preset_count,
                                           sample_plugin_get_preset,
-                                          sample_plugin_get_preset_index,
                                           sample_plugin_set_preset_index};
 
 int32_t sample_plugin_gui_create(aap_gui_extension_t* ext, AndroidAudioPlugin* plugin, const char* pluginId, int32_t instanceId, void* audioPluginView) {

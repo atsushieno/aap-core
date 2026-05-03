@@ -121,7 +121,6 @@ class AudioPluginInstance internal constructor(
     fun setState(data: ByteArray) = native.setState(data)
 
     fun getPresetCount() = native.getPresetCount()
-    fun getCurrentPresetIndex() = native.getCurrentPresetIndex()
     fun setCurrentPresetIndex(index: Int) = native.setCurrentPresetIndex(index)
     fun getPresetName(index: Int) = native.getPresetName(index)
 
