@@ -94,6 +94,8 @@ open class AudioPluginService : Service()
     private val declaredForegroundServiceType by lazy { AudioPluginServiceHelper.getForegroundServiceType(this, packageName, javaClass.name) }
 
     override fun onBind(intent: Intent?): IBinder? {
+        maybeStartForegroundService()
+
         val existing = nativeBinder
         if (existing != null)
             AudioPluginNatives.destroyBinderForService(existing)
@@ -112,6 +114,8 @@ open class AudioPluginService : Service()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        stopForegroundServiceIfStarted()
+
         AudioPluginNatives.stopNativeLooper()
         if (eventProcessorLooper?.thread?.isAlive == true)
             eventProcessorLooper?.quitSafely()
