@@ -158,7 +158,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             })
             return withTimeoutOrNull(3000) { result.await() } ?: intArrayOf(0, 0)
         } finally {
-            context.unbindService(connection)
+            connection.unbind(context)
         }
     }
 
@@ -302,7 +302,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         connectedGuiSessionId = -1
         surface?.connection?.let {
             surface?.connection = null
-            context.unbindService(it)
+            it.unbind(context)
         }
     }
 
@@ -319,6 +319,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {
         lateinit var outgoingMessenger: Messenger
+        @Volatile
+        private var isBound = true
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             outgoingMessenger = Messenger(service)
@@ -329,6 +331,22 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         override fun onServiceDisconnected(name: ComponentName?) {
             onDisconnected(this)
             Log.d(LOG_TAG, "disconnected from ${AudioPluginViewService::class.java.name}")
+        }
+
+        fun unbind(context: Context) {
+            if (!isBound)
+                return
+            synchronized(this) {
+                if (!isBound)
+                    return
+                try {
+                    context.unbindService(this)
+                } catch (ex: IllegalArgumentException) {
+                    Log.w(LOG_TAG, "Ignoring duplicate service unbind", ex)
+                } finally {
+                    isBound = false
+                }
+            }
         }
     }
 
