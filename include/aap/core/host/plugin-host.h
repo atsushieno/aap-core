@@ -71,6 +71,10 @@ namespace aap {
         PluginInstance* getInstanceByIndex(int32_t index);
 
         PluginInstance* getInstanceById(int32_t instanceId);
+
+        bool hasPlugin(const std::string& pluginId) const {
+            return plugin_list && plugin_list->getPluginInformation(pluginId) != nullptr;
+        }
     };
 
 

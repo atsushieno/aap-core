@@ -1,10 +1,42 @@
 
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include "aap/ext/midi.h"
 #include <algorithm>
+#include <atomic>
+#include <cstring>
+#include <mutex>
+#include <unordered_map>
+#include <vector>
 #include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Instance"
+
+namespace {
+struct PluginParameterState {
+    aap_parameters_host_extension_t host_parameters{};
+    aap::NanoSleepLock mutex{};
+    std::vector<double> values{};
+    std::unordered_map<int32_t, int32_t> id_to_index{};
+    std::atomic<uint32_t> revision{1};
+};
+
+std::mutex parameter_state_registry_mutex;
+std::unordered_map<aap::PluginInstance*, std::unique_ptr<PluginParameterState>> parameter_state_registry;
+
+PluginParameterState* get_parameter_state(aap::PluginInstance* instance, bool create = true) {
+    const std::lock_guard<std::mutex> lock{parameter_state_registry_mutex};
+    auto it = parameter_state_registry.find(instance);
+    if (it != parameter_state_registry.end())
+        return it->second.get();
+    if (!create)
+        return nullptr;
+    auto state = std::make_unique<PluginParameterState>();
+    auto* ret = state.get();
+    parameter_state_registry[instance] = std::move(state);
+    return ret;
+}
+}
 
 aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
                                AndroidAudioPluginFactory* loadedPluginFactory,
@@ -15,7 +47,7 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
           instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
           plugin(nullptr),
           pluginInfo(pluginInformation),
-          event_midi2_buffer_size(eventMidi2InputBufferSize) {
+        event_midi2_buffer_size(eventMidi2InputBufferSize) {
     if (!pluginInformation)
         AAP_ASSERT_FALSE; // should not happen
     if (!loadedPluginFactory)
@@ -25,6 +57,16 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
     else {
         event_midi2_buffer = calloc(1, event_midi2_buffer_size);
         event_midi2_merge_buffer = calloc(1, event_midi2_buffer_size);
+    }
+}
+
+static void rebuild_parameter_id_index(aap::PluginInstance* instance,
+                                       std::unordered_map<int32_t, int32_t>& idToIndex) {
+    idToIndex.clear();
+    for (int32_t i = 0, n = instance->getNumParameters(); i < n; ++i) {
+        auto* parameter = instance->getParameter(i);
+        if (parameter)
+            idToIndex[parameter->getId()] = i;
     }
 }
 
@@ -38,6 +80,8 @@ aap::PluginInstance::~PluginInstance() {
         free(event_midi2_buffer);
     if (event_midi2_merge_buffer)
         free(event_midi2_merge_buffer);
+    const std::lock_guard<std::mutex> lock{parameter_state_registry_mutex};
+    parameter_state_registry.erase(this);
 }
 
 aap_buffer_t* aap::PluginInstance::getAudioPluginBuffer() {
@@ -55,9 +99,9 @@ void aap::PluginInstance::completeInstantiation()
 
     AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
     plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
-    if (plugin)
+    if (plugin) {
         instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
-    else {
+    } else {
         AAP_ASSERT_FALSE;
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
     }
@@ -175,6 +219,175 @@ void aap::PluginInstance::scanParametersAndBuildList() {
     }
 }
 
+void aap::PluginInstance::rebuildParameterIndexAndValues() {
+    auto* state = get_parameter_state(this);
+    if (!state)
+        return;
+    std::unordered_map<int32_t, double> previousValues;
+    previousValues.reserve(state->values.size());
+    for (auto& entry : state->id_to_index) {
+        auto index = entry.second;
+        if (index >= 0 && index < state->values.size())
+            previousValues[entry.first] = state->values[index];
+    }
+
+    cached_parameters.reset();
+    scanParametersAndBuildList();
+
+    rebuild_parameter_id_index(this, state->id_to_index);
+
+    std::vector<double> newValues;
+    newValues.reserve(getNumParameters());
+    for (int32_t i = 0, n = getNumParameters(); i < n; ++i) {
+        auto* parameter = getParameter(i);
+        auto it = previousValues.find(parameter->getId());
+        if (it != previousValues.end())
+            newValues.emplace_back(it->second);
+        else
+            newValues.emplace_back(parameter->getDefaultValue());
+    }
+
+    const std::lock_guard<NanoSleepLock> lock{state->mutex};
+    state->values = std::move(newValues);
+}
+
+bool aap::PluginInstance::updateCachedParameterValueById(int32_t parameterId, double plainValue) {
+    auto* state = get_parameter_state(this, false);
+    if (!state)
+        return false;
+    auto it = state->id_to_index.find(parameterId);
+    if (it == state->id_to_index.end())
+        return false;
+    auto index = it->second;
+    if (index < 0 || index >= state->values.size())
+        return false;
+    state->values[index] = plainValue;
+    return true;
+}
+
+void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer) {
+    if (!buffer)
+        return;
+    auto* state = get_parameter_state(this);
+    if (!state)
+        return;
+    if (std::unique_lock<NanoSleepLock> tryLock(state->mutex, std::try_to_lock); !tryLock.owns_lock())
+        return;
+
+    if (state->id_to_index.empty())
+        rebuild_parameter_id_index(this, state->id_to_index);
+    if (state->values.empty()) {
+        state->values.reserve(getNumParameters());
+        for (int32_t i = 0, n = getNumParameters(); i < n; ++i) {
+            auto* parameter = getParameter(i);
+            state->values.emplace_back(parameter ? parameter->getDefaultValue() : 0.0);
+        }
+    }
+
+    auto* mbh = (AAPMidiBufferHeader*) buffer;
+    auto* data = (uint8_t*) (mbh + 1);
+    uint32_t offset = 0;
+    bool changed = false;
+
+    while (offset + sizeof(uint32_t) <= mbh->length) {
+        auto* ump = (uint32_t*) (data + offset);
+        auto messageType = (*ump >> 28) & 0xF;
+        auto messageSize = cmidi2_ump_get_message_size_bytes((cmidi2_ump*) ump);
+        if (messageSize <= 0 || offset + static_cast<uint32_t>(messageSize) > mbh->length)
+            break;
+
+        if (messageType == 4 && messageSize >= 8) {
+            auto word0 = ump[0];
+            auto word1 = ump[1];
+            auto status = (word0 >> 16) & 0xF0;
+            auto channel = (word0 >> 16) & 0x0F;
+            if (channel == 0) {
+                int32_t parameterId = -1;
+                switch (status) {
+                    case 0x30:
+                        parameterId = ((word0 >> 8) & 0x7F) << 7 | (word0 & 0x7F);
+                        break;
+                    case 0xB0:
+                        parameterId = (word0 >> 8) & 0x7F;
+                        break;
+                    default:
+                        break;
+                }
+                if (parameterId >= 0) {
+                    auto it = state->id_to_index.find(parameterId);
+                    if (it != state->id_to_index.end()) {
+                        auto index = it->second;
+                        if (index >= 0 && index < getNumParameters()) {
+                            auto* parameter = getParameter(index);
+                            auto plainValue = aapParameterTransportUint32ToPlain(
+                                    parameter->getMinimumValue(),
+                                    parameter->getMaximumValue(),
+                                    word1);
+                            changed |= updateCachedParameterValueById(parameterId, plainValue);
+                        }
+                    }
+                }
+            }
+        } else if (messageType == 5 && messageSize >= 16) {
+            auto word0 = ump[0];
+            auto word1 = ump[1];
+            auto word2 = ump[2];
+            auto word3 = ump[3];
+            if ((word0 & 0xFF) == 0x7E && (word1 >> 8) == 0x7F0000 && (word1 & 0x0F) == 0) {
+                auto parameterId = static_cast<int32_t>(word2 & 0xFFFF);
+                auto it = state->id_to_index.find(parameterId);
+                if (it != state->id_to_index.end()) {
+                    auto index = it->second;
+                    if (index >= 0 && index < getNumParameters()) {
+                        auto* parameter = getParameter(index);
+                        auto plainValue = aapParameterTransportUint32ToPlain(
+                                parameter->getMinimumValue(),
+                                parameter->getMaximumValue(),
+                                word3);
+                        changed |= updateCachedParameterValueById(parameterId, plainValue);
+                    }
+                }
+            }
+        }
+
+        offset += static_cast<uint32_t>(messageSize);
+    }
+
+    if (changed)
+        state->revision.fetch_add(1);
+}
+
+double aap::PluginInstance::getParameterValue(int32_t index) {
+    auto* state = get_parameter_state(const_cast<aap::PluginInstance*>(this), false);
+    if (!state) {
+        auto* parameter = getParameter(index);
+        return parameter ? parameter->getDefaultValue() : 0.0;
+    }
+    const std::lock_guard<NanoSleepLock> lock{state->mutex};
+    if (index >= 0 && index < state->values.size())
+        return state->values[index];
+    auto* parameter = getParameter(index);
+    return parameter ? parameter->getDefaultValue() : 0.0;
+}
+
+uint32_t aap::PluginInstance::getParameterStateRevision() const {
+    auto* state = get_parameter_state(const_cast<aap::PluginInstance*>(this), false);
+    return state ? state->revision.load() : 1;
+}
+
+void aap::PluginInstance::handleParameterLayoutChanged() {
+    rebuildParameterIndexAndValues();
+    if (auto* state = get_parameter_state(this, false))
+        state->revision.fetch_add(1);
+}
+
+aap_parameters_host_extension_t* aap::PluginInstance::getHostParametersExtension() {
+    auto* state = get_parameter_state(this);
+    if (state)
+        state->host_parameters.notify_parameters_changed = notify_parameters_changed;
+    return state ? &state->host_parameters : nullptr;
+}
+
 void aap::PluginInstance::activate() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
         return;
@@ -285,7 +498,7 @@ static float plugin_info_parameter_get_max_value(aap_plugin_info_parameter_t* pa
 static float plugin_info_parameter_get_default_value(aap_plugin_info_parameter_t* parameter) { return (aap_content_type) ((aap::ParameterInformation*) parameter->context)->getDefaultValue(); }
 
 static aap_plugin_info_parameter_t plugin_info_get_parameter(aap_plugin_info_t* plugin, uint32_t index) {
-    auto para = ((aap::LocalPluginInstance*) plugin->context)->getParameter(index);
+    auto para = ((aap::PluginInstance*) plugin->context)->getParameter(index);
     return aap_plugin_info_parameter_t{(void *) para,
                                        plugin_info_parameter_get_id,
                                        plugin_info_parameter_get_name,
@@ -310,6 +523,12 @@ aap_plugin_info_t aap::PluginInstance::get_plugin_info(aap_host_plugin_info_exte
                           plugin_info_get_parameter_count,
                           plugin_info_get_parameter};
     return ret;
+}
+
+void aap::PluginInstance::notify_parameters_changed(aap_parameters_host_extension_t* ext,
+                                                    AndroidAudioPluginHost* host) {
+    auto* instance = (PluginInstance*) host->context;
+    instance->handleParameterLayoutChanged();
 }
 
 uint32_t aapxs_request_id_serial{0};

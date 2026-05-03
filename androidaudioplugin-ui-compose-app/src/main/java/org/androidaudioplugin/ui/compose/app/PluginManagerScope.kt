@@ -48,6 +48,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     val outputMessages = mutableStateListOf<String>()
     private val midiOutputScratch = ByteArray(8192)
     private val parameterIdToIndex = mutableMapOf<Int, Int>()
+    private var parameterStateRevision = -1
 
     private val pluginPlayerDelegate = lazy {
         val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -83,13 +84,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         val result = manager.client.instantiateNativePlugin(pluginInfo)
         if (!alreadyDisposed) {
             instance.value = result
-            if (parameterValues.isEmpty()) {
-                val values = (0 until result.getParameterCount()).map { index ->
-                    parameterIdToIndex[result.getParameter(index).id] = index
-                    result.getParameter(index).defaultValue
-                }
-                parameterValues.addAll(values)
-            }
+            syncParametersFromInstance(force = true)
         }
     }
 
@@ -127,6 +122,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             pluginPlayer.setPresetIndex(index)
         else
             instance.value?.setCurrentPresetIndex(index)
+        syncParametersFromInstance()
     }
 
     fun setParameterValue(index: Int, value: Float) {
@@ -166,9 +162,30 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         val data = input.readBytes()
         if (data.isNotEmpty())
             ins.setState(data)
+        syncParametersFromInstance()
+    }
+
+    fun syncParametersFromInstance(force: Boolean = false) {
+        val ins = instance.value ?: return
+        val revision = ins.getParameterStateRevision()
+        if (!force && revision == parameterStateRevision)
+            return
+
+        val count = ins.getParameterCount()
+        val values = ArrayList<Double>(count)
+        parameterIdToIndex.clear()
+        for (index in 0 until count) {
+            val parameter = ins.getParameter(index)
+            parameterIdToIndex[parameter.id] = index
+            values += ins.getParameterValue(index)
+        }
+        parameterValues.clear()
+        parameterValues.addAll(values)
+        parameterStateRevision = revision
     }
 
     fun drainMidiOutput() {
+        syncParametersFromInstance()
         if (!isProcessing.value || !pluginPlayerDelegate.isInitialized())
             return
         val bytesRead = pluginPlayer.readMidiOutput(midiOutputScratch)

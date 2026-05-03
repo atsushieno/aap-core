@@ -98,7 +98,8 @@ open class AudioPluginService : Service()
 
         val existing = nativeBinder
         if (existing != null)
-            AudioPluginNatives.destroyBinderForService(existing)
+            return existing
+
         nativeBinder = AudioPluginNatives.createBinderForService()
 
         // no need to worry about the Looper retaining; it will be released at onUnbind()

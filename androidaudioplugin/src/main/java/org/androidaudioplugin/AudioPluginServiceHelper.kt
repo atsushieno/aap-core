@@ -8,6 +8,8 @@ import org.androidaudioplugin.hosting.AudioPluginHostHelper
 
 // It is used only by AudioPluginService and some plugin extensions (such as AudioPluginLv2ServiceExtension) to process client (plugin host) requests.
 object AudioPluginServiceHelper {
+    private val currentInstanceId = ThreadLocal<Int?>()
+
     fun getLocalAudioPluginService(context: Context) =
         AudioPluginHostHelper.queryAudioPluginServices(context)
             .first { svc -> svc.packageName == context.packageName }
@@ -17,16 +19,32 @@ object AudioPluginServiceHelper {
         context.packageManager.getServiceInfo(ComponentName(packageName, serviceClassName), 0).foregroundServiceType
 
     @JvmStatic
-    external fun getServiceInstance(pluginId: String): Long
+    fun getServiceInstance(pluginId: String): Long {
+        val instanceId = currentInstanceId.get()
+        return if (instanceId != null)
+            getServiceInstanceForInstance(pluginId, instanceId)
+        else
+            getServiceInstanceNative(pluginId)
+    }
+
+    @JvmStatic
+    private external fun getServiceInstanceNative(pluginId: String): Long
+
+    @JvmStatic
+    private external fun getServiceInstanceForInstance(pluginId: String, instanceId: Int): Long
 
     // It is used by AudioPluginViewService (which makes use of SurfaceControlViewHost).
     @JvmStatic
     fun getNativeViewPreferredSize(context: Context, pluginId: String, instanceId: Int): Size? =
-        createNativeViewFactory(context, pluginId).getPreferredSize(context, pluginId, instanceId)
+        withInstanceScope(instanceId) {
+            createNativeViewFactory(context, pluginId).getPreferredSize(context, pluginId, instanceId)
+        }
 
     @JvmStatic
     fun createNativeView(context: Context, pluginId: String, instanceId: Int): View =
-        createNativeViewFactory(context, pluginId).createView(context, pluginId, instanceId)
+        withInstanceScope(instanceId) {
+            createNativeViewFactory(context, pluginId).createView(context, pluginId, instanceId)
+        }
 
     private fun createNativeViewFactory(context: Context, pluginId: String): AudioPluginViewFactory {
         val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
@@ -38,5 +56,18 @@ object AudioPluginServiceHelper {
             throw AudioPluginException("The class '$factoryClassName' specified by 'ui-view-factory' attribute in aap_metadata.xml must be derived from AudioPluginViewFactory.")
         val factory = cls.getConstructor().newInstance() as AudioPluginViewFactory
         return factory
+    }
+
+    private inline fun <T> withInstanceScope(instanceId: Int, block: () -> T): T {
+        val previous = currentInstanceId.get()
+        currentInstanceId.set(instanceId)
+        return try {
+            block()
+        } finally {
+            if (previous == null)
+                currentInstanceId.remove()
+            else
+                currentInstanceId.set(previous)
+        }
     }
 }

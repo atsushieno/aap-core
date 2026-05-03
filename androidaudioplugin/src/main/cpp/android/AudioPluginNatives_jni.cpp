@@ -438,6 +438,21 @@ jint implPluginHostGetParameterCount(jlong nativeHost,
     return instance->getNumParameters();
 }
 
+jdouble implPluginHostGetParameterValue(jlong nativeHost,
+                                        jint instanceId,
+                                        jint index) {
+    auto host = (aap::PluginHost*) (void*) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    return instance->getParameterValue(index);
+}
+
+jint implPluginHostGetParameterStateRevision(jlong nativeHost,
+                                             jint instanceId) {
+    auto host = (aap::PluginHost*) (void*) nativeHost;
+    auto instance = host->getInstanceById(instanceId);
+    return static_cast<jint>(instance->getParameterStateRevision());
+}
+
 jint implPluginHostGetPortCount(jlong nativeHost,
                                 jint instanceId) {
     auto host = (aap::PluginHost*) (void*) nativeHost;
@@ -454,12 +469,26 @@ const std::string& implPluginHostGetPluginId(jlong nativeHost,
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstance(JNIEnv* env,
-																		  jclass,
-																		  jstring pluginId) {
+Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstanceNative(JNIEnv* env,
+                                                                              jclass,
+                                                                              jstring pluginId) {
 	std::string pluginIdString = jstringToStdString(env, pluginId);
 	auto svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str());
 	return (jlong) (void*) svc;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstanceForInstance(JNIEnv* env,
+                                                                                   jclass,
+                                                                                   jstring pluginId,
+                                                                                   jint instanceId) {
+    auto svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(instanceId);
+    if (svc != nullptr)
+        return (jlong) (void*) svc;
+    std::string pluginIdString = jstringToStdString(env, pluginId);
+    svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str());
+    return (jlong) (void*) svc;
 }
 
 extern "C"
@@ -478,6 +507,25 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameter(JNIEnv *, jcl
                                                                             jint instanceId,
                                                                             jint index) {
 	return aap::AAPJniFacade::getInstance()->getPluginInstanceParameter(nativeClient, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jdouble JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameterValue(JNIEnv*,
+                                                                        jclass,
+                                                                        jlong nativeService,
+                                                                        jint instanceId,
+                                                                        jint index) {
+    return implPluginHostGetParameterValue(nativeService, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameterStateRevision(JNIEnv*,
+                                                                                jclass,
+                                                                                jlong nativeService,
+                                                                                jint instanceId) {
+    return implPluginHostGetParameterStateRevision(nativeService, instanceId);
 }
 
 extern "C"
@@ -535,6 +583,25 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameter(JNIE
 																	   jint instanceId,
 																	   jint index) {
 	return aap::AAPJniFacade::getInstance()->getPluginInstanceParameter(nativeClient, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jdouble JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterValue(JNIEnv*,
+                                                                                 jclass,
+                                                                                 jlong nativeClient,
+                                                                                 jint instanceId,
+                                                                                 jint index) {
+    return implPluginHostGetParameterValue(nativeClient, instanceId, index);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterStateRevision(JNIEnv*,
+                                                                                         jclass,
+                                                                                         jlong nativeClient,
+                                                                                         jint instanceId) {
+    return implPluginHostGetParameterStateRevision(nativeClient, instanceId);
 }
 
 extern "C"

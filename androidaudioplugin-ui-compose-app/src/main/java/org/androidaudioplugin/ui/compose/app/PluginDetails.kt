@@ -112,11 +112,11 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
     }
 
     LaunchedEffect(scope, isProcessing) {
-        if (!isProcessing)
-            return@LaunchedEffect
         while (true) {
             withFrameNanos { }
-            scope.drainMidiOutput()
+            scope.syncParametersFromInstance()
+            if (isProcessing)
+                scope.drainMidiOutput()
         }
     }
 

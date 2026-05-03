@@ -119,6 +119,9 @@ aap::LocalPluginInstance::getHostExtension(uint8_t urid, const char *uri) {
         host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
+    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
+        return getHostParametersExtension();
+    }
     // Look up host extension and get proxy via AAPXSDefinition.
     auto registry = getAAPXSRegistry()->items();
     auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);
@@ -225,6 +228,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
         auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(*aapBuffer, i);
+        updateParameterValueCacheFromOutputBuffer(data);
         if (data && data->length > 0)
             appendGuiListenerMidiBuffer(this, data + 1, static_cast<int32_t>(data->length));
     }

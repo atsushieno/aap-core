@@ -112,6 +112,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         getParameterCount(client, instanceId)
     }
     fun getParameter(index: Int) = getParameter(client, instanceId, index)
+    fun getParameterValue(index: Int) = runCatchingRemoteException(0.0) {
+        getParameterValue(client, instanceId, index)
+    }
+    fun getParameterStateRevision() = runCatchingRemoteException(0) {
+        getParameterStateRevision(client, instanceId)
+    }
     fun getPortCount() = runCatchingRemoteException(0) {
         getPortCount(client, instanceId)
     }
@@ -155,6 +161,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
         @JvmStatic
         external fun getParameter(nativeClient: Long, instanceId: Int, index: Int) : ParameterInformation
+
+        @JvmStatic
+        external fun getParameterValue(nativeClient: Long, instanceId: Int, index: Int) : Double
+
+        @JvmStatic
+        external fun getParameterStateRevision(nativeClient: Long, instanceId: Int) : Int
 
         @JvmStatic
         external fun getPortCount(nativeClient: Long, instanceId: Int) : Int

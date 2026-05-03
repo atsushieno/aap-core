@@ -90,6 +90,7 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             instance->completeInstantiation();
             instance->configurePorts();
             instance->scanParametersAndBuildList();
+            instance->handleParameterLayoutChanged();
 
             return Result<int32_t>{instance->getInstanceId(), ""};
         }
@@ -102,4 +103,3 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
     else
         return internalCallback(std::string{"Plugin service is not started yet: "} + descriptor->getPluginID());
 }
-

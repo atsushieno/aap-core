@@ -246,6 +246,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
         filterOutAAPXSReplies(data);
+        updateParameterValueCacheFromOutputBuffer(data);
     }
 
 #if ANDROID
@@ -263,6 +264,9 @@ aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *ur
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
+    }
+    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
+        return getHostParametersExtension();
     }
     // look for user-implemented host extensions
     if (getHostExtension)

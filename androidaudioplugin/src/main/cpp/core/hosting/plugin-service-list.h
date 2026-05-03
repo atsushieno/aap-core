@@ -3,7 +3,6 @@
 #define AAP_CORE_PLUGIN_SERVICE_LIST_H
 
 #include "aap/core/host/audio-plugin-host.h"
-
 namespace aap {
 
 class PluginServiceList {
@@ -23,7 +22,14 @@ public:
 
     PluginService* findBoundServiceInProcess(const char* pluginId) {
         for (auto s : bound_plugin_service_list)
-            if (true) // FIXME: find exact Service instance
+            if (s && pluginId && s->hasPlugin(pluginId))
+                return s;
+        return nullptr;
+    }
+
+    PluginService* findBoundServiceInProcess(int32_t instanceId) {
+        for (auto s : bound_plugin_service_list)
+            if (s && s->getInstanceById(instanceId) != nullptr)
                 return s;
         return nullptr;
     }
