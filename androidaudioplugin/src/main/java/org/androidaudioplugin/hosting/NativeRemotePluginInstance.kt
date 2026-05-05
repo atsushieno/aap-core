@@ -41,8 +41,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         }
     }
 
-    fun prepare(frameCount: Int, defaultControlBytesPerBlock: Int) = runCatchingRemoteException {
-        prepare(client, instanceId, frameCount, defaultControlBytesPerBlock)
+    fun prepare(frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int) = runCatchingRemoteException {
+        prepare(client, instanceId, frameCount, sampleRate, defaultControlBytesPerBlock)
         state = InstanceState.INACTIVE
     }
     fun activate() = runCatchingRemoteException {
@@ -146,7 +146,7 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         @JvmStatic
         private external fun createRemotePluginInstance(pluginId: String, sampleRate: Int, nativeClient: Long) : Int
         @JvmStatic
-        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, defaultControlBytesPerBlock: Int)
+        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int)
         @JvmStatic
         external fun activate(nativeClient: Long, instanceId: Int)
         @JvmStatic

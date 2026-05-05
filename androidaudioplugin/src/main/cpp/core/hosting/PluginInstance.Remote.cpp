@@ -62,7 +62,7 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
                                                 AndroidAudioPluginFactory* loadedPluginFactory,
                                                 int32_t sampleRate,
                                                 int32_t eventMidi2InputBufferSize)
-        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
+        : PluginInstance(pluginInformation, loadedPluginFactory, eventMidi2InputBufferSize),
           client(client),
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
@@ -105,7 +105,7 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
     return &plugin_host_facade;
 }
 
-void aap::RemotePluginInstance::prepare(int frameCount) {
+void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate) {
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to prepare() at state: %d (instanceId: %d)",
@@ -113,6 +113,7 @@ void aap::RemotePluginInstance::prepare(int frameCount) {
         return;
     }
 
+    sample_rate = sampleRate;
     auto numPorts = getNumPorts();
     auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
     auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, DEFAULT_CONTROL_BUFFER_SIZE);
@@ -120,7 +121,7 @@ void aap::RemotePluginInstance::prepare(int frameCount) {
         aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
     }
 
-    plugin->prepare(plugin, getAudioPluginBuffer());
+    plugin->prepare(plugin, sample_rate, getAudioPluginBuffer());
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
 

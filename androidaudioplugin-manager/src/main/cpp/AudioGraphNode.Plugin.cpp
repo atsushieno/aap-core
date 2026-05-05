@@ -72,7 +72,7 @@ void aap::AudioPluginNode::processAudio(AudioBuffer *audioData, int32_t numFrame
 
 void aap::AudioPluginNode::start() {
     if (plugin->getInstanceState() == aap::PluginInstantiationState::PLUGIN_INSTANTIATION_STATE_UNPREPARED)
-        plugin->prepare(graph->getFramesPerCallback());
+        plugin->prepare(graph->getFramesPerCallback(), graph->getSampleRate());
     plugin->activate();
 }
 

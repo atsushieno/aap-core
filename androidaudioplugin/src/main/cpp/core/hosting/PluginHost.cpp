@@ -44,7 +44,7 @@ aap::PluginInstance* aap::PluginHost::getInstanceById(int32_t instanceId) {
 
 int32_t localInstanceIdSerial{0};
 
-aap::PluginInstance* aap::PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor, int sampleRate)
+aap::PluginInstance* aap::PluginHost::instantiateLocalPlugin(const PluginInformation *descriptor)
 {
     dlerror(); // clean up any previous error state
     auto file = descriptor->getLocalPluginSharedLibrary();
@@ -77,7 +77,7 @@ aap::PluginInstance* aap::PluginHost::instantiateLocalPlugin(const PluginInforma
     auto instance = new LocalPluginInstance(this,
                                             aapxs_definition_registry,
                                             localInstanceIdSerial++,
-                                            descriptor, pluginFactory, sampleRate, event_midi2_input_buffer_size);
+                                            descriptor, pluginFactory, event_midi2_input_buffer_size);
     instances.emplace_back(instance);
     return instance;
 }

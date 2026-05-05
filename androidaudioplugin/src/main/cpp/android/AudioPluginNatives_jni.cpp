@@ -187,7 +187,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
     aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
                  "createRemotePluginInstance: pluginId=%s sampleRate=%d",
                  pluginIdString.c_str(), sampleRate);
-	auto result = client->createInstance(pluginIdString.c_str(), sampleRate, true);
+	auto result = client->createInstance(pluginIdString, sampleRate, true);
 	if (!result.error.empty()) {
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "createRemotePluginInstance failed: pluginId=%s error=%s",
@@ -212,10 +212,11 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_prepare(JNIEnv *e
 																			jlong nativeClient,
 																			jint instanceId,
 																			jint frameCount,
+																			jint sampleRate,
 																			jint defaultControlBytesPerBlock) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
 	auto instance = client->getInstanceById(instanceId);
-    instance->prepare(frameCount);
+    instance->prepare(frameCount, sampleRate);
 }
 
 extern "C"

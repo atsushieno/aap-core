@@ -80,7 +80,7 @@ void aap_bcap_log_error_with_details(const char* fmtBase, ndk::ScopedAStatus& st
 	}
 }
 
-void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t* buffer)
+void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_buffer_t* buffer)
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
 	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
@@ -111,7 +111,7 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t* buff
     }
 
     if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        auto status = ctx->getProxy()->endPrepare(ctx->instance_id, buffer->num_frames(buffer));
+        auto status = ctx->getProxy()->endPrepare(ctx->instance_id, buffer->num_frames(buffer), sampleRate);
         if (!status.isOk()) {
 			aap_bcap_log_error_with_details("endPrepare() failed", status);
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
@@ -247,7 +247,6 @@ bool aap_client_as_plugin_send_extension_message_delegate(void* context,
 AndroidAudioPlugin* aap_client_as_plugin_new(
 	AndroidAudioPluginFactory *pluginFactory,
 	const char* pluginUniqueId,
-	int aapSampleRate,
 	AndroidAudioPluginHost* host
 	)
 {
@@ -271,7 +270,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
     ctx->unique_id = pluginUniqueId;
 
-    auto status = ctx->getProxy()->beginCreate(pluginUniqueId, aapSampleRate, &ctx->instance_id);
+    auto status = ctx->getProxy()->beginCreate(pluginUniqueId, &ctx->instance_id);
     if (!status.isOk()) {
 		aap_bcap_log_error_with_details("beginCreate() failed", status);
         // It will still return the plugin instance anyways, even though it is not really usable.

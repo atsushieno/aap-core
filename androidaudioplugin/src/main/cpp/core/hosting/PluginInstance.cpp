@@ -40,10 +40,8 @@ PluginParameterState* get_parameter_state(aap::PluginInstance* instance, bool cr
 
 aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
                                AndroidAudioPluginFactory* loadedPluginFactory,
-                               int32_t sampleRate,
                                int32_t eventMidi2InputBufferSize)
-        : sample_rate(sampleRate),
-          plugin_factory(loadedPluginFactory),
+        : plugin_factory(loadedPluginFactory),
           instantiation_state(PLUGIN_INSTANTIATION_STATE_INITIAL),
           plugin(nullptr),
           pluginInfo(pluginInformation),
@@ -98,7 +96,7 @@ void aap::PluginInstance::completeInstantiation()
     }
 
     AndroidAudioPluginHost* asPluginAPI = getHostFacadeForCompleteInstantiation();
-    plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), sample_rate, asPluginAPI);
+    plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), asPluginAPI);
     if (plugin) {
         instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
     } else {

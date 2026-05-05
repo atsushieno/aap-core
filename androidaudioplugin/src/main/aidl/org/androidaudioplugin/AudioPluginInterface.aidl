@@ -18,7 +18,7 @@ interface AudioPluginInterface {
 
     // Instance operations
 
-	int beginCreate(String pluginId, int sampleRate);
+	int beginCreate(String pluginId);
 	// add an AAP extension, with a URI, with an optional shared memory FD and its size dedicated to it.
 	// For consistency in the future, the order of calls to `addExtension()` should be considered as significant
 	// (i.e. the extension list is ordered). Any extension that could affect other extensions should be added earlier.
@@ -34,7 +34,7 @@ interface AudioPluginInterface {
 	// Port configuration by extensions should be done before this call.
 	void beginPrepare(int instanceID);
 	void prepareMemory(int instanceID, int shmFDIndex, in ParcelFileDescriptor sharedMemoryFD);
-	void endPrepare(int instanceID, int frameCount);
+	void endPrepare(int instanceID, int frameCount, int sampleRate);
 	void activate(int instanceID);
 	void process(int instanceID, int frameCount, int timeoutInNanoseconds);
 	void deactivate(int instanceID);

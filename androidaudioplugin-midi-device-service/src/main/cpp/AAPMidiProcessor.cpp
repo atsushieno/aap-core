@@ -223,7 +223,7 @@ namespace aap::midi {
                     data->midi1_in_port = i;
             }
 
-            instance->prepare(aap_frame_size);
+            instance->prepare(aap_frame_size, sample_rate);
 
             instance_data = std::move(data);
 

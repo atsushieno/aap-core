@@ -82,9 +82,9 @@ public:
         ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->hostExtension(instanceId, uri, opcode);
     }
 
-    ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId, int32_t in_sampleRate,
+    ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId,
                                      int32_t *_aidl_return) override {
-        *_aidl_return = svc->createInstance(in_pluginId, in_sampleRate);
+        *_aidl_return = svc->createInstance(in_pluginId);
         if (*_aidl_return < 0)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "failed to create AAP service instance.");
@@ -187,7 +187,7 @@ public:
     }
 
     ::ndk::ScopedAStatus
-    endPrepare(int32_t in_instanceID, int32_t in_frameCount) override {
+    endPrepare(int32_t in_instanceID, int32_t in_frameCount, int32_t sampleRate) override {
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
@@ -200,7 +200,7 @@ public:
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
                     AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
                     "failed to allocate shared memory");
-        instance->prepare(in_frameCount);
+        instance->prepare(in_frameCount, sampleRate);
         return ndk::ScopedAStatus::ok();
     }
 

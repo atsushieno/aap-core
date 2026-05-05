@@ -58,9 +58,9 @@ class AudioPluginInstance internal constructor(
         }
     }
 
-    fun prepare(audioSamplesPerBlock: Int, defaultControlBytesPerBlock: Int) {
+    fun prepare(audioSamplesPerBlock: Int, sampleRate: Int, defaultControlBytesPerBlock: Int) {
         runCatchingRemoteException {
-            native.prepare(audioSamplesPerBlock, defaultControlBytesPerBlock)
+            native.prepare(audioSamplesPerBlock, sampleRate, defaultControlBytesPerBlock)
             state = InstanceState.INACTIVE
         }
     }

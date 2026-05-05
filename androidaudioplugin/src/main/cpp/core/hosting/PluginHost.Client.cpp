@@ -57,7 +57,7 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string
         return instantiateRemotePlugin(descriptor, sampleRate);
     else {
         try {
-            auto instance = instantiateLocalPlugin(descriptor, sampleRate);
+            auto instance = instantiateLocalPlugin(descriptor);
             return internalCallback(instance, "");
         } catch(std::exception& ex) {
             return internalCallback(nullptr, ex.what());

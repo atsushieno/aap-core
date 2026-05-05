@@ -16,7 +16,7 @@ struct AAPXSSampleContext {
     }
 };
 
-void test_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {}
+void test_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_buffer_t *buffer) {}
 
 void test_plugin_activate(AndroidAudioPlugin *plugin) {}
 
@@ -44,7 +44,6 @@ void* test_plugin_get_extension(AndroidAudioPlugin *plugin, const char* uri) {
 AndroidAudioPlugin *test_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
-        int sampleRate,
         AndroidAudioPluginHost *host) {
     return new AndroidAudioPlugin{
             new AAPXSSampleContext(host),

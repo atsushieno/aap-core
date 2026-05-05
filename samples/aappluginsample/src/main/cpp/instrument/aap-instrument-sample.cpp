@@ -189,10 +189,23 @@ void sample_plugin_delete(
     delete instance;
 }
 
-void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
+void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_buffer_t *buffer) {
     /* do something */
     auto context = (AyumiHandle*) plugin->plugin_specific;
     auto host = context->host;
+    auto handle = (AyumiHandle*) plugin->plugin_specific;
+
+    /* clock_rate / (sample_rate * 8 * 8) must be < 1.0 */
+    ayumi_configure(handle->impl, 1, 2000000, (int) sampleRate);
+    ayumi_set_noise(handle->impl, 4); // pink noise by default
+    for (int i = 0; i < 3; i++) {
+        handle->mixer[i] = 1 << 6; // tone, without envelope
+        ayumi_set_pan(handle->impl, i, handle->pan, 0); // 0(L)...1(R)
+        ayumi_set_mixer(handle->impl, i, 1, 1, 0); // should be quiet by default
+        ayumi_set_envelope_shape(handle->impl, handle->envelope_shape); // see http://fmpdoc.fmp.jp/%E3%82%A8%E3%83%B3%E3%83%99%E3%83%AD%E3%83%BC%E3%83%97%E3%83%8F%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A2/
+        ayumi_set_envelope(handle->impl, 0x40); // somewhat slow
+        ayumi_set_volume(handle->impl, i, handle->volume); // FIXME: max = 14?? 15 doesn't work
+    }
 
     aap_plugin_info_t info;
     if (plugin->get_plugin_info) {
@@ -622,7 +635,6 @@ void* sample_plugin_get_extension(AndroidAudioPlugin* plugin, const char *uri) {
 AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
-        int sampleRate,
         AndroidAudioPluginHost *host) {
 
     auto handle = new AyumiHandle();
@@ -630,19 +642,6 @@ AndroidAudioPlugin *sample_plugin_new(
     handle->plugin_id = pluginUniqueId;
     handle->active = false;
     handle->impl = (struct ayumi*) calloc(sizeof(struct ayumi), 1);
-    handle->sample_rate = sampleRate;
-
-    /* clock_rate / (sample_rate * 8 * 8) must be < 1.0 */
-    ayumi_configure(handle->impl, 1, 2000000, (int) sampleRate);
-    ayumi_set_noise(handle->impl, 4); // pink noise by default
-    for (int i = 0; i < 3; i++) {
-        handle->mixer[i] = 1 << 6; // tone, without envelope
-        ayumi_set_pan(handle->impl, i, handle->pan, 0); // 0(L)...1(R)
-        ayumi_set_mixer(handle->impl, i, 1, 1, 0); // should be quiet by default
-        ayumi_set_envelope_shape(handle->impl, handle->envelope_shape); // see http://fmpdoc.fmp.jp/%E3%82%A8%E3%83%B3%E3%83%99%E3%83%AD%E3%83%BC%E3%83%97%E3%83%8F%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A2/
-        ayumi_set_envelope(handle->impl, 0x40); // somewhat slow
-        ayumi_set_volume(handle->impl, i, handle->volume); // FIXME: max = 14?? 15 doesn't work
-    }
     handle->envelope = 0x40;
 
     handle->midi_protocol = 2; // this is for testing MIDI2 in port.

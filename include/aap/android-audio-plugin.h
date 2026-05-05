@@ -91,7 +91,6 @@ typedef struct AndroidAudioPluginHost {
 typedef struct AndroidAudioPlugin* (*aap_instantiate_func_t) (
         struct AndroidAudioPluginFactory *pluginFactory,
         const char* pluginUniqueId,
-        int sampleRate,
         AndroidAudioPluginHost *host);
 
 typedef void (*aap_release_func_t) (
@@ -100,6 +99,7 @@ typedef void (*aap_release_func_t) (
 
 typedef void (*aap_prepare_func_t) (
         struct AndroidAudioPlugin *plugin,
+        int sampleRate,
         aap_buffer_t* audioBuffer);
 
 typedef void (*aap_control_func_t) (struct AndroidAudioPlugin *plugin);

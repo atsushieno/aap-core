@@ -31,11 +31,11 @@ namespace aap {
  * It manages AAPXS and the audio/MIDI2 buffers (by PluginSharedMemoryStore).
  */
     class PluginInstance {
-        int sample_rate{48000};
-
         AndroidAudioPluginFactory *plugin_factory;
 
     protected:
+        int sample_rate{48000};
+
         NanoSleepLock ump_sequence_merger_mutex{};
         void merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance);
 
@@ -62,7 +62,6 @@ namespace aap {
 
         PluginInstance(const PluginInformation *pluginInformation,
                        AndroidAudioPluginFactory *loadedPluginFactory,
-                       int32_t sampleRate,
                        int32_t eventMidi2InputBufferSize);
 
         virtual AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() = 0;
@@ -130,7 +129,7 @@ namespace aap {
             }
         }
 
-        virtual void prepare(int maximumExpectedSamplesPerBlock) = 0;
+        virtual void prepare(int maximumExpectedSamplesPerBlock, int32_t sampleRate) = 0;
 
         aap::PluginInstantiationState getInstanceState() { return instantiation_state; }
 
@@ -210,7 +209,7 @@ namespace aap {
                             xs::AAPXSDefinitionRegistry *aapxsRegistry,
                             int32_t instanceId,
                             const PluginInformation *pluginInformation,
-                            AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
+                            AndroidAudioPluginFactory *loadedPluginFactory,
                             int32_t eventMidi2InputBufferSize);
         virtual ~LocalPluginInstance();
 
@@ -228,14 +227,15 @@ namespace aap {
         // and supposed to dispatch request to extension service
         void controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId);
 
-        void prepare(int32_t maximumExpectedSamplesPerBlock) override {
+        void prepare(int32_t maximumExpectedSamplesPerBlock, int32_t sampleRate) override {
             if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
                    instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
                 AAP_ASSERT_FALSE;
                 return;
             }
 
-            plugin->prepare(plugin, getAudioPluginBuffer());
+            sample_rate = sampleRate;
+            plugin->prepare(plugin, sampleRate, getAudioPluginBuffer());
             instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
 
@@ -330,7 +330,7 @@ namespace aap {
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
-        void prepare(int frameCount) override;
+        void prepare(int frameCount, int32_t sampleRate) override;
 
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 

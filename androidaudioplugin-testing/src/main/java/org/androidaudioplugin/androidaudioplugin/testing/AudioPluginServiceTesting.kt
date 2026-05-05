@@ -38,6 +38,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
         val numParallelInstances = 3
 
         val host = AudioPluginClientBase(applicationContext)
+        val sampleRate = 48000
         val floatCount = 1024
         val controlBufferSize = 0x10000
 
@@ -49,7 +50,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             val p = numParallelInstances
             val instances = ((0 until p).map { host.instantiateNativePlugin(pluginInfo) })
             assert(instances.map { it.instanceId }.distinct().size == instances.size )
-            (0 until p).forEach { instances[it].prepare(floatCount, controlBufferSize) }
+            (0 until p).forEach { instances[it].prepare(floatCount, sampleRate, controlBufferSize) }
             (0 until p).forEach { instances[it].activate() }
             (0 until p).forEach { instances[it].process(floatCount, 0) }
             (0 until p).forEach { instances[it].deactivate() }

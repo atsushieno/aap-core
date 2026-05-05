@@ -61,7 +61,7 @@ void sample_plugin_delete(
     delete instance;
 }
 
-void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
+void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_buffer_t *buffer) {
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
     auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
     assert(ext);
@@ -334,7 +334,6 @@ void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
 AndroidAudioPlugin *sample_plugin_new(
         AndroidAudioPluginFactory *pluginFactory,
         const char *pluginUniqueId,
-        int sampleRate,
         AndroidAudioPluginHost *host) {
     return new AndroidAudioPlugin{
             new SamplePluginSpecific(host),

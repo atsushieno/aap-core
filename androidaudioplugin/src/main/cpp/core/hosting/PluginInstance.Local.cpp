@@ -73,9 +73,8 @@ aap::LocalPluginInstance::LocalPluginInstance(
         int32_t instanceId,
         const PluginInformation* pluginInformation,
         AndroidAudioPluginFactory* loadedPluginFactory,
-        int32_t sampleRate,
         int32_t eventMidi2InputBufferSize)
-        : PluginInstance(pluginInformation, loadedPluginFactory, sampleRate, eventMidi2InputBufferSize),
+        : PluginInstance(pluginInformation, loadedPluginFactory, eventMidi2InputBufferSize),
           host(host),
           aapxs_host_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionServiceRegistry(aapxsRegistry)),

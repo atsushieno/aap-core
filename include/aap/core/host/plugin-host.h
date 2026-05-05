@@ -53,7 +53,7 @@ namespace aap {
         PluginListSnapshot* plugin_list{nullptr};
 
         std::vector<PluginInstance*> instances{};
-        PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo, int sampleRate);
+        PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo);
         int32_t event_midi2_input_buffer_size{DEFAULT_EVENT_MIDI2_INPUT_BUFFER_SIZE};
 
     public:
@@ -88,7 +88,7 @@ namespace aap {
         {
         }
 
-        int createInstance(std::string identifier, int sampleRate);
+        int createInstance(std::string identifier);
 
         inline LocalPluginInstance* getLocalInstance(int32_t instanceId) {
             return (LocalPluginInstance*) getInstanceById(instanceId);
