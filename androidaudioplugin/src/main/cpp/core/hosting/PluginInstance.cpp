@@ -436,8 +436,8 @@ void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, 
     for (int i = 0; i < instance->getNumPorts(); i++) {
         auto port = instance->getPort(i);
         if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == portDirection) {
-            auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, i);
-            auto portBufferSize = buffer->get_buffer_size(*buffer, i);
+            auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, i);
+            auto portBufferSize = buffer->get_buffer_size(buffer, i);
             auto midiCapacity = portBufferSize > static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) ?
                     portBufferSize - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) : 0;
             auto mergeCapacity = std::min(mergeBufSize, midiCapacity);

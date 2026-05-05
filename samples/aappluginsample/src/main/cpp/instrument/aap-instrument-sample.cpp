@@ -104,11 +104,11 @@ static double ayumi_parameter_max(uint16_t index) {
 static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) {
     if (context->midi2_out_port < 0)
         return;
-    auto outHeader = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, context->midi2_out_port);
+    auto outHeader = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_out_port);
     if (!outHeader)
         return;
     outHeader->length = 0;
-    auto outputCapacity = buffer->get_buffer_size(*buffer, context->midi2_out_port);
+    auto outputCapacity = buffer->get_buffer_size(buffer, context->midi2_out_port);
     if (outputCapacity <= static_cast<int32_t>(sizeof(AAPMidiBufferHeader)))
         return;
     auto outputBytes = (uint8_t*) outHeader + sizeof(AAPMidiBufferHeader);
@@ -344,12 +344,12 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     flush_parameter_outputs(context, buffer);
 
-    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, context->midi2_in_port);
+    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_in_port);
 
     uint32_t currentTicks = 0;
 
-    auto outL = (float*) buffer->get_buffer(*buffer, context->audio_out_l_port);
-    auto outR = (float*) buffer->get_buffer(*buffer, context->audio_out_r_port);
+    auto outL = (float*) buffer->get_buffer(buffer, context->audio_out_l_port);
+    auto outR = (float*) buffer->get_buffer(buffer, context->audio_out_r_port);
 
     auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
     CMIDI2_UMP_SEQUENCE_FOREACH(midi2ptr, aapmb->length, ev) {
@@ -362,7 +362,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         if (cmidi2_ump_get_message_type(ump) == CMIDI2_MESSAGE_TYPE_UTILITY &&
             cmidi2_ump_get_status_code(ump) == CMIDI2_UTILITY_STATUS_JR_TIMESTAMP) {
             uint32_t max = currentTicks + (uint32_t) (cmidi2_ump_get_jr_timestamp_timestamp(ump) / 31250.0 * context->sample_rate);
-            auto numFrames = buffer->num_frames(*buffer);
+            auto numFrames = buffer->num_frames(buffer);
             max = max < numFrames ? max : numFrames;
             for (uint32_t i = currentTicks; i < max; i++) {
                 ayumi_process(context->impl);
@@ -452,7 +452,7 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         }
     }
 
-    auto numFrames = buffer->num_frames(*buffer);
+    auto numFrames = buffer->num_frames(buffer);
     if (frameCount > numFrames) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_APP_LOG_TAG, "frameCount passed at process() is bigger than aap_buffer_t num_frames().");
         numFrames = frameCount;

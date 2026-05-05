@@ -9,17 +9,17 @@ namespace aap {
     {
         aap_buffer_t pub;
 
-        static inline int32_t aap_buffer_num_ports(aap_buffer_t& self) {
-            return ((AbstractPluginBuffer*) self.impl)->num_ports;
+        static inline int32_t aap_buffer_num_ports(aap_buffer_t* self) {
+            return ((AbstractPluginBuffer*) self->impl)->num_ports;
         }
-        static inline int32_t aap_buffer_num_frames(aap_buffer_t& self) {
-            return ((AbstractPluginBuffer*) self.impl)->num_frames;
+        static inline int32_t aap_buffer_num_frames(aap_buffer_t* self) {
+            return ((AbstractPluginBuffer*) self->impl)->num_frames;
         }
-        static inline void* aap_buffer_get_buffer(aap_buffer_t& self, int32_t index) {
-            return ((AbstractPluginBuffer*) self.impl)->getBuffer(index);
+        static inline void* aap_buffer_get_buffer(aap_buffer_t* self, int32_t index) {
+            return ((AbstractPluginBuffer*) self->impl)->getBuffer(index);
         }
-        static inline int32_t aap_buffer_get_buffer_size(aap_buffer_t& self, int32_t index) {
-            return ((AbstractPluginBuffer*) self.impl)->getBufferSize(index);
+        static inline int32_t aap_buffer_get_buffer_size(aap_buffer_t* self, int32_t index) {
+            return ((AbstractPluginBuffer*) self->impl)->getBufferSize(index);
         }
 
     protected:

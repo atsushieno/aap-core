@@ -33,15 +33,15 @@ typedef struct aap_buffer_t {
     void* impl;
 
     /** Number of frames in the audio buffer. It does not apply to non-audio buffers. */
-    int32_t (*num_frames)(aap_buffer_t& self);
+    int32_t (*num_frames)(aap_buffer_t* self);
 
     /** Number of buffers. */
-    int32_t (*num_ports)(aap_buffer_t& self);
+    int32_t (*num_ports)(aap_buffer_t* self);
 
     /**
      * The pointer to the audio buffer. It may or may not be the shared pointer between host and client.
      * It may return null.*/
-    void * (*get_buffer)(aap_buffer_t& self, int32_t index);
+    void * (*get_buffer)(aap_buffer_t* self, int32_t index);
 
     /**
      * The default size of buffers can be calculated by num_frames * sizeof(float) or num_frames * sizeof (double),
@@ -49,7 +49,7 @@ typedef struct aap_buffer_t {
      * All audio ports should offer the same size.
      * `process()` must not pass `frameCount` that goes beyond the size of any AUDIO port.
      */
-    int32_t (*get_buffer_size)(aap_buffer_t& self, int32_t index);
+    int32_t (*get_buffer_size)(aap_buffer_t* self, int32_t index);
 } aap_buffer_t;
 
 /* The length of any plugin is limited to this number. */

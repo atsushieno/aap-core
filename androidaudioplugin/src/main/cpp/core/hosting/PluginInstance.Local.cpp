@@ -202,7 +202,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
             continue;
         auto aapBuffer = getAudioPluginBuffer();
-        void *data = aapBuffer->get_buffer(*aapBuffer, i);
+        void *data = aapBuffer->get_buffer(aapBuffer, i);
         aapxs_midi2_in_session.process(data);
         mbh = (AAPMidiBufferHeader*) data;
     }
@@ -227,7 +227,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
-        auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(*aapBuffer, i);
+        auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(aapBuffer, i);
         updateParameterValueCacheFromOutputBuffer(data);
         if (data && data->length > 0)
             appendGuiListenerMidiBuffer(this, data + 1, static_cast<int32_t>(data->length));

@@ -395,7 +395,7 @@ namespace aap::midi {
             auto b = instance->getAudioPluginBuffer();
             for (int p = 0; p < numPorts; p++) {
                 int portIndex = data->getAudioOutPorts()->at(p);
-                auto src = (float*) b->get_buffer(*b, portIndex);
+                auto src = (float*) b->get_buffer(b, portIndex);
                 // We have to interleave separate port outputs to copy...
                 for (int i = 0; i < aap_frame_size; i++)
                     interleave_buffer[i * numPorts + p] = src[i];
@@ -435,7 +435,7 @@ namespace aap::midi {
         int portIndex = getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2 ? data->midi2_in_port : data->midi1_in_port;
         auto instance = client->getInstanceById(data->instance_id);
         auto b = instance->getAudioPluginBuffer();
-        return b->get_buffer(*b, portIndex);
+        return b->get_buffer(b, portIndex);
     }
 
     size_t AAPMidiProcessor::runThroughMidi2UmpForMidiMapping(uint8_t* bytes, size_t offset, size_t length) {

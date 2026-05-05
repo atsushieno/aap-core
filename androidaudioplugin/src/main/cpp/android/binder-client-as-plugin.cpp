@@ -86,7 +86,7 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t* buff
 	if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
 		return;
 
-	int n = buffer->num_ports(*buffer);
+	int n = buffer->num_ports(buffer);
 
 	if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
 		auto status = ctx->getProxy()->beginPrepare(ctx->instance_id);
@@ -111,7 +111,7 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t* buff
     }
 
     if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
-        auto status = ctx->getProxy()->endPrepare(ctx->instance_id, buffer->num_frames(*buffer));
+        auto status = ctx->getProxy()->endPrepare(ctx->instance_id, buffer->num_frames(buffer));
         if (!status.isOk()) {
 			aap_bcap_log_error_with_details("endPrepare() failed", status);
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
@@ -150,8 +150,8 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 
 	if (shmBuffer != buffer)
 		// FIXME: copy only input ports
-		for (int32_t i = 0; i < buffer->num_ports(*buffer); i++)
-			memcpy(shmBuffer->get_buffer(*shmBuffer, i), buffer->get_buffer(*buffer, i), buffer->get_buffer_size(*buffer, i));
+		for (int32_t i = 0; i < buffer->num_ports(buffer); i++)
+			memcpy(shmBuffer->get_buffer(shmBuffer, i), buffer->get_buffer(buffer, i), buffer->get_buffer_size(buffer, i));
 
 	auto status = ctx->getProxy()->process(ctx->instance_id, frameCount, timeoutInNanoseconds);
 	if (!status.isOk()) {
@@ -161,8 +161,8 @@ void aap_client_as_plugin_process(AndroidAudioPlugin *plugin,
 
 	if (shmBuffer != buffer)
 		// FIXME: copy only output ports
-		for (int32_t i = 0; i < buffer->num_ports(*buffer); i++)
-			memcpy(buffer->get_buffer(*buffer, i), shmBuffer->get_buffer(*shmBuffer, i), shmBuffer->get_buffer_size(*shmBuffer, i));
+		for (int32_t i = 0; i < buffer->num_ports(buffer); i++)
+			memcpy(buffer->get_buffer(buffer, i), shmBuffer->get_buffer(shmBuffer, i), shmBuffer->get_buffer_size(shmBuffer, i));
 }
 
 void aap_client_as_plugin_deactivate(AndroidAudioPlugin *plugin)

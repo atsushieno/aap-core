@@ -67,7 +67,7 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, aap_buffer_t *buffer) {
     assert(ext);
     auto pluginInfo = ext->get(ext, &ctx->host, PLUGIN_URI);
     auto numPorts = pluginInfo.get_port_count(&pluginInfo);
-    assert(buffer->num_ports(*buffer) >= numPorts);
+    assert(buffer->num_ports(buffer) >= numPorts);
     for (int32_t i = 0, n = numPorts; i < n; i++) {
         auto port = pluginInfo.get_port(&pluginInfo, i);
         switch (port.content_type(&port)) {
@@ -150,19 +150,19 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
 
-    int size = buffer->num_frames(*buffer) * sizeof(float);
+    int size = buffer->num_frames(buffer) * sizeof(float);
     if (frameCount > size) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_APP_LOG_TAG, "frameCount passed at process() is bigger than aap_buffer_t num_frames().");
         size = frameCount;
     }
 
-    auto fIL = (float *) buffer->get_buffer(*buffer, ctx->audioInPortL);
-    auto fIR = (float *) buffer->get_buffer(*buffer, ctx->audioInPortR);
-    auto fOL = (float *) buffer->get_buffer(*buffer, ctx->audioOutPortL);
-    auto fOR = (float *) buffer->get_buffer(*buffer, ctx->audioOutPortR);
+    auto fIL = (float *) buffer->get_buffer(buffer, ctx->audioInPortL);
+    auto fIR = (float *) buffer->get_buffer(buffer, ctx->audioInPortR);
+    auto fOL = (float *) buffer->get_buffer(buffer, ctx->audioOutPortL);
+    auto fOR = (float *) buffer->get_buffer(buffer, ctx->audioOutPortR);
 
     // update parameters via MIDI2 messages
-    auto midiSeq = (AAPMidiBufferHeader*) buffer->get_buffer(*buffer, ctx->midiInPort);
+    auto midiSeq = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, ctx->midiInPort);
     auto midiSeqData = midiSeq + 1;
     if (midiSeq->length > 0) {
         CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {

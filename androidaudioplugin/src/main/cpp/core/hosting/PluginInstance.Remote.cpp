@@ -242,7 +242,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
         auto aapBuffer = getAudioPluginBuffer();
-        void* data = aapBuffer->get_buffer(*aapBuffer, i);
+        void* data = aapBuffer->get_buffer(aapBuffer, i);
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
         filterOutAAPXSReplies(data);
