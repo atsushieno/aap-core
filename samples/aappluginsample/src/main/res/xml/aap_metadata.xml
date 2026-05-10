@@ -4,14 +4,8 @@
       library="libaap-instrument-sample.so"
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
-    <extensions>
-      <extension uri="urn://androidaudioplugin.org/extensions/state/v4" />
-      <extension uri="urn://androidaudioplugin.org/extensions/presets/v4" />
-      <extension uri="urn://androidaudioplugin.org/extensions/midi2/v3" />
-      <extension uri="urn://androidaudioplugin.org/extensions/parameters/v4" />
-      <extension uri="urn://androidaudioplugin.org/extensions/port-config/v3" />
-      <extension uri="urn://androidaudioplugin.org/extensions/gui/v3" />
-    </extensions>
+
+    <extensions bom="0.12.0" />
 
     <!-- All ports are created implicitly now. -->
 

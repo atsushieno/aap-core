@@ -74,6 +74,13 @@ object AudioPluginHostHelper {
                         isOutProcess,
                     )
                     aapServiceInfo.plugins.add(currentPlugin)
+                } else if (xp.name == "extensions" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
+                    if (currentPlugin != null) {
+                        val bom = xp.getAttributeValue(null, "bom")
+                        if (bom != null) {
+                            AudioPluginExtensionsBom.fillExtensionsFromBom(currentPlugin.extensions, bom)
+                        }
+                    }
                 } else if (xp.name == "extension" && (xp.namespace == "" || xp.namespace == AAP_METADATA_CORE_NS)) {
                     if (currentPlugin != null) {
                         val required = xp.getAttributeValue(null, "required")
