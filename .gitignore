@@ -9,3 +9,4 @@ build
 .externalNativeBuild
 .cxx
 .kotlin
+.claude
