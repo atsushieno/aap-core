@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.width
@@ -21,8 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -274,45 +272,38 @@ fun PluginViewScope.PresetSelector(
 
     var currentPresetName by remember { mutableStateOf("-- Presets --") }
     var presetListExpanded by remember { mutableStateOf(false) }
-    if (LocalView.current.height > 1000) {
-        Button(onClick = { presetListExpanded = true }) {
+    val presets = remember { (0 until presetCount).map { getPreset(it) } }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Button(onClick = { presetListExpanded = !presetListExpanded }) {
             Text(currentPresetName, color = LocalContentColor.current)
         }
-        DropdownMenu(
-            modifier = modifier,
-            expanded = presetListExpanded,
-            onDismissRequest = { presetListExpanded = false }) {
-            DropdownMenuItem(text = { Text("(Cancel)", color = LocalContentColor.current) },
-                onClick = { presetListExpanded = false }
-            )
-            (0 until presetCount).map { getPreset(it) }.forEachIndexed { index, preset ->
-                DropdownMenuItem(text = { Text(preset.name, color = LocalContentColor.current) },
-                    onClick = {
-                        currentPresetName = preset.name
-                        onPresetChange(index)
-                        presetListExpanded = false
-                    }
-                )
-            }
-        }
-    } else {
-        var presetIndexValue by remember { mutableFloatStateOf(0f) }
-        var presetIndex by remember { mutableIntStateOf(presetIndexValue.toInt()) }
-        val presets = (0 until presetCount).map { getPreset(it) }
-        Row {
-            ImageStripKnob(
-                drawableResId = R.drawable.bright_life,
-                value = presetIndexValue,
-                valueRange = 0.toFloat()..presets.size.toFloat() - 0.1f,
-                onValueChange = {
-                    presetIndexValue = it
-                    if (presetIndexValue.toInt() != presetIndex) {
-                        presetIndex = presetIndexValue.toInt()
-                        onPresetChange(presetIndex)
+        if (presetListExpanded) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp)) {
+                itemsIndexed(presets) { _, preset ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                currentPresetName = preset.name
+                                onPresetChange(preset.index)
+                                presetListExpanded = false
+                            }
+                            .padding(vertical = 10.dp, horizontal = 12.dp)
+                    ) {
+                        Text(
+                            text = preset.index.toString(),
+                            modifier = Modifier.width(48.dp),
+                            color = LocalContentColor.current
+                        )
+                        Text(
+                            text = preset.name,
+                            color = LocalContentColor.current
+                        )
                     }
                 }
-            )
-            Text(modifier = Modifier.align(Alignment.CenterVertically).padding(10.dp, 0.dp), text = presets[presetIndex].name)
+            }
         }
     }
 }

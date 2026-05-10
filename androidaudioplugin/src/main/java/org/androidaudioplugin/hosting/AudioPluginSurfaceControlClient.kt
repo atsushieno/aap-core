@@ -13,10 +13,12 @@ import android.os.Message
 import android.os.MessageQueue.IdleHandler
 import android.os.Messenger
 import android.util.Log
+import android.view.MotionEvent
 import android.view.SurfaceControlViewHost
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup.LayoutParams
+import android.view.WindowManager
 import android.widget.LinearLayout
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
@@ -50,7 +52,25 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             super.onDetachedFromWindow()
             owner.handleSurfaceDetachedFromWindow()
         }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.action == MotionEvent.ACTION_DOWN &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                val from = rootSurfaceControl?.inputTransferToken
+                val to = owner.surfacePackage?.inputTransferToken
+                if (from != null && to != null) {
+                    val wm = context.getSystemService(WindowManager::class.java)
+                    val ok = wm?.transferTouchGesture(from, to) ?: false
+                    if (!ok)
+                        Log.w(LOG_TAG, "transferTouchGesture failed; embedded view may not receive input as expected")
+                }
+            }
+            return super.onTouchEvent(event)
+        }
+
         init {
+            isFocusable = true
+            isFocusableInTouchMode = true
             setZOrderOnTop(true)
             // FIXME: enable this when our compileSdk = 34 or later
             //if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU)
@@ -202,16 +222,22 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             val surfaceView = getOrCreateSurfaceView()
             connectedPluginId = pluginId
             connectedInstanceId = instanceId
+            val data = bundleOf(
+                AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONNECT,
+                AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surfaceView.hostToken,
+                AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surfaceView.display.displayId,
+                AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
+                AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
+                AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
+                AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                surfaceView.rootSurfaceControl?.inputTransferToken?.let {
+                    data.putParcelable(AudioPluginViewService.MESSAGE_KEY_INPUT_TRANSFER_TOKEN, it)
+                }
+            }
             val message = Message.obtain().apply {
-                data = bundleOf(
-                    AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONNECT,
-                    AudioPluginViewService.MESSAGE_KEY_HOST_TOKEN to surfaceView.hostToken,
-                    AudioPluginViewService.MESSAGE_KEY_DISPLAY_ID to surfaceView.display.displayId,
-                    AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
-                    AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
-                    AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
-                    AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
-                )
+                this.data = data
                 replyTo = incomingMessenger
             }
             surfaceView.connection?.outgoingMessenger?.send(message)

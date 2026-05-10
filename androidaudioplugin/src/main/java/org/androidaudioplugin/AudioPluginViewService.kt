@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.SurfaceControlViewHost
 import android.view.View
 import android.widget.FrameLayout
+import android.window.InputTransferToken
 import androidx.annotation.RequiresApi
 import androidx.core.os.bundleOf
 import androidx.lifecycle.LifecycleService
@@ -40,6 +41,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
         const val MESSAGE_KEY_HOST_TOKEN = "hostToken"
+        const val MESSAGE_KEY_INPUT_TRANSFER_TOKEN = "inputTransferToken"
         const val MESSAGE_KEY_DISPLAY_ID = "displayId"
         const val MESSAGE_KEY_PLUGIN_ID = "pluginId"
         const val MESSAGE_KEY_INSTANCE_ID = "instanceId"
@@ -112,6 +114,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     private fun handleConnectRequest(msg: Message) {
         val messenger = msg.replyTo
         val hostToken = msg.data.getBinder(MESSAGE_KEY_HOST_TOKEN)!!
+        val inputTransferToken = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM)
+            msg.data.getParcelable(MESSAGE_KEY_INPUT_TRANSFER_TOKEN, InputTransferToken::class.java)
+        else null
         val displayId = msg.data.getInt(MESSAGE_KEY_DISPLAY_ID)
         val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID)!!
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
@@ -130,7 +135,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
             controllers[instanceId]?.close()
         }
         controllers[instanceId] = controller
-        controller.initialize(messenger, hostToken, displayId, width, height)
+        controller.initialize(messenger, hostToken, inputTransferToken, displayId, width, height)
     }
 
     private fun handleGetPreferredSizeRequest(msg: Message) {
@@ -210,13 +215,18 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         private var viewportView: FrameLayout? = null
         private var pluginView: View? = null
 
-        fun initialize(messengerToSendReply: Messenger, hostToken: IBinder, displayId: Int, width: Int, height: Int) {
+        fun initialize(messengerToSendReply: Messenger, hostToken: IBinder, inputTransferToken: InputTransferToken?, displayId: Int, width: Int, height: Int) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val display = service.getSystemService(DisplayManager::class.java)
                     .getDisplay(displayId)
 
                 service.mainLooper.queue.addIdleHandler {
-                    viewHost = SurfaceControlViewHost(service, display, hostToken).apply {
+                    val newHost = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM && inputTransferToken != null)
+                        SurfaceControlViewHost(service, display, inputTransferToken)
+                    else
+                        @Suppress("DEPRECATION")
+                        SurfaceControlViewHost(service, display, hostToken)
+                    viewHost = newHost.apply {
                         val view = AudioPluginServiceHelper.createNativeView(service, pluginId, instanceId)
                         val viewport = FrameLayout(service).apply {
                             clipChildren = true
