@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
-import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
@@ -46,7 +45,6 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     var instance = mutableStateOf<NativeRemotePluginInstance?>(null)
     var isProcessing = mutableStateOf(false)
     val parameterValues = mutableStateListOf<Double>()
-    val parameterMetadata = mutableStateListOf<ParameterInformation>()
     val outputMessages = mutableStateListOf<String>()
     private val midiOutputScratch = ByteArray(8192)
     private val parameterIdToIndex = mutableMapOf<Int, Int>()
@@ -85,7 +83,6 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             manager.client.connectToPluginService(pluginInfo.packageName)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
         if (!alreadyDisposed) {
-            result.setParameterListChangedCallback { syncParametersFromInstance(force = true) }
             instance.value = result
             syncParametersFromInstance(force = true)
         }
@@ -176,18 +173,14 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
 
         val count = ins.getParameterCount()
         val values = ArrayList<Double>(count)
-        val metadata = ArrayList<ParameterInformation>(count)
         parameterIdToIndex.clear()
         for (index in 0 until count) {
             val parameter = ins.getParameter(index)
             parameterIdToIndex[parameter.id] = index
             values += ins.getParameterValue(index)
-            metadata += parameter
         }
         parameterValues.clear()
         parameterValues.addAll(values)
-        parameterMetadata.clear()
-        parameterMetadata.addAll(metadata)
         parameterStateRevision = revision
     }
 
