@@ -33,6 +33,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.ui.compose.PluginView
@@ -49,6 +50,7 @@ internal class RemotePluginViewScopeImpl(
     val context: Context,
     val instance: NativeRemotePluginInstance,
     val parameters: List<Double>,
+    val metadata: List<ParameterInformation>,
     val pluginInfo: PluginInformation)
     : PluginViewScope {
 
@@ -56,10 +58,10 @@ internal class RemotePluginViewScopeImpl(
         get() = pluginInfo.displayName
 
     override val parameterCount: Int
-        get() = instance.getParameterCount()
+        get() = metadata.size
 
     override fun getParameter(parameterIndex: Int): PluginViewScopeParameter =
-        PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex])
+        PluginViewScopeParameterImpl(parameterIndex, metadata[parameterIndex], parameters[parameterIndex])
 
     override val portCount: Int
         get() = instance.getPortCount()
@@ -110,7 +112,7 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         }
     }
 
-    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo)) }
+    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, scope.parameterMetadata, pluginInfo)) }
     pluginViewScope.PluginView(getParameterValue = { scope.parameterValues[it].toFloat() },
         onParameterChange = { index, value ->
             scope.setParameterValue(index, value)
