@@ -89,9 +89,15 @@ open class AudioPluginService : Service()
 
     private var eventProcessorLooper: Looper? = null
 
-    // Depending on the plugin, it may be missing foreground service type in the manifest.
-    // To avoid crash due to insufficient permission, we make foreground behavior optional.
-    private val declaredForegroundServiceType by lazy { AudioPluginServiceHelper.getForegroundServiceType(this, packageName, javaClass.name) }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        maybeStartForegroundService()
+        return START_NOT_STICKY
+    }
+
+    override fun onRebind(intent: Intent?) {
+        maybeStartForegroundService()
+        super.onRebind(intent)
+    }
 
     override fun onBind(intent: Intent?): IBinder? {
         maybeStartForegroundService()
@@ -141,12 +147,13 @@ open class AudioPluginService : Service()
     }
     
     private fun maybeStartForegroundService() {
-        if (isForegroundStarted || declaredForegroundServiceType == 0)
+        if (isForegroundStarted)
             return
 
         val notification = createNotification()
         try {
-            startForeground(NOTIFICATION_ID, notification, declaredForegroundServiceType)
+            startForeground(NOTIFICATION_ID, notification,
+                AudioPluginServiceHelper.getForegroundServiceType(this, packageName, javaClass.name))
             isForegroundStarted = true
         } catch (ex: Exception) {
             android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
