@@ -72,6 +72,23 @@ dependencies {
     androidTestImplementation (libs.test.espresso.core)
 }
 
+// Workaround for AGP/prefab issue: cmake for consuming modules may generate INTERFACE IMPORTED
+// targets when the producing module's .so hasn't been built yet at configure time.
+// AGP only tracks prefab_publication.json (not .so content) for cmake cache invalidation,
+// so we explicitly order configure after the prefab package task (which contains the .so).
+// See also: https://issuetracker.google.com/issues/385751152
+gradle.projectsEvaluated {
+    val aapProject = rootProject.project("androidaudioplugin")
+    tasks.matching { it.name.startsWith("configureCMakeDebug") }.configureEach {
+        dependsOn(aapProject.tasks["prefabDebugPackage"])
+    }
+    tasks.matching { it.name.startsWith("configureCMakeRelWithDebInfo") }.configureEach {
+        dependsOn(aapProject.tasks["prefabReleasePackage"])
+    }
+    tasks["buildCMakeDebug"].dependsOn(aapProject.tasks["mergeDebugNativeLibs"])
+    tasks["buildCMakeRelWithDebInfo"].dependsOn(aapProject.tasks["mergeReleaseNativeLibs"])
+}
+
 
 val gitProjectName = "aap-core"
 val packageName = project.name
