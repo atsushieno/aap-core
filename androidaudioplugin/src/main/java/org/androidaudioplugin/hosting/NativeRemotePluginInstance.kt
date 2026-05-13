@@ -41,6 +41,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         }
     }
 
+    private fun markError(ex: RemoteException) {
+        state = InstanceState.ERROR
+        proxyError = ex
+        Log.e("AAP", "AudioPluginInstance received RemoteException: ${ex.message ?: ""}\n{${ex.stackTraceToString()}")
+    }
+
     fun prepare(frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int) = runCatchingRemoteException {
         prepare(client, instanceId, frameCount, sampleRate, defaultControlBytesPerBlock)
         state = InstanceState.INACTIVE
@@ -111,7 +117,13 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getParameterCount() = runCatchingRemoteException(0) {
         getParameterCount(client, instanceId)
     }
-    fun getParameter(index: Int) = getParameter(client, instanceId, index)
+    fun getParameter(index: Int): ParameterInformation =
+        try {
+            getParameter(client, instanceId, index)
+        } catch (ex: RemoteException) {
+            markError(ex)
+            ParameterInformation(index, "Unavailable")
+        }
     fun getParameterValue(index: Int) = runCatchingRemoteException(0.0) {
         getParameterValue(client, instanceId, index)
     }
@@ -121,7 +133,13 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getPortCount() = runCatchingRemoteException(0) {
         getPortCount(client, instanceId)
     }
-    fun getPort(index: Int) = getPort(client, instanceId, index)
+    fun getPort(index: Int): PortInformation =
+        try {
+            getPort(client, instanceId, index)
+        } catch (ex: RemoteException) {
+            markError(ex)
+            PortInformation(index, "Unavailable", PortInformation.PORT_DIRECTION_INPUT, PortInformation.PORT_CONTENT_TYPE_GENERAL)
+        }
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
         getPortBuffer(client, instanceId, portIndex, buffer, size)
     }

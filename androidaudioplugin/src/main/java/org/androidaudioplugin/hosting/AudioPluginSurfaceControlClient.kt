@@ -12,6 +12,7 @@ import android.os.Looper
 import android.os.Message
 import android.os.MessageQueue.IdleHandler
 import android.os.Messenger
+import android.os.RemoteException
 import android.util.Log
 import android.view.MotionEvent
 import android.view.SurfaceControlViewHost
@@ -210,11 +211,18 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         @RequiresApi(Build.VERSION_CODES.R)
         private suspend fun bindPluginViewService(pluginPackageName: String): HostConnection =
             suspendCoroutine { continuation ->
-                context.bindService(
-                    Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
-                    HostConnection(onConnected = { continuation.resume(it) }),
-                    Context.BIND_AUTO_CREATE
+                val connection = HostConnection(
+                    onConnected = { continuation.resume(it) },
+                    onDisconnected = { handleRemoteUIDisconnected(it, "service disconnected") }
                 )
+                if (!context.bindService(
+                        Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
+                        connection,
+                        Context.BIND_AUTO_CREATE
+                    )
+                ) {
+                    throw IllegalStateException("Failed to bind AudioPluginViewService for $pluginPackageName")
+                }
             }
 
         @RequiresApi(Build.VERSION_CODES.R)
@@ -240,7 +248,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 this.data = data
                 replyTo = incomingMessenger
             }
-            surfaceView.connection?.outgoingMessenger?.send(message)
+            sendToCurrentConnection(message, "connect")
         }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -276,7 +284,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
             )
         }
-        surface?.connection?.outgoingMessenger?.send(message)
+        sendToCurrentConnection(message, "resize")
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -294,7 +302,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 AudioPluginViewService.MESSAGE_KEY_SCROLL_Y to configuration.scrollY
             )
         }
-        outgoingMessenger.send(message)
+        sendToCurrentConnection(message, "configureViewport")
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -313,7 +321,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID to connectedGuiSessionId
             )
         }
-        outgoingMessenger.send(message)
+        try {
+            outgoingMessenger.send(message)
+        } catch (ex: RemoteException) {
+            Log.w(LOG_TAG, "disconnectRemoteUI ignored after remote UI process loss", ex)
+            handleRemoteUIDisconnected(surfaceView.connection, "disconnect send failed")
+        }
     }
 
     private fun handleSurfaceDetachedFromWindow() {
@@ -332,6 +345,30 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
     }
 
+    private fun sendToCurrentConnection(message: Message, operation: String) {
+        val connection = surface?.connection ?: return
+        try {
+            connection.outgoingMessenger.send(message)
+        } catch (ex: RemoteException) {
+            Log.w(LOG_TAG, "AudioPluginViewService $operation failed; invalidating dead remote UI connection", ex)
+            handleRemoteUIDisconnected(connection, "$operation failed")
+        }
+    }
+
+    private fun handleRemoteUIDisconnected(connection: HostConnection?, reason: String) {
+        Log.w(LOG_TAG, "Remote plugin UI disconnected: $reason")
+        val surfaceView = surface
+        if (surfaceView != null && surfaceView.connection === connection)
+            surfaceView.connection = null
+        surfacePackage?.release()
+        surfacePackage = null
+        pendingViewportConfiguration = null
+        connectedPluginId = null
+        connectedInstanceId = -1
+        connectedGuiSessionId = -1
+        connection?.unbind(context)
+    }
+
     private data class ViewportConfiguration(
         val instanceId: Int,
         val viewportWidth: Int,
@@ -345,18 +382,34 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     internal class HostConnection(private val onConnected: (HostConnection) -> Unit,
         private val onDisconnected: (HostConnection) -> Unit = {}) : ServiceConnection {
         lateinit var outgoingMessenger: Messenger
+        var packageName: String? = null
+            private set
         @Volatile
         private var isBound = true
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             outgoingMessenger = Messenger(service)
+            packageName = name?.packageName
             Log.d(LOG_TAG, "connected to ${AudioPluginViewService::class.java.name}")
             onConnected(this)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
             onDisconnected(this)
             Log.d(LOG_TAG, "disconnected from ${AudioPluginViewService::class.java.name}")
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            isBound = false
+            onDisconnected(this)
+            Log.w(LOG_TAG, "binding died for ${AudioPluginViewService::class.java.name}")
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            isBound = false
+            onDisconnected(this)
+            Log.w(LOG_TAG, "null binding for ${AudioPluginViewService::class.java.name}")
         }
 
         fun unbind(context: Context) {

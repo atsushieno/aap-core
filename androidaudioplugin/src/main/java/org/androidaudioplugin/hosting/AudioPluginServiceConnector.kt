@@ -6,11 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.os.RemoteException
 import android.util.Log
 import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginNatives
-import org.androidaudioplugin.AudioPluginService
-import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.PluginServiceInformation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -36,21 +35,27 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             if (binder != null) {
                 val conn = parent.registerNewConnection(this, serviceInfo, binder)
                 onServiceConnectionRegistered(conn)
+            } else {
+                onServiceConnectionRegistered(null)
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            Log.d("AAP", "AudioPluginServiceConnector: onServiceDisconnected - FIXME: implement")
+            Log.w("AAP", "AudioPluginServiceConnector: onServiceDisconnected for ${serviceInfo.packageName}/${serviceInfo.className}")
+            parent.invalidateServiceConnection(serviceInfo.packageName, serviceInfo.className)
         }
 
         override fun onNullBinding(name: ComponentName?) {
-            Log.d("AAP", "AudioPluginServiceConnector: onNullBinding")
-            super.onNullBinding(name)
+            Log.w("AAP", "AudioPluginServiceConnector: onNullBinding for ${serviceInfo.packageName}/${serviceInfo.className}")
+            synchronized(parent.pendingServices) {
+                parent.pendingServices.remove(PendingServiceConnection(serviceInfo.packageName, serviceInfo.className))
+            }
+            onServiceConnectionRegistered(null)
         }
 
         override fun onBindingDied(name: ComponentName?) {
-            Log.d("AAP", "AudioPluginServiceConnector: onBindingDied")
-            super.onBindingDied(name)
+            Log.w("AAP", "AudioPluginServiceConnector: onBindingDied for ${serviceInfo.packageName}/${serviceInfo.className}")
+            parent.invalidateServiceConnection(serviceInfo.packageName, serviceInfo.className)
         }
     }
 
@@ -155,10 +160,32 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                 "AAP",
                 "AudioPluginServiceConnector: duplicate connection ignored for ${serviceInfo.packageName}/${serviceInfo.className}"
             )
-            context.unbindService(serviceConnection)
+            try {
+                context.unbindService(serviceConnection)
+            } catch (ex: IllegalArgumentException) {
+                Log.w("AAP", "AudioPluginServiceConnector: duplicate connection was already unbound", ex)
+            }
             return existing
         }
-        val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder)
+        val deathRecipient = IBinder.DeathRecipient {
+            Log.w(
+                "AAP",
+                "AudioPluginServiceConnector: binder died for ${serviceInfo.packageName}/${serviceInfo.className}"
+            )
+            invalidateServiceConnection(serviceInfo.packageName, serviceInfo.className)
+        }
+        try {
+            binder.linkToDeath(deathRecipient, 0)
+        } catch (ex: RemoteException) {
+            Log.w(
+                "AAP",
+                "AudioPluginServiceConnector: binder already dead for ${serviceInfo.packageName}/${serviceInfo.className}",
+                ex
+            )
+            return invalidateServiceConnection(serviceInfo.packageName, serviceInfo.className)
+                ?: PluginServiceConnection(serviceConnection, serviceInfo, binder)
+        }
+        val conn = PluginServiceConnection(serviceConnection, serviceInfo, binder, deathRecipient)
         // A Java IBinder object created by Service framework is converted to NdkBinder object here.
         // It must happen somewhere within `ServiceConnection.onServiceConnected()`.
         AudioPluginNatives.addBinderForClient(
@@ -177,6 +204,34 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
         return conn
     }
 
+    fun invalidateServiceConnection(packageName: String, className: String? = null): PluginServiceConnection? {
+        val conn = findExistingServiceConnection(packageName, className) ?: return null
+
+        onDisconnectingListeners.forEach { it(conn) }
+
+        connectedServices.remove(conn)
+        conn.deathRecipient?.let {
+            try {
+                conn.binder.unlinkToDeath(it, 0)
+            } catch (_: NoSuchElementException) {
+                // already gone
+            } catch (_: Throwable) {
+                // binder is already dead or detached
+            }
+        }
+        AudioPluginNatives.removeBinderForClient(
+            serviceConnectionId,
+            conn.serviceInfo.packageName,
+            conn.serviceInfo.className
+        )
+        try {
+            context.unbindService(conn.platformServiceConnection)
+        } catch (ex: IllegalArgumentException) {
+            Log.w("AAP", "AudioPluginServiceConnector: service already unbound for ${conn.serviceInfo.packageName}/${conn.serviceInfo.className}", ex)
+        }
+        return conn
+    }
+
     private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
 
     fun findExistingServiceConnection(packageName: String, className: String? = null) =
@@ -186,21 +241,18 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
         }
 
     fun unbindAudioPluginService(packageName: String) {
-        val conn = findExistingServiceConnection(packageName) ?: return
-
-        onDisconnectingListeners.forEach { it(conn) }
-
-        connectedServices.remove(conn)
-        AudioPluginNatives.removeBinderForClient(
-            serviceConnectionId,
-            conn.serviceInfo.packageName,
-            conn.serviceInfo.className
-        )
-        context.unbindService(conn.platformServiceConnection)
+        invalidateServiceConnection(packageName)
     }
 
     override fun close() {
         connectedServices.toTypedArray().forEach { conn ->
+            conn.deathRecipient?.let {
+                try {
+                    conn.binder.unlinkToDeath(it, 0)
+                } catch (_: NoSuchElementException) {
+                } catch (_: Throwable) {
+                }
+            }
             AudioPluginNatives.removeBinderForClient(
                 serviceConnectionId,
                 conn.serviceInfo.packageName,
