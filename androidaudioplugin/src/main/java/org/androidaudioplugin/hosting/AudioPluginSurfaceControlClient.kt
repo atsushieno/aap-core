@@ -360,7 +360,8 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         val surfaceView = surface
         if (surfaceView != null && surfaceView.connection === connection)
             surfaceView.connection = null
-        surfacePackage?.release()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            surfacePackage?.release()
         surfacePackage = null
         pendingViewportConfiguration = null
         connectedPluginId = null
