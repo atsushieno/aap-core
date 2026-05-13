@@ -182,6 +182,19 @@ void aap::RemotePluginInstance::connectRemoteNativeView(int32_t width, int32_t h
 #endif
 }
 
+void aap::RemotePluginInstance::resizeRemoteNativeView(int32_t width, int32_t height)  {
+#if ANDROID
+    if (!native_ui_controller) {
+        AAP_ASSERT_FALSE; // should not happen
+        return;
+    }
+    AAPJniFacade::getInstance()->resizeRemoteNativeView(client, this, width, height);
+#else
+    (void) width;
+    (void) height;
+#endif
+}
+
 void aap::RemotePluginInstance::configureRemoteNativeView(
     int32_t viewportWidth,
     int32_t viewportHeight,

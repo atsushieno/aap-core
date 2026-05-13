@@ -550,6 +550,34 @@ namespace aap {
         });
     }
 
+    void AAPJniFacade::resizeRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height) {
+        (void) client;
+        usingJNIEnv<int32_t>([instance, width, height](JNIEnv* env) {
+            auto clzControl = getAppClass(env, "org/androidaudioplugin/hosting/AudioPluginSurfaceControlClient");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return 0;
+            }
+            auto resizeUI = env->GetMethodID(clzControl, "resizeUI", "(III)V");
+            if (env->ExceptionOccurred()) {
+                env->ExceptionDescribe();
+                return 0;
+            }
+            auto uiController = instance->getNativeUIController();
+            if (!uiController) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "createSurfaceControl() was not invoked yet.");
+                return 0;
+            }
+            auto controlClient = (jobject) uiController->getHandle();
+            if (!controlClient) {
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, "AAPJniFacade", "Native UI controller does not exist. Maybe the UI factory is not configured properly?");
+                return 0;
+            }
+            env->CallVoidMethod(controlClient, resizeUI, instance->getInstanceId(), width, height);
+            return 0;
+        });
+    }
+
     void AAPJniFacade::configureRemoteNativeView(
         PluginClient* client,
         RemotePluginInstance* instance,

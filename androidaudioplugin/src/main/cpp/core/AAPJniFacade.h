@@ -48,6 +48,7 @@ namespace aap {
         void* getRemoteNativeView(PluginClient* client, RemotePluginInstance* instance);
         bool getRemoteNativeViewPreferredSize(PluginClient* client, RemotePluginInstance* instance, int32_t& width, int32_t& height);
         void connectRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height);
+        void resizeRemoteNativeView(PluginClient* client, RemotePluginInstance* instance, int32_t width, int32_t height);
         void configureRemoteNativeView(
             PluginClient* client,
             RemotePluginInstance* instance,
