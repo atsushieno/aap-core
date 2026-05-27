@@ -3,12 +3,14 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.webkit.WebView
 import android.view.View
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,7 +30,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -53,6 +57,7 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
                            createSurfaceView: (Context) -> View,
                            detachSurfaceView: (View) -> Unit,
                            onViewportChanged: (Int, Int, Int, Int, Int, Int) -> Unit = { _, _, _, _, _, _ -> },
+                           onResize: (Int, Int) -> Unit = { _, _ -> },
                            onCloseClick: () -> Unit = {}) {
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
@@ -143,10 +148,60 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
                         isHorizontal = true,
                         onScrollValueChange = { scrollX = it }
                     )
+                } else {
+                    Spacer(Modifier.width(viewportWidth).height(scrollbarThickness))
                 }
+                ResizeHandle(
+                    modifier = Modifier.width(scrollbarThickness).height(scrollbarThickness),
+                    viewportWidthPx = viewportWidthPx,
+                    viewportHeightPx = viewportHeightPx,
+                    onResize = onResize
+                )
+            }
+        }
+    }
+}
 
-                if (maxScrollX > 0 && maxScrollY > 0)
-                    Box(Modifier.width(scrollbarThickness).height(scrollbarThickness))
+@Composable
+private fun ResizeHandle(
+    modifier: Modifier,
+    viewportWidthPx: Int,
+    viewportHeightPx: Int,
+    onResize: (Int, Int) -> Unit
+) {
+    val currentViewportWidthPx by rememberUpdatedState(viewportWidthPx)
+    val currentViewportHeightPx by rememberUpdatedState(viewportHeightPx)
+    var dragStartWidth by remember { mutableStateOf(0) }
+    var dragStartHeight by remember { mutableStateOf(0) }
+    var totalDragX by remember { mutableStateOf(0f) }
+    var totalDragY by remember { mutableStateOf(0f) }
+
+    Box(modifier
+        .background(Color.DarkGray.copy(alpha = 0.5f))
+        .pointerInput(Unit) {
+            detectDragGestures(
+                onDragStart = {
+                    dragStartWidth = currentViewportWidthPx
+                    dragStartHeight = currentViewportHeightPx
+                    totalDragX = 0f
+                    totalDragY = 0f
+                },
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    totalDragX += dragAmount.x
+                    totalDragY += dragAmount.y
+                    val newWidth = (dragStartWidth + totalDragX.roundToInt()).coerceAtLeast(100)
+                    val newHeight = (dragStartHeight + totalDragY.roundToInt()).coerceAtLeast(100)
+                    onResize(newWidth, newHeight)
+                }
+            )
+        }
+    ) {
+        Canvas(Modifier.matchParentSize()) {
+            val lineColor = Color.White.copy(alpha = 0.7f)
+            for (i in 1..3) {
+                val t = i * (size.width / 4f)
+                drawLine(lineColor, Offset(t, size.height), Offset(size.width, t), strokeWidth = 1.5f, cap = StrokeCap.Round)
             }
         }
     }

@@ -187,8 +187,12 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
             } else {
                 val surfaceContentWidth = with(density) { uiScope.width.toDp() }
                 val surfaceContentHeight = with(density) { uiScope.height.toDp() }
-                val surfaceViewportWidth = surfaceContentWidth.coerceAtMost(surfaceWidth)
-                val surfaceViewportHeight = surfaceContentHeight.coerceAtMost(surfaceHeight)
+                val initialViewportWidth = surfaceContentWidth.coerceAtMost(surfaceWidth)
+                val initialViewportHeight = surfaceContentHeight.coerceAtMost(surfaceHeight)
+                var currentViewportWidthPx by remember(uiScope) { mutableStateOf(with(density) { initialViewportWidth.roundToPx() }) }
+                var currentViewportHeightPx by remember(uiScope) { mutableStateOf(with(density) { initialViewportHeight.roundToPx() }) }
+                val surfaceViewportWidth = with(density) { currentViewportWidthPx.toDp() }
+                val surfaceViewportHeight = with(density) { currentViewportHeightPx.toDp() }
 
                 DisposableEffect(uiScope) {
                     onDispose {
@@ -216,6 +220,10 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                                 scrollY
                             )
                         }
+                    },
+                    onResize = { newWidth, newHeight ->
+                        currentViewportWidthPx = newWidth
+                        currentViewportHeightPx = newHeight
                     },
                     onCloseClick = { closeSurfaceUI() })
 
