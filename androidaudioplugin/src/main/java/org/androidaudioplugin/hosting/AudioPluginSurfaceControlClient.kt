@@ -80,19 +80,26 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     }
 
     private val messageHandlerThread = HandlerThread("IncomingMessengerHandler").apply { start() }
-    private val incomingMessenger = Messenger(ClientReplyHandler(messageHandlerThread.looper) { guiSessionId, surfacePackage ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            connectedGuiSessionId = guiSessionId
-            this.surfacePackage?.release()
-            this.surfacePackage = surfacePackage
-            getOrCreateSurfaceView().setChildSurfacePackage(surfacePackage)
-            pendingViewportConfiguration?.let(::sendConfigureViewport)
-            Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
-            connectedListeners.forEach { it() }
+    private val incomingMessenger = Messenger(ClientReplyHandler(
+        messageHandlerThread.looper,
+        onSurfacePackageReceived = { guiSessionId, surfacePackage ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                connectedGuiSessionId = guiSessionId
+                this.surfacePackage?.release()
+                this.surfacePackage = surfacePackage
+                getOrCreateSurfaceView().setChildSurfacePackage(surfacePackage)
+                pendingViewportConfiguration?.let(::sendConfigureViewport)
+                Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
+                connectedListeners.forEach { it() }
+            }
+        },
+        onContentSizeChanged = { width, height ->
+            contentSizeChangedListeners.forEach { it(width, height) }
         }
-    })
+    ))
 
     val connectedListeners = mutableListOf<() -> Unit>()
+    val contentSizeChangedListeners = mutableListOf<(Int, Int) -> Unit>()
 
     private var surface: AudioPluginSurfaceView? = null
     private var surfacePackage: SurfaceControlViewHost.SurfacePackage? = null
@@ -430,14 +437,28 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
     }
 
-    internal class ClientReplyHandler(looper: Looper, private val onSurfacePackageReceived: (Int, SurfaceControlViewHost.SurfacePackage) -> Unit) : Handler(looper) {
+    internal class ClientReplyHandler(
+        looper: Looper,
+        private val onSurfacePackageReceived: (Int, SurfaceControlViewHost.SurfacePackage) -> Unit,
+        private val onContentSizeChanged: (Int, Int) -> Unit = { _, _ -> }
+    ) : Handler(looper) {
         override fun handleMessage(msg: Message) {
-            val guiSessionId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID))
-                msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID)
-            else
-                msg.data.getInt(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
-            val pkg = msg.data.getParcelable(AudioPluginViewService.MESSAGE_KEY_SURFACE_PACKAGE) as SurfaceControlViewHost.SurfacePackage?
-            pkg?.let { onSurfacePackageReceived(guiSessionId, it) }
+            when (msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_OPCODE)) {
+                AudioPluginViewService.OPCODE_CONTENT_SIZE_CHANGED -> {
+                    val width = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_WIDTH)
+                    val height = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_HEIGHT)
+                    onContentSizeChanged(width, height)
+                }
+                else -> {
+                    // OPCODE_CONNECT reply (and legacy replies without an explicit opcode, which default to 0)
+                    val guiSessionId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID))
+                        msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID)
+                    else
+                        msg.data.getInt(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
+                    val pkg = msg.data.getParcelable(AudioPluginViewService.MESSAGE_KEY_SURFACE_PACKAGE) as SurfaceControlViewHost.SurfacePackage?
+                    pkg?.let { onSurfacePackageReceived(guiSessionId, it) }
+                }
+            }
         }
     }
 

@@ -74,7 +74,7 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
     val effectiveScrollY = scrollY.coerceIn(0, maxScrollY)
     val scrollbarThickness = 12.dp
 
-    LaunchedEffect(viewportWidthPx, viewportHeightPx, contentWidthPx, contentHeightPx, effectiveScrollX, effectiveScrollY) {
+    LaunchedEffect(viewportWidthPx, viewportHeightPx, effectiveScrollX, effectiveScrollY) {
         onViewportChanged(
             viewportWidthPx,
             viewportHeightPx,

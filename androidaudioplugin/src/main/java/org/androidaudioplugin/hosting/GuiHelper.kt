@@ -50,6 +50,9 @@ object GuiHelper {
         val surfaceView: View
             get() = surfaceControlClient.surfaceView
 
+        val contentSizeChangedListeners: MutableList<(Int, Int) -> Unit>
+            get() = surfaceControlClient.contentSizeChangedListeners
+
         @RequiresApi(Build.VERSION_CODES.R)
         suspend fun getPreferredSizeOrFallback(fallbackWidth: Int, fallbackHeight: Int): Size {
             val preferredSize = surfaceControlClient.getPreferredSizeNoHandler(

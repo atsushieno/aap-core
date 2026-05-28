@@ -8,9 +8,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.os.RemoteException
 import android.util.Log
 import android.view.SurfaceControlViewHost
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.window.InputTransferToken
 import androidx.annotation.RequiresApi
@@ -37,6 +39,8 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val OPCODE_RESIZE = 2
         const val OPCODE_CONFIGURE_VIEWPORT = 3
         const val OPCODE_GET_PREFERRED_SIZE = 4
+        // reply sent from service to host when plugin view resizes itself
+        const val OPCODE_CONTENT_SIZE_CHANGED = 5
 
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
@@ -241,6 +245,26 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
                         pluginView = view
                         viewportView = viewport
+
+                        val replyMessenger = messengerToSendReply
+                        // JUCE calls View.layout() on its peer view (first child of the container),
+                        // not on the container itself, so the listener must be on that child.
+                        val listenerTarget = if (view is ViewGroup && view.childCount > 0) view.getChildAt(0) else view
+                        listenerTarget.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                            val newW = right - left
+                            val newH = bottom - top
+                            if (newW != oldRight - oldLeft || newH != oldBottom - oldTop) {
+                                try {
+                                    replyMessenger.send(Message.obtain().apply {
+                                        data = bundleOf(
+                                            MESSAGE_KEY_OPCODE to OPCODE_CONTENT_SIZE_CHANGED,
+                                            MESSAGE_KEY_CONTENT_WIDTH to newW,
+                                            MESSAGE_KEY_CONTENT_HEIGHT to newH
+                                        )
+                                    })
+                                } catch (_: RemoteException) {}
+                            }
+                        }
 
                         setView(viewport, width, height)
 

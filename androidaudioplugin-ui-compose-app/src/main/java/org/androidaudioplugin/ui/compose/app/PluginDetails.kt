@@ -185,8 +185,10 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     surfaceUIScope = SurfaceControlUIScope.create(scope, contentWidthPx, contentHeightPx)
                 }
             } else {
-                val surfaceContentWidth = with(density) { uiScope.width.toDp() }
-                val surfaceContentHeight = with(density) { uiScope.height.toDp() }
+                var currentContentWidthPx by remember(uiScope) { mutableStateOf(uiScope.width) }
+                var currentContentHeightPx by remember(uiScope) { mutableStateOf(uiScope.height) }
+                val surfaceContentWidth = with(density) { currentContentWidthPx.toDp() }
+                val surfaceContentHeight = with(density) { currentContentHeightPx.toDp() }
                 val initialViewportWidth = surfaceContentWidth.coerceAtMost(surfaceWidth)
                 val initialViewportHeight = surfaceContentHeight.coerceAtMost(surfaceHeight)
                 var currentViewportWidthPx by remember(uiScope) { mutableStateOf(with(density) { initialViewportWidth.roundToPx() }) }
@@ -195,7 +197,17 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                 val surfaceViewportHeight = with(density) { currentViewportHeightPx.toDp() }
 
                 DisposableEffect(uiScope) {
+                    val listener: (Int, Int) -> Unit = { w, h ->
+                        currentContentWidthPx = w
+                        currentContentHeightPx = h
+                        // When content shrinks below the current viewport, shrink the viewport to match.
+                        // This handles plugin-initiated resizes (e.g. zoom level changes).
+                        if (currentViewportWidthPx > w) currentViewportWidthPx = w
+                        if (currentViewportHeightPx > h) currentViewportHeightPx = h
+                    }
+                    uiScope.guiHost?.contentSizeChangedListeners?.add(listener)
                     onDispose {
+                        uiScope.guiHost?.contentSizeChangedListeners?.remove(listener)
                         uiScope.close()
                     }
                 }
@@ -208,7 +220,7 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
                     contentWidth = surfaceContentWidth,
                     contentHeight = surfaceContentHeight,
                     createSurfaceView = { _ -> uiScope.guiHost!!.surfaceView },
-                    detachSurfaceView = { _ -> surfaceUIConnected = false },
+                    detachSurfaceView = { _ -> },
                     onViewportChanged = { viewportWidth, viewportHeight, contentWidth, contentHeight, scrollX, scrollY ->
                         if (surfaceUIConnected) {
                             uiScope.configureSurfaceGUIViewport(
