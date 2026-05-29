@@ -44,6 +44,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         val LOG_TAG = "AudioPluginSurfaceControlClient"
 
         val alwaysReconnectSurfaceControl = Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
+
+        private val viewToClient = java.util.Collections.synchronizedMap(java.util.WeakHashMap<android.view.View, AudioPluginSurfaceControlClient>())
+
+        /** Returns the [AudioPluginSurfaceControlClient] that owns [view], or null if not known. */
+        @JvmStatic
+        fun fromSurfaceView(view: android.view.View): AudioPluginSurfaceControlClient? = viewToClient[view]
     }
 
     internal class AudioPluginSurfaceView(context: Context, private val owner: AudioPluginSurfaceControlClient) : SurfaceView(context) {
@@ -110,7 +116,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     val surfaceView: View
         get() = getOrCreateSurfaceView()
 
-    private fun createSurfaceView() = AudioPluginSurfaceView(context, this)
+    private fun createSurfaceView() = AudioPluginSurfaceView(context, this).also { viewToClient[it] = this }
 
     private fun getOrCreateSurfaceView(): AudioPluginSurfaceView =
         surface ?: createSurfaceView().also { surface = it }
