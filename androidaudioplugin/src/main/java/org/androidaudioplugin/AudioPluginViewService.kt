@@ -247,24 +247,63 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                         viewportView = viewport
 
                         val replyMessenger = messengerToSendReply
-                        // JUCE calls View.layout() on its peer view (first child of the container),
-                        // not on the container itself, so the listener must be on that child.
-                        val listenerTarget = if (view is ViewGroup && view.childCount > 0) view.getChildAt(0) else view
-                        listenerTarget.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
-                            val newW = right - left
-                            val newH = bottom - top
-                            if (newW != oldRight - oldLeft || newH != oldBottom - oldTop) {
-                                try {
-                                    replyMessenger.send(Message.obtain().apply {
-                                        data = bundleOf(
-                                            MESSAGE_KEY_OPCODE to OPCODE_CONTENT_SIZE_CHANGED,
-                                            MESSAGE_KEY_CONTENT_WIDTH to newW,
-                                            MESSAGE_KEY_CONTENT_HEIGHT to newH
-                                        )
-                                    })
-                                } catch (_: RemoteException) {}
+
+                        fun sendContentSizeChanged(w: Int, h: Int) {
+                            try {
+                                replyMessenger.send(Message.obtain().apply {
+                                    data = bundleOf(
+                                        MESSAGE_KEY_OPCODE to OPCODE_CONTENT_SIZE_CHANGED,
+                                        MESSAGE_KEY_CONTENT_WIDTH to w,
+                                        MESSAGE_KEY_CONTENT_HEIGHT to h
+                                    )
+                                })
+                            } catch (_: RemoteException) {}
+                        }
+
+                        fun registerLayoutListener(target: View) {
+                            target.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                                val newW = right - left
+                                val newH = bottom - top
+                                if (newW != oldRight - oldLeft || newH != oldBottom - oldTop)
+                                    sendContentSizeChanged(newW, newH)
                             }
                         }
+
+                        // JUCE calls View.layout() on its peer view (first child of the container),
+                        // not on the container itself, so the listener must be on that child.
+                        // If the peer exists already, register directly; otherwise watch for it.
+                        if (view is ViewGroup && view.childCount > 0) {
+                            registerLayoutListener(view.getChildAt(0))
+                        } else {
+                            registerLayoutListener(view)
+                            // Also watch for JUCE's peer being added asynchronously.
+                            if (view is ViewGroup) {
+                                view.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
+                                    override fun onChildViewAdded(parent: View, child: View) {
+                                        if (view.indexOfChild(child) == 0) {
+                                            view.setOnHierarchyChangeListener(null)
+                                            registerLayoutListener(child)
+                                        }
+                                    }
+                                    override fun onChildViewRemoved(parent: View, child: View) {}
+                                })
+                            }
+                        }
+
+                        // After the first complete layout, proactively report the actual content
+                        // size. This handles cases where getPreferredSizeOrFallback returned a
+                        // stale/default size and JUCE's peer has a different preferred size.
+                        viewport.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                            override fun onGlobalLayout() {
+                                if (viewport.viewTreeObserver.isAlive)
+                                    viewport.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                                val target = if (view is ViewGroup && view.childCount > 0) view.getChildAt(0) else view
+                                val w = target.width
+                                val h = target.height
+                                if (w > 0 && h > 0)
+                                    sendContentSizeChanged(w, h)
+                            }
+                        })
 
                         setView(viewport, width, height)
 
