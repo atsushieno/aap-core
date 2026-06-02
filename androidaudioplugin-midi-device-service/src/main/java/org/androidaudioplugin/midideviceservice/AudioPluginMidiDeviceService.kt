@@ -41,7 +41,7 @@ internal class AudioPluginMidi1Device(private val owner: AudioPluginMidiDeviceSe
 
     override val midiProtocol = 1
 
-    override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
+    override fun createOutputPortReceiver(portIndex: Int): MidiReceiver? {
         val receivers = owner.outputPortReceivers
         return if (portIndex < receivers.size) receivers[portIndex] else null
     }
@@ -53,7 +53,7 @@ internal class AudioPluginMidi2Device(private val owner: AudioPluginMidiUmpDevic
 
     override val midiProtocol = 2
 
-    override fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
+    override fun createOutputPortReceiver(portIndex: Int): MidiReceiver? {
         val receivers = owner.outputPortReceivers
         return if (portIndex < receivers.size) receivers[portIndex] else null
     }
@@ -79,6 +79,9 @@ abstract class AudioPluginMidiDevice(
         (0 until deviceInfo.inputPortCount).map {
             AudioPluginMidiReceiver(this, it, midiProtocol) }.toTypedArray()
     }
+    private val outputPortReceiversCache by lazy { arrayOfNulls<MidiReceiver>(deviceInfo.outputPortCount) }
+    private val outputPortReceiversResolved by lazy { BooleanArray(deviceInfo.outputPortCount) }
+    private val outputPortOpenCounts by lazy { IntArray(deviceInfo.outputPortCount) }
 
     fun onGetInputPortReceivers(): Array<MidiReceiver> = receivers
 
@@ -94,6 +97,18 @@ abstract class AudioPluginMidiDevice(
             else
                 (receivers[i] as AudioPluginMidiReceiver).onDeviceClosed()
         }
+        synchronized(outputPortReceiversCache) {
+            for (i in 0 until outputPortOpenCounts.size) {
+                val count = status.getOutputPortOpenCount(i)
+                if (count == outputPortOpenCounts[i])
+                    continue
+                outputPortOpenCounts[i] = count
+                if (count == 0) {
+                    outputPortReceiversCache[i] = null
+                    outputPortReceiversResolved[i] = false
+                }
+            }
+        }
     }
 
     /**
@@ -103,7 +118,21 @@ abstract class AudioPluginMidiDevice(
      * Concrete subclasses obtain this from their owning service's [getOutputPortReceivers] array
      * (inherited from [MidiDeviceService] / [MidiUmpDeviceService]).
      */
-    abstract fun getOutputPortReceiver(portIndex: Int): MidiReceiver?
+    fun getOutputPortReceiver(portIndex: Int): MidiReceiver? {
+        if (portIndex !in 0 until outputPortReceiversCache.size)
+            return null
+        synchronized(outputPortReceiversCache) {
+            if (outputPortOpenCounts[portIndex] <= 0)
+                return null
+            if (!outputPortReceiversResolved[portIndex]) {
+                outputPortReceiversCache[portIndex] = createOutputPortReceiver(portIndex)
+                outputPortReceiversResolved[portIndex] = true
+            }
+            return outputPortReceiversCache[portIndex]
+        }
+    }
+
+    protected abstract fun createOutputPortReceiver(portIndex: Int): MidiReceiver?
 
     // There is no logical mappings between MIDI device name in "midi_device_info.xml" (or whatever
     // for the metadata) and the plugin display name.

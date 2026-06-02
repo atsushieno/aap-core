@@ -8,6 +8,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
+import org.androidaudioplugin.AudioPluginService
 import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
@@ -96,6 +97,8 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             service.packageName,
             service.className
         )
+        val requestForeground = context is Activity
+        intent.putExtra(AudioPluginService.EXTRA_REQUEST_FOREGROUND, requestForeground)
 
         val conn = Connection(this, service) { pluginServiceConnection ->
             synchronized(pendingServices) {
@@ -111,29 +114,16 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             "AudioPluginHost",
             "bindAudioPluginService: ${service.packageName} | ${service.className}"
         )
-        try {
-            // start as FGS only if it is applicable
-            if (context is Activity && context.startForegroundService(intent) == null) {
-                val error = "AudioPluginServiceConnector: startForegroundService returned null for ${service.packageName}/${service.className}"
-                Log.e("AAP", error)
-                synchronized(pendingServices) {
-                    pendingServices.remove(pendingKey)
+        if (requestForeground) {
+            try {
+                val started = context.startForegroundService(intent)
+                if (started == null) {
+                    Log.w("AAP", "AudioPluginServiceConnector: startForegroundService returned null for ${service.packageName}/${service.className}")
                 }
-                continuation.resumeWith(Result.failure(AudioPluginException(error)))
-                return@suspendCoroutine
+            } catch (ex: Throwable) {
+                Log.w("AAP", "AudioPluginServiceConnector: startForegroundService failed for ${service.packageName}/${service.className}", ex)
             }
-        } catch (ex: Throwable) {
-            Log.e("AAP", "AudioPluginServiceConnector: startForegroundService failed for ${service.packageName}/${service.className}", ex)
-            synchronized(pendingServices) {
-                pendingServices.remove(pendingKey)
-            }
-            continuation.resumeWith(Result.failure(ex))
-            return@suspendCoroutine
         }
-
-        if (context !is Activity)
-            Log.d("AAP", "AudioPluginServiceConnector: not as foreground service - context is not Activity.")
-
         try {
             if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE)) {
                 val error = "AudioPluginServiceConnector: bindService returned false for ${service.packageName}/${service.className}"

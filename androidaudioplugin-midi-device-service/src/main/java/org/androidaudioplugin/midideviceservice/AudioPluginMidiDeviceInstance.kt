@@ -18,6 +18,10 @@ fun interface MidiOutputCallback {
     fun send(data: ByteArray, offset: Int, count: Int, timestamp: Long)
 }
 
+fun interface MidiOutputReceiverProvider {
+    fun get(): MidiReceiver?
+}
+
 // Unlike MidiReceiver, it is instantiated whenever the port is opened, and disposed every time it is closed.
 // By isolating most of the implementation here, it makes better lifetime management.
 class AudioPluginMidiDeviceInstance private constructor(
@@ -26,14 +30,13 @@ class AudioPluginMidiDeviceInstance private constructor(
 
     companion object {
         /**
-         * @param outputPortReceiver  [MidiReceiver] for an output port declared in the service's
-         *   midi_device_info.xml, used to forward MIDI-CI response bytes to connected host
-         *   applications.  May be null when no output port is declared; in that case CI responses
-         *   are silently discarded, but the native CI session is still fully operational.
+         * @param outputPortReceiverProvider supplies the [MidiReceiver] for an output port declared
+         *   in the service's midi_device_info.xml. It may return null when the output side is not
+         *   currently open, in which case CI responses are dropped.
          */
         suspend fun create(pluginId: String, ownerService: AudioPluginMidiDevice,
                            midiTransport: Int,
-                           outputPortReceiver: MidiReceiver? = null) : AudioPluginMidiDeviceInstance {
+                           outputPortReceiverProvider: MidiOutputReceiverProvider) : AudioPluginMidiDeviceInstance {
             val audioManager = ownerService.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toInt() ?: 48000
             val oboeFrameSize = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toInt() ?: 1024
@@ -53,19 +56,9 @@ class AudioPluginMidiDeviceInstance private constructor(
             ret.instantiatePlugin(pluginId)
             ret.activate()
 
-            // Always wire up the CI output sender so that setMidiOutputSender() is
-            // unconditionally invoked on the native side.  If no output port was
-            // declared (outputPortReceiver == null) the lambda is a no-op and CI
-            // responses are silently discarded; the native guard `if (midi_output_sender)`
-            // still fires correctly because the sender function object is non-empty.
-            //
-            // Pacing (inter-chunk sleep) is handled in C++ by the JNI sender via
-            // std::this_thread::sleep_for(), so we forward bytes directly here without
-            // any additional buffering or thread switching to preserve message ordering.
             ret.setMidiOutputCallback(MidiOutputCallback { data, offset, count, timestamp ->
-                val out = outputPortReceiver ?: return@MidiOutputCallback
+                val out = outputPortReceiverProvider.get() ?: return@MidiOutputCallback
                 out.send(data, offset, count, timestamp)
-                //println("KT midiOutputCallback ${ data.hashCode() } ${ data.drop(offset).take(count).joinToString { it.toHexString() } }")
             })
 
             return ret

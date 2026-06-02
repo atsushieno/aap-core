@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 open class AudioPluginService : Service()
 {
     companion object {
+        const val EXTRA_REQUEST_FOREGROUND = "org.androidaudioplugin.extra.REQUEST_FOREGROUND"
         private var initialized = false
         private var waitForDebugger = false
 
@@ -58,13 +59,13 @@ open class AudioPluginService : Service()
     private val notificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
     private val CHANNEL_ID by lazy { applicationInfo.packageName + ":" + javaClass.name }
     private val NOTIFICATION_ID by lazy { CHANNEL_ID.hashCode() }
+    private var mayStartForeground = false
     private var isForegroundStarted = false
 
     override fun onCreate() {
         initialize(this)
 
         createNotificationChannel()
-        maybeStartForegroundService()
 
         val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
         si.extensions.forEach { e ->
@@ -90,16 +91,19 @@ open class AudioPluginService : Service()
     private var eventProcessorLooper: Looper? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        updateForegroundEligibility(intent)
         maybeStartForegroundService()
         return START_NOT_STICKY
     }
 
     override fun onRebind(intent: Intent?) {
+        updateForegroundEligibility(intent)
         maybeStartForegroundService()
         super.onRebind(intent)
     }
 
     override fun onBind(intent: Intent?): IBinder? {
+        updateForegroundEligibility(intent)
         maybeStartForegroundService()
 
         val existing = nativeBinder
@@ -145,9 +149,15 @@ open class AudioPluginService : Service()
         }
         notificationManager.createNotificationChannel(channel)
     }
+
+    private fun updateForegroundEligibility(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_REQUEST_FOREGROUND, false) == true) {
+            mayStartForeground = true
+        }
+    }
     
     private fun maybeStartForegroundService() {
-        if (isForegroundStarted)
+        if (!mayStartForeground || isForegroundStarted)
             return
 
         val notification = createNotification()
@@ -155,6 +165,9 @@ open class AudioPluginService : Service()
             startForeground(NOTIFICATION_ID, notification,
                 AudioPluginServiceHelper.getForegroundServiceType(this, packageName, javaClass.name))
             isForegroundStarted = true
+        } catch (ex: ForegroundServiceStartNotAllowedException) {
+            mayStartForeground = false
+            android.util.Log.w("AAP.Hosting", "Foreground service start not allowed; continuing as bound service", ex)
         } catch (ex: Exception) {
             android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
         }

@@ -37,13 +37,8 @@ open class AudioPluginMidiReceiver(
     fun onDeviceOpened() {
         assert(instance == null)
         runBlocking {
-            // Obtain the output-port receiver for this port so that MIDI-CI response bytes
-            // (property-exchange replies, etc.) can be forwarded back to the connected host.
-            // Returns null when the device has no output ports declared in midi_device_info.xml,
-            // in which case CI responses are silently dropped.
-            val outputReceiver = owner.getOutputPortReceiver(portIndex)
             instance = AudioPluginMidiDeviceInstance.create(owner.getPluginId(portIndex), owner,
-                midiTransport, outputReceiver)
+                midiTransport, MidiOutputReceiverProvider { owner.getOutputPortReceiver(portIndex) })
         }
     }
 
@@ -56,4 +51,3 @@ open class AudioPluginMidiReceiver(
         instance?.onSend(msg, offset, count, timestamp)
     }
 }
-
