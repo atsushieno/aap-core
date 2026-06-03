@@ -1,6 +1,5 @@
 package org.androidaudioplugin
 
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -165,12 +164,19 @@ open class AudioPluginService : Service()
             startForeground(NOTIFICATION_ID, notification,
                 AudioPluginServiceHelper.getForegroundServiceType(this, packageName, javaClass.name))
             isForegroundStarted = true
-        } catch (ex: ForegroundServiceStartNotAllowedException) {
-            mayStartForeground = false
-            android.util.Log.w("AAP.Hosting", "Foreground service start not allowed; continuing as bound service", ex)
         } catch (ex: Exception) {
-            android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
+            if (isForegroundStartNotAllowed(ex)) {
+                mayStartForeground = false
+                android.util.Log.w("AAP.Hosting", "Foreground service start not allowed; continuing as bound service", ex)
+            } else {
+                android.util.Log.e("AAP.Hosting", "Failed to start as foreground service", ex)
+            }
         }
+    }
+
+    private fun isForegroundStartNotAllowed(ex: Exception): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ex is android.app.ForegroundServiceStartNotAllowedException
     }
 
     private fun stopForegroundServiceIfStarted() {
