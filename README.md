@@ -5,7 +5,9 @@
 
 ![AAP Wavetable on UAPMD v0.4](docs/images/uapmd-app-v0.4-sshot.png)
 
-[![aap-juce-helio in action 2023.5](https://img.youtube.com/vi/OlaihZJq8hU/0.jpg)](https://www.youtube.com/watch?v=OlaihZJq8hU "aap-juce-helio + aap-lv2 MDA Piano")
+[![AAP + UAPMD demonstration (2026.5)](https://img.youtube.com/vi/OXSoqKCzbK4/0.jpg)](https://www.youtube.com/watch?v=OXSoqKCzbK4 " AAP + UAPMD demonstration (2026.5) ")
+
+[![UAPMD music project playback demo](https://img.youtube.com/vi/Er2E2LjYmdw/0.jpg)](https://www.youtube.com/watch?v=Er2E2LjYmdw " UAPMD music project playback demo")
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
