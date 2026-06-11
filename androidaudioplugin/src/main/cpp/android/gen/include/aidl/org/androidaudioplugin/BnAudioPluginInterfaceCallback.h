@@ -31,8 +31,8 @@ public:
   explicit IAudioPluginInterfaceCallbackDelegator(const std::shared_ptr<IAudioPluginInterfaceCallback> &impl) : _impl(impl) {
   }
 
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-    return _impl->hostExtension(in_instanceId, in_uri, in_opcode);
+  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override {
+    return _impl->hostExtension(in_instanceId, in_uri, in_opcode, in_requestId, in_callback);
   }
   ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override {
     return _impl->requestProcess(in_instanceId);

@@ -11,6 +11,8 @@
 #include <android/binder_parcel_utils.h>
 #include <android/binder_status.h>
 #include <android/binder_auto_utils.h>
+#include "aidl/org/androidaudioplugin/AudioPluginExtensionCallback.h"
+#include "aidl/org/androidaudioplugin/BnAudioPluginExtensionCallback.h"
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../core/hosting/plugin-service-list.h"
@@ -34,8 +36,16 @@ public:
         proxy = std::move(newProxy);
     }
 
-    void hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-        proxy->hostExtension(in_instanceId, in_uri, in_opcode);
+    void hostExtension(int32_t in_instanceId,
+                       const std::string& in_uri,
+                       int32_t in_opcode,
+                       int32_t in_requestId,
+                       void* callback) override {
+        auto extensionCallback =
+                callback
+                ? *static_cast<std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>*>(callback)
+                : nullptr;
+        proxy->hostExtension(in_instanceId, in_uri, in_opcode, in_requestId, extensionCallback);
     }
     void requestProcess(int32_t in_instanceId) override {
         proxy->requestProcess(in_instanceId);
@@ -75,11 +85,47 @@ public:
         return ndk::ScopedAStatus::ok();
     }
 
+class HostExtensionCompletionCallback : public aidl::org::androidaudioplugin::BnAudioPluginExtensionCallback {
+    aapxs_completion_callback callback{nullptr};
+    void* callbackData{nullptr};
+    void* callbackPluginOrHost{nullptr};
+public:
+    HostExtensionCompletionCallback(aapxs_completion_callback callback,
+                                    void* callbackData,
+                                    void* callbackPluginOrHost)
+            : callback(callback),
+              callbackData(callbackData),
+              callbackPluginOrHost(callbackPluginOrHost) {}
+
+    ::ndk::ScopedAStatus completed(int32_t in_instanceId,
+                                   int32_t in_requestId,
+                                   const std::string& in_errorMessage) override {
+        (void) in_instanceId;
+        (void) in_requestId;
+        (void) in_errorMessage;
+        if (callback)
+            callback(callbackData, callbackPluginOrHost);
+        return ::ndk::ScopedAStatus::ok();
+    }
+};
+
     static void aapxs_host_ipc_sender_func(void* context,
                                            const char* uri,
                                            int32_t instanceId,
-                                           int32_t opcode) {
-        ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->hostExtension(instanceId, uri, opcode);
+                                           int32_t opcode,
+                                           int32_t requestId,
+                                           aapxs_completion_callback callback,
+                                           void* callbackData,
+                                           void* callbackPluginOrHost) {
+        std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback> sharedCallback;
+        if (callback) {
+            auto binderCallback = ndk::SharedRefBase::make<HostExtensionCompletionCallback>(
+                    callback,
+                    callbackData,
+                    callbackPluginOrHost);
+            sharedCallback = binderCallback->ref<HostExtensionCompletionCallback>();
+        }
+        ((AudioPluginInterfaceImpl*) context)->plugin_service_callback->hostExtension(instanceId, uri, opcode, requestId, &sharedCallback);
     }
 
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId,

@@ -61,6 +61,9 @@ public:
 
 
 AAPClientContext::~AAPClientContext() {
+    if (connection_data && instance_id >= 0) {
+        connection_data->unregisterRemoteInstance(instance_id);
+    }
 	if (instance_id >= 0) {
 		getProxy()->destroy(instance_id);
         instance_id = -1;
@@ -279,6 +282,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 
         auto instance = (aap::RemotePluginInstance *) host->context;
 		instance->setInstanceId(ctx->instance_id);
+        ctx->connection_data->registerRemoteInstance(ctx->instance_id, instance);
 
         // It is a nasty workaround to not expose Binder back to platform-agnostic aap::RemotePluginInstance; we set a callable function for them here.
         instance->setIpcExtensionMessageSender(aap_client_as_plugin_send_extension_message_delegate);

@@ -168,7 +168,11 @@ namespace aap {
     typedef void(*aapxs_host_ipc_sender)(void* context,
                                          const char* uri,
                                          int32_t instanceId,
-                                         int32_t opcode);
+                                         int32_t opcode,
+                                         int32_t requestId,
+                                         aapxs_completion_callback callback,
+                                         void* callbackData,
+                                         void* callbackPluginOrHost);
 
 /**
  * A plugin instance that could use dlopen() and dlsym().

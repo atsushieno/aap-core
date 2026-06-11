@@ -10,10 +10,14 @@
 #include <string>
 #include <vector>
 #include <android/binder_interface_utils.h>
+#include <aidl/org/androidaudioplugin/AudioPluginExtensionCallback.h>
 #ifdef BINDER_STABILITY_SUPPORT
 #include <android/binder_stability.h>
 #endif  // BINDER_STABILITY_SUPPORT
 
+namespace aidl::org::androidaudioplugin {
+class IAudioPluginExtensionCallback;
+}  // namespace aidl::org::androidaudioplugin
 namespace aidl {
 namespace org {
 namespace androidaudioplugin {
@@ -34,14 +38,14 @@ public:
   static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IAudioPluginInterfaceCallback>* instance);
   static bool setDefaultImpl(const std::shared_ptr<IAudioPluginInterfaceCallback>& impl);
   static const std::shared_ptr<IAudioPluginInterfaceCallback>& getDefaultImpl();
-  virtual ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) = 0;
+  virtual ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) = 0;
   virtual ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) = 0;
 private:
   static std::shared_ptr<IAudioPluginInterfaceCallback> default_impl;
 };
 class IAudioPluginInterfaceCallbackDefault : public IAudioPluginInterfaceCallback {
 public:
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override;
+  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override;
   ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
   ::ndk::SpAIBinder asBinder() override;
   bool isRemote() override;

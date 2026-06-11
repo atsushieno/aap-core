@@ -16,7 +16,7 @@ public:
   explicit BpAudioPluginInterfaceCallback(const ::ndk::SpAIBinder& binder);
   virtual ~BpAudioPluginInterfaceCallback();
 
-  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override;
+  ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode, int32_t in_requestId, const std::shared_ptr<::aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override;
   ::ndk::ScopedAStatus requestProcess(int32_t in_instanceId) override;
 };
 }  // namespace androidaudioplugin

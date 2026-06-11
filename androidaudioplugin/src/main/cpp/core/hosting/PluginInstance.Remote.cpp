@@ -389,8 +389,18 @@ aap::RemotePluginInstance::sendHostAAPXSReply(AAPXSRequestContext* request) {
 
 void
 aap::RemotePluginInstance::processHostAAPXSRequest(AAPXSRequestContext* context) {
-    // FIXME: implement
-    throw std::runtime_error("FIXME: implement");
+    auto& dispatcher = getAAPXSDispatcher();
+    auto registry = feature_registry->items();
+    auto aapxs = context->urid != 0 ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);
+    if (!aapxs)
+        return;
+
+    auto aapxsInstance = context->urid != 0 ? dispatcher.getHostAAPXSByUrid(context->urid) : dispatcher.getHostAAPXSByUri(context->uri);
+    if (!aapxsInstance)
+        return;
+
+    if (aapxs->process_incoming_host_aapxs_request)
+        aapxs->process_incoming_host_aapxs_request(aapxs, aapxsInstance, &plugin_host_facade, context);
 }
 
 aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegistry() {

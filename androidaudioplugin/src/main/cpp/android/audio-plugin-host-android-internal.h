@@ -55,8 +55,12 @@ class AndroidPluginClientConnectionData {
                 return owner->handleRequestProcess(in_instanceId);
             }
 
-            ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId, const std::string& in_uri, int32_t in_opcode) override {
-                return owner->handleHostExtension(in_instanceId, in_uri, in_opcode);
+            ::ndk::ScopedAStatus hostExtension(int32_t in_instanceId,
+                                               const std::string& in_uri,
+                                               int32_t in_opcode,
+                                               int32_t in_requestId,
+                                               const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& in_callback) override {
+                return owner->handleHostExtension(in_instanceId, in_uri, in_opcode, in_requestId, in_callback);
             }
         };
 
@@ -95,7 +99,12 @@ public:
     bool isValid() const { return valid_; }
 
     std::function<::ndk::ScopedAStatus(int32_t instanceId)> request_process;
-    std::function<::ndk::ScopedAStatus(int32_t instanceId, const std::string& uri, int32_t opcode)> host_extension;
+    std::map<int32_t, aap::RemotePluginInstance*> remote_instances;
+    std::function<::ndk::ScopedAStatus(int32_t instanceId,
+                                       const std::string& uri,
+                                       int32_t opcode,
+                                       int32_t requestId,
+                                       const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& callback)> host_extension;
     std::function<::ndk::ScopedAStatus(::ndk::ScopedAParcel message)> handleMiscellaneousMessage;
 
     aidl::org::androidaudioplugin::IAudioPluginInterface *getProxy() { return proxy.get(); }
@@ -108,12 +117,29 @@ public:
         return request_process(instanceId);
     }
 
-    ::ndk::ScopedAStatus handleHostExtension(int32_t instanceId, const std::string& uri, int32_t opcode) {
+    ::ndk::ScopedAStatus handleHostExtension(int32_t instanceId,
+                                             const std::string& uri,
+                                             int32_t opcode,
+                                             int32_t requestId,
+                                             const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& completionCallback) {
         if (!host_extension) {
             AAP_ASSERT_FALSE;
             return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "null host_extension");
         }
-        return host_extension(instanceId, uri, opcode);
+        return host_extension(instanceId, uri, opcode, requestId, completionCallback);
+    }
+
+    void registerRemoteInstance(int32_t instanceId, aap::RemotePluginInstance* instance) {
+        remote_instances[instanceId] = instance;
+    }
+
+    void unregisterRemoteInstance(int32_t instanceId) {
+        remote_instances.erase(instanceId);
+    }
+
+    aap::RemotePluginInstance* getRemoteInstance(int32_t instanceId) {
+        auto it = remote_instances.find(instanceId);
+        return it != remote_instances.end() ? it->second : nullptr;
     }
 };
 

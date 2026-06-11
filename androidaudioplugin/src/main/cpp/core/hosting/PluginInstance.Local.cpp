@@ -292,8 +292,15 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     if (isBinderOnlyExtension(request->uri)) {
-        ipc_send_extension_message_func(ipc_send_extension_message_context, request->uri, getInstanceId(), request->opcode);
-        return false;
+        ipc_send_extension_message_func(ipc_send_extension_message_context,
+                                        request->uri,
+                                        getInstanceId(),
+                                        request->opcode,
+                                        request->request_id,
+                                        request->callback,
+                                        request->callback_user_data,
+                                        &plugin_host_facade);
+        return request->callback != nullptr;
     }
 
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
@@ -305,8 +312,15 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
         return true;
     } else {
         // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-        ipc_send_extension_message_func(ipc_send_extension_message_context, request->uri, getInstanceId(), request->opcode);
-        return false;
+        ipc_send_extension_message_func(ipc_send_extension_message_context,
+                                        request->uri,
+                                        getInstanceId(),
+                                        request->opcode,
+                                        request->request_id,
+                                        request->callback,
+                                        request->callback_user_data,
+                                        &plugin_host_facade);
+        return request->callback != nullptr;
     }
 }
 

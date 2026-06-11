@@ -97,7 +97,6 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
 		if (pair.first == aiBinder)
 			connectionData = pair.second;
     if (!connectionData) {
-        // FIXME: we need to assign request_process() and host_extension() to this connectionData.
         connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
         if (!connectionData->isValid()) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
@@ -106,6 +105,38 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
             delete connectionData;
             return;
         }
+        connectionData->request_process = [connectionData](int32_t instanceId) {
+            auto instance = connectionData->getRemoteInstance(instanceId);
+            if (!instance)
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote instance not found");
+            return ::ndk::ScopedAStatus::ok();
+        };
+        connectionData->host_extension = [connectionData](int32_t instanceId,
+                                                          const std::string& uri,
+                                                          int32_t opcode,
+                                                          int32_t requestId,
+                                                          const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& callback) {
+            auto instance = connectionData->getRemoteInstance(instanceId);
+            if (!instance) {
+                if (callback)
+                    callback->completed(instanceId, requestId, "remote instance not found");
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote instance not found");
+            }
+
+            auto& dispatcher = instance->getAAPXSDispatcher();
+            auto aapxsInstance = dispatcher.getHostAAPXSByUri(uri.c_str());
+            if (!aapxsInstance) {
+                if (callback)
+                    callback->completed(instanceId, requestId, "host extension not registered");
+                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "host extension not registered");
+            }
+
+            AAPXSRequestContext context{nullptr, nullptr, aapxsInstance->serialization, 0, uri.c_str(), static_cast<uint32_t>(requestId), opcode};
+            instance->processHostAAPXSRequest(&context);
+            if (callback)
+                callback->completed(instanceId, requestId, "");
+            return ::ndk::ScopedAStatus::ok();
+        };
         live_connection_data[aiBinder] = connectionData;
 		AIBinder_incStrong(aiBinder);
     }
