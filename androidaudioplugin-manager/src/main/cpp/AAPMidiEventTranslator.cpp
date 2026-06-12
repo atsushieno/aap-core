@@ -145,9 +145,6 @@ int32_t aap::AAPMidiEventTranslator::detectEndpointConfigurationMessage(uint8_t*
 size_t aap::AAPMidiEventTranslator::translateMidiBufferIfNeeded(uint8_t* bytes, size_t offset, size_t length) {
     if (length == 0)
         return 0;
-    // FIXME: We will use this hacky MIDI 2.0 Endpoint switcher implementation
-    //  until proper MIDI-CI implementation lands in Android MIDI API:
-    //  https://issuetracker.google.com/issues/227690391
     auto protocol = detectEndpointConfigurationMessage(bytes, offset, length);
     if (protocol != 0) {
         receiver_midi_transport_protocol = protocol;
