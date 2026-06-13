@@ -111,7 +111,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         }
     }
 
+    // keyed by guiSessionId (service-generated, unique within this service)
     private val controllers = mutableMapOf<Int,Controller>()
+    // tracks (hostToken, instanceId) -> guiSessionId so same-host reconnects close the old controller
+    private val activeConnections = mutableMapOf<Pair<IBinder, Int>, Int>()
     private var nextGuiSessionId = 1
     private var nextGuiInstanceId = 1
 
@@ -127,18 +130,23 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
 
+        val connectionKey = Pair(hostToken, instanceId)
+        val existingSessionId = activeConnections[connectionKey]
+        if (existingSessionId != null) {
+            Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId (host:$hostToken) was alive. Terminating it.")
+            controllers.remove(existingSessionId)?.close()
+        }
+
         val controller = Controller(
             this,
             pluginId,
             instanceId,
+            hostToken,
             nextGuiInstanceId++,
             nextGuiSessionId++
         )
-        if (controllers[instanceId] != null) {
-            Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId was alive. Terminating it.")
-            controllers[instanceId]?.close()
-        }
-        controllers[instanceId] = controller
+        controllers[controller.guiSessionId] = controller
+        activeConnections[connectionKey] = controller.guiSessionId
         controller.initialize(messenger, hostToken, inputTransferToken, displayId, width, height)
     }
 
@@ -162,33 +170,34 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         else
             msg.data.getInt(LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
 
-        val controller = controllers[instanceId]
+        val controller = controllers[guiSessionId]
         if (controller == null) {
             Log.w(LOG_TAG, "Ignoring disconnect request for non-existent GUI controller for $pluginId / instanceId: $instanceId (guiSessionId: $guiSessionId)")
             return
         }
-        if (controller.guiSessionId != guiSessionId) {
-            Log.w(
-                LOG_TAG,
-                "Ignoring stale disconnect request for $pluginId / instanceId: $instanceId " +
-                    "(guiInstanceId: ${controller.guiInstanceId}, current guiSessionId: ${controller.guiSessionId}, requested guiSessionId: $guiSessionId)"
-            )
-            return
-        }
-        controllers.remove(instanceId)
+        controllers.remove(guiSessionId)
+        activeConnections.remove(Pair(controller.hostToken, instanceId))
         controller.close()
     }
 
-    private fun handleResizeRequest(msg: Message) {
+    private fun resolveController(msg: Message): Controller? {
+        val guiSessionId = msg.data.getInt(MESSAGE_KEY_GUI_SESSION_ID, -1)
+        if (guiSessionId >= 0)
+            return controllers[guiSessionId]
+        // Fallback for older clients that don't send guiSessionId: find by instanceId.
+        // This is ambiguous when multiple hosts share the same instanceId, but it is the
+        // best we can do without the session identifier.
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
+        return controllers.values.firstOrNull { it.instanceId == instanceId }
+    }
+
+    private fun handleResizeRequest(msg: Message) {
         val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
-
-        controllers[instanceId]?.resize(width, height)
+        resolveController(msg)?.resize(width, height)
     }
 
     private fun handleConfigureViewportRequest(msg: Message) {
-        val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
         val viewportWidth = msg.data.getInt(MESSAGE_KEY_VIEWPORT_WIDTH)
         val viewportHeight = msg.data.getInt(MESSAGE_KEY_VIEWPORT_HEIGHT)
         val contentWidth = msg.data.getInt(MESSAGE_KEY_CONTENT_WIDTH)
@@ -196,7 +205,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val scrollX = msg.data.getInt(MESSAGE_KEY_SCROLL_X)
         val scrollY = msg.data.getInt(MESSAGE_KEY_SCROLL_Y)
 
-        controllers[instanceId]?.configureViewport(
+        resolveController(msg)?.configureViewport(
             viewportWidth,
             viewportHeight,
             contentWidth,
@@ -212,6 +221,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val service: AudioPluginViewService,
         val pluginId: String,
         val instanceId: Int,
+        val hostToken: IBinder,
         val guiInstanceId: Int,
         val guiSessionId: Int
     ) : AutoCloseable {

@@ -293,6 +293,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             data = bundleOf(
                 AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_RESIZE,
                 AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to instanceId,
+                AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID to connectedGuiSessionId,
                 AudioPluginViewService.MESSAGE_KEY_WIDTH to width,
                 AudioPluginViewService.MESSAGE_KEY_HEIGHT to height
             )
@@ -307,6 +308,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             data = bundleOf(
                 AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_CONFIGURE_VIEWPORT,
                 AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to configuration.instanceId,
+                AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID to connectedGuiSessionId,
                 AudioPluginViewService.MESSAGE_KEY_VIEWPORT_WIDTH to configuration.viewportWidth,
                 AudioPluginViewService.MESSAGE_KEY_VIEWPORT_HEIGHT to configuration.viewportHeight,
                 AudioPluginViewService.MESSAGE_KEY_CONTENT_WIDTH to configuration.contentWidth,
