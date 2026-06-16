@@ -17,9 +17,8 @@ class AudioPluginInstance internal constructor(
     companion object {
         fun create(client: NativePluginClient,
                    onDestroy: (instance: AudioPluginInstance) -> Unit,
-                   pluginInfo: PluginInformation,
-                   sampleRate: Int) : AudioPluginInstance {
-            val native = client.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
+                   pluginInfo: PluginInformation) : AudioPluginInstance {
+            val native = client.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
             return AudioPluginInstance(native, onDestroy, pluginInfo)
         }
     }

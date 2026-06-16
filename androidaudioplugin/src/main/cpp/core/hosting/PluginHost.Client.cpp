@@ -22,20 +22,7 @@ void aap::PluginClient::connectToPluginService(const std::string& packageName, c
     }
 }
 
-void aap::PluginClient::createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& userCallback)
-{
-    std::function<void(std::string&)> cb = [identifier,sampleRate,isRemoteExplicit,userCallback,this](std::string& error) {
-        if (error.empty()) {
-            auto result = createInstance(identifier, sampleRate, isRemoteExplicit);
-            userCallback(result.value, result.error);
-        }
-        else
-            userCallback(-1, error);
-    };
-    connectToPluginService(identifier, cb);
-}
-
-aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit)
+aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string identifier, bool isRemoteExplicit)
 {
     Result<int32_t> result;
     const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
@@ -54,7 +41,7 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string
             return Result<int32_t>{-1, error};
     };
     if (isRemoteExplicit || descriptor->isOutProcess())
-        return instantiateRemotePlugin(descriptor, sampleRate);
+        return instantiateRemotePlugin(descriptor);
     else {
         try {
             auto instance = instantiateLocalPlugin(descriptor);
@@ -65,12 +52,12 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string
     }
 }
 
-aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor, int sampleRate)
+aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(const PluginInformation *descriptor)
 {
     // We first ensure to bind the remote plugin service, and then create a plugin instance.
     //  Since binding the plugin service must be asynchronous while instancing does not have to be,
     //  we call ensureServiceConnected() first and pass the rest as its callback.
-    auto internalCallback = [this,descriptor,sampleRate](std::string error) {
+    auto internalCallback = [this,descriptor](std::string error) {
         if (error.empty()) {
 #if ANDROID
             auto pluginFactory = GetAndroidAudioPluginFactoryClientBridge(this);
@@ -84,7 +71,7 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             auto instance = new RemotePluginInstance(this,
                                         aapxs_definition_registry,
                                                      descriptor, pluginFactory,
-                                                     sampleRate, event_midi2_input_buffer_size);
+                                                     event_midi2_input_buffer_size);
             instances.emplace_back(instance);
             instance->setupAAPXS(); // this needs to be done before setupAAPXSInstances() which is invoked by completeInstantiation() in binder-client-as-plugin.
             instance->completeInstantiation();

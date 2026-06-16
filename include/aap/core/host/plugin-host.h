@@ -112,7 +112,7 @@ namespace aap {
             std::string error;
         };
 
-        Result<int32_t> instantiateRemotePlugin(const PluginInformation *pluginInfo, int sampleRate);
+        Result<int32_t> instantiateRemotePlugin(const PluginInformation *pluginInfo);
 
     public:
         PluginClient(PluginClientConnectionList* pluginConnections, PluginListSnapshot* contextPluginList, xs::AAPXSDefinitionRegistry* aapxsDefinitionRegistry = nullptr)
@@ -126,15 +126,11 @@ namespace aap {
 
         // Synchronous version that does not expect service connection on the fly (fails immediately).
         // It is probably better suited for Kotlin client to avoid complicated JNI interop.
-        Result<int32_t> createInstance(std::string identifier, int sampleRate, bool isRemoteExplicit);
+        Result<int32_t> createInstance(std::string identifier, bool isRemoteExplicit);
 
         void connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback);
 
         void connectToPluginService(const std::string& packageName, const std::string& className, std::function<void(std::string&)> callback);
-
-        // Asynchronous version that allows service connection on the fly.
-        [[deprecated("Use connectToPluginService() for async connection establishment and then createInstance(), instead of this function.")]]
-        void createInstanceAsync(std::string identifier, int sampleRate, bool isRemoteExplicit, std::function<void(int32_t, std::string&)>& callback);
     };
 
 } // namespace

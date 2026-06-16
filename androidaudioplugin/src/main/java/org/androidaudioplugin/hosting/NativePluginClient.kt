@@ -8,8 +8,8 @@ class NativePluginClient(val native: Long) {
     // depending on how the native instance is created, it may or may not be invoked from Kotlin code.
     fun dispose() = destroyInstance(native)
 
-    fun createInstanceFromExistingConnection(sampleRate: Int, pluginId: String) : NativeRemotePluginInstance {
-        return NativeRemotePluginInstance.create(pluginId, sampleRate, native)
+    fun createInstanceFromExistingConnection(pluginId: String) : NativeRemotePluginInstance {
+        return NativeRemotePluginInstance.create(pluginId, native)
     }
 
     companion object {

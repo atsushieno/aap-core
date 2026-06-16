@@ -42,7 +42,7 @@ open class AudioPluginClientBase(private val context: Context) {
     fun instantiateNativePlugin(pluginInfo: PluginInformation) : NativeRemotePluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
         assert(conn != null)
-        return native.createInstanceFromExistingConnection(sampleRate, pluginInfo.pluginId!!)
+        return native.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
     }
 
     var sampleRate : Int

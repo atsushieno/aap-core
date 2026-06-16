@@ -152,8 +152,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     }
 
     companion object {
-        fun create(pluginId: String, sampleRate: Int, nativeClient: Long) =
-            NativeRemotePluginInstance(createRemotePluginInstance(pluginId, sampleRate, nativeClient), nativeClient)
+        fun create(pluginId: String, nativeClient: Long) =
+            NativeRemotePluginInstance(createRemotePluginInstance(pluginId, nativeClient), nativeClient)
 
         // invoked from AAPJniFacade
         @JvmStatic
@@ -162,7 +162,7 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         // Note that it returns an instanceId within the client, not the pointer to the instance.
         // Therefore it returns Int, not Long.
         @JvmStatic
-        private external fun createRemotePluginInstance(pluginId: String, sampleRate: Int, nativeClient: Long) : Int
+        private external fun createRemotePluginInstance(pluginId: String, nativeClient: Long) : Int
         @JvmStatic
         external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int)
         @JvmStatic

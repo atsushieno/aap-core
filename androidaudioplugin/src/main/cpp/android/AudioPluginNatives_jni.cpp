@@ -207,7 +207,7 @@ Java_org_androidaudioplugin_hosting_NativePluginClient_destroyInstance(JNIEnv *e
 extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePluginInstance(
-		JNIEnv *env, jclass clazz, jstring plugin_id, jint sampleRate, jlong clientPointer) {
+		JNIEnv *env, jclass clazz, jstring plugin_id, jlong clientPointer) {
 	if (clientPointer == 0) {
         aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, "null clientPointer");
         AAP_ASSERT_FALSE;
@@ -216,9 +216,8 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_createRemotePlugi
 	auto client = (aap::PluginClient*) (void*) clientPointer;
 	std::string pluginIdString = jstringToStdString(env, plugin_id);
     aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG,
-                 "createRemotePluginInstance: pluginId=%s sampleRate=%d",
-                 pluginIdString.c_str(), sampleRate);
-	auto result = client->createInstance(pluginIdString, sampleRate, true);
+                 "createRemotePluginInstance: pluginId=%s", pluginIdString.c_str());
+	auto result = client->createInstance(pluginIdString, true);
 	if (!result.error.empty()) {
 		aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "createRemotePluginInstance failed: pluginId=%s error=%s",

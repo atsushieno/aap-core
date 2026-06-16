@@ -60,7 +60,6 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
                                                 xs::AAPXSDefinitionRegistry *aapxsRegistry,
                                                 const PluginInformation* pluginInformation,
                                                 AndroidAudioPluginFactory* loadedPluginFactory,
-                                                int32_t sampleRate,
                                                 int32_t eventMidi2InputBufferSize)
         : PluginInstance(pluginInformation, loadedPluginFactory, eventMidi2InputBufferSize),
           client(client),

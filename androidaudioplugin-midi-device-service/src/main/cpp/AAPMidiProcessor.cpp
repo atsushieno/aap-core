@@ -187,7 +187,7 @@ namespace aap::midi {
                 state = AAP_MIDI_PROCESSOR_STATE_ERROR;
                 return;
             }
-            auto result = client->createInstance(pluginId, sample_rate, true);
+            auto result = client->createInstance(pluginId, true);
             if (!result.error.empty()) {
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,"Plugin \"%s\" could not be instantiated due to: %s",
                              pluginInfo->getDisplayName().c_str(), result.error.c_str());

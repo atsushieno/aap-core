@@ -313,7 +313,7 @@ namespace aap {
         RemotePluginInstance(PluginClient* client,
                              xs::AAPXSDefinitionRegistry *aapxsRegistry,
                              const PluginInformation *pluginInformation,
-                             AndroidAudioPluginFactory *loadedPluginFactory, int32_t sampleRate,
+                             AndroidAudioPluginFactory *loadedPluginFactory,
                              int32_t eventMidi2InputBufferSize);
 
         int32_t getInstanceId() override {
