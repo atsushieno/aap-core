@@ -1,5 +1,7 @@
 #include <jni.h>
 #include <android/log.h>
+#include <android/binder_ibinder.h>
+#include <android/binder_auto_utils.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <memory>
@@ -67,7 +69,22 @@ class AndroidPluginClientConnectionData {
     ndk::SpAIBinder spAIBinder;
     std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginInterface> proxy;
     std::shared_ptr<AudioPluginInterfaceCallbackImpl> callback;
+    ndk::ScopedAIBinder_DeathRecipient death_recipient;
     bool valid_{false};
+
+    static void onBinderDied(void* cookie) {
+        ((AndroidPluginClientConnectionData*) cookie)->handleBinderDeath();
+    }
+
+    // Invoked on a binder thread when the plugin service process dies. Fails every in-flight
+    // async AAPXS request (across all extensions, standard or not) on each remote instance so
+    // callers stop waiting instead of hanging until timeout.
+    void handleBinderDeath() {
+        valid_ = false;
+        for (auto& kv : remote_instances)
+            if (kv.second)
+                kv.second->abortAllPendingAAPXS("service disconnected");
+    }
 public:
     AndroidPluginClientConnectionData(AIBinder* aiBinder) {
         if (!aiBinder) {
@@ -93,8 +110,19 @@ public:
             return;
         }
         valid_ = true;
+
+        // Fail in-flight async AAPXS requests promptly if the service process dies.
+        death_recipient = ndk::ScopedAIBinder_DeathRecipient(
+                AIBinder_DeathRecipient_new(AndroidPluginClientConnectionData::onBinderDied));
+        auto deathStatus = AIBinder_linkToDeath(spAIBinder.get(), death_recipient.get(), this);
+        if (deathStatus != STATUS_OK)
+            aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_AIDL_SVC_LOG_TAG,
+                         "AndroidPluginClientConnectionData: linkToDeath failed: %d", deathStatus);
     }
-    virtual ~AndroidPluginClientConnectionData() {}
+    virtual ~AndroidPluginClientConnectionData() {
+        if (death_recipient.get() && spAIBinder.get())
+            AIBinder_unlinkToDeath(spAIBinder.get(), death_recipient.get(), this);
+    }
 
     bool isValid() const { return valid_; }
 

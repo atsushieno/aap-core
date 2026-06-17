@@ -142,6 +142,13 @@ namespace aap {
         virtual void setupAAPXS() = 0;
         virtual xs::StandardExtensions &getStandardExtensions() = 0;
 
+        // Async-call abort registry. Every TypedAAPXS (standard or non-standard) registers itself
+        // so a transport-level failure (e.g. Binder service death) can fail its in-flight requests.
+        // Default no-op (service side has no client transport to fail); RemotePluginInstance overrides.
+        virtual void registerAsyncAbortable(xs::TypedAAPXS* abortable) {}
+        virtual void unregisterAsyncAbortable(xs::TypedAAPXS* abortable) {}
+        virtual void abortAllPendingAAPXS(const std::string& error) {}
+
         uint32_t getTailTimeInMilliseconds() {
             // TODO: FUTURE - most likely just a matter of plugin property
             return 0;
@@ -368,11 +375,19 @@ namespace aap {
         std::unique_ptr<xs::AAPXSDefinitionClientRegistry> feature_registry;
         xs::AAPXSClientDispatcher aapxs_dispatcher;
         std::unique_ptr<aap::xs::ClientStandardExtensions> standards{nullptr};
+        // All live TypedAAPXS for this instance (standard + non-standard), for transport-failure abort.
+        std::mutex async_abortables_mutex{};
+        std::vector<xs::TypedAAPXS*> async_abortables{};
     public:
 
         void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
             ipc_send_extension_message_impl = sender;
         }
+
+        void registerAsyncAbortable(xs::TypedAAPXS* abortable) override;
+        void unregisterAsyncAbortable(xs::TypedAAPXS* abortable) override;
+        // Fails every in-flight async AAPXS request across all extensions (e.g. on service death).
+        void abortAllPendingAAPXS(const std::string& error) override;
 
         void setupAAPXS() override;
         inline xs::AAPXSClientDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }

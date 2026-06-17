@@ -23,6 +23,8 @@
 #define AAPXS_REQUEST_TIMEOUT_DEFAULT_MS 1000
 #endif
 
+namespace aap { class PluginInstance; }
+
 namespace aap::xs {
     template<typename T, typename R>
     struct WithPromise {
@@ -51,9 +53,10 @@ namespace aap::xs {
                 AAP_ASSERT_FALSE;
                 return;
             }
+            registerForAbort();
         }
 
-        virtual ~TypedAAPXS() {}
+        virtual ~TypedAAPXS();
 
         // This must be visible to consuming code i.e. defined in this header file.
         template<typename T>
@@ -185,8 +188,37 @@ namespace aap::xs {
             }
         }
 
+        // Registers/unregisters this instance with the owning plugin instance's abort registry,
+        // so a transport-level failure can fail its in-flight requests. Reaches the instance
+        // generically via `aapxs_instance->host_context` (the PluginInstance). Defined in the .cpp
+        // to keep this header free of a plugin-instance.h include (which would be circular).
+        void registerForAbort();
+        void unregisterForAbort();
+
     public:
         void setRequestTimeoutMs(int32_t ms) { request_timeout_ms = ms; }
+
+        // Fail every in-flight and not-yet-sent request with `error`. Used on hard transport
+        // failure (e.g. Binder service death) where no reply will ever arrive. Safe because the
+        // death handler then becomes the sole completer (Binder `completed()` cannot fire again).
+        void failAllPending(const std::string& error) {
+            std::vector<AsyncCall*> pending;
+            std::deque<DeferredCall> abortedDeferred;
+            {
+                std::unique_lock<std::mutex> lock(calls_mutex);
+                pending.reserve(in_flight.size());
+                for (auto& kv : in_flight)
+                    pending.push_back(kv.second.get());
+                // Clear deferred first so finish()'s pump does not replay onto a dead service.
+                abortedDeferred = std::move(deferred);
+                deferred.clear();
+            }
+            for (auto* call : pending)
+                finish(call, error);
+            for (auto& d : abortedDeferred)
+                if (d.call && !d.call->fired.exchange(true) && d.call->deliver)
+                    d.call->deliver(error);
+        }
 
         // Low-level async primitive. `serialization->data` must already hold the request payload.
         // `onResult(error, serialization)` is invoked exactly once; it must copy out whatever it
