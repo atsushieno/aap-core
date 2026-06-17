@@ -22,6 +22,9 @@ import org.androidaudioplugin.hosting.PluginServiceConnection
 import org.androidaudioplugin.hosting.UmpHelper
 import org.androidaudioplugin.manager.PluginPlayer
 
+// Conventional default control buffer size (matches the host's DEFAULT_CONTROL_BUFFER_SIZE).
+private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
+
 class PluginManagerScope(val context: Context,
                          val pluginServices: SnapshotStateList<PluginServiceInformation>
 ) : AutoCloseable {
@@ -50,14 +53,20 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     private val parameterIdToIndex = mutableMapOf<Int, Int>()
     private var parameterStateRevision = -1
 
+    // Audio configuration shared between the eager prepare() at instantiation time and the
+    // PluginPlayer created on first playback. They MUST be the same values: AudioPluginNode::start()
+    // only calls prepare() while the instance is still UNPREPARED, so if we prepare early the player
+    // reuses that preparation as-is. Computing both from the same source keeps the buffer layout
+    // consistent.
+    private val audioManager by lazy { manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    private val sampleRate by lazy { audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt() }
+    // It is for the audio processor's callback
+    // FIXME: make them configurable?
+    private val framesPerCallback by lazy { audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt() }
+    private val channelCount = 2
+
     private val pluginPlayerDelegate = lazy {
-        val audioManager = manager.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
-        // It is for the audio processor's callback
-        // FIXME: make them configurable?
-        val frames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt()
-        val channelCount = 2
-        PluginPlayer.create(sampleRate, frames, channelCount).apply {
+        PluginPlayer.create(sampleRate, framesPerCallback, channelCount).apply {
             setPlugin(instance.value!!)
             manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
                 val bytes = ByteArray(it.available())
@@ -83,6 +92,13 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             manager.client.connectToPluginService(pluginInfo.packageName)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
         if (!alreadyDisposed) {
+            // Prepare the instance up front so that preset/state/parameter interactions on
+            // PluginDetails are valid before playback starts. Plugins (e.g. the LV2 bridge) may
+            // touch process-time buffers when restoring a preset/state, and those only exist after
+            // prepare(). The PluginPlayer later reuses this preparation since AudioPluginNode::start()
+            // only prepares while UNPREPARED. The control buffer size is ignored by the host (it uses
+            // its own DEFAULT_CONTROL_BUFFER_SIZE), but we pass the conventional value for clarity.
+            result.prepare(framesPerCallback, sampleRate, DEFAULT_CONTROL_BYTES_PER_BLOCK)
             instance.value = result
             syncParametersFromInstance(force = true)
         }
