@@ -42,9 +42,14 @@ namespace aap::xs {
                 : TypedAAPXS(AAP_PRESETS_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
+        // Small value getter; kept on the simple sync path (cf. State's getStateSize()).
         int32_t getPresetCount();
-        void getPreset(int32_t index, aap_preset_t& preset);
-        void setPresetIndex(int32_t index);
+        // Blocking-sync (built on the async core). Returns an error description; empty == success.
+        std::string getPreset(int32_t index, aap_preset_t& preset);
+        std::string setPresetIndex(int32_t index);
+        // Asynchronous. Returns the request id; the callback fires exactly once on reply/timeout/death.
+        int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback);
+        int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback);
 
         aap_presets_extension_t* asPluginExtension() { return &as_plugin_extension; }
     };

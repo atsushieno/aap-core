@@ -34,9 +34,11 @@ namespace aap::xs {
 
         // Presets
         virtual int32_t getPresetCount() = 0;
-        virtual void getPreset(int32_t index, aap_preset_t& preset) = 0;
+        virtual Result<bool> getPreset(int32_t index, aap_preset_t& preset) = 0;
         virtual std::string getPresetName(int32_t index) = 0;
-        virtual void setCurrentPresetIndex(int32_t index) = 0;
+        virtual Result<bool> setCurrentPresetIndex(int32_t index) = 0;
+        virtual int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) = 0;
+        virtual int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) = 0;
 
         // State
         virtual int32_t getStateSize() = 0;
@@ -97,13 +99,25 @@ namespace aap::xs {
 
         // Presets
         int32_t getPresetCount() override { return presets->getPresetCount(); }
-        void getPreset(int32_t index, aap_preset_t& preset) override { presets->getPreset(index, preset); }
+        Result<bool> getPreset(int32_t index, aap_preset_t& preset) override {
+            auto error = presets->getPreset(index, preset);
+            return Result<bool>{error.empty(), error};
+        }
         std::string getPresetName(int32_t index) override {
             aap_preset_t preset;
             presets->getPreset(index, preset);
             return preset.name;
         }
-        void setCurrentPresetIndex(int32_t index) override { presets->setPresetIndex(index); }
+        Result<bool> setCurrentPresetIndex(int32_t index) override {
+            auto error = presets->setPresetIndex(index);
+            return Result<bool>{error.empty(), error};
+        }
+        int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) override {
+            return presets->getPresetAsync(index, std::move(callback));
+        }
+        int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) override {
+            return presets->setPresetIndexAsync(index, std::move(callback));
+        }
 
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
@@ -165,7 +179,12 @@ namespace aap::xs {
 
         // Presets
         int32_t getPresetCount() override { return presets ? presets->get_preset_count(presets, plugin) : 0; }
-        void getPreset(int32_t index, aap_preset_t& preset) override { if (presets) presets->get_preset(presets, plugin, index, &preset, nullptr, nullptr); }
+        Result<bool> getPreset(int32_t index, aap_preset_t& preset) override {
+            if (!presets)
+                return Result<bool>{false, "presets extension not implemented"};
+            presets->get_preset(presets, plugin, index, &preset, nullptr, nullptr);
+            return Result<bool>{true, ""};
+        }
         std::string getPresetName(int32_t index) override {
             if (!presets)
                 return "";
@@ -173,7 +192,26 @@ namespace aap::xs {
             getPreset(index, preset);
             return preset.name;
         }
-        void setCurrentPresetIndex(int32_t index) override { if (presets) presets->set_preset_index(presets, plugin, index); }
+        Result<bool> setCurrentPresetIndex(int32_t index) override {
+            if (!presets)
+                return Result<bool>{false, "presets extension not implemented"};
+            presets->set_preset_index(presets, plugin, index);
+            return Result<bool>{true, ""};
+        }
+        // Service side is in-process: complete synchronously and invoke the callback inline.
+        int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) override {
+            aap_preset_t preset{};
+            auto ret = getPreset(index, preset);
+            if (callback)
+                callback(Result<aap_preset_t>{preset, ret.error});
+            return 0;
+        }
+        int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) override {
+            auto ret = setCurrentPresetIndex(index);
+            if (callback)
+                callback(ret);
+            return 0;
+        }
 
         // State
         int32_t getStateSize() override { return state ? state->get_state_size(state, plugin) : 0; }
