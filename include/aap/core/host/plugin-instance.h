@@ -143,10 +143,10 @@ namespace aap {
         virtual xs::StandardExtensions &getStandardExtensions() = 0;
 
         // Async-call abort registry. Every TypedAAPXS (standard or non-standard) registers itself
-        // so a transport-level failure (e.g. Binder service death) can fail its in-flight requests.
-        // Default no-op (service side has no client transport to fail); RemotePluginInstance overrides.
-        virtual void registerAsyncAbortable(xs::TypedAAPXS* abortable) {}
-        virtual void unregisterAsyncAbortable(xs::TypedAAPXS* abortable) {}
+        // into this shared-owned registry so a transport-level failure (e.g. Binder service death)
+        // can fail its in-flight requests. Returns null where there is no client transport to fail
+        // (service side); RemotePluginInstance provides a real one.
+        virtual std::shared_ptr<xs::AsyncAbortRegistry> getAsyncAbortRegistry() { return nullptr; }
         virtual void abortAllPendingAAPXS(const std::string& error) {}
 
         uint32_t getTailTimeInMilliseconds() {
@@ -375,17 +375,15 @@ namespace aap {
         std::unique_ptr<xs::AAPXSDefinitionClientRegistry> feature_registry;
         xs::AAPXSClientDispatcher aapxs_dispatcher;
         std::unique_ptr<aap::xs::ClientStandardExtensions> standards{nullptr};
-        // All live TypedAAPXS for this instance (standard + non-standard), for transport-failure abort.
-        std::mutex async_abortables_mutex{};
-        std::vector<xs::TypedAAPXS*> async_abortables{};
+        // Shared-owned so it outlives any TypedAAPXS regardless of member-destruction order.
+        std::shared_ptr<xs::AsyncAbortRegistry> async_abort_registry{std::make_shared<xs::AsyncAbortRegistry>()};
     public:
 
         void setIpcExtensionMessageSender(aapxs_client_ipc_sender sender) {
             ipc_send_extension_message_impl = sender;
         }
 
-        void registerAsyncAbortable(xs::TypedAAPXS* abortable) override;
-        void unregisterAsyncAbortable(xs::TypedAAPXS* abortable) override;
+        std::shared_ptr<xs::AsyncAbortRegistry> getAsyncAbortRegistry() override { return async_abort_registry; }
         // Fails every in-flight async AAPXS request across all extensions (e.g. on service death).
         void abortAllPendingAAPXS(const std::string& error) override;
 

@@ -313,23 +313,11 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
     return true;
 }
 
-void aap::RemotePluginInstance::registerAsyncAbortable(xs::TypedAAPXS* abortable) {
-    std::lock_guard<std::mutex> lock(async_abortables_mutex);
-    async_abortables.emplace_back(abortable);
-}
-
-void aap::RemotePluginInstance::unregisterAsyncAbortable(xs::TypedAAPXS* abortable) {
-    std::lock_guard<std::mutex> lock(async_abortables_mutex);
-    async_abortables.erase(
-            std::remove(async_abortables.begin(), async_abortables.end(), abortable),
-            async_abortables.end());
-}
-
 void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
     std::vector<xs::TypedAAPXS*> snapshot;
     {
-        std::lock_guard<std::mutex> lock(async_abortables_mutex);
-        snapshot = async_abortables;
+        std::lock_guard<std::mutex> lock(async_abort_registry->mutex);
+        snapshot = async_abort_registry->abortables;
     }
     for (auto* abortable : snapshot)
         abortable->failAllPending(error);

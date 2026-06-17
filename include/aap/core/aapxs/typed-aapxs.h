@@ -32,11 +32,24 @@ namespace aap::xs {
         std::promise<R>* promise;
     };
 
+    class TypedAAPXS;
+
+    // Shared-owned registry of a plugin instance's async-capable AAPXS clients. Held by *both* the
+    // owning PluginInstance and every TypedAAPXS (via shared_ptr), so abort iteration and teardown
+    // are independent of member-destruction order. (An earlier version stored the mutex directly on
+    // the instance; a TypedAAPXS owned by a later-declared member outlived the mutex and crashed in
+    // pthread_mutex_lock during teardown.)
+    struct AsyncAbortRegistry {
+        std::mutex mutex;
+        std::vector<TypedAAPXS*> abortables;
+    };
+
     class TypedAAPXS {
         const char* uri;
     protected:
         AAPXSInitiatorInstance *aapxs_instance;
         AAPXSSerializationContext *serialization;
+        std::shared_ptr<AsyncAbortRegistry> abort_registry{};
 
     public:
         TypedAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
