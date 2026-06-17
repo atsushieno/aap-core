@@ -28,26 +28,15 @@ namespace aap::xs {
             return ((StateClientAAPXS*) ext->aapxs_context)->getStateSize();
         }
         static void staticGetState(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* stateToSave) {
-            return ((StateClientAAPXS*) ext->aapxs_context)->getState(*stateToSave);
+            ((StateClientAAPXS*) ext->aapxs_context)->getState(*stateToSave);
         }
         static void staticSetState(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* stateToLoad) {
-            return ((StateClientAAPXS*) ext->aapxs_context)->setState(*stateToLoad);
+            ((StateClientAAPXS*) ext->aapxs_context)->setState(*stateToLoad);
         }
         aap_state_extension_t as_plugin_extension{this,
                                                   staticGetStateSize,
                                                   staticGetState,
                                                   staticSetState};
-
-        struct CallbackData {
-            StateClientAAPXS* context{nullptr};
-            std::function<void(aap_state_t)> state_callback{};
-            std::function<void()> completion_callback{};
-        };
-
-        CallbackData pending_calls[UINT8_MAX];
-        static void completeWithStateCallback(void* callbackData, void* pluginOrHost);
-        static void completeWithCompletionCallback(void* callbackData, void* pluginOrHost);
-        CallbackData* allocateCallbackData();
 
     public:
         StateClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
@@ -55,10 +44,12 @@ namespace aap::xs {
         }
 
         size_t getStateSize();
-        void getState(aap_state_t& stateToSave);
-        void setState(aap_state_t& stateToLoad);
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback);
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback);
+        // Blocking-sync (built on the async core). Returns an error description; empty == success.
+        std::string getState(aap_state_t& stateToSave);
+        std::string setState(aap_state_t& stateToLoad);
+        // Asynchronous. Returns the request id; the callback fires exactly once on reply/timeout/death.
+        int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback);
+        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback);
 
         aap_state_extension_t * asPluginExtension() { return &as_plugin_extension; }
     };

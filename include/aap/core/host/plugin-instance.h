@@ -275,7 +275,8 @@ namespace aap {
                           int32_t requestId,
                           int32_t opcode,
                           aapxs_completion_callback callback,
-                          void* callbackData);
+                          void* callbackData,
+                          aapxs_error_callback errorCallback);
 
     class RemotePluginInstance : public PluginInstance {
         // holds AudioPluginSurfaceControlClient for plugin instance lifetime.

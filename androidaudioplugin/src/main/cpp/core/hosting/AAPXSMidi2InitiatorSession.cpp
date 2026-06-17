@@ -68,7 +68,10 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
     if (request->callback) {
         size_t i = 0;
         auto cbu = CallbackUnit{request->request_id, request->callback,
-                                            request->callback_user_data};
+                                            request->callback_user_data,
+                                            request->error_callback,
+                                            std::chrono::steady_clock::now() +
+                                                std::chrono::milliseconds(request_timeout_ms)};
         for (; i < MAX_PENDING_CALLBACKS; i++) {
             if (pending_callbacks[i].request_id == 0) {
                 pending_callbacks[i] = cbu;
@@ -79,6 +82,22 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
             aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, "AAPXSMidi2InitiatorSession reached max pending callbacks.");
             AAP_ASSERT_FALSE; //
         }
+    }
+}
+
+void aap::AAPXSMidi2InitiatorSession::sweepTimeouts(void* pluginOrHost) {
+    auto now = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
+        auto& unit = pending_callbacks[i];
+        if (unit.request_id == 0)
+            continue;
+        if (now < unit.deadline)
+            continue;
+        auto error_func = unit.error_func;
+        auto data = unit.data;
+        memset(&unit, 0, sizeof(CallbackUnit));
+        if (error_func)
+            error_func(data, pluginOrHost, "timeout");
     }
 }
 
@@ -103,4 +122,7 @@ void aap::AAPXSMidi2InitiatorSession::completeSession(void* buffer, void* plugin
         // FIXME: should we remove those AAPXS SysEx8 from the UMP buffer?
         //  It is going to be extraneous to the host.
     }
+
+    // Detect and fail any requests whose reply never arrived within the timeout window.
+    sweepTimeouts(pluginOrHost);
 }

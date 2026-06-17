@@ -23,6 +23,7 @@
 #include "../aapxs/extension-service.h"
 #include "../aapxs/standard-extensions.h"
 #include "../aapxs/aapxs-hosting-runtime.h"
+#include "../aapxs/result.h"
 
 namespace aap {
 
@@ -106,11 +107,10 @@ namespace aap {
     class PluginClient : public PluginHost {
         PluginClientConnectionList* connections;
 
+        // Result<T> is the shared aap::Result<T> (include/aap/core/aapxs/result.h);
+        // kept as a member alias so existing `PluginClient::Result<...>` references stay valid.
         template<typename T>
-        struct Result {
-            T value;
-            std::string error;
-        };
+        using Result = aap::Result<T>;
 
         Result<int32_t> instantiateRemotePlugin(const PluginInformation *pluginInfo);
 

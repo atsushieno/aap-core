@@ -40,11 +40,11 @@ namespace aap::xs {
 
         // State
         virtual int32_t getStateSize() = 0;
-        virtual aap_state_t getState() = 0;
-        virtual void setState(aap_state_t& stateToLoad) = 0;
-        virtual int32_t requestStateAsync(std::function<void(aap_state_t)> callback) = 0;
-        virtual int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) = 0;
-        void setState(void* stateToLoad, int32_t dataSize) {
+        virtual Result<aap_state_t> getState() = 0;
+        virtual Result<bool> setState(aap_state_t& stateToLoad) = 0;
+        virtual int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) = 0;
+        virtual int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) = 0;
+        Result<bool> setState(void* stateToLoad, int32_t dataSize) {
             if (tmp_state_capacity < static_cast<size_t>(dataSize)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
@@ -53,7 +53,7 @@ namespace aap::xs {
             }
             tmp_state.data_size = dataSize;
             memcpy(tmp_state.data, stateToLoad, dataSize);
-            setState(tmp_state);
+            return setState(tmp_state);
         }
 
         // Gui
@@ -107,7 +107,7 @@ namespace aap::xs {
 
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
-        aap_state_t getState() override {
+        Result<aap_state_t> getState() override {
             if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
@@ -115,14 +115,17 @@ namespace aap::xs {
                 tmp_state_capacity = STATE_SHARED_MEMORY_SIZE;
             }
             tmp_state.data_size = tmp_state_capacity;
-            state->getState(tmp_state);
-            return tmp_state;
+            auto error = state->getState(tmp_state);
+            return Result<aap_state_t>{tmp_state, error};
         }
-        void setState(aap_state_t& stateToLoad) override { return state->setState(stateToLoad); }
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
+        Result<bool> setState(aap_state_t& stateToLoad) override {
+            auto error = state->setState(stateToLoad);
+            return Result<bool>{error.empty(), error};
+        }
+        int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) override {
             return state->requestStateAsync(std::move(callback));
         }
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
+        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) override {
             return state->setStateAsync(stateToLoad, std::move(callback));
         }
 
@@ -174,7 +177,7 @@ namespace aap::xs {
 
         // State
         int32_t getStateSize() override { return state ? state->get_state_size(state, plugin) : 0; }
-        aap_state_t getState() override {
+        Result<aap_state_t> getState() override {
             auto stateSize = getStateSize();
             if (tmp_state.data_size < static_cast<size_t>(stateSize)) {
                 if (tmp_state.data)
@@ -184,19 +187,24 @@ namespace aap::xs {
             tmp_state.data_size = stateSize;
             if (state)
                 state->get_state(state, plugin, &tmp_state);
-            return tmp_state;
+            return Result<aap_state_t>{tmp_state, ""};
         }
-        void setState(aap_state_t& stateToLoad) override { if (state) state->set_state(state, plugin, &stateToLoad); }
-        int32_t requestStateAsync(std::function<void(aap_state_t)> callback) override {
+        Result<bool> setState(aap_state_t& stateToLoad) override {
+            if (state)
+                state->set_state(state, plugin, &stateToLoad);
+            return Result<bool>{true, ""};
+        }
+        // Service side is in-process: complete synchronously and invoke the callback inline.
+        int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) override {
             auto ret = getState();
             if (callback)
                 callback(ret);
             return 0;
         }
-        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void()> callback) override {
-            setState(stateToLoad);
+        int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) override {
+            auto ret = setState(stateToLoad);
             if (callback)
-                callback();
+                callback(ret);
             return 0;
         }
 

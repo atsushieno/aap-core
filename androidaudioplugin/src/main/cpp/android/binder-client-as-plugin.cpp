@@ -38,20 +38,25 @@ public:
 class AudioPluginExtensionCallbackImpl : public aidl::org::androidaudioplugin::BnAudioPluginExtensionCallback {
     std::promise<void>* promise;
     aapxs_completion_callback callback{nullptr};
+    aapxs_error_callback error_callback{nullptr};
     void* callbackData{nullptr};
     AndroidAudioPlugin* plugin{nullptr};
 public:
     explicit AudioPluginExtensionCallbackImpl(std::promise<void>* promise,
                                              aapxs_completion_callback callback,
+                                             aapxs_error_callback errorCallback,
                                              void* callbackData,
                                              AndroidAudioPlugin* plugin)
-            : promise(promise), callback(callback), callbackData(callbackData), plugin(plugin) {}
+            : promise(promise), callback(callback), error_callback(errorCallback),
+              callbackData(callbackData), plugin(plugin) {}
 
     ::ndk::ScopedAStatus completed(int32_t in_instanceId, int32_t in_requestId, const std::string& in_errorMessage) override {
         (void) in_instanceId;
         (void) in_requestId;
-        (void) in_errorMessage;
-        if (callback)
+        // A non-empty error message means the service reported a failure for this request.
+        if (!in_errorMessage.empty() && error_callback)
+            error_callback(callbackData, plugin, in_errorMessage.c_str());
+        else if (callback)
             callback(callbackData, plugin);
         else if (promise)
             promise->set_value();
@@ -219,19 +224,23 @@ bool aap_client_as_plugin_send_extension_message_delegate(void* context,
                                                           int32_t requestId,
                                                           int32_t opcode,
                                                           aapxs_completion_callback callback,
-                                                          void* callbackData) {
+                                                          void* callbackData,
+                                                          aapxs_error_callback errorCallback) {
     (void) messageSize;
     auto ctx = (AAPClientContext*) context;
     if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
         return false;
 
-    bool asyncState = strcmp(uri, AAP_STATE_EXTENSION_URI) == 0 && callback != nullptr;
+    // Extension-agnostic: any request that carries a completion callback is asynchronous.
+    // (The blocking-sync wrappers supply one too and wait on their own future.)
+    bool async = callback != nullptr;
     std::promise<void> promise{};
     auto future = promise.get_future();
     auto binderCallback = ndk::SharedRefBase::make<AudioPluginExtensionCallbackImpl>(
-            asyncState ? nullptr : &promise,
-            asyncState ? callback : nullptr,
-            asyncState ? callbackData : nullptr,
+            async ? nullptr : &promise,
+            async ? callback : nullptr,
+            async ? errorCallback : nullptr,
+            async ? callbackData : nullptr,
             ctx->plugin);
     auto stat = ctx->getProxy()->extension(instanceId, uri, opcode, requestId, binderCallback->ref<AudioPluginExtensionCallbackImpl>());
     if (!stat.isOk()) {
@@ -240,7 +249,7 @@ bool aap_client_as_plugin_send_extension_message_delegate(void* context,
         return false;
     }
 
-    if (asyncState && callback)
+    if (async)
         return true;
 
     future.wait();

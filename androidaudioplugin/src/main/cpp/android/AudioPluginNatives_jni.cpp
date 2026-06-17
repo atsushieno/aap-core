@@ -312,7 +312,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getState(JNIEnv *
 																		jbyteArray data) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
-	auto state = instance->getStandardExtensions().getState();
+	auto state = instance->getStandardExtensions().getState().value;
 	env->SetByteArrayRegion(data, 0, state.data_size, static_cast<const jbyte *>(state.data));
 }
 

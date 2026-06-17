@@ -20,6 +20,16 @@ typedef struct AAPXSSerializationContext {
     size_t data_capacity;
 } AAPXSSerializationContext;
 
+/**
+ * Optional failure-delivery callback for asynchronous AAPXS calls.
+ *
+ * Unlike `aapxs_completion_callback` (which is part of the public C ABI and signals a *successful*
+ * reply), this is an internal framework hook used to deliver failures — request timeout or a dead
+ * service — to the initiator. `error` is a human-readable description (never null when invoked).
+ * It is invoked at most once per request, and mutually exclusively with the success callback.
+ */
+typedef void (*aapxs_error_callback) (void* context, void* pluginOrHost, const char* error);
+
 typedef struct AAPXSRequestContext {
     aapxs_completion_callback callback;
     void* callback_user_data;
@@ -28,6 +38,9 @@ typedef struct AAPXSRequestContext {
     const char * uri;
     uint32_t request_id;
     int32_t opcode;
+    // Optional; defaults to null for existing brace-initializers that omit it. Set by the async
+    // typed AAPXS layer so timeouts / service death can be reported back to the initiator.
+    aapxs_error_callback error_callback;
 } AAPXSRequestContext;
 
 // client instance for plugin extension API, and service instance for host extension API

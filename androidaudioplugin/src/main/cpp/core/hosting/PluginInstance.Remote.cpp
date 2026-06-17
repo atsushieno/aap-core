@@ -333,7 +333,8 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
                                                request->request_id,
                                                request->opcode,
                                                request->callback,
-                                               request->callback_user_data);
+                                               request->callback_user_data,
+                                               request->error_callback);
 
     // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
     // otherwise it goes to the Binder route.
@@ -356,7 +357,8 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
                                                request->request_id,
                                                request->opcode,
                                                request->callback,
-                                               request->callback_user_data);
+                                               request->callback_user_data,
+                                               request->error_callback);
     }
 }
 
