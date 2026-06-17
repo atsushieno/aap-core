@@ -83,7 +83,7 @@ aap::PluginInstance::~PluginInstance() {
 }
 
 aap_buffer_t* aap::PluginInstance::getAudioPluginBuffer() {
-    return shared_memory_store->getAudioPluginBuffer();
+    return shared_memory_store ? shared_memory_store->getAudioPluginBuffer() : nullptr;
 }
 
 void aap::PluginInstance::completeInstantiation()
