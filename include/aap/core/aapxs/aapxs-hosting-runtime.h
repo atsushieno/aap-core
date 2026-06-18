@@ -184,6 +184,8 @@ namespace aap::xs {
         inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return initiators.getByUrid(urid); AAP_ASSERT_FALSE; return nullptr; }
         inline AAPXSRecipientInstance* getHostAAPXSByUri(const char* uri) { if (already_setup) return recipients.getByUri(uri); AAP_ASSERT_FALSE; return nullptr; }
         inline AAPXSRecipientInstance* getHostAAPXSByUrid(uint8_t urid) { if (already_setup) return recipients.getByUrid(urid); AAP_ASSERT_FALSE; return nullptr; }
+        inline AAPXSDefinition* getDefinitionByUri(const char* uri) { return registry->getByUri(uri); }
+        inline AAPXSDefinition* getDefinitionByUrid(uint8_t urid) { return registry->getByUrid(urid); }
 
         bool
         setupInstances(void* hostContext,
@@ -219,6 +221,8 @@ namespace aap::xs {
         AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return recipients.getByUrid(urid);  AAP_ASSERT_FALSE; return nullptr; }
         AAPXSInitiatorInstance* getHostAAPXSByUri(const char* uri) { if (already_setup) return initiators.getByUri(uri);  AAP_ASSERT_FALSE; return nullptr; }
         AAPXSInitiatorInstance* getHostAAPXSByUrid(uint8_t urid) { if (already_setup) return initiators.getByUrid(urid);  AAP_ASSERT_FALSE; return nullptr; }
+        AAPXSDefinition* getDefinitionByUri(const char* uri) { return registry->getByUri(uri); }
+        AAPXSDefinition* getDefinitionByUrid(uint8_t urid) { return registry->getByUrid(urid); }
 
         void
         setupInstances(void* hostContext,

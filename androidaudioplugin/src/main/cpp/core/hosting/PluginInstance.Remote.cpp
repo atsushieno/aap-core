@@ -8,12 +8,6 @@
 #define LOG_TAG "AAP.Remote.Instance"
 
 namespace {
-bool isBinderOnlyExtension(const char* uri) {
-    return uri &&
-           (strcmp(uri, AAP_STATE_EXTENSION_URI) == 0 ||
-            strcmp(uri, AAP_PRESETS_EXTENSION_URI) == 0);
-}
-
 void filterOutAAPXSReplies(void* buffer) {
     auto mbh = (AAPMidiBufferHeader*) buffer;
     auto* data = (uint8_t*) (mbh + 1);
@@ -336,20 +330,19 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri,
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) {
-    if (isBinderOnlyExtension(request->uri))
-        return ipc_send_extension_message_impl(plugin->plugin_specific,
-                                               request->uri,
-                                               getInstanceId(),
-                                               request->serialization->data_size,
-                                               request->request_id,
-                                               request->opcode,
-                                               request->callback,
-                                               request->callback_user_data,
-                                               request->error_callback);
+    // A request can switch to the RT-safe AAPXS SysEx8 MIDI messaging mode only if the plugin is at
+    // ACTIVE state AND the AAPXS itself declares this command (opcode) as RT-safe. Otherwise (including
+    // when the extension does not implement is_command_rt_safe at all) it goes to the Binder route.
+    auto& dispatcher = getAAPXSDispatcher();
+    auto* definition = request->urid != 0
+                       ? dispatcher.getDefinitionByUrid(request->urid)
+                       : dispatcher.getDefinitionByUri(request->uri);
+    bool useSysEx8 =
+            instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE &&
+            definition && definition->is_command_rt_safe &&
+            definition->is_command_rt_safe(definition, /*isHostExtension=*/ false, request->opcode);
 
-    // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
-    // otherwise it goes to the Binder route.
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+    if (useSysEx8) {
         // request->serialization already contains binary data here, so we retrieve data from there.
         // This is an asynchronous function, so we do not wait for the result, and it has no awaiter (hence std::nullopt)
         aapxs_session.addSession(aapxsSessionAddEventUmpInput,

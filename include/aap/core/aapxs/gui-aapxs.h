@@ -43,6 +43,11 @@ namespace aap::xs {
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* request);
 
+        // GUI extension commands are delivered over the AAPXS SysEx8 channel at ACTIVE state.
+        static bool aapxs_gui_is_command_rt_safe(struct AAPXSDefinition*, bool, int32_t) {
+            return true;
+        }
+
         AAPXSDefinition aapxs_gui{this,
                                   AAP_GUI_EXTENSION_URI,
                                   GUI_SHARED_MEMORY_SIZE,
@@ -51,7 +56,8 @@ namespace aap::xs {
                                   aapxs_gui_process_incoming_plugin_aapxs_reply,
                                   aapxs_gui_process_incoming_host_aapxs_reply,
                                   nullptr, // not sure if it is of any use
-                                  nullptr // not sure if it is of any use
+                                  nullptr, // not sure if it is of any use
+                                  aapxs_gui_is_command_rt_safe
         };
 
     public:

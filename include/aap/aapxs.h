@@ -144,6 +144,30 @@ typedef struct AAPXSDefinition {
             AAPXSDefinition* definition,
             AAPXSInitiatorInstance *aapxsInstance,
             AAPXSSerializationContext *serialization);
+
+    /**
+     * Determines whether a particular command (request opcode) is real-time safe and may therefore
+     * be delivered over the RT-safe AAPXS SysEx8 channel while the plugin is at ACTIVE state.
+     *
+     * When this returns false, the host framework (reference implementation) routes the request over
+     * the synchronous Binder IPC path instead.
+     *
+     * This function pointer may be nullptr, in which case every command of this extension is treated
+     * as RT-unsafe and always goes through Binder. nullptr is therefore the backward-compatible
+     * default ("Binder only").
+     *
+     * IMPORTANT: this may be invoked on the audio thread, so the implementation itself must be
+     * RT-safe (no allocation, no locking) - typically just a `switch` over `opcode`.
+     *
+     * @param definition The containing AAPXSDefinition.
+     * @param isHostExtension true if the command targets a host extension (service->host),
+     *                        false for a plugin extension (client->plugin).
+     * @param opcode The request opcode.
+     */
+    bool (*is_command_rt_safe) (
+            struct AAPXSDefinition* definition,
+            bool isHostExtension,
+            int32_t opcode);
 } AAPXSDefinition;
 
 typedef struct AAPXSExtensionClientProxy {

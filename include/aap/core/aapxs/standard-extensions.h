@@ -99,6 +99,7 @@ namespace aap::xs {
 
         // Presets
         int32_t getPresetCount() override { return presets->getPresetCount(); }
+        // OBSOLETE: use getPresetAsync() instead.
         Result<bool> getPreset(int32_t index, aap_preset_t& preset) override {
             auto error = presets->getPreset(index, preset);
             return Result<bool>{error.empty(), error};
@@ -108,6 +109,7 @@ namespace aap::xs {
             presets->getPreset(index, preset);
             return preset.name;
         }
+        // OBSOLETE: use setPresetIndexAsync() instead.
         Result<bool> setCurrentPresetIndex(int32_t index) override {
             auto error = presets->setPresetIndex(index);
             return Result<bool>{error.empty(), error};
@@ -121,6 +123,7 @@ namespace aap::xs {
 
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
+        // OBSOLETE: use requestStateAsync() instead.
         Result<aap_state_t> getState() override {
             if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
                 if (tmp_state.data)
@@ -132,6 +135,7 @@ namespace aap::xs {
             auto error = state->getState(tmp_state);
             return Result<aap_state_t>{tmp_state, error};
         }
+        // OBSOLETE: use setStateAsync() instead.
         Result<bool> setState(aap_state_t& stateToLoad) override {
             auto error = state->setState(stateToLoad);
             return Result<bool>{error.empty(), error};

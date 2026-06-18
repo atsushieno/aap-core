@@ -75,6 +75,12 @@ namespace aap::xs {
             return ((UridClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
 
+        // URID mapping is consumed at UNPREPARED state (see LocalPluginInstance::controlExtension), so
+        // it never actually reaches the ACTIVE SysEx8 path; declare it RT-safe to preserve behavior.
+        static bool aapxs_urid_is_command_rt_safe(struct AAPXSDefinition*, bool, int32_t) {
+            return true;
+        }
+
         AAPXSDefinition aapxs_urid{this,
                                    AAP_URID_EXTENSION_URI,
                                    URID_SHARED_MEMORY_SIZE,
@@ -83,7 +89,8 @@ namespace aap::xs {
                                    aapxs_urid_process_incoming_plugin_aapxs_reply,
                                    aapxs_urid_process_incoming_host_aapxs_reply,
                                    aapxs_urid_get_plugin_proxy,
-                                   nullptr // no host extension
+                                   nullptr, // no host extension
+                                   aapxs_urid_is_command_rt_safe
         };
 
     public:

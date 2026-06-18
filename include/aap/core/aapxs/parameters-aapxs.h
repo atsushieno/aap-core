@@ -138,6 +138,27 @@ namespace aap::xs {
             return ((ParametersServiceAAPXS*) proxy->aapxs_context)->asHostExtension();
         }
 
+        // Determines per-opcode RT-safety. The metadata query opcodes (getParameterCount, getParameter,
+        // getProperty, enumeration queries) can be issued hundreds/thousands at a time and all share one
+        // serialization buffer; routing them over SysEx8 would need that many process() iterations
+        // (seconds per plugin). They are therefore kept on the synchronous Binder path (false).
+        // Add RT-safe opcodes here as they are introduced.
+        static bool aapxs_parameters_is_command_rt_safe(struct AAPXSDefinition*, bool isHostExtension, int32_t opcode) {
+            if (isHostExtension)
+                // OPCODE_NOTIFY_PARAMETERS_CHANGED: host notification, kept on Binder for now.
+                return false;
+            switch (opcode) {
+                case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
+                case OPCODE_PARAMETERS_GET_PARAMETER:
+                case OPCODE_PARAMETERS_GET_PROPERTY:
+                case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT:
+                case OPCODE_PARAMETERS_GET_ENUMERATION:
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
         AAPXSDefinition aapxs_parameters{this,
                                          AAP_PARAMETERS_EXTENSION_URI,
                                          PARAMETERS_SHARED_MEMORY_SIZE,
@@ -146,7 +167,8 @@ namespace aap::xs {
                                          aapxs_parameters_process_incoming_plugin_aapxs_reply,
                                          aapxs_parameters_process_incoming_host_aapxs_reply,
                                          aapxs_parameters_get_plugin_proxy,
-                                         aapxs_parameters_get_host_proxy
+                                         aapxs_parameters_get_host_proxy,
+                                         aapxs_parameters_is_command_rt_safe
         };
 
     public:
