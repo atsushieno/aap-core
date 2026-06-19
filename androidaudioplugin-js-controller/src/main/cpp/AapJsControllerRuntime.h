@@ -15,6 +15,10 @@ namespace aap { class PluginClient; }
 
 namespace aap::js {
 
+// Native -> JVM upcall (implemented in JNI.cpp): bind a plugin's Android service by package name.
+// Required before instancing. Returns true on success.
+bool jvmConnectService(const std::string& packageName);
+
 // Mirrors uapmd-app's async-job model: long automation scripts (e.g. a connect+instantiate that
 // stalls on a binder connection) are started, polled, and cleared out-of-band so a single broadcast
 // does not have to block for the whole operation.

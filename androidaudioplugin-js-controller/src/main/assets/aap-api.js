@@ -36,6 +36,17 @@ class PluginInstance {
     setState(base64) { __aap_instance_set_state(this.instanceId, base64); return this; }
 }
 
+// Resolve a plugin's owning package name from the provider-fed discovery catalog,
+// so create() can bind the right Android service before instancing.
+function packageOfPlugin(pluginId) {
+    try {
+        const list = JSON.parse(__aap_get_plugins());
+        for (const p of list)
+            if (p.pluginId === pluginId) return p.packageName;
+    } catch (e) { /* no catalog / parse error -> caller proceeds without auto-connect */ }
+    return null;
+}
+
 globalThis.aap = {
     // Liveness check for the transport.
     ping: () => ({ pong: __aap_ping() }),
@@ -50,7 +61,16 @@ globalThis.aap = {
 
     // Instance creation + lookup.
     instancing: {
-        create: (pluginId) => new PluginInstance(__aap_instance_create(pluginId))
+        // Bind a plugin's Android service by package name. AAP must connect the service before
+        // instancing; create() does this automatically, but it is also exposed explicitly.
+        connect: (packageName) => __aap_connect_service(packageName),
+
+        create: (pluginId) => {
+            // Auto-connect the plugin's service first (resolve its package from discovery).
+            const pkg = packageOfPlugin(pluginId);
+            if (pkg) __aap_connect_service(pkg);
+            return new PluginInstance(__aap_instance_create(pluginId));
+        }
     },
 
     // Wrap an existing instance id.

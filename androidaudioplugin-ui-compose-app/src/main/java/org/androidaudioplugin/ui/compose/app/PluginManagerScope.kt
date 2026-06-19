@@ -25,6 +25,7 @@ import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.PluginServiceConnection
 import org.androidaudioplugin.hosting.UmpHelper
 import org.androidaudioplugin.manager.PluginPlayer
+import kotlinx.coroutines.runBlocking
 
 // Conventional default control buffer size (matches the host's DEFAULT_CONTROL_BUFFER_SIZE).
 private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
@@ -70,6 +71,14 @@ class PluginManagerScope(val context: Context,
             AapAutomationRuntime.bootstrap(context)
             AapAutomationRuntime.attachNativeClient(automationClient.nativeClientHandle)
             AapAutomationRuntime.setPluginCatalog(buildAutomationCatalogJson(pluginServices))
+            // Let the JS facade bind plugin services before instancing (suspend -> blocking; this
+            // runs on the runtime's executor thread, not main, so runBlocking is safe).
+            AapAutomationRuntime.serviceConnector = { packageName ->
+                runBlocking {
+                    automationClient.connectToPluginService(packageName)
+                    true
+                }
+            }
         } catch (e: Throwable) {
             Log.w(logTag, "Failed to initialize AAP JS automation runtime", e)
         }
