@@ -87,13 +87,16 @@ public:
 
 class HostExtensionCompletionCallback : public aidl::org::androidaudioplugin::BnAudioPluginExtensionCallback {
     aapxs_completion_callback callback{nullptr};
+    aapxs_error_callback error_callback{nullptr};
     void* callbackData{nullptr};
     void* callbackPluginOrHost{nullptr};
 public:
     HostExtensionCompletionCallback(aapxs_completion_callback callback,
+                                    aapxs_error_callback errorCallback,
                                     void* callbackData,
                                     void* callbackPluginOrHost)
             : callback(callback),
+              error_callback(errorCallback),
               callbackData(callbackData),
               callbackPluginOrHost(callbackPluginOrHost) {}
 
@@ -102,8 +105,10 @@ public:
                                    const std::string& in_errorMessage) override {
         (void) in_instanceId;
         (void) in_requestId;
-        (void) in_errorMessage;
-        if (callback)
+        // A non-empty error message means the host reported a failure for this request.
+        if (!in_errorMessage.empty() && error_callback)
+            error_callback(callbackData, callbackPluginOrHost, in_errorMessage.c_str());
+        else if (callback)
             callback(callbackData, callbackPluginOrHost);
         return ::ndk::ScopedAStatus::ok();
     }
@@ -116,11 +121,13 @@ public:
                                            int32_t requestId,
                                            aapxs_completion_callback callback,
                                            void* callbackData,
-                                           void* callbackPluginOrHost) {
+                                           void* callbackPluginOrHost,
+                                           aapxs_error_callback errorCallback) {
         std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback> sharedCallback;
         if (callback) {
             auto binderCallback = ndk::SharedRefBase::make<HostExtensionCompletionCallback>(
                     callback,
+                    errorCallback,
                     callbackData,
                     callbackPluginOrHost);
             sharedCallback = binderCallback->ref<HostExtensionCompletionCallback>();

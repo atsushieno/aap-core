@@ -132,9 +132,16 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
             }
 
             AAPXSRequestContext context{nullptr, nullptr, aapxsInstance->serialization, 0, uri.c_str(), static_cast<uint32_t>(requestId), opcode};
-            instance->processHostAAPXSRequest(&context);
+            std::string error{};
+            try {
+                instance->processHostAAPXSRequest(&context);
+            } catch (const std::exception& ex) {
+                error = ex.what();
+            } catch (...) {
+                error = "Unknown host extension error";
+            }
             if (callback)
-                callback->completed(instanceId, requestId, "");
+                callback->completed(instanceId, requestId, error);
             return ::ndk::ScopedAStatus::ok();
         };
         live_connection_data[aiBinder] = connectionData;

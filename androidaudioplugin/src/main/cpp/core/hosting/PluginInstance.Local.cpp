@@ -296,7 +296,8 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
                                     request->request_id,
                                     request->callback,
                                     request->callback_user_data,
-                                    &plugin_host_facade);
+                                    &plugin_host_facade,
+                                    request->error_callback);
     return request->callback != nullptr;
 }
 

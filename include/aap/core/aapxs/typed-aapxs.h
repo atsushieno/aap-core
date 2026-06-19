@@ -121,7 +121,11 @@ namespace aap::xs {
                 future.wait();
         }
 
-        // "Fire and forget" invocation. Host extensions must be always like this.
+        // "Fire and forget" invocation: sends a request with no completion callback (the
+        // `callback == nullptr` case). Suitable for notifications where no reply is expected.
+        // NOTE: this is NOT a requirement for host extensions — service->host calls can and do
+        // return values / report completion (e.g. ARA's getHostCapability / readAudioSourceSamples,
+        // presets' notify*), via the same callFunctionAsync / callAndWait path as plugin extensions.
         void fireVoidFunctionAndForget(int32_t opcode) {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
             AAPXSRequestContext request{nullptr, nullptr, serialization, aapxs_instance->urid, uri, requestId,

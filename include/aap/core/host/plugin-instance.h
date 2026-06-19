@@ -179,7 +179,8 @@ namespace aap {
                                          int32_t requestId,
                                          aapxs_completion_callback callback,
                                          void* callbackData,
-                                         void* callbackPluginOrHost);
+                                         void* callbackPluginOrHost,
+                                         aapxs_error_callback errorCallback);
 
 /**
  * A plugin instance that could use dlopen() and dlsym().
