@@ -138,25 +138,16 @@ namespace aap::xs {
             return ((ParametersServiceAAPXS*) proxy->aapxs_context)->asHostExtension();
         }
 
-        // Determines per-opcode RT-safety. The metadata query opcodes (getParameterCount, getParameter,
-        // getProperty, enumeration queries) can be issued hundreds/thousands at a time and all share one
-        // serialization buffer; routing them over SysEx8 would need that many process() iterations
-        // (seconds per plugin). They are therefore kept on the synchronous Binder path (false).
-        // Add RT-safe opcodes here as they are introduced.
+        // Per-opcode RT-safety, matching the RT_SAFE/RT_UNSAFE annotations in ext/parameters.h.
+        // - get_parameter_count is RT_SAFE.
+        // - get_parameter / get_parameter_property / get_enumeration_count / get_enumeration are
+        //   RT_UNSAFE: they can be issued hundreds/thousands at a time over one shared serialization
+        //   buffer, so they stay on the synchronous Binder path.
+        // Host callbacks are always treated as RT-unsafe by the runtime, so they are not handled here.
         static bool aapxs_parameters_is_command_rt_safe(struct AAPXSDefinition*, bool isHostExtension, int32_t opcode) {
             if (isHostExtension)
-                // OPCODE_NOTIFY_PARAMETERS_CHANGED: host notification, kept on Binder for now.
                 return false;
-            switch (opcode) {
-                case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
-                case OPCODE_PARAMETERS_GET_PARAMETER:
-                case OPCODE_PARAMETERS_GET_PROPERTY:
-                case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT:
-                case OPCODE_PARAMETERS_GET_ENUMERATION:
-                    return false;
-                default:
-                    return false;
-            }
+            return opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT;
         }
 
         AAPXSDefinition aapxs_parameters{this,
@@ -168,7 +159,8 @@ namespace aap::xs {
                                          aapxs_parameters_process_incoming_host_aapxs_reply,
                                          aapxs_parameters_get_plugin_proxy,
                                          aapxs_parameters_get_host_proxy,
-                                         aapxs_parameters_is_command_rt_safe
+                                         // FIXME: we could switch to detailed rt-safety checker
+                                         nullptr //aapxs_parameters_is_command_rt_safe
         };
 
     public:

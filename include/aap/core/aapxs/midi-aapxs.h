@@ -75,11 +75,6 @@ namespace aap::xs {
             return ((MidiClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
 
-        // All MIDI extension commands are RT-safe and use the AAPXS SysEx8 channel at ACTIVE state.
-        static bool aapxs_midi_is_command_rt_safe(struct AAPXSDefinition*, bool, int32_t) {
-            return true;
-        }
-
         AAPXSDefinition aapxs_midi{this,
                                    AAP_MIDI_EXTENSION_URI,
                                    MIDI_SHARED_MEMORY_SIZE,
@@ -89,7 +84,9 @@ namespace aap::xs {
                                    aapxs_midi_process_incoming_host_aapxs_reply,
                                    aapxs_midi_get_plugin_proxy,
                                    nullptr, // no host extension
-                                   aapxs_midi_is_command_rt_safe
+                                   // get_mapping_policy is RT_UNSAFE (called once around configure()), so
+                                   // is_command_rt_safe is left null -> always Binder.
+                                   nullptr
         };
 
     public:

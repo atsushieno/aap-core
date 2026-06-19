@@ -117,6 +117,16 @@ namespace aap::xs {
             return ((PresetsServiceAAPXS*) proxy->aapxs_context)->asHostExtension();
         }
 
+        // Per-opcode RT-safety, matching the RT_SAFE/RT_UNSAFE annotations in ext/presets.h.
+        // - get_preset_count is RT_SAFE.
+        // - get_preset / set_preset_index are RT_UNSAFE and stay on the synchronous Binder path.
+        // Host callbacks are always treated as RT-unsafe by the runtime, so they are not handled here.
+        static bool aapxs_presets_is_command_rt_safe(struct AAPXSDefinition*, bool isHostExtension, int32_t opcode) {
+            if (isHostExtension)
+                return false;
+            return opcode == OPCODE_GET_PRESET_COUNT;
+        }
+
         AAPXSDefinition aapxs_presets{this,
                                       AAP_PRESETS_EXTENSION_URI,
                                       PRESETS_SHARED_MEMORY_SIZE,
@@ -125,7 +135,9 @@ namespace aap::xs {
                                       aapxs_presets_process_incoming_plugin_aapxs_reply,
                                       aapxs_presets_process_incoming_host_aapxs_reply,
                                       aapxs_presets_get_plugin_proxy,
-                                      aapxs_presets_get_host_proxy
+                                      aapxs_presets_get_host_proxy,
+                                      // FIXME: we could switch to detailed rt-safety checker
+                                      nullptr //aapxs_presets_is_command_rt_safe
         };
 
     public:

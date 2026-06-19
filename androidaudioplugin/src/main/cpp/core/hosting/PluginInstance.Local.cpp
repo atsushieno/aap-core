@@ -285,35 +285,19 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
-    // A request can switch to the RT-safe AAPXS SysEx8 MIDI messaging mode only if the plugin is at
-    // ACTIVE state AND the AAPXS itself declares this command (opcode) as RT-safe. Otherwise (including
-    // when the extension does not implement is_command_rt_safe at all) it goes to the Binder route.
-    auto& dispatcher = getAAPXSDispatcher();
-    auto* definition = request->urid != 0
-                       ? dispatcher.getDefinitionByUrid(request->urid)
-                       : dispatcher.getDefinitionByUri(request->uri);
-    bool useSysEx8 =
-            instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE &&
-            definition && definition->is_command_rt_safe &&
-            definition->is_command_rt_safe(definition, /*isHostExtension=*/ true, request->opcode);
-
-    if (useSysEx8) {
-        // aapxsInstance already contains binary data here, so we retrieve data from there.
-        // This is an asynchronous function, so we do not wait for the result.
-        aapxs_host_session.addSession(aapxsSessionAddEventUmpInput, this, request);
-        return true;
-    } else {
-        // the actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-        ipc_send_extension_message_func(ipc_send_extension_message_context,
-                                        request->uri,
-                                        getInstanceId(),
-                                        request->opcode,
-                                        request->request_id,
-                                        request->callback,
-                                        request->callback_user_data,
-                                        &plugin_host_facade);
-        return request->callback != nullptr;
-    }
+    // Host callbacks (service->host) are ALWAYS treated as RT-unsafe, so they always take the
+    // synchronous Binder route and never the AAPXS SysEx8 channel. (is_command_rt_safe is therefore
+    // only consulted for the plugin direction, in RemotePluginInstance::sendPluginAAPXSRequest.)
+    // The actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
+    ipc_send_extension_message_func(ipc_send_extension_message_context,
+                                    request->uri,
+                                    getInstanceId(),
+                                    request->opcode,
+                                    request->request_id,
+                                    request->callback,
+                                    request->callback_user_data,
+                                    &plugin_host_facade);
+    return request->callback != nullptr;
 }
 
 void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
