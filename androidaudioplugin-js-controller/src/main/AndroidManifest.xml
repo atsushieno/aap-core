@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Reusable automation entry point. Manifest-merge pulls this receiver into any app that depends
+      on this module, so the adb-broadcast JS controller is available without per-app manifest edits.
+
+      It is exported so `adb shell am broadcast` can reach it. The receiver runs arbitrary JS against
+      the host's plugin client, so it is intended for debug/testing builds; release builds that do
+      not want it should override/remove it via their own manifest.
+    -->
+    <application>
+        <receiver
+            android:name="org.androidaudioplugin.js.AapAutomationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.androidaudioplugin.js.RUN_JS" />
+                <action android:name="org.androidaudioplugin.js.RUN_JS_ASYNC" />
+                <action android:name="org.androidaudioplugin.js.GET_JS_JOB" />
+                <action android:name="org.androidaudioplugin.js.CLEAR_JS_JOB" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

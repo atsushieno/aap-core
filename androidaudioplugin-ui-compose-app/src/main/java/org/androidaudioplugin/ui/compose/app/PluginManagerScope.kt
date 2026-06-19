@@ -3,6 +3,7 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import android.util.Log
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
@@ -15,6 +16,9 @@ import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
 import org.androidaudioplugin.hosting.AudioPluginClientBase
+import org.androidaudioplugin.js.AapAutomationRuntime
+import org.json.JSONArray
+import org.json.JSONObject
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
 import org.androidaudioplugin.hosting.GuiHelper
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
@@ -25,18 +29,51 @@ import org.androidaudioplugin.manager.PluginPlayer
 // Conventional default control buffer size (matches the host's DEFAULT_CONTROL_BUFFER_SIZE).
 private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
 
+// Exposes the underlying native client pointer (aap::PluginClient*) so the embedded JS automation
+// runtime can drive the very same client the Compose manager UI uses. `native` is protected on
+// AudioPluginClientBase and NativePluginClient.native is the C++ handle.
+private class AutomationCapableAudioPluginClient(context: Context) : AudioPluginClientBase(context) {
+    val nativeClientHandle: Long get() = native.native
+}
+
+// Serializes the discovered plugin list for `aap.discovery.getPlugins()` (discovery is JVM-side).
+private fun buildAutomationCatalogJson(services: List<PluginServiceInformation>): String {
+    val array = JSONArray()
+    services.forEach { service ->
+        service.plugins.forEach { plugin ->
+            array.put(JSONObject().apply {
+                put("pluginId", plugin.pluginId)
+                put("displayName", plugin.displayName)
+                put("packageName", service.packageName)
+            })
+        }
+    }
+    return array.toString()
+}
+
 class PluginManagerScope(val context: Context,
                          val pluginServices: SnapshotStateList<PluginServiceInformation>
 ) : AutoCloseable {
     val logTag = "AAPPluginManager"
 
-    val client = AudioPluginClientBase(context).apply {
+    private val automationClient = AutomationCapableAudioPluginClient(context).apply {
         onConnectedListeners.add { conn -> connections.add(conn) }
         onDisconnectingListeners.add { conn -> connections.remove(conn) }
     }
+    val client: AudioPluginClientBase = automationClient
 
     // An observable list version of service connections
     val connections = listOf<PluginServiceConnection>().toMutableStateList()
+
+    init {
+        try {
+            AapAutomationRuntime.bootstrap(context)
+            AapAutomationRuntime.attachNativeClient(automationClient.nativeClientHandle)
+            AapAutomationRuntime.setPluginCatalog(buildAutomationCatalogJson(pluginServices))
+        } catch (e: Throwable) {
+            Log.w(logTag, "Failed to initialize AAP JS automation runtime", e)
+        }
+    }
 
     override fun close() {
         client.dispose()

@@ -1,68 +1,74 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.maven.publish)
     signing
 }
 
 apply { from ("../common.gradle") }
+
 version = libs.versions.aap.core.get()
 
 android {
-    namespace = "org.androidaudioplugin.ui.compose.app"
-    ext["description"] = "AndroidAudioPlugin - Manager App (Compose)"
+    namespace = "org.androidaudioplugin.js"
+    this.ext["description"] = "AndroidAudioPlugin - JS automation controller (choc/QuickJS)"
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments ("-DANDROID_STL=c++_shared")
+            }
+        }
+    }
 
     buildTypes {
+        debug {
+            packaging.jniLibs.keepDebugSymbols.add("**/*.so")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles (getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-    buildFeatures {
-        compose = true
-    }
-    kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-    defaultConfig {
-        vectorDrawables {
-            useSupportLibrary = true
+    externalNativeBuild {
+        cmake {
+            version = libs.versions.cmake.get()
+            path ("src/main/cpp/CMakeLists.txt")
         }
     }
+    // https://github.com/google/prefab/issues/127
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        jniLibs.excludes.add("**/libc++_shared.so")
+        jniLibs.excludes.add("**/libandroidaudioplugin.so") // provided by the androidaudioplugin module
     }
 }
 
 dependencies {
     implementation (project(":androidaudioplugin"))
-    implementation (project(":androidaudioplugin-manager"))
-    implementation (project(":androidaudioplugin-ui-compose"))
-    implementation (project(":androidaudioplugin-ui-web"))
-    implementation (project(":androidaudioplugin-js-controller"))
-    implementation (libs.compose.audio.controls)
     implementation (libs.androidx.core.ktx)
-    implementation (libs.kotlin.stdlib.jdk8)
-    implementation (libs.androidx.appcompat)
 
-    implementation (libs.accompanist.drawablepainter)
-    implementation (libs.accompanist.permissions)
-
-    implementation(platform(libs.compose.bom))
-    implementation (libs.navigation.compose)
-    implementation(libs.lifecycle.runtime.ktx)
-    implementation(libs.activity.compose)
-    implementation(libs.ui.tooling.preview)
-
-    androidTestImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
-    androidTestImplementation(platform(libs.compose.bom))
 }
+
+// Workaround for AGP/prefab issue: cmake for consuming modules may generate INTERFACE IMPORTED
+// targets when the producing module's .so hasn't been built yet at configure time.
+// AGP only tracks prefab_publication.json (not .so content) for cmake cache invalidation,
+// so we explicitly order configure after the prefab package task (which contains the .so).
+// See also: https://issuetracker.google.com/issues/385751152
+gradle.projectsEvaluated {
+    val aapProject = rootProject.project("androidaudioplugin")
+    tasks.matching { it.name.startsWith("configureCMakeDebug") }.configureEach {
+        dependsOn(aapProject.tasks["prefabDebugPackage"])
+    }
+    tasks.matching { it.name.startsWith("configureCMakeRelWithDebInfo") }.configureEach {
+        dependsOn(aapProject.tasks["prefabReleasePackage"])
+    }
+    tasks["buildCMakeDebug"].dependsOn(aapProject.tasks["mergeDebugNativeLibs"])
+    tasks["buildCMakeRelWithDebInfo"].dependsOn(aapProject.tasks["mergeReleaseNativeLibs"])
+}
+
 
 val gitProjectName = "aap-core"
 val packageName = project.name
