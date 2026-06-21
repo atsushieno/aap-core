@@ -105,7 +105,7 @@ namespace aap::xs {
             return Result<bool>{error.empty(), error};
         }
         std::string getPresetName(int32_t index) override {
-            aap_preset_t preset;
+            aap_preset_t preset{};
             presets->getPreset(index, preset);
             return preset.name;
         }
@@ -192,7 +192,7 @@ namespace aap::xs {
         std::string getPresetName(int32_t index) override {
             if (!presets)
                 return "";
-            aap_preset_t preset;
+            aap_preset_t preset{};
             getPreset(index, preset);
             return preset.name;
         }

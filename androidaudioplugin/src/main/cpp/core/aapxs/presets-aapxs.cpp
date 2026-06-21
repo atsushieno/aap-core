@@ -27,7 +27,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
                 // request (offset-range: content)
                 // - 0..3 : int32_t index
                 // - 4..7 : bool skip binary or not
-                aap_preset_t preset;
+                aap_preset_t preset{};
                 int32_t index = *((int32_t *) request->serialization->data);
 
                 // FIXME: should this be calling it asynchronously?
