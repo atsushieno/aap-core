@@ -374,6 +374,16 @@ uint32_t aap::PluginInstance::getParameterStateRevision() const {
 }
 
 void aap::PluginInstance::handleParameterLayoutChanged() {
+    // A plugin can notify a parameter-layout change from within its own instantiate()
+    // (e.g. JUCE/Dexed populate parameters during construction), which arrives before
+    // completeInstantiation() has assigned `plugin`. Driving the parameter scan here
+    // would dereference a null `plugin`. The instance is not configured yet, so there is
+    // nothing valid to scan; the host performs the definitive parameter scan immediately
+    // after instantiation completes (see PluginHost.Client createInstance:
+    // scanParametersAndBuildList() + handleParameterLayoutChanged()), which reflects this
+    // notification. Until then, ignore layout-change notifications.
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL)
+        return;
     rebuildParameterIndexAndValues();
     if (auto* state = get_parameter_state(this, false))
         state->revision.fetch_add(1);
