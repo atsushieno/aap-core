@@ -295,6 +295,9 @@ interface AudioPluginInterface {
 
 Due to [AIDL tool limitation or framework limitation](https://issuetracker.google.com/issues/144204660), we cannot use `List<ParcelFileDescriptor>`, therefore `prepareMemory()` is added apart from `prepare()` to workaround this issue.
 
+## Testing
+
+AAP involves multiple repositories to test various features. To test things practically, we have set up [aap-integration-tests](https://github.com/atsushieno/aap-integration-tests) as an isolated repository so that we can download multiple packages and push into Gradle Managed Device and perform usage-scenario-based tests.
 
 ## Development Tips
 
