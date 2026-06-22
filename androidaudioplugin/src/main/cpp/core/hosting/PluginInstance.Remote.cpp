@@ -260,9 +260,19 @@ aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *ur
         host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
-    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
-        return getHostParametersExtension();
+
+    auto registry = getAAPXSRegistry()->items();
+    auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);
+    if (definition && definition->get_host_extension_receiver) {
+        auto& dispatcher = getAAPXSDispatcher();
+        auto aapxsInstance = urid != 0 ? dispatcher.getHostAAPXSByUrid(urid) : dispatcher.getHostAAPXSByUri(uri);
+        if (aapxsInstance) {
+            auto receiver = definition->get_host_extension_receiver(definition, aapxsInstance, &plugin_host_facade);
+            if (receiver.as_host_extension)
+                return receiver.as_host_extension(&receiver);
+        }
     }
+
     // look for user-implemented host extensions
     if (getHostExtension)
         return getHostExtension(this, urid, uri);

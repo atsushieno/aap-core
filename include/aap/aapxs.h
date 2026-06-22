@@ -168,6 +168,11 @@ typedef struct AAPXSDefinition {
             struct AAPXSDefinition* definition,
             bool isHostExtension,
             int32_t opcode);
+
+    struct AAPXSExtensionHostReceiver (*get_host_extension_receiver) (
+            struct AAPXSDefinition* definition,
+            AAPXSRecipientInstance *aapxsInstance,
+            AndroidAudioPluginHost *host);
 } AAPXSDefinition;
 
 typedef struct AAPXSExtensionClientProxy {
@@ -179,5 +184,10 @@ typedef struct AAPXSExtensionServiceProxy {
     void* aapxs_context;
     void* (*as_host_extension) (AAPXSExtensionServiceProxy *proxy);
 } AAPXSExtensionServiceProxy;
+
+typedef struct AAPXSExtensionHostReceiver {
+    void* aapxs_context;
+    void* (*as_host_extension) (AAPXSExtensionHostReceiver *receiver);
+} AAPXSExtensionHostReceiver;
 
 #endif //AAP_CORE_AAPXS_H

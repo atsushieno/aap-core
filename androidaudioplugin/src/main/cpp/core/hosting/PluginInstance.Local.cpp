@@ -112,9 +112,6 @@ aap::LocalPluginInstance::getHostExtension(uint8_t urid, const char *uri) {
         host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
-    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0) {
-        return getHostParametersExtension();
-    }
     // Look up host extension and get proxy via AAPXSDefinition.
     auto registry = getAAPXSRegistry()->items();
     auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);

@@ -42,8 +42,6 @@ namespace aap {
         aap_host_plugin_info_extension_t host_plugin_info{};
         static aap_plugin_info_t
         get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
-        static void
-        notify_parameters_changed(aap_parameters_host_extension_t* ext, AndroidAudioPluginHost* host);
 
         int instance_id{-1};
         PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
@@ -72,7 +70,6 @@ namespace aap {
         void rebuildParameterIndexAndValues();
         void updateParameterValueCacheFromOutputBuffer(void* buffer);
         bool updateCachedParameterValueById(int32_t parameterId, double plainValue);
-        aap_parameters_host_extension_t* getHostParametersExtension();
 
     public:
         virtual ~PluginInstance();

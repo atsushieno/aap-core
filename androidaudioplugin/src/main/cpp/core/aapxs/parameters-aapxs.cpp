@@ -1,7 +1,19 @@
 
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
+#include "aap/core/host/plugin-instance.h"
 #include "aap/unstable/utility.h"
+
+namespace {
+void notify_parameters_changed(aap_parameters_host_extension_t* ext,
+                               AndroidAudioPluginHost* host) {
+    (void) ext;
+    auto* instance = (aap::RemotePluginInstance*) host->context;
+    instance->handleParameterLayoutChanged();
+}
+
+aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_parameters_changed};
+}
 
 // AAPXSDefinition_Parameters
 
@@ -106,6 +118,23 @@ AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters
     service->service_proxy.aapxs_context = service->typed_service.get();
     service->service_proxy.as_host_extension = aapxs_parameters_as_host_extension;
     return service->service_proxy;
+}
+
+AAPXSExtensionHostReceiver
+aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_host_receiver(
+        struct AAPXSDefinition *feature,
+        AAPXSRecipientInstance *aapxsInstance,
+        AndroidAudioPluginHost *host) {
+    (void) feature;
+    (void) aapxsInstance;
+    (void) host;
+    return AAPXSExtensionHostReceiver{nullptr, aapxs_parameters_as_host_receiver};
+}
+
+void* aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_as_host_receiver(
+        AAPXSExtensionHostReceiver *receiver) {
+    (void) receiver;
+    return &parameters_host_receiver;
 }
 
 // AAPXSParametersClient

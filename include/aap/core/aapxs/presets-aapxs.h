@@ -109,6 +109,11 @@ namespace aap::xs {
                 AAPXSInitiatorInstance *aapxsInstance,
                 AAPXSSerializationContext *serialization);
 
+        static AAPXSExtensionHostReceiver aapxs_presets_get_host_receiver(
+                struct AAPXSDefinition *feature,
+                AAPXSRecipientInstance *aapxsInstance,
+                AndroidAudioPluginHost *host);
+
         static void* aapxs_presets_as_plugin_extension(AAPXSExtensionClientProxy* proxy) {
             return ((PresetsClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
@@ -116,6 +121,8 @@ namespace aap::xs {
         static void* aapxs_presets_as_host_extension(AAPXSExtensionServiceProxy* proxy) {
             return ((PresetsServiceAAPXS*) proxy->aapxs_context)->asHostExtension();
         }
+
+        static void* aapxs_presets_as_host_receiver(AAPXSExtensionHostReceiver* receiver);
 
         // Per-opcode RT-safety, matching the RT_SAFE/RT_UNSAFE annotations in ext/presets.h.
         // - get_preset_count is RT_SAFE.
@@ -137,7 +144,8 @@ namespace aap::xs {
                                       aapxs_presets_get_plugin_proxy,
                                       aapxs_presets_get_host_proxy,
                                       // FIXME: we could switch to detailed rt-safety checker
-                                      nullptr //aapxs_presets_is_command_rt_safe
+                                      nullptr, //aapxs_presets_is_command_rt_safe
+                                      aapxs_presets_get_host_receiver
         };
 
     public:

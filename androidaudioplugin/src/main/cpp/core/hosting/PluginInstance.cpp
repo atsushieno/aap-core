@@ -14,7 +14,6 @@
 
 namespace {
 struct PluginParameterState {
-    aap_parameters_host_extension_t host_parameters{};
     aap::NanoSleepLock mutex{};
     std::vector<double> values{};
     std::unordered_map<int32_t, int32_t> id_to_index{};
@@ -389,13 +388,6 @@ void aap::PluginInstance::handleParameterLayoutChanged() {
         state->revision.fetch_add(1);
 }
 
-aap_parameters_host_extension_t* aap::PluginInstance::getHostParametersExtension() {
-    auto* state = get_parameter_state(this);
-    if (state)
-        state->host_parameters.notify_parameters_changed = notify_parameters_changed;
-    return state ? &state->host_parameters : nullptr;
-}
-
 void aap::PluginInstance::activate() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
         return;
@@ -531,12 +523,6 @@ aap_plugin_info_t aap::PluginInstance::get_plugin_info(aap_host_plugin_info_exte
                           plugin_info_get_parameter_count,
                           plugin_info_get_parameter};
     return ret;
-}
-
-void aap::PluginInstance::notify_parameters_changed(aap_parameters_host_extension_t* ext,
-                                                    AndroidAudioPluginHost* host) {
-    auto* instance = (PluginInstance*) host->context;
-    instance->handleParameterLayoutChanged();
 }
 
 uint32_t aapxs_request_id_serial{0};

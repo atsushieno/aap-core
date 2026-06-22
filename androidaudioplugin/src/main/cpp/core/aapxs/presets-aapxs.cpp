@@ -1,4 +1,19 @@
 #include "aap/core/aapxs/presets-aapxs.h"
+
+namespace {
+void notify_preset_loaded(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
+    (void) ext;
+    (void) host;
+}
+
+void notify_presets_updated(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
+    (void) ext;
+    (void) host;
+}
+
+aap_presets_host_extension_t presets_host_receiver{nullptr, notify_preset_loaded, notify_presets_updated};
+}
+
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
@@ -102,6 +117,23 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefin
     service->typed_service = std::make_unique<PresetsServiceAAPXS>(aapxsInstance, serialization);
     service->service_proxy = AAPXSExtensionServiceProxy{&service->typed_service, aapxs_presets_as_host_extension};
     return service->service_proxy;
+}
+
+AAPXSExtensionHostReceiver
+aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_receiver(
+        struct AAPXSDefinition *feature,
+        AAPXSRecipientInstance *aapxsInstance,
+        AndroidAudioPluginHost *host) {
+    (void) feature;
+    (void) aapxsInstance;
+    (void) host;
+    return AAPXSExtensionHostReceiver{nullptr, aapxs_presets_as_host_receiver};
+}
+
+void* aap::xs::AAPXSDefinition_Presets::aapxs_presets_as_host_receiver(
+        AAPXSExtensionHostReceiver *receiver) {
+    (void) receiver;
+    return &presets_host_receiver;
 }
 
 // Strongly-typed client implementation (plugin extension functions)
