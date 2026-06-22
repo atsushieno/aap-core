@@ -97,7 +97,6 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     val outputMessages = mutableStateListOf<String>()
     private val midiOutputScratch = ByteArray(8192)
     private val parameterIdToIndex = mutableMapOf<Int, Int>()
-    private var parameterStateRevision = -1
 
     // Audio configuration shared between the eager prepare() at instantiation time and the
     // PluginPlayer created on first playback. They MUST be the same values: AudioPluginNode::start()
@@ -146,7 +145,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             // its own DEFAULT_CONTROL_BUFFER_SIZE), but we pass the conventional value for clarity.
             result.prepare(framesPerCallback, sampleRate, DEFAULT_CONTROL_BYTES_PER_BLOCK)
             instance.value = result
-            syncParametersFromInstance(force = true)
+            syncParametersFromInstance()
         }
     }
 
@@ -227,11 +226,8 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         syncParametersFromInstance()
     }
 
-    fun syncParametersFromInstance(force: Boolean = false) {
+    fun syncParametersFromInstance() {
         val ins = instance.value ?: return
-        val revision = ins.getParameterStateRevision()
-        if (!force && revision == parameterStateRevision)
-            return
 
         val count = ins.getParameterCount()
         val values = ArrayList<Double>(count)
@@ -241,9 +237,15 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             parameterIdToIndex[parameter.id] = index
             values += ins.getParameterValue(index)
         }
-        parameterValues.clear()
-        parameterValues.addAll(values)
-        parameterStateRevision = revision
+        if (parameterValues.size != values.size) {
+            parameterValues.clear()
+            parameterValues.addAll(values)
+        } else {
+            values.forEachIndexed { index, value ->
+                if (parameterValues[index] != value)
+                    parameterValues[index] = value
+            }
+        }
     }
 
     fun drainMidiOutput() {

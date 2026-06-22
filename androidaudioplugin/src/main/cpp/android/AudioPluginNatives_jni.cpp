@@ -12,6 +12,7 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "audio-plugin-host-android-internal.h"
 #include "../core/hosting/plugin-service-list.h"
+#include "../core/hosting/plugin-parameter-state.h"
 #include "../core/AAPJniFacade.h"
 
 #define LOG_TAG "AAP.JNI"
@@ -481,14 +482,7 @@ jdouble implPluginHostGetParameterValue(jlong nativeHost,
                                         jint index) {
     auto host = (aap::PluginHost*) (void*) nativeHost;
     auto instance = host->getInstanceById(instanceId);
-    return instance->getParameterValue(index);
-}
-
-jint implPluginHostGetParameterStateRevision(jlong nativeHost,
-                                             jint instanceId) {
-    auto host = (aap::PluginHost*) (void*) nativeHost;
-    auto instance = host->getInstanceById(instanceId);
-    return static_cast<jint>(instance->getParameterStateRevision());
+    return aap::internal::getParameterValue(*instance, index);
 }
 
 jint implPluginHostGetPortCount(jlong nativeHost,
@@ -558,15 +552,6 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameterValue(JNIEnv*,
 }
 
 extern "C"
-JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_NativeLocalPluginInstance_getParameterStateRevision(JNIEnv*,
-                                                                                jclass,
-                                                                                jlong nativeService,
-                                                                                jint instanceId) {
-    return implPluginHostGetParameterStateRevision(nativeService, instanceId);
-}
-
-extern "C"
 JNIEXPORT jstring JNICALL
 Java_org_androidaudioplugin_NativeLocalPluginInstance_getPluginId(JNIEnv* env,
                                                                    jclass ,
@@ -631,15 +616,6 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterValue
                                                                                  jint instanceId,
                                                                                  jint index) {
     return implPluginHostGetParameterValue(nativeClient, instanceId, index);
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterStateRevision(JNIEnv*,
-                                                                                         jclass,
-                                                                                         jlong nativeClient,
-                                                                                         jint instanceId) {
-    return implPluginHostGetParameterStateRevision(nativeClient, instanceId);
 }
 
 extern "C"

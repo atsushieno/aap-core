@@ -3,6 +3,7 @@
 #include <aap/core/host/plugin-host.h>
 #include <aap/core/host/plugin-instance.h>
 #include "audio-plugin-host-internals.h"
+#include "plugin-parameter-state.h"
 
 void aap::PluginClient::connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback) {
     const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
@@ -77,7 +78,7 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             instance->completeInstantiation();
             instance->configurePorts();
             instance->scanParametersAndBuildList();
-            instance->handleParameterLayoutChanged();
+            internal::handleParameterLayoutChanged(*instance);
 
             return Result<int32_t>{instance->getInstanceId(), ""};
         }

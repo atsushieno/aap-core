@@ -67,9 +67,6 @@ namespace aap {
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
-        void rebuildParameterIndexAndValues();
-        void updateParameterValueCacheFromOutputBuffer(void* buffer);
-        bool updateCachedParameterValueById(int32_t parameterId, double plainValue);
 
     public:
         virtual ~PluginInstance();
@@ -105,10 +102,6 @@ namespace aap {
                 return nullptr;
             }
         }
-
-        double getParameterValue(int32_t index);
-        uint32_t getParameterStateRevision() const;
-        void handleParameterLayoutChanged();
 
         int32_t getNumPorts() {
             return configured_ports != nullptr ? configured_ports->size()

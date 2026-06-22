@@ -7,6 +7,7 @@
 #include <aap/core/host/plugin-host.h>
 #include <aap/core/host/plugin-instance.h>
 #include <aap/core/plugin-information.h>
+#include "plugin-parameter-state.h"
 
 #include <android/log.h>
 #include <chrono>
@@ -250,7 +251,7 @@ void AapJsControllerRuntime::registerBindings() {
 
     ctx.registerFunction("__aap_instance_get_parameter_value", [this](choc::javascript::ArgumentList args) -> Value {
         auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        return Value(instance->getParameterValue((int32_t) args.get<int64_t>(1)));
+        return Value(aap::internal::getParameterValue(*instance, (int32_t) args.get<int64_t>(1)));
     });
 
     ctx.registerFunction("__aap_instance_get_preset_count", [this](choc::javascript::ArgumentList args) -> Value {

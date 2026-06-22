@@ -29,6 +29,7 @@ target_compile_definitions (androidaudioplugin-js-controller
 target_include_directories (androidaudioplugin-js-controller
         PRIVATE
         "../../../../include/"
+        "../../../../androidaudioplugin/src/main/cpp/core/hosting"
         "../../../../external/choc"
         )
 

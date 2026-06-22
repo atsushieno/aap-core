@@ -1,5 +1,6 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include "plugin-parameter-state.h"
 #include <unordered_map>
 #include <vector>
 
@@ -218,7 +219,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
         auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(aapBuffer, i);
-        updateParameterValueCacheFromOutputBuffer(data);
+        internal::updateParameterValueCacheFromOutputBuffer(*this, data);
         if (data && data->length > 0)
             appendGuiListenerMidiBuffer(this, data + 1, static_cast<int32_t>(data->length));
     }

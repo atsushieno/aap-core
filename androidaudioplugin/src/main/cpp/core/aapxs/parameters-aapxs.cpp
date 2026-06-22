@@ -2,6 +2,7 @@
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/plugin-instance.h"
+#include "../hosting/plugin-parameter-state.h"
 #include "aap/unstable/utility.h"
 
 namespace {
@@ -9,7 +10,7 @@ void notify_parameters_changed(aap_parameters_host_extension_t* ext,
                                AndroidAudioPluginHost* host) {
     (void) ext;
     auto* instance = (aap::RemotePluginInstance*) host->context;
-    instance->handleParameterLayoutChanged();
+    aap::internal::handleParameterLayoutChanged(*instance);
 }
 
 aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_parameters_changed};

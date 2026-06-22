@@ -1,9 +1,9 @@
 
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
+#include "plugin-parameter-state.h"
 #include "aap/ext/midi.h"
 #include <algorithm>
-#include <atomic>
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
@@ -17,7 +17,6 @@ struct PluginParameterState {
     aap::NanoSleepLock mutex{};
     std::vector<double> values{};
     std::unordered_map<int32_t, int32_t> id_to_index{};
-    std::atomic<uint32_t> revision{1};
 };
 
 std::mutex parameter_state_registry_mutex;
@@ -77,8 +76,7 @@ aap::PluginInstance::~PluginInstance() {
         free(event_midi2_buffer);
     if (event_midi2_merge_buffer)
         free(event_midi2_merge_buffer);
-    const std::lock_guard<std::mutex> lock{parameter_state_registry_mutex};
-    parameter_state_registry.erase(this);
+    internal::cleanupParameterState(*this);
 }
 
 aap_buffer_t* aap::PluginInstance::getAudioPluginBuffer() {
@@ -185,10 +183,7 @@ void aap::PluginInstance::startPortConfiguration() {
 }
 
 void aap::PluginInstance::scanParametersAndBuildList() {
-    if (cached_parameters) {
-        AAP_ASSERT_FALSE;
-        return;
-    }
+    cached_parameters.reset();
 
     auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
     if (!ext || !ext->get_parameter_count || !ext->get_parameter)
@@ -216,8 +211,13 @@ void aap::PluginInstance::scanParametersAndBuildList() {
     }
 }
 
-void aap::PluginInstance::rebuildParameterIndexAndValues() {
-    auto* state = get_parameter_state(this);
+void aap::internal::cleanupParameterState(aap::PluginInstance& instance) {
+    const std::lock_guard<std::mutex> lock{parameter_state_registry_mutex};
+    parameter_state_registry.erase(&instance);
+}
+
+void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance) {
+    auto* state = get_parameter_state(&instance);
     if (!state)
         return;
     std::unordered_map<int32_t, double> previousValues;
@@ -228,15 +228,14 @@ void aap::PluginInstance::rebuildParameterIndexAndValues() {
             previousValues[entry.first] = state->values[index];
     }
 
-    cached_parameters.reset();
-    scanParametersAndBuildList();
+    instance.scanParametersAndBuildList();
 
-    rebuild_parameter_id_index(this, state->id_to_index);
+    rebuild_parameter_id_index(&instance, state->id_to_index);
 
     std::vector<double> newValues;
-    newValues.reserve(getNumParameters());
-    for (int32_t i = 0, n = getNumParameters(); i < n; ++i) {
-        auto* parameter = getParameter(i);
+    newValues.reserve(instance.getNumParameters());
+    for (int32_t i = 0, n = instance.getNumParameters(); i < n; ++i) {
+        auto* parameter = instance.getParameter(i);
         auto it = previousValues.find(parameter->getId());
         if (it != previousValues.end())
             newValues.emplace_back(it->second);
@@ -248,8 +247,8 @@ void aap::PluginInstance::rebuildParameterIndexAndValues() {
     state->values = std::move(newValues);
 }
 
-bool aap::PluginInstance::updateCachedParameterValueById(int32_t parameterId, double plainValue) {
-    auto* state = get_parameter_state(this, false);
+bool aap::internal::updateCachedParameterValueById(aap::PluginInstance& instance, int32_t parameterId, double plainValue) {
+    auto* state = get_parameter_state(&instance, false);
     if (!state)
         return false;
     auto it = state->id_to_index.find(parameterId);
@@ -262,21 +261,21 @@ bool aap::PluginInstance::updateCachedParameterValueById(int32_t parameterId, do
     return true;
 }
 
-void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer) {
+void aap::internal::updateParameterValueCacheFromOutputBuffer(aap::PluginInstance& instance, void* buffer) {
     if (!buffer)
         return;
-    auto* state = get_parameter_state(this);
+    auto* state = get_parameter_state(&instance);
     if (!state)
         return;
     if (std::unique_lock<NanoSleepLock> tryLock(state->mutex, std::try_to_lock); !tryLock.owns_lock())
         return;
 
     if (state->id_to_index.empty())
-        rebuild_parameter_id_index(this, state->id_to_index);
+        rebuild_parameter_id_index(&instance, state->id_to_index);
     if (state->values.empty()) {
-        state->values.reserve(getNumParameters());
-        for (int32_t i = 0, n = getNumParameters(); i < n; ++i) {
-            auto* parameter = getParameter(i);
+        state->values.reserve(instance.getNumParameters());
+        for (int32_t i = 0, n = instance.getNumParameters(); i < n; ++i) {
+            auto* parameter = instance.getParameter(i);
             state->values.emplace_back(parameter ? parameter->getDefaultValue() : 0.0);
         }
     }
@@ -284,8 +283,6 @@ void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer
     auto* mbh = (AAPMidiBufferHeader*) buffer;
     auto* data = (uint8_t*) (mbh + 1);
     uint32_t offset = 0;
-    bool changed = false;
-
     while (offset + sizeof(uint32_t) <= mbh->length) {
         auto* ump = (uint32_t*) (data + offset);
         auto messageType = (*ump >> 28) & 0xF;
@@ -314,13 +311,13 @@ void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer
                     auto it = state->id_to_index.find(parameterId);
                     if (it != state->id_to_index.end()) {
                         auto index = it->second;
-                        if (index >= 0 && index < getNumParameters()) {
-                            auto* parameter = getParameter(index);
+                        if (index >= 0 && index < instance.getNumParameters()) {
+                            auto* parameter = instance.getParameter(index);
                             auto plainValue = aapParameterTransportUint32ToPlain(
                                     parameter->getMinimumValue(),
                                     parameter->getMaximumValue(),
                                     word1);
-                            changed |= updateCachedParameterValueById(parameterId, plainValue);
+                            updateCachedParameterValueById(instance, parameterId, plainValue);
                         }
                     }
                 }
@@ -335,13 +332,13 @@ void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer
                 auto it = state->id_to_index.find(parameterId);
                 if (it != state->id_to_index.end()) {
                     auto index = it->second;
-                    if (index >= 0 && index < getNumParameters()) {
-                        auto* parameter = getParameter(index);
+                    if (index >= 0 && index < instance.getNumParameters()) {
+                        auto* parameter = instance.getParameter(index);
                         auto plainValue = aapParameterTransportUint32ToPlain(
                                 parameter->getMinimumValue(),
                                 parameter->getMaximumValue(),
                                 word3);
-                        changed |= updateCachedParameterValueById(parameterId, plainValue);
+                        updateCachedParameterValueById(instance, parameterId, plainValue);
                     }
                 }
             }
@@ -350,29 +347,22 @@ void aap::PluginInstance::updateParameterValueCacheFromOutputBuffer(void* buffer
         offset += static_cast<uint32_t>(messageSize);
     }
 
-    if (changed)
-        state->revision.fetch_add(1);
 }
 
-double aap::PluginInstance::getParameterValue(int32_t index) {
-    auto* state = get_parameter_state(const_cast<aap::PluginInstance*>(this), false);
+double aap::internal::getParameterValue(aap::PluginInstance& instance, int32_t index) {
+    auto* state = get_parameter_state(&instance, false);
     if (!state) {
-        auto* parameter = getParameter(index);
+        auto* parameter = instance.getParameter(index);
         return parameter ? parameter->getDefaultValue() : 0.0;
     }
     const std::lock_guard<NanoSleepLock> lock{state->mutex};
     if (index >= 0 && index < state->values.size())
         return state->values[index];
-    auto* parameter = getParameter(index);
+    auto* parameter = instance.getParameter(index);
     return parameter ? parameter->getDefaultValue() : 0.0;
 }
 
-uint32_t aap::PluginInstance::getParameterStateRevision() const {
-    auto* state = get_parameter_state(const_cast<aap::PluginInstance*>(this), false);
-    return state ? state->revision.load() : 1;
-}
-
-void aap::PluginInstance::handleParameterLayoutChanged() {
+void aap::internal::handleParameterLayoutChanged(aap::PluginInstance& instance) {
     // A plugin can notify a parameter-layout change from within its own instantiate()
     // (e.g. JUCE/Dexed populate parameters during construction), which arrives before
     // completeInstantiation() has assigned `plugin`. Driving the parameter scan here
@@ -381,11 +371,9 @@ void aap::PluginInstance::handleParameterLayoutChanged() {
     // after instantiation completes (see PluginHost.Client createInstance:
     // scanParametersAndBuildList() + handleParameterLayoutChanged()), which reflects this
     // notification. Until then, ignore layout-change notifications.
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL)
+    if (instance.getInstanceState() == PLUGIN_INSTANTIATION_STATE_INITIAL)
         return;
-    rebuildParameterIndexAndValues();
-    if (auto* state = get_parameter_state(this, false))
-        state->revision.fetch_add(1);
+    rebuildParameterIndexAndValues(instance);
 }
 
 void aap::PluginInstance::activate() {

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "aap/core/host/plugin-instance.h"
+#include "plugin-parameter-state.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
 #include "aap/core/aap_midi2_helper.h"
@@ -241,7 +242,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
         filterOutAAPXSReplies(data);
-        updateParameterValueCacheFromOutputBuffer(data);
+        internal::updateParameterValueCacheFromOutputBuffer(*this, data);
     }
 
 #if ANDROID
