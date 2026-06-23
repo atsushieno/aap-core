@@ -7,10 +7,12 @@
 #include <aap/core/host/plugin-host.h>
 #include <aap/core/host/plugin-instance.h>
 #include <aap/core/plugin-information.h>
+#include <aap/ext/port-config.h>
 #include "plugin-parameter-state.h"
 
 #include <android/log.h>
 #include <chrono>
+#include <cmath>
 #include <stdexcept>
 #include <thread>
 
@@ -173,6 +175,13 @@ void AapJsControllerRuntime::registerBindings() {
         return obj;
     });
 
+    ctx.registerFunction("__aap_sleep_ms", [](choc::javascript::ArgumentList args) -> Value {
+        auto milliseconds = args.get<int64_t>(0);
+        if (milliseconds > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+        return {};
+    });
+
     ctx.registerFunction("__aap_get_plugins", [this](choc::javascript::ArgumentList) -> Value {
         // Returned as a JSON string; the JS facade calls JSON.parse on it.
         return Value(pluginCatalogJson_);
@@ -223,6 +232,71 @@ void AapJsControllerRuntime::registerBindings() {
         // 1s timeout; this is a single non-realtime block (the offline renderer comes later).
         instance->process(frameCount, 1000000000L);
         return {};
+    });
+
+    ctx.registerFunction("__aap_instance_fill_audio_inputs", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto seed = (int32_t) args.get<int64_t>(1);
+        auto amplitude = args.get<double>(2);
+        auto* buffer = instance->getAudioPluginBuffer();
+        if (!buffer)
+            return {};
+        auto frames = buffer->num_frames(buffer);
+        for (int32_t p = 0, n = instance->getNumPorts(); p < n; ++p) {
+            auto* port = instance->getPort(p);
+            if (!port || port->getContentType() != AAP_CONTENT_TYPE_AUDIO ||
+                port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
+                continue;
+            auto* data = static_cast<float*>(buffer->get_buffer(buffer, p));
+            if (!data)
+                continue;
+            auto samples = std::min<int32_t>(frames, buffer->get_buffer_size(buffer, p) / sizeof(float));
+            for (int32_t i = 0; i < samples; ++i) {
+                auto phase = static_cast<double>((seed + i + p * 31) % 97) / 97.0;
+                data[i] = static_cast<float>((std::sin(phase * 6.283185307179586) * 0.7 +
+                                              std::sin(phase * 18.84955592153876) * 0.3) * amplitude);
+            }
+        }
+        return {};
+    });
+
+    ctx.registerFunction("__aap_instance_get_audio_output_stats", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto* buffer = instance->getAudioPluginBuffer();
+        auto arr = createEmptyArray();
+        if (!buffer)
+            return arr;
+        for (int32_t p = 0, n = instance->getNumPorts(); p < n; ++p) {
+            auto* port = instance->getPort(p);
+            if (!port || port->getContentType() != AAP_CONTENT_TYPE_AUDIO ||
+                port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
+                continue;
+            auto* data = static_cast<float*>(buffer->get_buffer(buffer, p));
+            auto samples = data ? std::min<int32_t>(buffer->num_frames(buffer), buffer->get_buffer_size(buffer, p) / sizeof(float)) : 0;
+            double sum = 0.0, sumAbs = 0.0, sumSq = 0.0, maxAbs = 0.0;
+            uint32_t hash = 2166136261u;
+            for (int32_t i = 0; i < samples; ++i) {
+                auto v = static_cast<double>(data[i]);
+                auto av = std::abs(v);
+                sum += v;
+                sumAbs += av;
+                sumSq += v * v;
+                maxAbs = std::max(maxAbs, av);
+                int32_t q = static_cast<int32_t>(std::max(-1.0, std::min(1.0, v)) * 2147483647.0);
+                hash ^= static_cast<uint32_t>(q);
+                hash *= 16777619u;
+            }
+            auto obj = createObject("");
+            obj.setMember("port", static_cast<int64_t>(p));
+            obj.setMember("samples", static_cast<int64_t>(samples));
+            obj.setMember("sum", sum);
+            obj.setMember("sumAbs", sumAbs);
+            obj.setMember("rms", samples > 0 ? std::sqrt(sumSq / samples) : 0.0);
+            obj.setMember("maxAbs", maxAbs);
+            obj.setMember("hash", static_cast<int64_t>(hash));
+            arr.addArrayElement(obj);
+        }
+        return arr;
     });
 
     ctx.registerFunction("__aap_instance_get_parameter_count", [this](choc::javascript::ArgumentList args) -> Value {

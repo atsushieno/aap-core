@@ -20,6 +20,9 @@ class PluginInstance {
     process(frameCount) { __aap_instance_process(this.instanceId, frameCount); return this; }
     deactivate() { __aap_instance_deactivate(this.instanceId); return this; }
     destroy() { __aap_instance_destroy(this.instanceId); }
+    fillAudioInputs(seed, amplitude) { __aap_instance_fill_audio_inputs(this.instanceId, seed, amplitude); return this; }
+    getAudioOutputStats() { return __aap_instance_get_audio_output_stats(this.instanceId); }
+    sleepMs(milliseconds) { __aap_sleep_ms(milliseconds); return this; }
 
     // Parameters
     getParameterCount() { return __aap_instance_get_parameter_count(this.instanceId); }
