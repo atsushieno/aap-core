@@ -2,6 +2,7 @@
 #include <android/log.h>
 #include <android/binder_ibinder.h>
 #include <android/binder_auto_utils.h>
+#include <dlfcn.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <memory>
@@ -76,6 +77,19 @@ class AndroidPluginClientConnectionData {
         ((AndroidPluginClientConnectionData*) cookie)->handleBinderDeath();
     }
 
+    static void onBinderUnlinked(void*) {
+    }
+
+    static void setDeathRecipientOnUnlinked(AIBinder_DeathRecipient* recipient) {
+        if (!recipient)
+            return;
+        using SetOnUnlinked = void (*)(AIBinder_DeathRecipient*, void (*)(void*));
+        auto setOnUnlinked = reinterpret_cast<SetOnUnlinked>(
+                dlsym(RTLD_DEFAULT, "AIBinder_DeathRecipient_setOnUnlinked"));
+        if (setOnUnlinked)
+            setOnUnlinked(recipient, AndroidPluginClientConnectionData::onBinderUnlinked);
+    }
+
     // Invoked on a binder thread when the plugin service process dies. Fails every in-flight
     // async AAPXS request (across all extensions, standard or not) on each remote instance so
     // callers stop waiting instead of hanging until timeout.
@@ -114,6 +128,7 @@ public:
         // Fail in-flight async AAPXS requests promptly if the service process dies.
         death_recipient = ndk::ScopedAIBinder_DeathRecipient(
                 AIBinder_DeathRecipient_new(AndroidPluginClientConnectionData::onBinderDied));
+        setDeathRecipientOnUnlinked(death_recipient.get());
         auto deathStatus = AIBinder_linkToDeath(spAIBinder.get(), death_recipient.get(), this);
         if (deathStatus != STATUS_OK)
             aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_AIDL_SVC_LOG_TAG,
