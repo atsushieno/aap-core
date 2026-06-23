@@ -115,7 +115,8 @@ namespace aap::xs {
                 AndroidAudioPluginHost *host);
 
         static void* aapxs_presets_as_plugin_extension(AAPXSExtensionClientProxy* proxy) {
-            return ((PresetsClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
+            auto* client = (PresetsClientAAPXS*) proxy->aapxs_context;
+            return client ? client->asPluginExtension() : nullptr;
         }
 
         static void* aapxs_presets_as_host_extension(AAPXSExtensionServiceProxy* proxy) {
@@ -143,8 +144,7 @@ namespace aap::xs {
                                       aapxs_presets_process_incoming_host_aapxs_reply,
                                       aapxs_presets_get_plugin_proxy,
                                       aapxs_presets_get_host_proxy,
-                                      // FIXME: we could switch to detailed rt-safety checker
-                                      nullptr, //aapxs_presets_is_command_rt_safe
+                                      aapxs_presets_is_command_rt_safe,
                                       aapxs_presets_get_host_receiver
         };
 

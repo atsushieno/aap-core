@@ -198,7 +198,10 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         mbh = (AAPMidiBufferHeader*) data;
     }
 
-    plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+    {
+        const std::lock_guard<NanoSleepLock> pluginCallLock{plugin_call_mutex};
+        plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+    }
 
     if (mbh) // make sure to reset incoming length here
         mbh->length = 0;
@@ -322,7 +325,15 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
         AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
-        def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+        bool canRunDuringProcess =
+                def->is_command_rt_safe &&
+                def->is_command_rt_safe(def, /*isHostExtension=*/ false, opcode);
+        if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE && !canRunDuringProcess) {
+            const std::lock_guard<NanoSleepLock> pluginCallLock{plugin_call_mutex};
+            def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+        } else {
+            def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+        }
     }
 }
 

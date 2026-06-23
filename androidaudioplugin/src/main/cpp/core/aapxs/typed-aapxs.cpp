@@ -9,6 +9,7 @@
 namespace aap::xs {
 
     TypedAAPXS::~TypedAAPXS() {
+        detachAllPending("AAPXS owner destroyed");
         unregisterForAbort();
     }
 

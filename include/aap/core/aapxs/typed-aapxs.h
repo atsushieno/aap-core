@@ -147,9 +147,10 @@ namespace aap::xs {
         int32_t request_timeout_ms{AAPXS_REQUEST_TIMEOUT_DEFAULT_MS};
 
         struct AsyncCall {
-            TypedAAPXS* owner{nullptr};
+            std::atomic<TypedAAPXS*> owner{nullptr};
             uint32_t request_id{0};
             std::atomic<bool> fired{false};
+            std::atomic<bool> detached{false};
             // error empty == success; the closure reads `serialization` only on success.
             std::function<void(const std::string& error)> deliver{};
         };
@@ -166,11 +167,23 @@ namespace aap::xs {
 
         static void onAsyncReply(void* ctx, void* /*pluginOrHost*/) {
             auto call = (AsyncCall*) ctx;
-            call->owner->finish(call, "");
+            auto owner = call->owner.load();
+            if (!owner) {
+                if (call->detached.exchange(false))
+                    delete call;
+                return;
+            }
+            owner->finish(call, "");
         }
         static void onAsyncError(void* ctx, void* /*pluginOrHost*/, const char* error) {
             auto call = (AsyncCall*) ctx;
-            call->owner->finish(call, error ? error : "error");
+            auto owner = call->owner.load();
+            if (!owner) {
+                if (call->detached.exchange(false))
+                    delete call;
+                return;
+            }
+            owner->finish(call, error ? error : "error");
         }
 
         // assumes `calls_mutex` is held on entry; releases it before doing IPC.
@@ -203,6 +216,37 @@ namespace aap::xs {
                 serialization->data_size = d.payload.size();
                 sendLocked(d.opcode, std::move(d.call), lock);
             }
+        }
+
+        void detachAllPending(const std::string& error) {
+            std::vector<std::unique_ptr<AsyncCall>> pending;
+            std::deque<DeferredCall> abortedDeferred;
+            {
+                std::unique_lock<std::mutex> lock(calls_mutex);
+                pending.reserve(in_flight.size());
+                for (auto& kv : in_flight) {
+                    kv.second->owner.store(nullptr);
+                    kv.second->fired.exchange(true);
+                    pending.push_back(std::move(kv.second));
+                }
+                in_flight.clear();
+                abortedDeferred = std::move(deferred);
+                deferred.clear();
+            }
+
+            // In-flight Binder calls still have a raw callback context. Complete their promises now,
+            // then release ownership so the eventual Binder callback can delete the detached context.
+            for (auto& call : pending) {
+                if (call->deliver)
+                    call->deliver(error);
+                call->detached.store(true);
+                (void) call.release();
+            }
+
+            // Deferred calls were never sent to Binder, so no external callback can reference them.
+            for (auto& d : abortedDeferred)
+                if (d.call && !d.call->fired.exchange(true) && d.call->deliver)
+                    d.call->deliver(error);
         }
 
         // Registers/unregisters this instance with the owning plugin instance's abort registry,
@@ -244,7 +288,7 @@ namespace aap::xs {
                                   std::function<void(const std::string& error, AAPXSSerializationContext* ctx)> onResult) {
             auto ctx = serialization;
             auto call = std::make_unique<AsyncCall>();
-            call->owner = this;
+            call->owner.store(this);
             call->deliver = [ctx, onResult = std::move(onResult)](const std::string& error) {
                 if (onResult)
                     onResult(error, ctx);

@@ -20,6 +20,7 @@ struct PluginParameterState {
 };
 
 std::mutex parameter_state_registry_mutex;
+std::mutex parameter_layout_scan_mutex;
 std::unordered_map<aap::PluginInstance*, std::unique_ptr<PluginParameterState>> parameter_state_registry;
 
 PluginParameterState* get_parameter_state(aap::PluginInstance* instance, bool create = true) {
@@ -33,6 +34,12 @@ PluginParameterState* get_parameter_state(aap::PluginInstance* instance, bool cr
     auto* ret = state.get();
     parameter_state_registry[instance] = std::move(state);
     return ret;
+}
+
+std::string fixed_string(const char* s, size_t capacity) {
+    if (!s || capacity == 0)
+        return {};
+    return {s, strnlen(s, capacity)};
 }
 }
 
@@ -183,32 +190,35 @@ void aap::PluginInstance::startPortConfiguration() {
 }
 
 void aap::PluginInstance::scanParametersAndBuildList() {
-    cached_parameters.reset();
+    const std::lock_guard<std::mutex> scanLock{parameter_layout_scan_mutex};
 
-    auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
-    if (!ext || !ext->get_parameter_count || !ext->get_parameter)
+    auto& ext = getStandardExtensions();
+    auto parameterCount = ext.getParameterCount();
+    if (parameterCount == -1) { // explicitly indicates that the code is not going to return the parameter list.
         return;
-
-    auto parameterCount = ext->get_parameter_count(ext, plugin);
-    if (parameterCount == -1) // explicitly indicates that the code is not going to return the parameter list.
-        return;
+    }
 
     // if parameters extension does not exist, do not populate cached parameters list.
     // (The empty list means no parameters in metadata either.)
-    cached_parameters = std::make_unique<std::vector<ParameterInformation>>();
+    auto scannedParameters = std::make_unique<std::vector<ParameterInformation>>();
+    scannedParameters->reserve(parameterCount);
 
     for (auto i = 0; i < parameterCount; i++) {
-        auto para = ext->get_parameter(ext, plugin, i);
-        ParameterInformation p{para.stable_id, para.display_name, para.min_value, para.max_value, para.default_value};
-        if (ext->get_enumeration_count && ext->get_enumeration) {
-            for (auto e = 0, en = ext->get_enumeration_count(ext, plugin, i); e < en; e++) {
-                auto pe = ext->get_enumeration(ext, plugin, i, e);
-                ParameterInformation::Enumeration eDef{e, pe.value, pe.name};
-                p.addEnumeration(eDef);
-            }
+        auto para = ext.getParameter(i);
+        ParameterInformation p{para.stable_id,
+                               fixed_string(para.display_name, AAP_MAX_PARAMETER_NAME_CHARS),
+                               para.min_value,
+                               para.max_value,
+                               para.default_value};
+        auto parameterId = para.stable_id;
+        for (auto e = 0, en = ext.getEnumerationCount(parameterId); e < en; e++) {
+            auto pe = ext.getEnumeration(parameterId, e);
+            ParameterInformation::Enumeration eDef{e, pe.value, fixed_string(pe.name, AAP_MAX_PARAMETER_ENUM_NAME)};
+            p.addEnumeration(eDef);
         }
-        cached_parameters->emplace_back(p);
+        scannedParameters->emplace_back(p);
     }
+    cached_parameters = std::move(scannedParameters);
 }
 
 void aap::internal::cleanupParameterState(aap::PluginInstance& instance) {
@@ -400,7 +410,6 @@ void aap::PluginInstance::deactivate() {
     plugin->deactivate(plugin);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
 }
-
 
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
     const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};

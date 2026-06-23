@@ -31,6 +31,7 @@ namespace aap::xs {
         virtual double getParameterProperty(int32_t index, int32_t propertyId) = 0;
         virtual int32_t getEnumerationCount(int32_t index) = 0;
         virtual aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) = 0;
+        virtual aap_parameters_extension_t* asParametersExtension() { return nullptr; }
 
         // Presets
         virtual int32_t getPresetCount() = 0;
@@ -39,6 +40,7 @@ namespace aap::xs {
         virtual Result<bool> setCurrentPresetIndex(int32_t index) = 0;
         virtual int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) = 0;
         virtual int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) = 0;
+        virtual aap_presets_extension_t* asPresetsExtension() { return nullptr; }
 
         // State
         virtual int32_t getStateSize() = 0;
@@ -67,6 +69,7 @@ namespace aap::xs {
     };
 
     class ClientStandardExtensions : public StandardExtensions {
+        bool initialized{false};
         std::unique_ptr<MidiClientAAPXS> midi{nullptr};
         std::unique_ptr<ParametersClientAAPXS> parameters{nullptr};
         std::unique_ptr<PresetsClientAAPXS> presets{nullptr};
@@ -76,12 +79,15 @@ namespace aap::xs {
 
     public:
         void initialize(AAPXSClientDispatcher* dispatcher) {
+            if (initialized)
+                return;
             midi = std::make_unique<MidiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_MIDI_EXTENSION_URI), dispatcher->getSerialization(AAP_MIDI_EXTENSION_URI));
             parameters = std::make_unique<ParametersClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI), dispatcher->getSerialization(AAP_PARAMETERS_EXTENSION_URI));
             presets = std::make_unique<PresetsClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI), dispatcher->getSerialization(AAP_PRESETS_EXTENSION_URI));
             state = std::make_unique<StateClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI));
             gui = std::make_unique<GuiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_GUI_EXTENSION_URI), dispatcher->getSerialization(AAP_GUI_EXTENSION_URI));
             urid = std::make_unique<UridClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_URID_EXTENSION_URI), dispatcher->getSerialization(AAP_URID_EXTENSION_URI));
+            initialized = true;
         }
 
         // URID
@@ -96,6 +102,7 @@ namespace aap::xs {
         double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters->getProperty(index, propertyId); }
         int32_t getEnumerationCount(int32_t index) override { return parameters->getEnumerationCount(index); }
         aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters->getEnumeration(index, enumIndex); }
+        aap_parameters_extension_t* asParametersExtension() override { return parameters ? parameters->asPluginExtension() : nullptr; }
 
         // Presets
         int32_t getPresetCount() override { return presets->getPresetCount(); }
@@ -120,6 +127,7 @@ namespace aap::xs {
         int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) override {
             return presets->setPresetIndexAsync(index, std::move(callback));
         }
+        aap_presets_extension_t* asPresetsExtension() override { return presets ? presets->asPluginExtension() : nullptr; }
 
         // State
         int32_t getStateSize() override { return state->getStateSize(); }
@@ -175,7 +183,7 @@ namespace aap::xs {
         int32_t getMidiMappingPolicy() override { return midi ? midi->get_mapping_policy(midi, plugin) : 0; }
 
         // Parameters
-        int32_t getParameterCount() override { return parameters ? parameters->get_parameter_count(parameters, plugin) : 0; }
+        int32_t getParameterCount() override { return parameters ? parameters->get_parameter_count(parameters, plugin) : -1; }
         aap_parameter_info_t getParameter(int32_t index) override { return parameters ? parameters->get_parameter(parameters, plugin, index) : aap_parameter_info_t{}; }
         double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters ? parameters->get_parameter_property(parameters, plugin, index, propertyId) : 0.0; }
         int32_t getEnumerationCount(int32_t index) override { return parameters ? parameters->get_enumeration_count(parameters, plugin, index) : 0; }

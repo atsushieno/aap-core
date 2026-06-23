@@ -1,4 +1,5 @@
 #include "aap/core/aapxs/presets-aapxs.h"
+#include "aap/core/host/plugin-instance.h"
 
 namespace {
 void notify_preset_loaded(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
@@ -21,6 +22,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
     switch(request->opcode) {
         case OPCODE_GET_PRESET_COUNT:
             *((int32_t*) request->serialization->data) = ext ? ext->get_preset_count(ext, plugin) : 0;
+            request->serialization->data_size = sizeof(int32_t);
             // RT_SAFE. Send reply now.
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
@@ -34,6 +36,7 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
                 ext->set_preset_index(ext, plugin, index);
             }
 
+            request->serialization->data_size = 0;
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         }
@@ -54,11 +57,11 @@ void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aap
                 // - 0..3 : stable ID
                 // - 4..259 : name (fixed length char buffer)
                 *((int32_t *) request->serialization->data) = preset.id;
-                size_t len = strlen(preset.name);
-                strncpy((char *) request->serialization->data + sizeof(int32_t),
-                        const_cast<char *const>(preset.name), len);
-                ((char *) request->serialization->data)[len + sizeof(int32_t)] = 0;
+                auto name = (char *) request->serialization->data + sizeof(int32_t);
+                memset(name, 0, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH);
+                strncpy(name, preset.name, AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH - 1);
             }
+            request->serialization->data_size = sizeof(int32_t) + AAP_PRESETS_EXTENSION_MAX_NAME_LENGTH;
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         }
@@ -103,9 +106,12 @@ AAPXSExtensionClientProxy
 aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_plugin_proxy(struct AAPXSDefinition *feature,
                                                                  AAPXSInitiatorInstance *aapxsInstance,
                                                                  AAPXSSerializationContext *serialization) {
+    (void) serialization;
     auto client = (AAPXSDefinition_Presets*) feature->aapxs_context;
-    client->typed_client = std::make_unique<PresetsClientAAPXS>(aapxsInstance, serialization);
-    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_presets_as_plugin_extension};
+    auto* instance = (aap::PluginInstance*) aapxsInstance->host_context;
+    client->client_proxy = AAPXSExtensionClientProxy{
+            instance ? instance->getStandardExtensions().asPresetsExtension() : nullptr,
+            aapxs_presets_as_plugin_extension};
     return client->client_proxy;
 }
 
@@ -115,7 +121,7 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefin
                                                                AAPXSSerializationContext *serialization) {
     auto service = (AAPXSDefinition_Presets*) feature->aapxs_context;
     service->typed_service = std::make_unique<PresetsServiceAAPXS>(aapxsInstance, serialization);
-    service->service_proxy = AAPXSExtensionServiceProxy{&service->typed_service, aapxs_presets_as_host_extension};
+    service->service_proxy = AAPXSExtensionServiceProxy{service->typed_service.get(), aapxs_presets_as_host_extension};
     return service->service_proxy;
 }
 
@@ -139,7 +145,12 @@ void* aap::xs::AAPXSDefinition_Presets::aapxs_presets_as_host_receiver(
 // Strongly-typed client implementation (plugin extension functions)
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetCount() {
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_PRESET_COUNT);
+    serialization->data_size = 0;
+    auto result = callAndWait<int32_t>(OPCODE_GET_PRESET_COUNT,
+                                       [](AAPXSSerializationContext* ctx) -> int32_t {
+        return getTypedResult<int32_t>(ctx);
+    });
+    return result.isOk() ? result.value : 0;
 }
 
 namespace {

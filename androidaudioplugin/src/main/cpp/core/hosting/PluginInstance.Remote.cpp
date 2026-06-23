@@ -61,7 +61,8 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
           client(client),
           aapxs_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionClientRegistry(aapxsRegistry)),
-          aapxs_dispatcher(aapxsRegistry)
+          aapxs_dispatcher(aapxsRegistry),
+          standards(std::make_unique<xs::ClientStandardExtensions>())
           {
     shared_memory_store = new ClientPluginSharedMemoryStore();
 
@@ -424,7 +425,8 @@ aap::xs::AAPXSDefinitionClientRegistry *aap::RemotePluginInstance::getAAPXSRegis
 }
 
 void aap::RemotePluginInstance::setupAAPXS() {
-    standards = std::make_unique<xs::ClientStandardExtensions>();
+    if (!standards)
+        standards = std::make_unique<xs::ClientStandardExtensions>();
 }
 
 void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *context) {

@@ -57,6 +57,7 @@ namespace aap {
         void* event_midi2_merge_buffer{nullptr};
         int32_t event_midi2_buffer_size{0};
         int32_t event_midi2_buffer_offset{0};
+        NanoSleepLock plugin_call_mutex{};
 
         PluginInstance(const PluginInformation *pluginInformation,
                        AndroidAudioPluginFactory *loadedPluginFactory,
