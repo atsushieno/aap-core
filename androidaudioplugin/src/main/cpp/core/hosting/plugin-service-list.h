@@ -27,6 +27,13 @@ public:
         return nullptr;
     }
 
+    PluginService* findBoundServiceInProcess(const char* pluginId, int32_t instanceId) {
+        for (auto s : bound_plugin_service_list)
+            if (s && pluginId && s->hasPlugin(pluginId) && s->getInstanceById(instanceId) != nullptr)
+                return s;
+        return nullptr;
+    }
+
     PluginService* findBoundServiceInProcess(int32_t instanceId) {
         for (auto s : bound_plugin_service_list)
             if (s && s->getInstanceById(instanceId) != nullptr)

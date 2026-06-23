@@ -113,8 +113,8 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
 
     // keyed by guiSessionId (service-generated, unique within this service)
     private val controllers = mutableMapOf<Int,Controller>()
-    // tracks (hostToken, instanceId) -> guiSessionId so same-host reconnects close the old controller
-    private val activeConnections = mutableMapOf<Pair<IBinder, Int>, Int>()
+    // tracks (hostToken, pluginId, instanceId) -> guiSessionId so same-host reconnects close the old controller
+    private val activeConnections = mutableMapOf<ConnectionKey, Int>()
     private var nextGuiSessionId = 1
     private var nextGuiInstanceId = 1
 
@@ -129,8 +129,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
         val width = msg.data.getInt(MESSAGE_KEY_WIDTH)
         val height = msg.data.getInt(MESSAGE_KEY_HEIGHT)
+        Log.i(LOG_TAG, "connect request pluginId:$pluginId instanceId:$instanceId size:${width}x$height")
 
-        val connectionKey = Pair(hostToken, instanceId)
+        val connectionKey = ConnectionKey(hostToken, pluginId, instanceId)
         val existingSessionId = activeConnections[connectionKey]
         if (existingSessionId != null) {
             Log.w(LOG_TAG, "Another GUI controller for $pluginId / instanceId:$instanceId (host:$hostToken) was alive. Terminating it.")
@@ -176,19 +177,29 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
             return
         }
         controllers.remove(guiSessionId)
-        activeConnections.remove(Pair(controller.hostToken, instanceId))
+        activeConnections.remove(ConnectionKey(controller.hostToken, controller.pluginId, controller.instanceId))
         controller.close()
     }
 
     private fun resolveController(msg: Message): Controller? {
         val guiSessionId = msg.data.getInt(MESSAGE_KEY_GUI_SESSION_ID, -1)
-        if (guiSessionId >= 0)
-            return controllers[guiSessionId]
+        if (guiSessionId >= 0) {
+            val controller = controllers[guiSessionId] ?: return null
+            val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID)
+            val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID, controller.instanceId)
+            return if ((pluginId == null || pluginId == controller.pluginId) && instanceId == controller.instanceId)
+                controller
+            else
+                null
+        }
         // Fallback for older clients that don't send guiSessionId: find by instanceId.
         // This is ambiguous when multiple hosts share the same instanceId, but it is the
         // best we can do without the session identifier.
         val instanceId = msg.data.getInt(MESSAGE_KEY_INSTANCE_ID)
-        return controllers.values.firstOrNull { it.instanceId == instanceId }
+        val pluginId = msg.data.getString(MESSAGE_KEY_PLUGIN_ID)
+        return controllers.values.firstOrNull {
+            it.instanceId == instanceId && (pluginId == null || it.pluginId == pluginId)
+        }
     }
 
     private fun handleResizeRequest(msg: Message) {
@@ -263,6 +274,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                                 replyMessenger.send(Message.obtain().apply {
                                     data = bundleOf(
                                         MESSAGE_KEY_OPCODE to OPCODE_CONTENT_SIZE_CHANGED,
+                                        MESSAGE_KEY_PLUGIN_ID to pluginId,
+                                        MESSAGE_KEY_INSTANCE_ID to instanceId,
+                                        MESSAGE_KEY_GUI_SESSION_ID to guiSessionId,
                                         MESSAGE_KEY_CONTENT_WIDTH to w,
                                         MESSAGE_KEY_CONTENT_HEIGHT to h
                                     )
@@ -318,9 +332,12 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                         setView(viewport, width, height)
 
                         messengerToSendReply.send(Message.obtain().apply {
+                            Log.i(LOG_TAG, "connect reply pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId")
                             data = bundleOf(
                                 MESSAGE_KEY_GUI_SESSION_ID to guiSessionId,
                                 LEGACY_MESSAGE_KEY_GUI_SESSION_ID to guiSessionId,
+                                MESSAGE_KEY_PLUGIN_ID to pluginId,
+                                MESSAGE_KEY_INSTANCE_ID to instanceId,
                                 MESSAGE_KEY_SURFACE_PACKAGE to surfacePackage)
                         })
                     }
@@ -366,4 +383,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
             }
         }
     }
+
+    private data class ConnectionKey(
+        val hostToken: IBinder,
+        val pluginId: String,
+        val instanceId: Int
+    )
 }

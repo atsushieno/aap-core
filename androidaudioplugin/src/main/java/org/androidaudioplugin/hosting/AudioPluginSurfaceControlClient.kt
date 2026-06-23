@@ -88,18 +88,26 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     private val messageHandlerThread = HandlerThread("IncomingMessengerHandler").apply { start() }
     private val incomingMessenger = Messenger(ClientReplyHandler(
         messageHandlerThread.looper,
-        onSurfacePackageReceived = { guiSessionId, surfacePackage ->
+        onSurfacePackageReceived = onSurfacePackageReceived@ { guiSessionId, pluginId, instanceId, surfacePackage ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (!isExpectedReply(pluginId, instanceId, null)) {
+                    Log.w(LOG_TAG, "Ignoring surface package for unexpected UI route pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId expectedPluginId:$connectedPluginId expectedInstanceId:$connectedInstanceId")
+                    return@onSurfacePackageReceived
+                }
                 connectedGuiSessionId = guiSessionId
                 this.surfacePackage?.release()
                 this.surfacePackage = surfacePackage
                 getOrCreateSurfaceView().setChildSurfacePackage(surfacePackage)
                 pendingViewportConfiguration?.let(::sendConfigureViewport)
-                Log.d(LOG_TAG, "client: surfaceView.setChildSurfacePackage() done.")
+                Log.i(LOG_TAG, "accepted surface package pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId")
                 connectedListeners.forEach { it() }
             }
         },
-        onContentSizeChanged = { width, height ->
+        onContentSizeChanged = onContentSizeChanged@ { guiSessionId, pluginId, instanceId, width, height ->
+            if (!isExpectedReply(pluginId, instanceId, guiSessionId)) {
+                Log.w(LOG_TAG, "Ignoring content size for unexpected UI route pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId expectedPluginId:$connectedPluginId expectedInstanceId:$connectedInstanceId expectedGuiSessionId:$connectedGuiSessionId")
+                return@onContentSizeChanged
+            }
             contentSizeChangedListeners.forEach { it(width, height) }
         }
     ))
@@ -385,6 +393,17 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         connection?.unbind(context)
     }
 
+    private fun isExpectedReply(pluginId: String?, instanceId: Int?, guiSessionId: Int?): Boolean {
+        val expectedPluginId = connectedPluginId
+        if (pluginId != null && expectedPluginId != null && pluginId != expectedPluginId)
+            return false
+        if (instanceId != null && connectedInstanceId >= 0 && instanceId != connectedInstanceId)
+            return false
+        if (guiSessionId != null && connectedGuiSessionId >= 0 && guiSessionId != connectedGuiSessionId)
+            return false
+        return true
+    }
+
     private data class ViewportConfiguration(
         val instanceId: Int,
         val viewportWidth: Int,
@@ -447,27 +466,43 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     internal class ClientReplyHandler(
         looper: Looper,
-        private val onSurfacePackageReceived: (Int, SurfaceControlViewHost.SurfacePackage) -> Unit,
-        private val onContentSizeChanged: (Int, Int) -> Unit = { _, _ -> }
+        private val onSurfacePackageReceived: (Int, String?, Int?, SurfaceControlViewHost.SurfacePackage) -> Unit,
+        private val onContentSizeChanged: (Int?, String?, Int?, Int, Int) -> Unit = { _, _, _, _, _ -> }
     ) : Handler(looper) {
         override fun handleMessage(msg: Message) {
             when (msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_OPCODE)) {
                 AudioPluginViewService.OPCODE_CONTENT_SIZE_CHANGED -> {
                     val width = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_WIDTH)
                     val height = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_HEIGHT)
-                    onContentSizeChanged(width, height)
+                    val guiSessionId = readGuiSessionId(msg)
+                    val pluginId = msg.data.getString(AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID)
+                    val instanceId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID))
+                        msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID)
+                    else
+                        null
+                    onContentSizeChanged(guiSessionId, pluginId, instanceId, width, height)
                 }
                 else -> {
                     // OPCODE_CONNECT reply (and legacy replies without an explicit opcode, which default to 0)
-                    val guiSessionId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID))
-                        msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID)
+                    val guiSessionId = readGuiSessionId(msg) ?: -1
+                    val pluginId = msg.data.getString(AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID)
+                    val instanceId = if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID))
+                        msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID)
                     else
-                        msg.data.getInt(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
+                        null
                     val pkg = msg.data.getParcelable(AudioPluginViewService.MESSAGE_KEY_SURFACE_PACKAGE) as SurfaceControlViewHost.SurfacePackage?
-                    pkg?.let { onSurfacePackageReceived(guiSessionId, it) }
+                    pkg?.let { onSurfacePackageReceived(guiSessionId, pluginId, instanceId, it) }
                 }
             }
         }
+
+        private fun readGuiSessionId(msg: Message): Int? =
+            if (msg.data.containsKey(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID))
+                msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID)
+            else if (msg.data.containsKey(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID))
+                msg.data.getInt(AudioPluginViewService.LEGACY_MESSAGE_KEY_GUI_SESSION_ID)
+            else
+                null
     }
 
     override fun close() {

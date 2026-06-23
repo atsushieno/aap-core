@@ -515,10 +515,10 @@ Java_org_androidaudioplugin_AudioPluginServiceHelper_getServiceInstanceForInstan
                                                                                    jclass,
                                                                                    jstring pluginId,
                                                                                    jint instanceId) {
-    auto svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(instanceId);
+    std::string pluginIdString = jstringToStdString(env, pluginId);
+    auto svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str(), instanceId);
     if (svc != nullptr)
         return (jlong) (void*) svc;
-    std::string pluginIdString = jstringToStdString(env, pluginId);
     svc = aap::PluginServiceList::getInstance()->findBoundServiceInProcess(pluginIdString.c_str());
     return (jlong) (void*) svc;
 }
