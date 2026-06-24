@@ -33,10 +33,6 @@ namespace aap {
     class PluginInstance {
         AndroidAudioPluginFactory *plugin_factory;
 
-        // Internal host-side parameter-layout rebuild needs cached_parameters + the scan mutex.
-        friend void aap::internal::rebuildParameterListAsync(
-                RemotePluginInstance& instance, std::function<void(bool ok)> onComplete);
-
     protected:
         int sample_rate{48000};
 
@@ -406,9 +402,9 @@ namespace aap {
         // Host developers can override this function to return their own extensions.
         std::function<void*(RemotePluginInstance *instance, uint8_t urid, const char *uri)> getHostExtension;
 
-        // Invoked after the host has rebuilt its parameter list in response to the plugin's
-        // notify_parameters_changed. The host always performs the rebuild itself; this hook only
-        // lets the app observe the change (e.g. refresh its parameter view). Empty by default.
+        // Invoked when the plugin reports parameter metadata may have changed. The host no longer
+        // rebuilds parameter metadata automatically from this callback; hosts that need dynamic
+        // metadata refresh must schedule it explicitly from a safe context.
         std::function<void(RemotePluginInstance& instance)> parametersChangedHandler;
 
         void setupStandardExtensions();

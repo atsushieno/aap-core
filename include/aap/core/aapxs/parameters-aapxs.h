@@ -3,19 +3,9 @@
 
 #include <functional>
 #include <future>
-#include <memory>
-#include <vector>
 #include "aap/aapxs.h"
 #include "../../ext/parameters.h"
 #include "typed-aapxs.h"
-
-namespace aap {
-    class RemotePluginInstance;
-    namespace internal {
-        // Internal host-side rebuild driven by the parameters receiver; see plugin-parameter-state.h.
-        void rebuildParameterListAsync(RemotePluginInstance& instance, std::function<void(bool ok)> onComplete);
-    }
-}
 
 // plugin extension opcodes
 const int32_t OPCODE_PARAMETERS_GET_PARAMETER_COUNT = 1;
@@ -88,18 +78,6 @@ namespace aap::xs {
 
         aap_parameters_extension_t* asPluginExtension() { return &as_plugin_extension; }
 
-    private:
-        // One scanned parameter together with its enumerations.
-        struct ScannedParameter {
-            aap_parameter_info_t info;
-            std::vector<aap_parameter_enum_t> enumerations;
-        };
-        // Non-blocking full parameter scan (count, each parameter, each enumeration) via
-        // callFunctionAsync. Internal: only the host's parameter-layout rebuild uses it.
-        void scanAllAsync(std::function<void(std::shared_ptr<std::vector<ScannedParameter>>,
-                                             const std::string& error)> completion);
-        friend void aap::internal::rebuildParameterListAsync(
-                aap::RemotePluginInstance& instance, std::function<void(bool ok)> onComplete);
     };
 
     class ParametersServiceAAPXS : public TypedAAPXS {
