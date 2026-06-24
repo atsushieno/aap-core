@@ -9,12 +9,15 @@ namespace {
 void notify_parameters_changed(aap_parameters_host_extension_t* ext,
                                AndroidAudioPluginHost* host) {
     (void) ext;
-    (void) host;
-    // Do not synchronously rescan plugin parameters from a host-extension callback.
-    // This callback is delivered while processing an incoming Binder AAPXS request; issuing
-    // client-side AAPXS calls from here reenters the same transport and has produced crashes
-    // during preset loading. Hosts still build the parameter list through the normal instance
-    // scan path, and parameter values are tracked separately from layout metadata.
+    auto* instance = (aap::RemotePluginInstance*) host->context;
+    if (!instance)
+        return;
+    // The host always rebuilds its parameter list (non-blocking) when the plugin notifies a
+    // change; the app only observes the result through this optional hook.
+    aap::internal::rebuildParameterListAsync(*instance, [instance](bool ok) {
+        if (ok && instance->parametersChangedHandler)
+            instance->parametersChangedHandler(*instance);
+    });
 }
 
 aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_parameters_changed};
@@ -268,6 +271,101 @@ int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32
     aapxs_instance->send_aapxs_request(aapxs_instance, &request);
 
     return requestId;
+}
+
+void aap::xs::ParametersClientAAPXS::scanAllAsync(
+        std::function<void(std::shared_ptr<std::vector<ScannedParameter>>,
+                           const std::string& error)> completion) {
+    // Sequential async state machine. Each step issues one callFunctionAsync and continues from
+    // its reply callback; callFunctionAsync serializes calls internally (one in-flight, the rest
+    // deferred), so chaining from within a callback is safe and nothing blocks.
+    //
+    // Lifetime: the in-flight reply closure holds a shared_ptr to the state, keeping it alive
+    // across each async hop. fetchParam/fetchEnum (stored *in* the state) capture only a weak_ptr
+    // to avoid a reference cycle; they are re-locked on each invocation.
+    struct ScanState {
+        ParametersClientAAPXS* self{nullptr};
+        std::function<void(std::shared_ptr<std::vector<ScannedParameter>>, const std::string&)> completion;
+        std::shared_ptr<std::vector<ScannedParameter>> result{std::make_shared<std::vector<ScannedParameter>>()};
+        int32_t count{0};
+        int32_t paramIndex{0};
+        int32_t enumCount{0};
+        int32_t enumIndex{0};
+        std::function<void()> fetchParam;
+        std::function<void()> fetchEnum;
+    };
+    auto st = std::make_shared<ScanState>();
+    st->self = this;
+    st->completion = std::move(completion);
+    std::weak_ptr<ScanState> weak = st;
+
+    // Fetch enumerations for the current (most recently scanned) parameter, one at a time.
+    st->fetchEnum = [weak]() {
+        auto s = weak.lock();
+        if (!s)
+            return;
+        if (s->enumIndex >= s->enumCount) {
+            s->paramIndex++;
+            s->fetchParam();
+            return;
+        }
+        auto self = s->self;
+        *((int32_t*) self->serialization->data) = s->result->back().info.stable_id;
+        *((int32_t*) self->serialization->data + 1) = s->enumIndex;
+        self->serialization->data_size = sizeof(int32_t) * 2;
+        self->callFunctionAsync(OPCODE_PARAMETERS_GET_ENUMERATION,
+                [s](const std::string& error, AAPXSSerializationContext* ctx) {
+            if (!error.empty()) { s->completion(nullptr, error); return; }
+            aap_parameter_enum_t e;
+            memcpy(&e, ctx->data, sizeof(e));
+            s->result->back().enumerations.push_back(e);
+            s->enumIndex++;
+            s->fetchEnum();
+        });
+    };
+
+    // Fetch the parameter at paramIndex, then its enumeration count, then its enumerations.
+    st->fetchParam = [weak]() {
+        auto s = weak.lock();
+        if (!s)
+            return;
+        if (s->paramIndex >= s->count) {
+            s->completion(s->result, "");
+            return;
+        }
+        auto self = s->self;
+        *((int32_t*) self->serialization->data) = s->paramIndex;
+        self->serialization->data_size = sizeof(int32_t);
+        self->callFunctionAsync(OPCODE_PARAMETERS_GET_PARAMETER,
+                [s](const std::string& error, AAPXSSerializationContext* ctx) {
+            if (!error.empty()) { s->completion(nullptr, error); return; }
+            aap_parameter_info_t info;
+            memcpy(&info, ctx->data, sizeof(info));
+            s->result->push_back(ScannedParameter{info, {}});
+            auto self2 = s->self;
+            *((int32_t*) self2->serialization->data) = info.stable_id;
+            self2->serialization->data_size = sizeof(int32_t);
+            self2->callFunctionAsync(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT,
+                    [s](const std::string& error2, AAPXSSerializationContext* ctx2) {
+                if (!error2.empty()) { s->completion(nullptr, error2); return; }
+                s->enumCount = *((int32_t*) ctx2->data);
+                s->enumIndex = 0;
+                s->fetchEnum();
+            });
+        });
+    };
+
+    // Kick off the chain with the parameter count; its callback then walks each parameter
+    // (fetchParam) and each parameter's enumerations (fetchEnum).
+    serialization->data_size = 0;
+    callFunctionAsync(OPCODE_PARAMETERS_GET_PARAMETER_COUNT,
+            [st](const std::string& error, AAPXSSerializationContext* ctx) {
+        if (!error.empty()) { st->completion(nullptr, error); return; }
+        st->count = *((int32_t*) ctx->data);
+        if (st->count <= 0) { st->completion(st->result, ""); return; }
+        st->result->reserve(st->count);
+        st->fetchParam();
+    });
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {

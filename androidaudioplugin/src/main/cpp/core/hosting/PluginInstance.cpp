@@ -226,7 +226,9 @@ void aap::internal::cleanupParameterState(aap::PluginInstance& instance) {
     parameter_state_registry.erase(&instance);
 }
 
-void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance) {
+void aap::internal::reindexParameterValues(aap::PluginInstance& instance) {
+    // Rebuilds the id->index map and value vector from the *current* cached_parameters, preserving
+    // previously-known values by id. The caller must have already populated cached_parameters.
     auto* state = get_parameter_state(&instance);
     if (!state)
         return;
@@ -237,8 +239,6 @@ void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance
         if (index >= 0 && index < state->values.size())
             previousValues[entry.first] = state->values[index];
     }
-
-    instance.scanParametersAndBuildList();
 
     rebuild_parameter_id_index(&instance, state->id_to_index);
 
@@ -255,6 +255,57 @@ void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance
 
     const std::lock_guard<NanoSleepLock> lock{state->mutex};
     state->values = std::move(newValues);
+}
+
+void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance) {
+    instance.scanParametersAndBuildList();
+    reindexParameterValues(instance);
+}
+
+void aap::internal::rebuildParameterListAsync(aap::RemotePluginInstance& instance,
+                                              std::function<void(bool ok)> onComplete) {
+    // The instance is not configured yet before completeInstantiation(); nothing valid to scan.
+    if (instance.getInstanceState() == PLUGIN_INSTANTIATION_STATE_INITIAL) {
+        if (onComplete) onComplete(false);
+        return;
+    }
+    auto* ext = instance.getStandardExtensions().asParametersExtension();
+    if (!ext || !ext->aapxs_context) {
+        if (onComplete) onComplete(false);
+        return;
+    }
+    auto* client = (aap::xs::ParametersClientAAPXS*) ext->aapxs_context;
+    client->scanAllAsync(
+            [&instance, onComplete = std::move(onComplete)](
+                    std::shared_ptr<std::vector<aap::xs::ParametersClientAAPXS::ScannedParameter>> scanned,
+                    const std::string& error) {
+        if (!error.empty() || !scanned) {
+            if (onComplete) onComplete(false);
+            return;
+        }
+        // Build cached_parameters from the already-fetched data (no further AAPXS round-trips),
+        // mirroring scanParametersAndBuildList()'s ParameterInformation construction.
+        auto built = std::make_unique<std::vector<ParameterInformation>>();
+        built->reserve(scanned->size());
+        for (auto& sp : *scanned) {
+            ParameterInformation p{sp.info.stable_id,
+                                   fixed_string(sp.info.display_name, AAP_MAX_PARAMETER_NAME_CHARS),
+                                   sp.info.min_value, sp.info.max_value, sp.info.default_value};
+            for (size_t e = 0; e < sp.enumerations.size(); e++) {
+                auto& pe = sp.enumerations[e];
+                ParameterInformation::Enumeration eDef{(int32_t) e, pe.value,
+                                                       fixed_string(pe.name, AAP_MAX_PARAMETER_ENUM_NAME)};
+                p.addEnumeration(eDef);
+            }
+            built->emplace_back(p);
+        }
+        {
+            const std::lock_guard<std::mutex> scanLock{parameter_layout_scan_mutex};
+            instance.cached_parameters = std::move(built);
+        }
+        reindexParameterValues(instance);
+        if (onComplete) onComplete(true);
+    });
 }
 
 bool aap::internal::updateCachedParameterValueById(aap::PluginInstance& instance, int32_t parameterId, double plainValue) {
