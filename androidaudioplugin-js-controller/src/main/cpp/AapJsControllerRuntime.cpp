@@ -64,6 +64,30 @@ std::vector<uint8_t> base64Decode(const std::string& in) {
     return out;
 }
 
+std::vector<uint8_t> hexDecode(const std::string& in) {
+    auto val = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    std::vector<uint8_t> out;
+    int high = -1;
+    for (char c : in) {
+        int v = val(c);
+        if (v < 0) continue; // skip whitespace/separators
+        if (high < 0)
+            high = v;
+        else {
+            out.push_back(static_cast<uint8_t>((high << 4) | v));
+            high = -1;
+        }
+    }
+    if (high >= 0)
+        throw std::runtime_error("odd-length hex UMP input");
+    return out;
+}
+
 } // namespace
 
 AapJsControllerRuntime& AapJsControllerRuntime::global() {
@@ -299,6 +323,14 @@ void AapJsControllerRuntime::registerBindings() {
         return arr;
     });
 
+    ctx.registerFunction("__aap_instance_add_event_ump_input_hex", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto bytes = hexDecode(args.get<std::string>(1));
+        if (!bytes.empty())
+            instance->addEventUmpInput(bytes.data(), static_cast<int32_t>(bytes.size()));
+        return {};
+    });
+
     ctx.registerFunction("__aap_instance_get_parameter_count", [this](choc::javascript::ArgumentList args) -> Value {
         auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
         return Value((int64_t) instance->getNumParameters());
@@ -357,6 +389,32 @@ void AapJsControllerRuntime::registerBindings() {
         auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
         auto bytes = base64Decode(args.get<std::string>(1));
         instance->getStandardExtensions().setState(bytes.data(), bytes.size());
+        return {};
+    });
+
+    ctx.registerFunction("__aap_instance_create_gui", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        return Value((int64_t) instance->getStandardExtensions().createGui(
+                instance->getPluginInformation()->getPluginID(),
+                instance->getInstanceId(),
+                nullptr));
+    });
+
+    ctx.registerFunction("__aap_instance_show_gui", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        instance->getStandardExtensions().showGui((int32_t) args.get<int64_t>(1));
+        return {};
+    });
+
+    ctx.registerFunction("__aap_instance_hide_gui", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        instance->getStandardExtensions().hideGui((int32_t) args.get<int64_t>(1));
+        return {};
+    });
+
+    ctx.registerFunction("__aap_instance_destroy_gui", [this](choc::javascript::ArgumentList args) -> Value {
+        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        instance->getStandardExtensions().destroyGui((int32_t) args.get<int64_t>(1));
         return {};
     });
 }

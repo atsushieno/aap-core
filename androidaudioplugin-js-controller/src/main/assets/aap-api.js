@@ -22,6 +22,7 @@ class PluginInstance {
     destroy() { __aap_instance_destroy(this.instanceId); }
     fillAudioInputs(seed, amplitude) { __aap_instance_fill_audio_inputs(this.instanceId, seed, amplitude); return this; }
     getAudioOutputStats() { return __aap_instance_get_audio_output_stats(this.instanceId); }
+    addEventUmpInput(words) { __aap_instance_add_event_ump_input_hex(this.instanceId, umpWordsToHex(words)); return this; }
     sleepMs(milliseconds) { __aap_sleep_ms(milliseconds); return this; }
 
     // Parameters
@@ -37,6 +38,21 @@ class PluginInstance {
     // State (opaque blob, base64-encoded across the JS boundary)
     getState() { return __aap_instance_get_state(this.instanceId); }
     setState(base64) { __aap_instance_set_state(this.instanceId, base64); return this; }
+
+    // GUI
+    createGui() { return __aap_instance_create_gui(this.instanceId); }
+    showGui(guiInstanceId) { __aap_instance_show_gui(this.instanceId, guiInstanceId); return this; }
+    hideGui(guiInstanceId) { __aap_instance_hide_gui(this.instanceId, guiInstanceId); return this; }
+    destroyGui(guiInstanceId) { __aap_instance_destroy_gui(this.instanceId, guiInstanceId); return this; }
+}
+
+function umpWordsToHex(words) {
+    if (!Array.isArray(words))
+        throw new Error("addEventUmpInput() expects an array of 32-bit UMP words");
+    return words.map((word) => {
+        var w = Number(word) >>> 0;
+        return w.toString(16).padStart(8, "0");
+    }).join("");
 }
 
 // Resolve a plugin's owning package name from the provider-fed discovery catalog,
