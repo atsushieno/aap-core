@@ -11,10 +11,12 @@
 #include "plugin-parameter-state.h"
 
 #include <android/log.h>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 #define LOG_TAG "aap-js-controller"
 
@@ -280,6 +282,49 @@ void AapJsControllerRuntime::registerBindings() {
                 data[i] = static_cast<float>((std::sin(phase * 6.283185307179586) * 0.7 +
                                               std::sin(phase * 18.84955592153876) * 0.3) * amplitude);
             }
+        }
+        return {};
+    });
+
+    // Offline test-graph edge: copy every audio output of source into the corresponding audio
+    // input of destination. Ports are paired by their audio-port order, rather than absolute port
+    // number, because MIDI and parameter ports may be interleaved with audio ports.
+    ctx.registerFunction("__aap_instance_copy_audio_outputs_to_inputs", [this](choc::javascript::ArgumentList args) -> Value {
+        auto source = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto destination = requireClient()->getInstanceById((int32_t) args.get<int64_t>(1));
+        auto* sourceBuffer = source->getAudioPluginBuffer();
+        auto* destinationBuffer = destination->getAudioPluginBuffer();
+        if (!sourceBuffer || !destinationBuffer)
+            return {};
+
+        std::vector<int32_t> sourcePorts;
+        std::vector<int32_t> destinationPorts;
+        for (int32_t p = 0, n = source->getNumPorts(); p < n; ++p) {
+            auto* port = source->getPort(p);
+            if (port && port->getContentType() == AAP_CONTENT_TYPE_AUDIO &&
+                port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT)
+                sourcePorts.push_back(p);
+        }
+        for (int32_t p = 0, n = destination->getNumPorts(); p < n; ++p) {
+            auto* port = destination->getPort(p);
+            if (port && port->getContentType() == AAP_CONTENT_TYPE_AUDIO &&
+                port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                destinationPorts.push_back(p);
+        }
+
+        const auto portCount = std::min(sourcePorts.size(), destinationPorts.size());
+        for (size_t i = 0; i < portCount; ++i) {
+            auto* from = static_cast<float*>(sourceBuffer->get_buffer(sourceBuffer, sourcePorts[i]));
+            auto* to = static_cast<float*>(destinationBuffer->get_buffer(destinationBuffer, destinationPorts[i]));
+            if (!from || !to)
+                continue;
+            const auto samples = std::min({
+                sourceBuffer->num_frames(sourceBuffer),
+                destinationBuffer->num_frames(destinationBuffer),
+                sourceBuffer->get_buffer_size(sourceBuffer, sourcePorts[i]) / (int32_t) sizeof(float),
+                destinationBuffer->get_buffer_size(destinationBuffer, destinationPorts[i]) / (int32_t) sizeof(float)
+            });
+            std::copy_n(from, std::max(0, samples), to);
         }
         return {};
     });

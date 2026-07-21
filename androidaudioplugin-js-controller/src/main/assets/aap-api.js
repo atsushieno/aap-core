@@ -21,6 +21,12 @@ class PluginInstance {
     deactivate() { __aap_instance_deactivate(this.instanceId); return this; }
     destroy() { __aap_instance_destroy(this.instanceId); }
     fillAudioInputs(seed, amplitude) { __aap_instance_fill_audio_inputs(this.instanceId, seed, amplitude); return this; }
+    copyAudioOutputsTo(destination) {
+        if (!destination || typeof destination.instanceId !== 'number')
+            throw new Error("copyAudioOutputsTo() expects an AAP plugin instance");
+        __aap_instance_copy_audio_outputs_to_inputs(this.instanceId, destination.instanceId);
+        return this;
+    }
     getAudioOutputStats() { return __aap_instance_get_audio_output_stats(this.instanceId); }
     addEventUmpInput(words) { __aap_instance_add_event_ump_input_hex(this.instanceId, umpWordsToHex(words)); return this; }
     sleepMs(milliseconds) { __aap_sleep_ms(milliseconds); return this; }
