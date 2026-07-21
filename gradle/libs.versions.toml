@@ -1,7 +1,7 @@
 [versions]
 
-aap-core = "0.11.1"
-aap-lv2 = "0.6.1"
+aap-core = "0.11.2"
+aap-lv2 = "0.6.2"
 
 android-compileSdk = "37"
 android-minSdk = "29"
