@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -76,6 +77,7 @@ internal class RemotePluginViewScopeImpl(
 fun PluginInstanceControl(scope: PluginDetailsScope,
                           pluginInfo: PluginInformation,
                           instance: NativeRemotePluginInstance,
+                          parameterListMaxHeight: Dp = 200.dp,
 ) {
     MidiSettings(midiSettingsFlags = instance.getMidiMappingPolicy(),
         midiSeetingsFlagsChanged = { newFlags ->
@@ -112,6 +114,7 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
 
     val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo)) }
     pluginViewScope.PluginView(getParameterValue = { scope.parameterValues[it].toFloat() },
+        parameterListMaxHeight = parameterListMaxHeight,
         onParameterChange = { index, value ->
             scope.setParameterValue(index, value)
                             },

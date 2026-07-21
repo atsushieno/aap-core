@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
@@ -44,6 +43,7 @@ import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.androidaudioplugin.AudioPluginServiceHelper
@@ -170,7 +170,9 @@ fun PluginViewScope.PluginView(
     onNoteOn: (note: Int, options: Long) -> Unit = { _,_ -> },
     onNoteOff: (note: Int, options: Long) -> Unit = { _,_ -> },
     onPresetChange: (presetIndex: Int) -> Unit,
-    onExpression: (origin: DiatonicKeyboardNoteExpressionOrigin, note: Int, value: Float) -> Unit = { _,_,_ -> }) {
+    onExpression: (origin: DiatonicKeyboardNoteExpressionOrigin, note: Int, value: Float) -> Unit = { _,_,_ -> },
+    // Bounds the nested-scrollable parameter grid; caller should cap it (e.g. 50% of screen height).
+    parameterListMaxHeight: Dp = 200.dp) {
 
     // Keyboard controllers
     // This looks hacky, but it is done for compact yet touchable UI parts.
@@ -210,7 +212,7 @@ fun PluginViewScope.PluginView(
     PresetSelector(modifier, onPresetChange)
 
     // parameter list
-    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(200.dp)) {
+    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.heightIn(max = parameterListMaxHeight)) {
         items(parameterCount) { index ->
             val para = getParameter(index)
             Row {
