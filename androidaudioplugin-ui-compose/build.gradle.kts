@@ -47,7 +47,6 @@ dependencies {
 
     implementation (libs.accompanist.drawablepainter)
 
-    implementation(platform(libs.compose.bom))
     implementation (libs.navigation.compose)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
@@ -56,7 +55,6 @@ dependencies {
     androidTestImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
-    androidTestImplementation(platform(libs.compose.bom))
 }
 
 

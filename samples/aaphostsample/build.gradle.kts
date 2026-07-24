@@ -55,8 +55,6 @@ dependencies {
     implementation (libs.coroutines.core)
     implementation (libs.coroutines.android)
 
-    implementation(platform(libs.compose.bom))
-
     testImplementation (libs.junit)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
