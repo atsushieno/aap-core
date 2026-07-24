@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.maven.publish)
     signing
@@ -10,15 +9,17 @@ apply { from ("../common.gradle") }
 
 version = libs.versions.aap.core.get()
 
+val androidSdkDirectory = androidComponents.sdkComponents.sdkDirectory
+
 android {
     namespace = "org.androidaudioplugin"
-    this.ext["description"] = "AndroidAudioPlugin - core"
+    project.extra["description"] = "AndroidAudioPlugin - core"
 
     defaultConfig {
 
         externalNativeBuild {
             cmake {
-                arguments ("-DANDROID_HOME=" + android.sdkDirectory.path, "-DANDROID_STL=c++_shared")
+                arguments ("-DANDROID_HOME=" + androidSdkDirectory.get().asFile.path, "-DANDROID_STL=c++_shared")
             }
         }
     }
@@ -85,7 +86,7 @@ dependencies {
 
 val gitProjectName = "aap-core"
 val packageName = project.name
-val packageDescription = android.ext["description"].toString()
+val packageDescription = project.extra["description"].toString()
 // my common settings
 val packageUrl = "https://github.com/atsushieno/$gitProjectName"
 val licenseName = "MIT"

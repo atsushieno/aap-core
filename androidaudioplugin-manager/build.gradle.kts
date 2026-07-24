@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.maven.publish)
     signing
@@ -12,7 +11,7 @@ version = libs.versions.aap.core.get()
 
 android {
     namespace = "org.androidaudioplugin.manager"
-    this.ext["description"] = "AndroidAudioPlugin - Plugin Manager Backend"
+    project.extra["description"] = "AndroidAudioPlugin - Plugin Manager Backend"
 
     defaultConfig {
         externalNativeBuild {
@@ -92,7 +91,7 @@ gradle.projectsEvaluated {
 
 val gitProjectName = "aap-core"
 val packageName = project.name
-val packageDescription = android.ext["description"].toString()
+val packageDescription = project.extra["description"].toString()
 // my common settings
 val packageUrl = "https://github.com/atsushieno/$gitProjectName"
 val licenseName = "MIT"

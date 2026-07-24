@@ -1,8 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.maven.publish)
@@ -14,7 +11,7 @@ version = libs.versions.aap.core.get()
 
 android {
     namespace = "org.androidaudioplugin.ui.compose.app"
-    ext["description"] = "AndroidAudioPlugin - Manager App (Compose)"
+    project.extra["description"] = "AndroidAudioPlugin - Manager App (Compose)"
 
     buildTypes {
         release {
@@ -25,7 +22,6 @@ android {
     buildFeatures {
         compose = true
     }
-    kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     defaultConfig {
         vectorDrawables {
             useSupportLibrary = true
@@ -64,7 +60,7 @@ dependencies {
 
 val gitProjectName = "aap-core"
 val packageName = project.name
-val packageDescription = android.ext["description"].toString()
+val packageDescription = project.extra["description"].toString()
 // my common settings
 val packageUrl = "https://github.com/atsushieno/$gitProjectName"
 val licenseName = "MIT"
