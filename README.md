@@ -87,7 +87,7 @@ For more details, see [DEVELOPERS.md](./docs/DEVELOPERS.md) and [HACKING.md](./d
 
 ### Discord community
 
-We have a community channel at Android Audio Devs Discord: #aap
+We have a community channel at [Android Audio Devs Discord](https://discord.com/invite/EHcdTgTpah): #aap (thanks to @meteaurestudios). Note that it is NOT my server.
 
 ### issue reporting and discussions
 
