@@ -43,6 +43,7 @@ android {
 
 dependencies {
     implementation (project(":androidaudioplugin"))
+    implementation (project(":androidaudioplugin-js-controller"))
     implementation (project(":androidaudioplugin-ui-compose-app"))
     implementation(libs.androidx.rules)
     androidTestImplementation (project(":androidaudioplugin-testing"))
