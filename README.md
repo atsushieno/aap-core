@@ -83,7 +83,17 @@ You can open this directory in Android Studio (fairly up-to-date version is requ
 For more details, see [DEVELOPERS.md](./docs/DEVELOPERS.md) and [HACKING.md](./docs/HACKING.md).
 
 
-## Further documentation
+## Resources
+
+### Discord community
+
+We have a community channel at Android Audio Devs Discord: #aap
+
+### issue reporting and discussions
+
+We use [GitHub issues](https://github.com/atsushieno/aap-core/issues) and [GitHub discussions](https://github.com/atsushieno/aap-core/discussions).
+
+Or whoever avoids GitHub, use Discord community ^, or reach @atsushieno at Bsky, Mastodon, etc. (public posts are preferred)
 
 ### wiki pages
 
