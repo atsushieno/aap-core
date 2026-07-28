@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.ParameterInformation
@@ -16,7 +15,6 @@ import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.InstanceState
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
-import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -44,7 +42,7 @@ class AapValidatorReceiver : BroadcastReceiver() {
                     fail(pending, 3, "Missing $EXTRA_PACKAGE")
                     return@execute
                 }
-                val request = Request(
+                val request = AapValidationRequest(
                     packageName = packageName,
                     sampleRate = intent.getIntExtra(EXTRA_SAMPLE_RATE, DEFAULT_SAMPLE_RATE),
                     frameCount = intent.getIntExtra(EXTRA_FRAME_COUNT, DEFAULT_FRAME_COUNT),
@@ -86,16 +84,9 @@ class AapValidatorReceiver : BroadcastReceiver() {
     }
 }
 
-private data class Request(
-    val packageName: String,
-    val sampleRate: Int,
-    val frameCount: Int,
-    val repeatCount: Int
-)
-
 private class AapValidator(private val context: Context) {
-    fun run(request: Request): Report {
-        val report = Report(request)
+    fun run(request: AapValidationRequest): AapValidationReport {
+        val report = AapValidationReport(request)
         if (request.sampleRate <= 0 || request.frameCount <= 0 || request.repeatCount <= 0) {
             report.fail(null, "AAPVAL-REQ-001", "Invalid execution settings",
                 "sampleRate=${request.sampleRate}, frameCount=${request.frameCount}, repeatCount=${request.repeatCount}",
@@ -114,7 +105,13 @@ private class AapValidator(private val context: Context) {
             return report
         }
 
-        val services = AudioPluginHostHelper.queryAudioPluginServices(context, request.packageName)
+        val discovery = AudioPluginHostHelper.queryAudioPluginServicesWithDiagnostics(context, request.packageName)
+        discovery.diagnostics.forEach { diagnostic ->
+            report.fail(null, "AAPVAL-DISC-002", "AAP metadata could not be read", diagnostic,
+                "Hosts may ignore the affected service or receive incomplete plugin metadata.",
+                "Correct the referenced aap_metadata.xml. Parser messages include line and column when Android provides them.")
+        }
+        val services = discovery.services
         if (services.isEmpty()) {
             report.fail(null, "AAPVAL-DISC-001", "AAP service is not discoverable",
                 "Package ${request.packageName} exposed no readable AAP services.",
@@ -136,7 +133,7 @@ private class AapValidator(private val context: Context) {
         return report
     }
 
-    private fun validateMetadata(plugin: PluginInformation, report: Report) {
+    private fun validateMetadata(plugin: PluginInformation, report: AapValidationReport) {
         val pluginName = plugin.pluginId ?: "<missing-id>"
         if (plugin.pluginId.isNullOrBlank()) {
             report.fail(pluginName, "AAPVAL-META-001", "Plugin ID is missing", "Plugin $pluginName has no unique-id.",
@@ -169,7 +166,7 @@ private class AapValidator(private val context: Context) {
         plugin.parameters.forEach { parameter -> validateParameter(pluginName, parameter, report) }
     }
 
-    private fun validateParameter(pluginName: String, parameter: ParameterInformation, report: Report) {
+    private fun validateParameter(pluginName: String, parameter: ParameterInformation, report: AapValidationReport) {
         val values = listOf(parameter.minimumValue, parameter.defaultValue, parameter.maximumValue)
         if (values.any { !it.isFinite() } || parameter.minimumValue > parameter.maximumValue ||
             parameter.defaultValue !in parameter.minimumValue..parameter.maximumValue) {
@@ -187,7 +184,7 @@ private class AapValidator(private val context: Context) {
         }
     }
 
-    private fun validateLifecycle(plugin: PluginInformation, request: Request, report: Report) {
+    private fun validateLifecycle(plugin: PluginInformation, request: AapValidationRequest, report: AapValidationReport) {
         val pluginId = plugin.pluginId
         if (pluginId.isNullOrBlank())
             return
@@ -247,7 +244,7 @@ private class AapValidator(private val context: Context) {
         }
     }
 
-    private fun validateFiniteAudioOutputs(pluginId: String, instance: NativeRemotePluginInstance, frameCount: Int, report: Report) {
+    private fun validateFiniteAudioOutputs(pluginId: String, instance: NativeRemotePluginInstance, frameCount: Int, report: AapValidationReport) {
         val byteCount = frameCount * Float.SIZE_BYTES
         var outputCount = 0
         for (index in 0 until instance.getPortCount()) {
@@ -281,7 +278,7 @@ private class AapValidator(private val context: Context) {
             report.skip(pluginId, "AAPVAL-AUDIO-001", "No audio output ports declared", "The finite-audio check does not apply.")
     }
 
-    private fun queueMidiNoteProbe(pluginId: String, instance: NativeRemotePluginInstance, report: Report) {
+    private fun queueMidiNoteProbe(pluginId: String, instance: NativeRemotePluginInstance, report: AapValidationReport) {
         val hasMidiInput = (0 until instance.getPortCount()).any { index ->
             val port = instance.getPort(index)
             port.direction == PortInformation.PORT_DIRECTION_INPUT &&
@@ -298,7 +295,7 @@ private class AapValidator(private val context: Context) {
         report.pass(pluginId, "AAPVAL-MIDI-001", "MIDI input was accepted", "Queued a MIDI 2.0 note-on for note 60.")
     }
 
-    private fun queueParameterProbe(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: Report) {
+    private fun queueParameterProbe(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
         val pluginId = plugin.pluginId ?: return
         if (!declares(plugin, AudioPluginExtensionsBom.AAP_PARAMETERS_EXTENSION_URI_V4)) {
             report.skip(pluginId, "AAPVAL-PARAM-001", "Parameters extension is not declared", "The parameter transport check does not apply.")
@@ -323,7 +320,7 @@ private class AapValidator(private val context: Context) {
             "Queued a valid parameter update for runtime parameter ${parameter.id}.")
     }
 
-    private fun validateParameterExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: Report) {
+    private fun validateParameterExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
         val pluginId = plugin.pluginId ?: return
         if (!declares(plugin, AudioPluginExtensionsBom.AAP_PARAMETERS_EXTENSION_URI_V4)) return
         val runtimeCount = instance.getParameterCount()
@@ -342,7 +339,7 @@ private class AapValidator(private val context: Context) {
             "Read $runtimeCount runtime parameter value(s).")
     }
 
-    private fun validateStateExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: Report) {
+    private fun validateStateExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
         val pluginId = plugin.pluginId ?: return
         if (!declares(plugin, AudioPluginExtensionsBom.AAP_STATE_EXTENSION_URI_V4)) {
             report.skip(pluginId, "AAPVAL-STATE-001", "State extension is not declared", "The state round-trip check does not apply.")
@@ -365,7 +362,7 @@ private class AapValidator(private val context: Context) {
         }
     }
 
-    private fun validatePresetExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: Report) {
+    private fun validatePresetExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
         val pluginId = plugin.pluginId ?: return
         if (!declares(plugin, AudioPluginExtensionsBom.AAP_PRESETS_EXTENSION_URI_V4)) {
             report.skip(pluginId, "AAPVAL-PRESET-001", "Presets extension is not declared", "The preset check does not apply.")
@@ -401,48 +398,5 @@ private class AapValidator(private val context: Context) {
         private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
         private const val PROCESS_TIMEOUT_NANOSECONDS = 1_000_000_000L
         private const val MAX_STATE_BYTES = 1_048_576
-    }
-}
-
-private class Report(private val request: Request) {
-    val findings = JSONArray()
-    val plugins = JSONArray()
-    private val startedAtMillis = SystemClock.elapsedRealtime()
-
-    fun pass(pluginId: String?, id: String, title: String, observed: String) = finding(pluginId, "PASS", id, title, observed, null, null)
-
-    fun fail(pluginId: String?, id: String, title: String, observed: String, consequence: String, fix: String) =
-        finding(pluginId, "FAIL", id, title, observed, consequence, fix)
-
-    fun skip(pluginId: String?, id: String, title: String, observed: String) =
-        finding(pluginId, "SKIP", id, title, observed, null, null)
-
-    private fun finding(pluginId: String?, status: String, id: String, title: String, observed: String, consequence: String?, fix: String?) {
-        findings.put(JSONObject().apply {
-            if (pluginId != null) put("pluginId", pluginId)
-            put("status", status)
-            put("id", id)
-            put("title", title)
-            put("observed", observed)
-            if (consequence != null) put("consequence", consequence)
-            if (fix != null) put("fix", fix)
-        })
-    }
-
-    fun toJson(): JSONObject = JSONObject().apply {
-        put("schemaVersion", 1)
-        put("validatorVersion", "0.1")
-        put("packageName", request.packageName)
-        put("sampleRate", request.sampleRate)
-        put("frameCount", request.frameCount)
-        put("repeatCount", request.repeatCount)
-        put("plugins", plugins)
-        put("findings", findings)
-        val passes = (0 until findings.length()).count { findings.getJSONObject(it).getString("status") == "PASS" }
-        val failures = (0 until findings.length()).count { findings.getJSONObject(it).getString("status") == "FAIL" }
-        val skips = (0 until findings.length()).count { findings.getJSONObject(it).getString("status") == "SKIP" }
-        put("summary", JSONObject().put("passCount", passes).put("failCount", failures).put("skipCount", skips))
-        put("durationMillis", SystemClock.elapsedRealtime() - startedAtMillis)
-        put("success", failures == 0)
     }
 }

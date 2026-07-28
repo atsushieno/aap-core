@@ -17,6 +17,8 @@ Options:
   --no-install-validator   do not install/update the validator host APK
   --verbose                show every passing and skipped check
   --json                   print the raw JSON report (for CI)
+  --output PATH            also write the JSON report to PATH
+  --junit PATH             also write a JUnit XML report to PATH
   -h, --help               show this help
 EOF
 }
@@ -32,6 +34,8 @@ serial=""
 install_validator=1
 output_format=human
 verbose=0
+json_output=""
+junit_output=""
 
 while (($#)); do
   case "$1" in
@@ -45,6 +49,8 @@ while (($#)); do
     --no-install-validator) install_validator=0; shift ;;
     --verbose) verbose=1; shift ;;
     --json) output_format=json; shift ;;
+    --output) json_output=$2; shift 2 ;;
+    --junit) junit_output=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -103,23 +109,59 @@ if [[ "$result" != *'"schemaVersion"'* ]]; then
   exit 1
 fi
 
-if [[ "$output_format" == json ]]; then
-  python3 -c '
+json_report=$(python3 -c '
 import sys
 raw = sys.stdin.read()
-data = raw.split("data=\"", 1)[1].rsplit("\"", 1)[0]
-print(data)
-' <<<"$result"
+print(raw.split("data=\"", 1)[1].rsplit("\"", 1)[0])
+' <<<"$result")
+
+if [[ -n "$json_output" ]]; then
+  mkdir -p "$(dirname "$json_output")"
+  printf '%s\n' "$json_report" > "$json_output"
+fi
+
+if [[ -n "$junit_output" ]]; then
+  mkdir -p "$(dirname "$junit_output")"
+  python3 -c '
+import json, sys
+from xml.etree import ElementTree as ET
+
+report, destination = json.loads(sys.stdin.read()), sys.argv[1]
+findings = report["findings"]
+failures = [f for f in findings if f["status"] == "FAIL"]
+skips = [f for f in findings if f["status"] == "SKIP"]
+suite = ET.Element("testsuite", {
+    "name": "AAP Validator",
+    "tests": str(len(findings)),
+    "failures": str(len(failures)),
+    "skipped": str(len(skips)),
+    "time": "{:.3f}".format(report["durationMillis"] / 1000.0),
+})
+for finding in findings:
+    testcase = ET.SubElement(suite, "testcase", {
+        "classname": finding.get("pluginId", report["packageName"]),
+        "name": "{}: {}".format(finding["id"], finding["title"]),
+    })
+    details = finding["observed"]
+    if finding["status"] == "FAIL":
+        failure = ET.SubElement(testcase, "failure", {"message": finding["title"]})
+        failure.text = "\n".join(filter(None, [details, finding.get("consequence"), finding.get("fix")]))
+    elif finding["status"] == "SKIP":
+        skipped = ET.SubElement(testcase, "skipped", {"message": details})
+ET.ElementTree(suite).write(destination, encoding="utf-8", xml_declaration=True)
+' "$junit_output" <<<"$json_report"
+fi
+
+if [[ "$output_format" == json ]]; then
+  printf '%s\n' "$json_report"
 else
   python3 -c '
 import json, sys
 
-raw = sys.stdin.read()
 try:
-    report = json.loads(raw.split("data=\"", 1)[1].rsplit("\"", 1)[0])
-except (IndexError, json.JSONDecodeError) as error:
+    report = json.loads(sys.stdin.read())
+except json.JSONDecodeError as error:
     print("Could not decode validator report: " + str(error), file=sys.stderr)
-    print(raw, file=sys.stderr)
     sys.exit(2)
 
 verbose = sys.argv[1] == "1"
@@ -145,7 +187,7 @@ if shown:
             print("  Fix: " + finding["fix"])
 else:
     print("\nNo failures. Use --verbose to see every successful and skipped check.")
-' "$verbose" <<<"$result"
+' "$verbose" <<<"$json_report"
 fi
 
 if [[ "$result" == *'"success":false'* ]]; then

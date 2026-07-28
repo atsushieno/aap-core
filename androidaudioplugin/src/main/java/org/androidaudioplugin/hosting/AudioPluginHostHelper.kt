@@ -17,6 +17,18 @@ import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.PortInformation
 import org.xmlpull.v1.XmlPullParser
 
+/** A readable AAP service and any non-fatal metadata-parser diagnostics it produced. */
+data class AudioPluginServiceInformationResult(
+    val service: PluginServiceInformation?,
+    val diagnostics: List<String>
+)
+
+/** The complete result of service discovery, including malformed-metadata diagnostics. */
+data class AudioPluginServiceQueryResult(
+    val services: Array<PluginServiceInformation>,
+    val diagnostics: List<String>
+)
+
 object AudioPluginHostHelper {
 
     const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V4"
@@ -173,16 +185,28 @@ object AudioPluginHostHelper {
     }
 
     @JvmStatic
-    fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : PluginServiceInformation? {
+    fun createAudioPluginServiceInformation(context: Context, serviceInfo: ServiceInfo) : PluginServiceInformation? =
+        createAudioPluginServiceInformationWithDiagnostics(context, serviceInfo).service
+
+    /**
+     * Parses a service's metadata without discarding useful parser errors. Callers that only need
+     * the legacy nullable service can use [createAudioPluginServiceInformation].
+     */
+    @JvmStatic
+    fun createAudioPluginServiceInformationWithDiagnostics(context: Context, serviceInfo: ServiceInfo) : AudioPluginServiceInformationResult {
+        val diagnostics = mutableListOf<String>()
         try {
             val xp =
                 serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
-                    ?: return null
+                    ?: return AudioPluginServiceInformationResult(null, listOf(
+                        "No AAP metadata resource named $AAP_METADATA_NAME_PLUGINS was found for ${serviceInfo.packageName}/${serviceInfo.name}."))
             val isOutProcess = serviceInfo.packageName != context.packageName
             val label = serviceInfo.loadLabel(context.packageManager).toString()
             val packageName = serviceInfo.packageName
             val className = serviceInfo.name
-            val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp)
+            val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp) {
+                diagnostics.add(it.message ?: it.toString())
+            }
             if (serviceInfo.icon != 0)
                 plugin.icon = serviceInfo.loadIcon(context.packageManager)
             if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
@@ -190,10 +214,11 @@ object AudioPluginHostHelper {
             val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
             if (extensions != null)
                 plugin.extensions = extensions.toString().split(',').toMutableList()
-            return plugin
-        } catch (ex: AAPMetadataException) {
-            Log.e("AAP", "Failed to load AAP metadata for ${serviceInfo.packageName}/${serviceInfo.name}: ${ex.message}")
-            return null
+            return AudioPluginServiceInformationResult(plugin, diagnostics)
+        } catch (ex: Exception) {
+            val message = "Failed to load AAP metadata for ${serviceInfo.packageName}/${serviceInfo.name}: ${ex.message ?: ex.javaClass.simpleName}"
+            Log.e("AAP", message, ex)
+            return AudioPluginServiceInformationResult(null, listOf(message))
         }
     }
 
@@ -203,15 +228,27 @@ object AudioPluginHostHelper {
 
     @JvmStatic
     fun queryAudioPluginServices(context: Context, packageNameFilter: String? = null): Array<PluginServiceInformation> {
+        return queryAudioPluginServicesWithDiagnostics(context, packageNameFilter).services
+    }
+
+    /**
+     * Discovers AAP services and retains metadata errors for validator/diagnostic callers.
+     * Normal hosts can continue using [queryAudioPluginServices].
+     */
+    @JvmStatic
+    fun queryAudioPluginServicesWithDiagnostics(context: Context, packageNameFilter: String? = null): AudioPluginServiceQueryResult {
         val intent = Intent(AAP_ACTION_NAME)
         val resolveInfos =
             context.packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA)
         val plugins = mutableListOf<PluginServiceInformation>()
+        val diagnostics = mutableListOf<String>()
         for (ri in resolveInfos) {
             val serviceInfo = ri.serviceInfo
             if (packageNameFilter != null && serviceInfo.packageName != packageNameFilter)
                 continue
-            val pluginServiceInfo = createAudioPluginServiceInformation(context, serviceInfo)
+            val parsed = createAudioPluginServiceInformationWithDiagnostics(context, serviceInfo)
+            val pluginServiceInfo = parsed.service
+            diagnostics.addAll(parsed.diagnostics)
             if (pluginServiceInfo == null) {
                 Log.w(
                     "AAP",
@@ -222,7 +259,7 @@ object AudioPluginHostHelper {
             plugins.add(pluginServiceInfo)
         }
 
-        return plugins.toTypedArray()
+        return AudioPluginServiceQueryResult(plugins.toTypedArray(), diagnostics)
     }
 
     @JvmStatic

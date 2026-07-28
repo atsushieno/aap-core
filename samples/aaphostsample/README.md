@@ -25,7 +25,8 @@ bash tools/aapval --apk /path/to/plugin-debug.apk
 `aapval` prints a short human report by default: the pass/fail/skip totals and,
 for every failure, what was observed, why it matters, and a suggested fix. Use
 `--verbose` to print every check or `--json` for the machine-readable report
-used by CI. A failing validation exits with status 1.
+used by CI. `--output build/aapval.json --junit build/aapval.xml` also writes
+CI-ready JSON and JUnit artifacts. A failing validation exits with status 1.
 
 Run the initial validation suite:
 
