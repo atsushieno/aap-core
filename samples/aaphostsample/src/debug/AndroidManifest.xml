@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- The compose host app depends on the generic JS controller. The validator build must
+             expose only its fixed request protocol, never arbitrary script execution. -->
+        <receiver
+            android:name="org.androidaudioplugin.js.AapAutomationReceiver"
+            tools:node="remove" />
+        <receiver
+            android:name=".AapValidatorReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.androidaudioplugin.aaphostsample.VALIDATE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

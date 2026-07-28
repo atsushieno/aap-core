@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# Runs the debug AAP validator against an installed plugin, or installs an APK first.
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: tools/aapval (--package PACKAGE | --apk PLUGIN.apk) [options]
+
+Options:
+  --serial SERIAL          adb device serial
+  --validator-apk PATH     validator host APK (default: sample debug APK output)
+  --package PACKAGE        installed plugin application ID
+  --apk PATH               install this plugin APK and obtain its application ID
+  --sample-rate RATE       sample rate (default: 48000)
+  --frame-count COUNT      frame count (default: 256)
+  --repeat-count COUNT     lifecycle repetitions (default: 2)
+  --no-install-validator   do not install/update the validator host APK
+  --verbose                show every passing and skipped check
+  --json                   print the raw JSON report (for CI)
+  -h, --help               show this help
+EOF
+}
+
+root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+validator_apk="$root_dir/samples/aaphostsample/build/outputs/apk/debug/aaphostsample-debug.apk"
+sample_rate=48000
+frame_count=256
+repeat_count=2
+plugin_package=""
+plugin_apk=""
+serial=""
+install_validator=1
+output_format=human
+verbose=0
+
+while (($#)); do
+  case "$1" in
+    --serial) serial=$2; shift 2 ;;
+    --validator-apk) validator_apk=$2; shift 2 ;;
+    --package) plugin_package=$2; shift 2 ;;
+    --apk) plugin_apk=$2; shift 2 ;;
+    --sample-rate) sample_rate=$2; shift 2 ;;
+    --frame-count) frame_count=$2; shift 2 ;;
+    --repeat-count) repeat_count=$2; shift 2 ;;
+    --no-install-validator) install_validator=0; shift ;;
+    --verbose) verbose=1; shift ;;
+    --json) output_format=json; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+if [[ -n "$plugin_apk" && -n "$plugin_package" ]]; then
+  echo "Specify exactly one of --package or --apk." >&2
+  exit 2
+fi
+if [[ -z "$plugin_apk" && -z "$plugin_package" ]]; then
+  echo "Missing --package or --apk." >&2
+  usage >&2
+  exit 2
+fi
+
+adb_run() {
+  if [[ -n "$serial" ]]; then
+    adb -s "$serial" "$@"
+  else
+    adb "$@"
+  fi
+}
+
+if [[ -n "$plugin_apk" ]]; then
+  [[ -f "$plugin_apk" ]] || { echo "Plugin APK not found: $plugin_apk" >&2; exit 2; }
+  package_tool=${AAPT:-aapt}
+  command -v "$package_tool" >/dev/null || {
+    echo "aapt is required with --apk. Set AAPT=/path/to/aapt or use --package." >&2
+    exit 2
+  }
+  plugin_package=$("$package_tool" dump badging "$plugin_apk" | awk -F"'" '/^package: name=/{print $2; exit}')
+  [[ -n "$plugin_package" ]] || { echo "Could not read package name from $plugin_apk" >&2; exit 2; }
+  adb_run install -r "$plugin_apk" >/dev/null
+fi
+
+if (( install_validator )); then
+  [[ -f "$validator_apk" ]] || {
+    echo "Validator APK not found: $validator_apk" >&2
+    echo "Build it with: ./gradlew :samples:aaphostsample:assembleDebug" >&2
+    exit 2
+  }
+  adb_run install -r "$validator_apk" >/dev/null
+fi
+
+result=$(adb_run shell am broadcast --include-stopped-packages \
+  -a org.androidaudioplugin.aaphostsample.VALIDATE \
+  -n org.androidaudioplugin.aaphostsample.validator/org.androidaudioplugin.aaphostsample.AapValidatorReceiver \
+  --es package "$plugin_package" \
+  --ei sample_rate "$sample_rate" \
+  --ei frame_count "$frame_count" \
+  --ei repeat_count "$repeat_count")
+
+if [[ "$result" != *'"schemaVersion"'* ]]; then
+  printf '%s\n' "$result"
+  echo "Validator did not return a JSON report; inspect the broadcast output above." >&2
+  exit 1
+fi
+
+if [[ "$output_format" == json ]]; then
+  python3 -c '
+import sys
+raw = sys.stdin.read()
+data = raw.split("data=\"", 1)[1].rsplit("\"", 1)[0]
+print(data)
+' <<<"$result"
+else
+  python3 -c '
+import json, sys
+
+raw = sys.stdin.read()
+try:
+    report = json.loads(raw.split("data=\"", 1)[1].rsplit("\"", 1)[0])
+except (IndexError, json.JSONDecodeError) as error:
+    print("Could not decode validator report: " + str(error), file=sys.stderr)
+    print(raw, file=sys.stderr)
+    sys.exit(2)
+
+verbose = sys.argv[1] == "1"
+summary = report["summary"]
+print("AAP Validator {version} — {package}".format(
+    version=report["validatorVersion"], package=report["packageName"]))
+print("{pass_count} passed, {fail_count} failed, {skip_count} skipped — {duration} ms".format(
+    pass_count=summary["passCount"], fail_count=summary["failCount"],
+    skip_count=summary.get("skipCount", 0), duration=report["durationMillis"]))
+
+findings = report["findings"]
+shown = findings if verbose else [f for f in findings if f["status"] == "FAIL"]
+if shown:
+    print()
+    for finding in shown:
+        plugin = finding.get("pluginId")
+        prefix = "[{status}] {id}: {title}".format(**finding)
+        print((plugin + " — " if plugin else "") + prefix)
+        print("  " + finding["observed"])
+        if "consequence" in finding:
+            print("  Why it matters: " + finding["consequence"])
+        if "fix" in finding:
+            print("  Fix: " + finding["fix"])
+else:
+    print("\nNo failures. Use --verbose to see every successful and skipped check.")
+' "$verbose" <<<"$result"
+fi
+
+if [[ "$result" == *'"success":false'* ]]; then
+  exit 1
+fi

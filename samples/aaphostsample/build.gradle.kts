@@ -14,6 +14,7 @@ android {
     }
     buildTypes {
         debug {
+            applicationIdSuffix = ".validator"
             packaging {
                 jniLibs.keepDebugSymbols.add("**/*.so")
             }
