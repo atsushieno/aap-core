@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,12 +67,22 @@ fun LocalPluginManagerMain() {
     GenericPluginManagerMain(scope, listTitleBarText = "Plugins in this application")
 }
 
+// The quit handler's delayed exitProcess(0) outlives the Activity; tracked here so a relaunch within the delay can cancel it instead of killing the fresh process.
+private var pendingQuitJob: Job? = null
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String) {
     var lastBackPressed by remember { mutableStateOf(System.currentTimeMillis()) }
 
     val navController = rememberNavController()
+
+    // A relaunch re-enters composition: abort any quit scheduled by a previous session.
+    DisposableEffect(Unit) {
+        pendingQuitJob?.cancel()
+        pendingQuitJob = null
+        onDispose { }
+    }
 
     NavHost(navController, startDestination = "plugin_list") {
         composable("plugin_list") {
@@ -110,7 +122,8 @@ fun GenericPluginManagerMain(scope: PluginManagerScope, listTitleBarText: String
             if (System.currentTimeMillis() - lastBackPressed < 2000) {
                 (context as Activity).finish()
                 // FIXME: this should ensure that foreground services all stopped, instead of hacky delays.
-                GlobalScope.launch {
+                pendingQuitJob?.cancel()
+                pendingQuitJob = GlobalScope.launch {
                     delay(5000)
                     exitProcess(0)
                 }
