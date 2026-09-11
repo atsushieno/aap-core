@@ -5,7 +5,7 @@
 
 ![AAP Wavetable on UAPMD v0.4](docs/images/uapmd-app-v0.4-sshot.png "AAP Wavetable on UAPMD v0.4")
 
-![AAP Sfizz + AAP Altar on greenhouse](docs/images/greenhouse-sfizz-altar-sshot.png "AAP Sfizz + AAP Altar on greenhouse")
+<img alt="AAP Sfizz + AAP Altar on greenhouse" src="docs/images/greenhouse-sfizz-altar-sshot.png" width="30%" height="30%" />
 
 [![AAP + UAPMD demonstration (2026.5)](https://img.youtube.com/vi/OXSoqKCzbK4/0.jpg)](https://www.youtube.com/watch?v=OXSoqKCzbK4 " AAP + UAPMD demonstration (2026.5) ")
 
