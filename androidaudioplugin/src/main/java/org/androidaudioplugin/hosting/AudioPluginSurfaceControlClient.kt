@@ -14,12 +14,16 @@ import android.os.MessageQueue.IdleHandler
 import android.os.Messenger
 import android.os.RemoteException
 import android.util.Log
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.SurfaceControlViewHost
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup.LayoutParams
+import android.view.WindowInsets
 import android.view.WindowManager
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.widget.LinearLayout
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
@@ -45,6 +49,9 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
         val alwaysReconnectSurfaceControl = Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
 
+        private const val FOCUS_REQUEST_RETRY_MILLIS = 100L
+        private const val FOCUS_REQUEST_MAX_ATTEMPTS = 20
+
         private val viewToClient = java.util.Collections.synchronizedMap(java.util.WeakHashMap<android.view.View, AudioPluginSurfaceControlClient>())
 
         /** Returns the [AudioPluginSurfaceControlClient] that owns [view], or null if not known. */
@@ -55,7 +62,55 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     internal class AudioPluginSurfaceView(context: Context, private val owner: AudioPluginSurfaceControlClient) : SurfaceView(context) {
         var connection: HostConnection? = null
 
+        // Back arriving at this window while the remote editor's IME is up was forwarded here by
+        // the platform: the embedded window's ViewRootImpl intercepts KEYCODE_BACK in its pre-IME
+        // stage and hands it to the host (SurfaceView.forwardBackKeyToParent), so neither the
+        // plugin's view tree nor the IME ever gets the chance to consume it. Left alone it reaches
+        // the host's own back handling, where "dismiss the keyboard" can mean "finish the Activity".
+        // Intercept it while, and only while, the IME is actually showing.
+        private var backCallback: OnBackInvokedCallback? = null
+
+        private fun setImeBackInterceptionEnabled(enabled: Boolean) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+                return
+            val dispatcher = findOnBackInvokedDispatcher() ?: return
+            if (enabled) {
+                if (backCallback != null)
+                    return
+                val callback = OnBackInvokedCallback { owner.requestHideRemoteIme() }
+                dispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_OVERLAY, callback)
+                backCallback = callback
+            } else {
+                backCallback?.let { dispatcher.unregisterOnBackInvokedCallback(it) }
+                backCallback = null
+            }
+        }
+
+        override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val imeVisible = insets.isVisible(WindowInsets.Type.ime())
+                Log.d(LOG_TAG, "Native UI host insets: imeVisible=$imeVisible")
+                setImeBackInterceptionEnabled(imeVisible && owner.surfacePackage != null)
+            }
+            return super.onApplyWindowInsets(insets)
+        }
+
+        // Older hosts without the new back dispatcher still route back through key dispatch.
+        override fun onKeyPreIme(keyCode: Int, event: KeyEvent): Boolean {
+            if (keyCode == KeyEvent.KEYCODE_BACK &&
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU &&
+                owner.surfacePackage != null &&
+                rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true) {
+                if (event.action == KeyEvent.ACTION_UP)
+                    owner.requestHideRemoteIme()
+                return true
+            }
+            return super.onKeyPreIme(keyCode, event)
+        }
+
         override fun onDetachedFromWindow() {
+            setImeBackInterceptionEnabled(false)
             super.onDetachedFromWindow()
             owner.handleSurfaceDetachedFromWindow()
         }
@@ -116,6 +171,9 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 return@onContentSizeChanged
             }
             contentSizeChangedListeners.forEach { it(width, height) }
+        },
+        onFocusRequested = {
+            requestEmbeddedUIFocus()
         }
     ))
 
@@ -364,12 +422,51 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     // SurfaceView already holds view focus; later changes go through onFocusChanged(). Nothing
     // else requests that focus here: the embedded surface is Z-ordered on top and consumes the
     // gesture, so the host SurfaceView may never see a touch at all. Request it explicitly.
+    //
+    // The surface package can arrive before the host has the SurfaceView attached, visible and
+    // laid out (hosts that build the container first and reveal it afterwards do exactly that),
+    // and requestFocus() is a no-op until then. So retry while the view is not ready yet, but
+    // only attempt the request itself once: if the host refuses focus when the view *is* ready,
+    // that is the host's decision and we must not fight it.
     private fun requestEmbeddedUIFocus() {
         val surfaceView = surface ?: return
-        Handler(context.mainLooper).post {
-            if (!surfaceView.isFocused)
-                surfaceView.requestFocus()
+        val handler = Handler(context.mainLooper)
+        var remainingAttempts = FOCUS_REQUEST_MAX_ATTEMPTS
+        lateinit var attempt: Runnable
+        attempt = Runnable {
+            // give up if this client moved on to another SurfaceView or was closed
+            if (surface !== surfaceView || surfacePackage == null)
+                return@Runnable
+            if (surfaceView.isFocused)
+                return@Runnable
+            val ready = surfaceView.isAttachedToWindow &&
+                    surfaceView.visibility == View.VISIBLE &&
+                    surfaceView.width > 0 && surfaceView.height > 0
+            if (!ready) {
+                if (--remainingAttempts > 0)
+                    handler.postDelayed(attempt, FOCUS_REQUEST_RETRY_MILLIS)
+                else
+                    Log.w(LOG_TAG, "SurfaceView never became ready to take focus; remote UI will not be an IME target until it is touched")
+                return@Runnable
+            }
+            if (!surfaceView.requestFocus())
+                Log.i(LOG_TAG, "Host declined focus for the Native UI SurfaceView; remote text input stays inactive until it is focused")
         }
+        handler.post(attempt)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    internal fun requestHideRemoteIme() {
+        val pluginId = connectedPluginId ?: return
+        val message = Message.obtain().apply {
+            data = bundleOf(
+                AudioPluginViewService.MESSAGE_KEY_OPCODE to AudioPluginViewService.OPCODE_HIDE_IME,
+                AudioPluginViewService.MESSAGE_KEY_PLUGIN_ID to pluginId,
+                AudioPluginViewService.MESSAGE_KEY_INSTANCE_ID to connectedInstanceId,
+                AudioPluginViewService.MESSAGE_KEY_GUI_SESSION_ID to connectedGuiSessionId
+            )
+        }
+        sendToCurrentConnection(message, "hideIme")
     }
 
     private fun handleSurfaceDetachedFromWindow() {
@@ -487,10 +584,14 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     internal class ClientReplyHandler(
         looper: Looper,
         private val onSurfacePackageReceived: (Int, String?, Int?, SurfaceControlViewHost.SurfacePackage) -> Unit,
-        private val onContentSizeChanged: (Int?, String?, Int?, Int, Int) -> Unit = { _, _, _, _, _ -> }
+        private val onContentSizeChanged: (Int?, String?, Int?, Int, Int) -> Unit = { _, _, _, _, _ -> },
+        private val onFocusRequested: () -> Unit = {}
     ) : Handler(looper) {
         override fun handleMessage(msg: Message) {
             when (msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_OPCODE)) {
+                AudioPluginViewService.OPCODE_REQUEST_FOCUS -> {
+                    onFocusRequested()
+                }
                 AudioPluginViewService.OPCODE_CONTENT_SIZE_CHANGED -> {
                     val width = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_WIDTH)
                     val height = msg.data.getInt(AudioPluginViewService.MESSAGE_KEY_CONTENT_HEIGHT)

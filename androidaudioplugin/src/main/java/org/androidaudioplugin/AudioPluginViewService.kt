@@ -7,12 +7,16 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.Message
+import android.os.SystemClock
 import android.os.Messenger
 import android.os.RemoteException
 import android.util.Log
+import android.view.MotionEvent
+import android.view.WindowInsets
 import android.view.SurfaceControlViewHost
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.window.InputTransferToken
 import androidx.annotation.RequiresApi
@@ -41,6 +45,17 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         const val OPCODE_GET_PREFERRED_SIZE = 4
         // reply sent from service to host when plugin view resizes itself
         const val OPCODE_CONTENT_SIZE_CHANGED = 5
+        // reply sent from service to host when the embedded UI is touched while it does not hold
+        // window focus. The embedded surface consumes those touches, so the host SurfaceView never
+        // sees them and cannot take focus back on its own.
+        const val OPCODE_REQUEST_FOCUS = 6
+        // request sent from host to service to dismiss the IME that serves the embedded editor.
+        // The host cannot do it itself: the IME is bound to the remote window, in the plugin process.
+        const val OPCODE_HIDE_IME = 7
+
+        private const val FOCUS_HANDOFF_TIMEOUT_MILLIS = 2000L
+        private const val IME_REISSUE_RETRY_MILLIS = 50L
+        private const val IME_REISSUE_MAX_ATTEMPTS = 10
 
         // requests
         const val MESSAGE_KEY_OPCODE = "opcode"
@@ -106,6 +121,9 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 OPCODE_GET_PREFERRED_SIZE -> {
                     owner.handleGetPreferredSizeRequest(msg)
                 }
+                OPCODE_HIDE_IME -> {
+                    owner.handleHideImeRequest(msg)
+                }
                 else -> {}
             }
         }
@@ -161,6 +179,10 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 MESSAGE_KEY_PREFERRED_HEIGHT to (preferredSize?.height ?: 0)
             )
         })
+    }
+
+    private fun handleHideImeRequest(msg: Message) {
+        resolveController(msg)?.hideIme()
     }
 
     private fun handleDisconnectRequest(msg: Message) {
@@ -239,8 +261,43 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         private var viewHost: SurfaceControlViewHost? = null
         private var viewportView: FrameLayout? = null
         private var pluginView: View? = null
+        private var replyMessenger: Messenger? = null
+
+        fun requestHostFocus() {
+            val messenger = replyMessenger ?: return
+            try {
+                messenger.send(Message.obtain().apply {
+                    data = bundleOf(
+                        MESSAGE_KEY_OPCODE to OPCODE_REQUEST_FOCUS,
+                        MESSAGE_KEY_PLUGIN_ID to pluginId,
+                        MESSAGE_KEY_INSTANCE_ID to instanceId,
+                        MESSAGE_KEY_GUI_SESSION_ID to guiSessionId
+                    )
+                })
+            } catch (_: RemoteException) {}
+        }
+
+        fun hideIme() {
+            val viewport = viewportView ?: return
+            Log.i(LOG_TAG, "hideIme requested for guiSessionId:$guiSessionId")
+            // The embedded window is the IME target and controls the IME insets, so its own
+            // WindowInsetsController is what can dismiss the keyboard. hideSoftInputFromWindow()
+            // is kept as a fallback for hosts/devices where that controller is unavailable.
+            viewport.post {
+                val controller = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    viewport.windowInsetsController
+                else
+                    null
+                if (controller != null)
+                    controller.hide(WindowInsets.Type.ime())
+                else
+                    service.getSystemService(InputMethodManager::class.java)
+                        ?.hideSoftInputFromWindow(viewport.windowToken, 0)
+            }
+        }
 
         fun initialize(messengerToSendReply: Messenger, hostToken: IBinder, inputTransferToken: InputTransferToken?, displayId: Int, width: Int, height: Int) {
+            replyMessenger = messengerToSendReply
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val display = service.getSystemService(DisplayManager::class.java)
                     .getDisplay(displayId)
@@ -253,7 +310,54 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                         SurfaceControlViewHost(service, display, hostToken)
                     viewHost = newHost.apply {
                         val view = AudioPluginServiceHelper.createNativeView(service, pluginId, instanceId)
-                        val viewport = FrameLayout(service).apply {
+                        val viewport = object : FrameLayout(service) {
+                            private var focusHandoffAt = 0L
+
+                            override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+                                // The embedded surface consumes touches over the plugin UI, so the
+                                // host SurfaceView never sees them and View.onTouchEvent() can
+                                // never take focus back. Tell the host instead, otherwise text
+                                // input stays dead once focus has moved to the host's own UI.
+                                if (ev.actionMasked == MotionEvent.ACTION_DOWN && !hasWindowFocus()) {
+                                    focusHandoffAt = SystemClock.uptimeMillis()
+                                    requestHostFocus()
+                                }
+                                return super.dispatchTouchEvent(ev)
+                            }
+
+                            override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+                                super.onWindowFocusChanged(hasWindowFocus)
+                                if (!hasWindowFocus)
+                                    return
+                                // Focus takes a round trip through WindowManager, so a text field
+                                // tapped in the same gesture asks for the IME while this window is
+                                // still not the IME target and the request is dropped. Re-issue it
+                                // once focus lands, otherwise the first tap never shows a keyboard.
+                                val handoffAge = SystemClock.uptimeMillis() - focusHandoffAt
+                                if (focusHandoffAt == 0L || handoffAge > FOCUS_HANDOFF_TIMEOUT_MILLIS)
+                                    return
+                                focusHandoffAt = 0L
+                                val focused = findFocus() ?: return
+                                if (!focused.onCheckIsTextEditor())
+                                    return
+                                val imm = service.getSystemService(InputMethodManager::class.java)
+                                    ?: return
+                                Log.i(LOG_TAG, "re-issuing IME request after focus handoff for ${focused.javaClass.simpleName}")
+                                // Window focus alone is not enough: InputMethodManager only serves
+                                // the editor once ImeFocusController has started input for it,
+                                // which happens after this callback returns. Retry briefly until
+                                // showSoftInput() is accepted.
+                                var attempts = IME_REISSUE_MAX_ATTEMPTS
+                                lateinit var reissue: Runnable
+                                reissue = Runnable {
+                                    if (findFocus() !== focused || !hasWindowFocus())
+                                        return@Runnable
+                                    if (!imm.showSoftInput(focused, 0) && --attempts > 0)
+                                        postDelayed(reissue, IME_REISSUE_RETRY_MILLIS)
+                                }
+                                post(reissue)
+                            }
+                        }.apply {
                             clipChildren = true
                             clipToPadding = true
                             addView(view, FrameLayout.LayoutParams(width, height))
@@ -392,6 +496,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 viewHost = null
                 viewportView = null
                 pluginView = null
+                replyMessenger = null
             }
         }
     }
