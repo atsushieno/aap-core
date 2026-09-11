@@ -284,16 +284,18 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
             // WindowInsetsController is what can dismiss the keyboard. hideSoftInputFromWindow()
             // is kept as a fallback for hosts/devices where that controller is unavailable.
             viewport.post {
-                val controller = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                    viewport.windowInsetsController
-                else
-                    null
-                if (controller != null)
-                    controller.hide(WindowInsets.Type.ime())
-                else
-                    service.getSystemService(InputMethodManager::class.java)
-                        ?.hideSoftInputFromWindow(viewport.windowToken, 0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hideImeViaInsets(viewport))
+                    return@post
+                service.getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(viewport.windowToken, 0)
             }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private fun hideImeViaInsets(viewport: FrameLayout): Boolean {
+            val controller = viewport.windowInsetsController ?: return false
+            controller.hide(WindowInsets.Type.ime())
+            return true
         }
 
         fun initialize(messengerToSendReply: Messenger, hostToken: IBinder, inputTransferToken: InputTransferToken?, displayId: Int, width: Int, height: Int) {

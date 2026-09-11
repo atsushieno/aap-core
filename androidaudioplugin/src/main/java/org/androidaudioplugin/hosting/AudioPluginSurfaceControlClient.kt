@@ -96,18 +96,24 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
             return super.onApplyWindowInsets(insets)
         }
 
-        // Older hosts without the new back dispatcher still route back through key dispatch.
+        // Hosts below API 33 have no OnBackInvokedDispatcher, so back still arrives through key
+        // dispatch there. Native UI itself requires API 30, hence the lower bound.
         override fun onKeyPreIme(keyCode: Int, event: KeyEvent): Boolean {
             if (keyCode == KeyEvent.KEYCODE_BACK &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU &&
                 owner.surfacePackage != null &&
-                rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true) {
+                isRemoteImeVisible()) {
                 if (event.action == KeyEvent.ACTION_UP)
                     owner.requestHideRemoteIme()
                 return true
             }
             return super.onKeyPreIme(keyCode, event)
         }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private fun isRemoteImeVisible() =
+            rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true
 
         override fun onDetachedFromWindow() {
             setImeBackInterceptionEnabled(false)
