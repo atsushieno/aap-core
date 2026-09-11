@@ -40,6 +40,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.androidaudioplugin.AudioPluginViewService
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -303,8 +304,14 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         @RequiresApi(Build.VERSION_CODES.R)
         private suspend fun bindPluginViewService(pluginPackageName: String): HostConnection =
             suspendCoroutine { continuation ->
+                val resumed = AtomicBoolean(false)
                 val connection = HostConnection(
-                    onConnected = { continuation.resume(it) },
+                    onConnected = {
+                        if (resumed.compareAndSet(false, true))
+                            continuation.resume(it)
+                        else
+                            Log.w(LOG_TAG, "Ignoring duplicate AudioPluginViewService connection callback for $pluginPackageName")
+                    },
                     onDisconnected = { handleRemoteUIDisconnected(it, "service disconnected") }
                 )
                 if (!context.bindService(
@@ -553,19 +560,16 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            isBound = false
             onDisconnected(this)
             Log.d(LOG_TAG, "disconnected from ${AudioPluginViewService::class.java.name}")
         }
 
         override fun onBindingDied(name: ComponentName?) {
-            isBound = false
             onDisconnected(this)
             Log.w(LOG_TAG, "binding died for ${AudioPluginViewService::class.java.name}")
         }
 
         override fun onNullBinding(name: ComponentName?) {
-            isBound = false
             onDisconnected(this)
             Log.w(LOG_TAG, "null binding for ${AudioPluginViewService::class.java.name}")
         }
