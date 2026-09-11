@@ -329,7 +329,14 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                             }
                         })
 
-                        setView(viewport, width, height)
+                        // API 37+ lets the embedded window declare itself focusable explicitly.
+                        // On older releases setView(view, w, h) builds LayoutParams with flags=0,
+                        // which is already focusable; focus still has to be handed over by the
+                        // host side (SurfaceView.onFocusChanged -> grantEmbeddedWindowFocus).
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN)
+                            setView(viewport, SurfaceControlViewHost.LayoutParams(width, height, true))
+                        else
+                            setView(viewport, width, height)
 
                         messengerToSendReply.send(Message.obtain().apply {
                             Log.i(LOG_TAG, "connect reply pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId")
@@ -362,7 +369,12 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val view = pluginView ?: return
-                viewHost?.relayout(viewportWidth, viewportHeight)
+                // relayout(int, int) rebuilds LayoutParams from scratch, so on API 37+ it would
+                // drop the focusable flag set in initialize().
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN)
+                    viewHost?.relayout(SurfaceControlViewHost.LayoutParams(viewportWidth, viewportHeight, true))
+                else
+                    viewHost?.relayout(viewportWidth, viewportHeight)
 
                 val layoutParams = view.layoutParams
                 if (layoutParams == null || layoutParams.width != contentWidth || layoutParams.height != contentHeight)

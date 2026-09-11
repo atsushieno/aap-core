@@ -78,6 +78,12 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         init {
             isFocusable = true
             isFocusableInTouchMode = true
+            // View.onTouchEvent() only takes focus from within its `clickable` branch, so a
+            // plain SurfaceView never becomes the focused view on tap and thus never triggers
+            // SurfaceView.onFocusChanged() -> grantEmbeddedWindowFocus(). Without that the
+            // embedded window is not an IME target and remote text fields cannot show the
+            // software keyboard.
+            isClickable = true
             setZOrderOnTop(true)
             // FIXME: enable this when our compileSdk = 34 or later
             //if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU)
@@ -98,6 +104,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 this.surfacePackage?.release()
                 this.surfacePackage = surfacePackage
                 getOrCreateSurfaceView().setChildSurfacePackage(surfacePackage)
+                requestEmbeddedUIFocus()
                 pendingViewportConfiguration?.let(::sendConfigureViewport)
                 Log.i(LOG_TAG, "accepted surface package pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId")
                 connectedListeners.forEach { it() }
@@ -349,6 +356,19 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         } catch (ex: RemoteException) {
             Log.w(LOG_TAG, "disconnectRemoteUI ignored after remote UI process loss", ex)
             handleRemoteUIDisconnected(surfaceView.connection, "disconnect send failed")
+        }
+    }
+
+    // SurfaceView.setChildSurfacePackage() asks WindowManager to make the embedded
+    // SurfaceControlViewHost window the focus (and therefore IME) target, but only when the
+    // SurfaceView already holds view focus; later changes go through onFocusChanged(). Nothing
+    // else requests that focus here: the embedded surface is Z-ordered on top and consumes the
+    // gesture, so the host SurfaceView may never see a touch at all. Request it explicitly.
+    private fun requestEmbeddedUIFocus() {
+        val surfaceView = surface ?: return
+        Handler(context.mainLooper).post {
+            if (!surfaceView.isFocused)
+                surfaceView.requestFocus()
         }
     }
 

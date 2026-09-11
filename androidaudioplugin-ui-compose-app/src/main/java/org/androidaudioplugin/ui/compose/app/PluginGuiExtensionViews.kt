@@ -88,7 +88,21 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
     Popup(
         alignment = Alignment.TopStart,
         offset = IntOffset(offsetX.toInt(), offsetY.toInt()),
-        properties = PopupProperties(clippingEnabled = false)
+        // Back press has to be routed somewhere once the popup is focusable, otherwise the
+        // window swallows it.
+        onDismissRequest = onCloseClick,
+        // The popup window must be focusable. A non-focusable popup carries FLAG_NOT_FOCUSABLE
+        // and can never become the IME target, and neither can the embedded
+        // SurfaceControlViewHost window, because WindowManager forwards focus to the embedded
+        // window through the *host* window's focus transfer target
+        // (SurfaceView.onFocusChanged() -> IWindowSession.grantEmbeddedWindowFocus()).
+        // Outside clicks must not dismiss it; this is a floating plugin editor window.
+        properties = PopupProperties(
+            focusable = true,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            clippingEnabled = false
+        )
     ) {
         Column(Modifier.padding(10.dp)) {
             // title bar
