@@ -60,10 +60,37 @@ class AudioPluginInterfaceImpl : public aidl::org::androidaudioplugin::BnAudioPl
     std::unique_ptr<PluginService> svc;
     std::vector<aap_buffer_t> buffers{};
     std::unique_ptr<AudioPluginServiceCallbackAndroid> plugin_service_callback{nullptr};
+    // The AudioPluginService component that owns this binder.
+    std::string service_package_name;
+    std::string service_class_name;
+
+    // A plugin package can run its AudioPluginServices in separate processes, and the plugin list
+    // covers every installed plugin. Instantiating a plugin that belongs to another service would
+    // load its library into this process, which e.g. breaks JUCE plugins (one JUCE runtime per
+    // process). Returns an error message for such a request, or an empty string.
+    std::string checkHostedByThisService(const std::string& pluginId) {
+        bool found = false;
+        std::string hostedBy{};
+        for (size_t i = 0; i < plugins.getNumPluginInformation(); i++) {
+            auto p = plugins.getPluginInformation((int32_t) i);
+            if (p->getPluginID() != pluginId)
+                continue;
+            found = true;
+            if (p->getPluginPackageName() == service_package_name && p->getPluginLocalName() == service_class_name)
+                return {};
+            hostedBy = p->getPluginPackageName() + "/" + p->getPluginLocalName();
+        }
+        if (!found)
+            return {}; // let createInstance() report it as usual.
+        return "Plugin '" + pluginId + "' is hosted by AudioPluginService " + hostedBy +
+               ", not by " + service_package_name + "/" + service_class_name + ".";
+    }
 
 public:
 
-    AudioPluginInterfaceImpl() {
+    AudioPluginInterfaceImpl(std::string servicePackageName, std::string serviceClassName)
+            : service_package_name(std::move(servicePackageName)),
+              service_class_name(std::move(serviceClassName)) {
         plugins = PluginListSnapshot::queryServices();
         plugin_service_callback = std::make_unique<AudioPluginServiceCallbackAndroid>();
         svc.reset(new PluginService(&plugins, plugin_service_callback.get()));
@@ -137,6 +164,13 @@ public:
 
     ::ndk::ScopedAStatus beginCreate(const std::string &in_pluginId,
                                      int32_t *_aidl_return) override {
+        auto hostingError = checkHostedByThisService(in_pluginId);
+        if (!hostingError.empty()) {
+            aap::a_log(AAP_LOG_LEVEL_ERROR, AAP_AIDL_SVC_LOG_TAG, hostingError.c_str());
+            *_aidl_return = -1;
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, hostingError.c_str());
+        }
         *_aidl_return = svc->createInstance(in_pluginId);
         if (*_aidl_return < 0)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(

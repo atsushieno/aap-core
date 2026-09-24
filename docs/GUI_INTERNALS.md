@@ -44,7 +44,7 @@ For native Android `View` hosting on API 30+:
 
 1. The plugin host creates an `AudioPluginSurfaceControlClient`.
 2. The client owns a `SurfaceView` (`AudioPluginSurfaceView`).
-3. The client binds the plugin app's `AudioPluginViewService`.
+3. The client binds the plugin app's `AudioPluginViewService` that runs in the same process as the plugin's AudioPluginService (see [Transport](#transport)).
 4. The client sends a Messenger request containing:
    - plugin host token
    - display id
@@ -88,7 +88,7 @@ This is parsed in `AudioPluginHostHelper.parseAapMetadata()` and stored in `Plug
 
 The plugin must provide:
 
-- `org.androidaudioplugin.AudioPluginViewService` as an exported service in `AndroidManifest.xml`
+- `org.androidaudioplugin.AudioPluginViewService` as an exported service in `AndroidManifest.xml`, in the same process as the AudioPluginService. A package that runs AudioPluginServices in more than one process declares an empty derived class in each extra process, and names it in the `org.androidaudioplugin.AudioPluginService.V4#ViewService` meta-data of that process's AudioPluginService (see "Running plugins in separate processes" in `DEVELOPERS.md`).
 - an `AudioPluginViewFactory` implementation referenced by `gui:ui-view-factory`
 
 `AudioPluginViewFactory` currently has this public contract:
@@ -195,7 +195,10 @@ Transport is Android Binder + `Messenger` messages.
 
 The plugin host binds directly to:
 
-- `org.androidaudioplugin.AudioPluginViewService`
+- the class named by the `org.androidaudioplugin.AudioPluginService.V4#ViewService` meta-data of the AudioPluginService that hosts the plugin, or
+- `org.androidaudioplugin.AudioPluginViewService` when the meta-data is absent.
+
+`AudioPluginSurfaceControlClient` resolves it from the plugin package and plugin ID (`PluginServiceInformation.viewServiceClassName`), so its public API is unchanged.
 
 The plugin host sends requests through the service binder's `Messenger`.
 

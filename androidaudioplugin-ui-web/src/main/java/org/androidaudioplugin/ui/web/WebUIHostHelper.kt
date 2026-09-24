@@ -19,10 +19,11 @@ object WebUIHostHelper {
 
     fun retrieveWebUIArchive(context: Context, pluginId: String, packageName: String? = null) : ByteArray? {
         val pluginInfo =
-            (if (packageName != null) AudioPluginHostHelper.queryAudioPluginService(
+            // A plugin package may have more than one AudioPluginService.
+            (if (packageName != null) AudioPluginHostHelper.queryAudioPluginServices(
                 context,
                 packageName
-            ).plugins.firstOrNull { it.pluginId == pluginId }
+            ).flatMap { it.plugins }.firstOrNull { it.pluginId == pluginId }
             else AudioPluginHostHelper.queryAudioPlugins(context)
                 .firstOrNull { it.pluginId == pluginId }) ?: return null
 

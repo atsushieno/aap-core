@@ -227,7 +227,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         // This needs to be handled after layoutParams is initialized.
         context.mainLooper.queue.addIdleHandler(handler)
 
-        connectUIBindService(pluginPackageName)
+        connectUIBindService(pluginPackageName, pluginId)
 
         var messageSender: (() -> Boolean)? = null
         messageSender = {
@@ -251,7 +251,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     @WorkerThread
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun getPreferredSizeNoHandler(pluginPackageName: String, pluginId: String, instanceId: Int): IntArray {
-        val connection = bindPluginViewService(pluginPackageName)
+        val connection = bindPluginViewService(pluginPackageName, pluginId)
         val result = CompletableDeferred<IntArray>()
         val replyMessenger = Messenger(object : Handler(messageHandlerThread.looper) {
             override fun handleMessage(msg: Message) {
@@ -282,7 +282,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     suspend fun connectUINoHandler(pluginPackageName: String, pluginId: String, instanceId: Int, width: Int, height: Int) {
         connectUIPrepareLayout(width, height)
 
-        connectUIBindService(pluginPackageName)
+        connectUIBindService(pluginPackageName, pluginId)
 
         connectUISendMessage(pluginId, instanceId, width, height)
     }
@@ -297,32 +297,46 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
 
         @RequiresApi(Build.VERSION_CODES.R)
-        private suspend fun connectUIBindService(pluginPackageName: String) {
-            getOrCreateSurfaceView().connection = bindPluginViewService(pluginPackageName)
+        private suspend fun connectUIBindService(pluginPackageName: String, pluginId: String) {
+            getOrCreateSurfaceView().connection = bindPluginViewService(pluginPackageName, pluginId)
         }
 
+        // A plugin package may run its AudioPluginServices in more than one process, each with
+        // its own AudioPluginViewService, given by the `#ViewService` meta-data of the service.
+        private val viewServiceClassNames = java.util.concurrent.ConcurrentHashMap<Pair<String, String>, String>()
+
+        private fun resolveViewServiceClassName(pluginPackageName: String, pluginId: String): String =
+            viewServiceClassNames.getOrPut(pluginPackageName to pluginId) {
+                AudioPluginHostHelper.queryAudioPluginServices(context, pluginPackageName)
+                    .firstOrNull { svc -> svc.plugins.any { it.pluginId == pluginId } }
+                    ?.viewServiceClassName
+                    ?: AudioPluginViewService::class.java.name
+            }
+
         @RequiresApi(Build.VERSION_CODES.R)
-        private suspend fun bindPluginViewService(pluginPackageName: String): HostConnection =
-            suspendCoroutine { continuation ->
+        private suspend fun bindPluginViewService(pluginPackageName: String, pluginId: String): HostConnection {
+            val viewServiceClassName = resolveViewServiceClassName(pluginPackageName, pluginId)
+            return suspendCoroutine { continuation ->
                 val resumed = AtomicBoolean(false)
                 val connection = HostConnection(
                     onConnected = {
                         if (resumed.compareAndSet(false, true))
                             continuation.resume(it)
                         else
-                            Log.w(LOG_TAG, "Ignoring duplicate AudioPluginViewService connection callback for $pluginPackageName")
+                            Log.w(LOG_TAG, "Ignoring duplicate $viewServiceClassName connection callback for $pluginPackageName")
                     },
                     onDisconnected = { handleRemoteUIDisconnected(it, "service disconnected") }
                 )
                 if (!context.bindService(
-                        Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
+                        Intent().setClassName(pluginPackageName, viewServiceClassName),
                         connection,
                         Context.BIND_AUTO_CREATE
                     )
                 ) {
-                    throw IllegalStateException("Failed to bind AudioPluginViewService for $pluginPackageName")
+                    throw IllegalStateException("Failed to bind $viewServiceClassName for $pluginPackageName")
                 }
             }
+        }
 
         @RequiresApi(Build.VERSION_CODES.R)
         private fun connectUISendMessage(pluginId: String, instanceId: Int, width: Int, height: Int) {
@@ -555,23 +569,23 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             outgoingMessenger = Messenger(service)
             packageName = name?.packageName
-            Log.d(LOG_TAG, "connected to ${AudioPluginViewService::class.java.name}")
+            Log.d(LOG_TAG, "connected to ${name?.flattenToShortString()}")
             onConnected(this)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             onDisconnected(this)
-            Log.d(LOG_TAG, "disconnected from ${AudioPluginViewService::class.java.name}")
+            Log.d(LOG_TAG, "disconnected from ${name?.flattenToShortString()}")
         }
 
         override fun onBindingDied(name: ComponentName?) {
             onDisconnected(this)
-            Log.w(LOG_TAG, "binding died for ${AudioPluginViewService::class.java.name}")
+            Log.w(LOG_TAG, "binding died for ${name?.flattenToShortString()}")
         }
 
         override fun onNullBinding(name: ComponentName?) {
             onDisconnected(this)
-            Log.w(LOG_TAG, "null binding for ${AudioPluginViewService::class.java.name}")
+            Log.w(LOG_TAG, "null binding for ${name?.flattenToShortString()}")
         }
 
         fun unbind(context: Context) {

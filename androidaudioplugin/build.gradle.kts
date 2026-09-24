@@ -76,10 +76,14 @@ dependencies {
     implementation(libs.coroutines.core) {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
     }
-    implementation (libs.lifecycle.service)
+    // AudioPluginViewService is open for derived classes (one per plugin process), so its
+    // supertypes have to be visible to the plugin apps.
+    api (libs.lifecycle.service)
+    api (libs.savedstate)
     implementation (libs.startup.runtime)
     implementation(libs.accompanist.permissions)
     testImplementation (libs.junit)
+    testImplementation (libs.kxml2)
     androidTestImplementation (libs.test.ext.junit)
     androidTestImplementation (libs.test.espresso.core)
 }

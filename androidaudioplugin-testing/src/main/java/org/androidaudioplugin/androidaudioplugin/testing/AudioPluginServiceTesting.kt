@@ -2,6 +2,7 @@ package org.androidaudioplugin.androidaudioplugin.testing
 
 import android.content.Context
 import junit.framework.Assert.assertEquals
+import junit.framework.Assert.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.PluginInformation
@@ -13,21 +14,28 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
     @Deprecated("Use testPluginServiceInfo", replaceWith = ReplaceWith("testPluginServiceInfo()"))
     fun getPluginServiceInfo() = testPluginServiceInformation {}
 
-    fun testPluginServiceInformation(serviceInfoTest: (serviceInfo: PluginServiceInformation) -> Unit = {}) {
-        val audioPluginServiceInfo = AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext)
-        assertEquals ("packageName", applicationContext.packageName, audioPluginServiceInfo.packageName)
-        serviceInfoTest(audioPluginServiceInfo)
-    }
+    // A plugin package may have more than one AudioPluginService (in separate processes).
+    private val localServices
+        get() = AudioPluginServiceHelper.getLocalAudioPluginServices(applicationContext)
 
-    fun testSinglePluginInformation(pluginInfoTest: (info: PluginInformation) -> Unit) {
-        testPluginServiceInformation { serviceInfo ->
-            assertEquals("There are more than one plugins. Not suitable for this test function", 1, serviceInfo.plugins.size)
-            pluginInfoTest(serviceInfo.plugins[0])
+    fun testPluginServiceInformation(serviceInfoTest: (serviceInfo: PluginServiceInformation) -> Unit = {}) {
+        val services = localServices
+        assertTrue("No AudioPluginService was found in this package", services.isNotEmpty())
+        for (audioPluginServiceInfo in services) {
+            assertEquals ("packageName", applicationContext.packageName, audioPluginServiceInfo.packageName)
+            serviceInfoTest(audioPluginServiceInfo)
         }
     }
 
+    fun testSinglePluginInformation(pluginInfoTest: (info: PluginInformation) -> Unit) {
+        testPluginServiceInformation()
+        val plugins = localServices.flatMap { it.plugins }
+        assertEquals("There are more than one plugins. Not suitable for this test function", 1, plugins.size)
+        pluginInfoTest(plugins[0])
+    }
+
     fun basicServiceOperationsForAllPlugins() {
-        for (pluginInfo in AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext).plugins)
+        for (pluginInfo in localServices.flatMap { it.plugins })
             testInstancingAndProcessing(pluginInfo)
     }
 
@@ -43,7 +51,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
         val controlBufferSize = 0x10000
 
         runBlocking {
-            host.connectToPluginService(pluginInfo.packageName)
+            host.connectToPluginService(pluginInfo)
         }
 
         for (i in 0 until cycles) {
@@ -57,7 +65,7 @@ class AudioPluginServiceTesting(private val applicationContext: Context) {
             (0 until p).forEach { instances[it].destroy() }
         }
 
-        host.disconnectPluginService(pluginInfo.packageName)
+        host.disconnectPluginService(pluginInfo.packageName, pluginInfo.localName)
         host.dispose()
     }
 }

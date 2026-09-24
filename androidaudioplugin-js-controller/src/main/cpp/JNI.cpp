@@ -35,7 +35,7 @@ void cacheRuntimeRefs(JNIEnv* env) {
     }
     g_runtimeClass = (jclass) env->NewGlobalRef(local);
     g_connectServiceMethod =
-        env->GetStaticMethodID(g_runtimeClass, "connectService", "(Ljava/lang/String;)Z");
+        env->GetStaticMethodID(g_runtimeClass, "connectService", "(Ljava/lang/String;Ljava/lang/String;)Z");
     env->DeleteLocalRef(local);
 }
 
@@ -44,17 +44,22 @@ void cacheRuntimeRefs(JNIEnv* env) {
 namespace aap::js {
 
 // Native -> JVM upcall: ask the host (via AapAutomationRuntime.connectService) to bind a plugin
-// service by package name. Returns false if the JVM/refs are unavailable or the bind failed.
+// service. With `pluginId`, it binds the service that hosts the plugin (a plugin package may have
+// more than one AudioPluginService); otherwise the primary service of the package.
+// Returns false if the JVM/refs are unavailable or the bind failed.
 // Called on the runtime's single Java thread, so GetEnv yields the attached env.
-bool jvmConnectService(const std::string& packageName) {
+bool jvmConnectService(const std::string& packageName, const std::string& pluginId) {
     if (g_vm == nullptr || g_runtimeClass == nullptr || g_connectServiceMethod == nullptr)
         return false;
     JNIEnv* env = nullptr;
     if (g_vm->GetEnv((void**) &env, JNI_VERSION_1_6) != JNI_OK || env == nullptr)
         return false;
     jstring s = env->NewStringUTF(packageName.c_str());
-    jboolean result = env->CallStaticBooleanMethod(g_runtimeClass, g_connectServiceMethod, s);
+    jstring p = pluginId.empty() ? nullptr : env->NewStringUTF(pluginId.c_str());
+    jboolean result = env->CallStaticBooleanMethod(g_runtimeClass, g_connectServiceMethod, s, p);
     env->DeleteLocalRef(s);
+    if (p != nullptr)
+        env->DeleteLocalRef(p);
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         env->ExceptionClear();

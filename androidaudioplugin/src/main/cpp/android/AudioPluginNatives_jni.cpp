@@ -41,12 +41,17 @@ Java_org_androidaudioplugin_AudioPluginNatives_initializeAAPJni(JNIEnv *env, jcl
 
 // --------------------------------------------------
 
+// There is only one AudioPluginService per process. A plugin package that has more than one
+// AudioPluginService must run them in separate processes (`android:process`).
 std::shared_ptr<aidl::org::androidaudioplugin::BnAudioPluginInterface> sp_binder;
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz) {
-    sp_binder = ndk::SharedRefBase::make<aap::AudioPluginInterfaceImpl>();
+Java_org_androidaudioplugin_AudioPluginNatives_createBinderForService(JNIEnv *env, jclass clazz,
+                                                                     jstring servicePackageName,
+                                                                     jstring serviceClassName) {
+    sp_binder = ndk::SharedRefBase::make<aap::AudioPluginInterfaceImpl>(
+            jstringToStdString(env, servicePackageName), jstringToStdString(env, serviceClassName));
     auto ret = AIBinder_toJavaBinder(env, sp_binder->asBinder().get());
     return ret;
 }
@@ -166,9 +171,10 @@ Java_org_androidaudioplugin_AudioPluginNatives_removeBinderForClient(JNIEnv *env
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_AudioPluginServiceConnector_nativeOnServiceConnectedCallback(
-		JNIEnv *env, jobject thiz, jstring servicePackageName) {
-	auto s = jstringToStdString(env, servicePackageName);
-	aap::AAPJniFacade::getInstance()->handleServiceConnectedCallback(s);
+		JNIEnv *env, jobject thiz, jstring servicePackageName, jstring serviceClassName) {
+	auto packageName = jstringToStdString(env, servicePackageName);
+	auto className = jstringToStdString(env, serviceClassName);
+	aap::AAPJniFacade::getInstance()->handleServiceConnectedCallback(packageName, className);
 }
 
 // --------------------------------------------------

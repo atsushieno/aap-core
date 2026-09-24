@@ -20,7 +20,7 @@ class AudioPluginWebViewFactory : AudioPluginViewFactory() {
 
     @SuppressLint("SetJavaScriptEnabled")
     fun getWebView(ctx: Context, pluginId: String, instanceId: Int): WebView {
-        val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(ctx).plugins.firstOrNull { it.pluginId == pluginId }
+        val pluginInfo = AudioPluginServiceHelper.findLocalPluginInformation(ctx, pluginId)
             ?: throw AudioPluginException("Plugin '$pluginId' not found.")
         return WebView(ctx).also { webView ->
             val parameterSync = WebUIParameterSync(webView)

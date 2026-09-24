@@ -6,6 +6,7 @@ import android.media.midi.MidiDeviceService
 import android.media.midi.MidiDeviceStatus
 import android.media.midi.MidiReceiver
 import android.media.midi.MidiUmpDeviceService
+import android.util.Log
 import androidx.annotation.RequiresApi
 import org.androidaudioplugin.*
 
@@ -37,7 +38,8 @@ abstract class AudioPluginMidiDeviceService : MidiDeviceService() {
 }
 
 internal class AudioPluginMidi1Device(private val owner: AudioPluginMidiDeviceService)
-    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo }, owner.plugins) {
+    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo }, owner.plugins,
+        { MidiDevicePortPluginIds.readForMidiDeviceService(owner) }) {
 
     override val midiProtocol = 1
 
@@ -49,7 +51,8 @@ internal class AudioPluginMidi1Device(private val owner: AudioPluginMidiDeviceSe
 
 @RequiresApi(35)
 internal class AudioPluginMidi2Device(private val owner: AudioPluginMidiUmpDeviceService)
-    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo!! }, owner.plugins) {
+    : AudioPluginMidiDevice({ owner.applicationContext }, { owner.deviceInfo!! }, owner.plugins,
+        { MidiDevicePortPluginIds.readForMidiUmpDeviceService(owner) }) {
 
     override val midiProtocol = 2
 
@@ -62,10 +65,13 @@ internal class AudioPluginMidi2Device(private val owner: AudioPluginMidiUmpDevic
 abstract class AudioPluginMidiDevice(
     lazyGetApplicationContext: ()->Context,
     lazyGetDeviceInfo: ()->MidiDeviceInfo,
-    candidatePlugins: List<PluginInformation>
+    candidatePlugins: List<PluginInformation>,
+    // plugin ID for each input port, given by `aap:plugin-id` in the MIDI device XML (null if absent).
+    lazyGetPortPluginIds: ()->List<String?> = { listOf() }
 ) {
     val applicationContext by lazy { lazyGetApplicationContext() }
     val deviceInfo by lazy { lazyGetDeviceInfo() }
+    private val portPluginIds by lazy { lazyGetPortPluginIds() }
 
     val plugins: List<PluginInformation> = candidatePlugins.filter { p -> isInstrument(p) }
     private fun isInstrument(info: PluginInformation) : Boolean {
@@ -134,12 +140,19 @@ abstract class AudioPluginMidiDevice(
 
     protected abstract fun createOutputPortReceiver(portIndex: Int): MidiReceiver?
 
-    // There is no logical mappings between MIDI device name in "midi_device_info.xml" (or whatever
-    // for the metadata) and the plugin display name.
-    // This default implementation performs simple and sloppy matching for device name and port name
-    // (startsWith() and endsWith()).
+    // The explicit mapping is the `aap:plugin-id` attribute on each port in "midi_device_info.xml"
+    // (or "ump_device_info.xml"), where `aap` is "urn:org.androidaudioplugin.core".
+    // Without it, there is no logical mapping between the MIDI device name in the metadata and the
+    // plugin display name, so this default implementation performs simple and sloppy matching for
+    // device name and port name (startsWith() and endsWith()).
     // Our normative use case is aap-lv2-mda which contains multiple plugins within a service.
     open fun getPluginId(portIndex: Int, acceptAnyIndexForSinglePlugin: Boolean = true): String {
+        val mappedPluginId = portPluginIds.getOrNull(portIndex)
+        if (mappedPluginId != null) {
+            if (plugins.any { it.pluginId == mappedPluginId })
+                return mappedPluginId
+            Log.w("AAP.MidiDeviceService", "plugin-id '$mappedPluginId' on MIDI port $portIndex is not an instrument plugin in this package. Falling back to name matching.")
+        }
         val deviceName = deviceInfo.properties.get(MidiDeviceInfo.PROPERTY_NAME)?.toString() ?: ""
         val portName = deviceInfo.ports[portIndex].name
         val plugin = plugins.firstOrNull { plugin ->

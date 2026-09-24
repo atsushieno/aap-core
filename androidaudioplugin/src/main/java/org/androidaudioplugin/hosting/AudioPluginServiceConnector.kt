@@ -187,7 +187,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
 
         connectedServices.add(conn)
 
-        nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
+        nativeOnServiceConnectedCallback(conn.serviceInfo.packageName, conn.serviceInfo.className)
 
         onConnectedListeners.forEach { it(conn) }
 
@@ -222,7 +222,12 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
         return conn
     }
 
-    private external fun nativeOnServiceConnectedCallback(servicePackageName: String)
+    private external fun nativeOnServiceConnectedCallback(servicePackageName: String, serviceClassName: String)
+
+    // Completes a native `ensurePluginServiceConnected()` request (see AudioPluginHostHelper.ensureBinderConnected()).
+    // An empty [serviceClassName] denotes a package-only request.
+    internal fun notifyServiceConnectedToNative(servicePackageName: String, serviceClassName: String) =
+        nativeOnServiceConnectedCallback(servicePackageName, serviceClassName)
 
     fun findExistingServiceConnection(packageName: String, className: String? = null) =
         connectedServices.firstOrNull { conn ->
@@ -230,8 +235,14 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                 (className == null || conn.serviceInfo.className == className)
         }
 
+    @Deprecated("A plugin package may have more than one AudioPluginService. Use the overload that takes the service class name.",
+        ReplaceWith("unbindAudioPluginService(packageName, className)"))
     fun unbindAudioPluginService(packageName: String) {
         invalidateServiceConnection(packageName)
+    }
+
+    fun unbindAudioPluginService(packageName: String, className: String) {
+        invalidateServiceConnection(packageName, className)
     }
 
     override fun close() {

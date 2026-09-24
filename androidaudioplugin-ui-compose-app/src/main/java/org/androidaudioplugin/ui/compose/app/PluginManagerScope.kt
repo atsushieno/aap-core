@@ -16,6 +16,7 @@ import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.composeaudiocontrols.DiatonicKeyboardNoteExpressionOrigin
 import org.androidaudioplugin.hosting.AudioPluginClientBase
+import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.js.AapAutomationRuntime
 import org.json.JSONArray
 import org.json.JSONObject
@@ -73,10 +74,23 @@ class PluginManagerScope(val context: Context,
             AapAutomationRuntime.setPluginCatalog(buildAutomationCatalogJson(pluginServices))
             // Let the JS facade bind plugin services before instancing (suspend -> blocking; this
             // runs on the runtime's executor thread, not main, so runBlocking is safe).
+            // A plugin package may have more than one AudioPluginService (in separate processes):
+            // `aap.instancing.connect(packageName)` binds the primary one, and the auto-connect in
+            // `aap.instancing.create(pluginId)` binds the one that hosts the plugin.
             AapAutomationRuntime.serviceConnector = { packageName ->
                 runBlocking {
-                    automationClient.connectToPluginService(packageName)
+                    val service = AudioPluginHostHelper.queryPrimaryAudioPluginService(context, packageName)
+                    automationClient.connectToPluginService(service.packageName, service.className)
                     true
+                }
+            }
+            AapAutomationRuntime.pluginServiceConnector = { packageName, pluginId ->
+                runBlocking {
+                    val plugin = pluginServices.flatMap { it.plugins }
+                        .firstOrNull { it.packageName == packageName && it.pluginId == pluginId }
+                    if (plugin != null)
+                        automationClient.connectToPluginService(plugin)
+                    plugin != null
                 }
             }
         } catch (e: Throwable) {
@@ -133,8 +147,9 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
 
     suspend fun instantiatePlugin() {
-        if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
-            manager.client.connectToPluginService(pluginInfo.packageName)
+        if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName &&
+                    it.serviceInfo.className == pluginInfo.localName })
+            manager.client.connectToPluginService(pluginInfo)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
         if (!alreadyDisposed) {
             // Prepare the instance up front so that preset/state/parameter interactions on

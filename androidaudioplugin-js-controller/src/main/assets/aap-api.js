@@ -86,14 +86,16 @@ globalThis.aap = {
 
     // Instance creation + lookup.
     instancing: {
-        // Bind a plugin's Android service by package name. AAP must connect the service before
-        // instancing; create() does this automatically, but it is also exposed explicitly.
+        // Bind a plugin package's (primary) Android service by package name. AAP must connect the
+        // service before instancing; create() does this automatically, but it is also exposed
+        // explicitly. A package may have more than one service (in separate processes); create()
+        // connects the one that hosts the plugin.
         connect: (packageName) => __aap_connect_service(packageName),
 
         create: (pluginId) => {
             // Auto-connect the plugin's service first (resolve its package from discovery).
             const pkg = packageOfPlugin(pluginId);
-            if (pkg) __aap_connect_service(pkg);
+            if (pkg) __aap_connect_service(pkg, pluginId);
             return new PluginInstance(__aap_instance_create(pluginId));
         }
     },

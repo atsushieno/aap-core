@@ -33,8 +33,13 @@ import java.lang.IllegalArgumentException
     One Service connection handles multiple UI instances, per instanceId.
     One AudioPluginGuiController is created for each plugin instance, and
     (so far) only one View host is instantiated.
+
+    It must run in the same process as the AudioPluginService that hosts the plugin instances.
+    A plugin package that runs AudioPluginServices in more than one process declares an empty
+    derived class for each extra process, and points the AudioPluginService to it by the
+    `org.androidaudioplugin.AudioPluginService.V4#ViewService` meta-data.
  */
-class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
+open class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     companion object {
         const val LOG_TAG = "AudioPluginViewService"
 

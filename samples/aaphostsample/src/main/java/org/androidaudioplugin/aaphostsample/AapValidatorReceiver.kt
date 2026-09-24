@@ -1,17 +1,22 @@
 package org.androidaudioplugin.aaphostsample
 
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.runBlocking
+import org.androidaudioplugin.AudioPluginViewService
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PluginInformation
+import org.androidaudioplugin.PluginServiceInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginExtensionsBom
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
+import org.androidaudioplugin.hosting.AudioPluginMidiDeviceMetadata
 import org.androidaudioplugin.hosting.InstanceState
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.UmpHelper
@@ -122,6 +127,8 @@ private class AapValidator(private val context: Context) {
         report.pass(null, "AAPVAL-DISC-001", "AAP service is discoverable",
             "Found ${services.size} service(s) in ${request.packageName}.")
 
+        validatePackageLayout(request.packageName, services, report)
+
         services.forEach { service ->
             service.plugins.forEach { plugin ->
                 report.plugins.put(JSONObject().put("pluginId", plugin.pluginId ?: "<missing-id>")
@@ -131,6 +138,119 @@ private class AapValidator(private val context: Context) {
             }
         }
         return report
+    }
+
+    // A plugin package may run its AudioPluginServices in more than one process. These checks
+    // cover how plugins, view services and MIDI ports are assigned to the services.
+    private fun validatePackageLayout(packageName: String, services: Array<PluginServiceInformation>, report: AapValidationReport) {
+        val pm = context.packageManager
+
+        val servicesPerProcess = services.groupBy { it.processName }
+        val sharedProcesses = servicesPerProcess.filterValues { it.size > 1 }
+        if (sharedProcesses.isEmpty())
+            report.pass(null, "AAPVAL-PROC-001", "Each AAP service runs in its own process",
+                "${services.size} service(s) in ${servicesPerProcess.size} process(es).")
+        sharedProcesses.forEach { (process, list) ->
+            report.fail(null, "AAPVAL-PROC-001", "AAP services share a process",
+                "Process $process runs ${list.joinToString { it.className }}.",
+                "Only one AudioPluginService can run in a process.",
+                "Give each AudioPluginService its own android:process.")
+        }
+
+        val hostingServices = services.flatMap { svc -> svc.plugins.mapNotNull { p -> p.pluginId?.let { it to svc } } }
+            .groupBy({ it.first }, { it.second })
+        hostingServices.forEach { (pluginId, hosts) ->
+            if (hosts.size == 1)
+                report.pass(pluginId, "AAPVAL-PROC-002", "Plugin is hosted by one AAP service",
+                    "Hosted by ${hosts[0].className} in process ${hosts[0].processName}.")
+            else
+                report.fail(pluginId, "AAPVAL-PROC-002", "Plugin is hosted by more than one AAP service",
+                    "Listed in the metadata of ${hosts.joinToString { it.className }}.",
+                    "Hosts list the plugin more than once (hosts that key their plugin list by the plugin ID may crash), and may instantiate it in a process that is not meant for it.",
+                    "List each plugin in the aap_metadata.xml of only one AudioPluginService.")
+        }
+
+        // Hosts built with aap-core 0.11.1 or earlier support only one AudioPluginService per
+        // package: they would block on the plugins of the other services. The other services
+        // declare their metadata as #SecondaryPlugins, which those hosts ignore.
+        if (services.size > 1) {
+            val primary = AudioPluginHostHelper.selectPrimaryAudioPluginService(services.toList())
+            services.filter { it !== primary }.forEach { svc ->
+                val metaData = pm.getServiceInfo(ComponentName(packageName, svc.className), PackageManager.GET_META_DATA).metaData
+                if (metaData?.containsKey(AudioPluginHostHelper.AAP_METADATA_NAME_PLUGINS) == true)
+                    report.fail(null, "AAPVAL-PROC-005", "Secondary AAP service is visible to older hosts",
+                        "${svc.className} declares ${AudioPluginHostHelper.AAP_METADATA_NAME_PLUGINS}, but it is not the primary AudioPluginService (${primary?.className}).",
+                        "Hosts built with aap-core 0.11.1 or earlier can reach only the primary service of a package, and may block when instantiating the plugins of this service.",
+                        "Declare the metadata of ${svc.className} as ${AudioPluginHostHelper.AAP_METADATA_NAME_SECONDARY_PLUGINS} instead.")
+                else
+                    report.pass(null, "AAPVAL-PROC-005", "Secondary AAP service is hidden from older hosts",
+                        "${svc.className} declares ${AudioPluginHostHelper.AAP_METADATA_NAME_SECONDARY_PLUGINS}.")
+            }
+        }
+
+        services.filter { svc -> svc.plugins.any { it.uiViewFactory != null } }.forEach { svc ->
+            val viewServiceClassName = svc.viewServiceClassName ?: AudioPluginViewService::class.java.name
+            val viewServiceInfo = try {
+                pm.getServiceInfo(ComponentName(packageName, viewServiceClassName), 0)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
+            when {
+                viewServiceInfo == null -> report.fail(null, "AAPVAL-PROC-003", "Plugin view service is not declared",
+                    "${svc.className} hosts plugins with ui-view-factory, but $viewServiceClassName is not declared.",
+                    "Hosts cannot show the native plugin UI.",
+                    "Declare $viewServiceClassName as an exported service in the process of ${svc.className}.")
+                !viewServiceInfo.exported -> report.fail(null, "AAPVAL-PROC-003", "Plugin view service is not exported",
+                    "$viewServiceClassName is not exported.",
+                    "Hosts cannot bind it to show the native plugin UI.",
+                    "Set android:exported=\"true\" on $viewServiceClassName.")
+                viewServiceInfo.processName != svc.processName -> report.fail(null, "AAPVAL-PROC-003", "Plugin view service runs in another process",
+                    "$viewServiceClassName runs in ${viewServiceInfo.processName}, but ${svc.className} runs in ${svc.processName}.",
+                    "The native plugin UI is created against plugin instances that live in the AudioPluginService process.",
+                    "Declare an AudioPluginViewService (a derived class, if the stock one is used by another process) in ${svc.processName}, and name it in the `${AudioPluginHostHelper.AAP_METADATA_NAME_VIEW_SERVICE}` meta-data of ${svc.className}.")
+                else -> report.pass(null, "AAPVAL-PROC-003", "Plugin view service runs with its AAP service",
+                    "$viewServiceClassName runs in ${svc.processName} with ${svc.className}.")
+            }
+        }
+
+        val pluginIds = services.flatMap { it.plugins }.mapNotNull { it.pluginId }.toSet()
+        readMidiDevicePortPluginIds(packageName).forEach { (midiServiceClassName, portPluginIds) ->
+            portPluginIds.forEachIndexed { portIndex, pluginId ->
+                if (pluginId == null)
+                    return@forEachIndexed
+                if (pluginId in pluginIds)
+                    report.pass(pluginId, "AAPVAL-PROC-004", "MIDI device port refers to a plugin",
+                        "Port $portIndex of $midiServiceClassName is mapped to $pluginId.")
+                else
+                    report.fail(pluginId, "AAPVAL-PROC-004", "MIDI device port refers to an unknown plugin",
+                        "Port $portIndex of $midiServiceClassName has plugin-id $pluginId, which no AAP service in this package hosts.",
+                        "MIDI messages to that port fall back to name matching and may reach another plugin.",
+                        "Fix the `aap:plugin-id` attribute in the MIDI device metadata.")
+            }
+        }
+    }
+
+    // Returns the `aap:plugin-id` of each port of each MIDI device service in the package.
+    private fun readMidiDevicePortPluginIds(packageName: String): List<Pair<String, List<String?>>> {
+        val pm = context.packageManager
+        val results = mutableListOf<Pair<String, List<String?>>>()
+        pm.queryIntentServices(Intent(MIDI_DEVICE_SERVICE_INTERFACE).setPackage(packageName), PackageManager.GET_META_DATA).forEach { ri ->
+            ri.serviceInfo.loadXmlMetaData(pm, MIDI_DEVICE_SERVICE_INTERFACE)?.use {
+                results.add(ri.serviceInfo.name to AudioPluginMidiDeviceMetadata.readPortPluginIds(it, AudioPluginMidiDeviceMetadata.MIDI1_PORT_ELEMENT))
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 35) {
+            pm.queryIntentServices(Intent(MIDI_UMP_DEVICE_SERVICE_INTERFACE).setPackage(packageName), 0).forEach { ri ->
+                try {
+                    val property = pm.getProperty(MIDI_UMP_DEVICE_SERVICE_INTERFACE, ComponentName(packageName, ri.serviceInfo.name))
+                    pm.getResourcesForApplication(packageName).getXml(property.resourceId).use {
+                        results.add(ri.serviceInfo.name to AudioPluginMidiDeviceMetadata.readPortPluginIds(it, AudioPluginMidiDeviceMetadata.UMP_PORT_ELEMENT))
+                    }
+                } catch (_: PackageManager.NameNotFoundException) {
+                }
+            }
+        }
+        return results
     }
 
     private fun validateMetadata(plugin: PluginInformation, report: AapValidationReport) {
@@ -191,7 +311,7 @@ private class AapValidator(private val context: Context) {
         val client = AudioPluginClientBase(context)
         var instance: NativeRemotePluginInstance? = null
         try {
-            runBlocking { client.connectToPluginService(plugin.packageName) }
+            runBlocking { client.connectToPluginService(plugin) }
             repeat(request.repeatCount) { iteration ->
                 val current = client.instantiateNativePlugin(plugin)
                 instance = current
@@ -223,7 +343,7 @@ private class AapValidator(private val context: Context) {
                 instance?.takeIf { it.state != InstanceState.DESTROYED }?.destroy()
             } catch (_: Throwable) {
             }
-            client.disconnectPluginService(plugin.packageName)
+            client.disconnectPluginService(plugin.packageName, plugin.localName)
             client.dispose()
         }
     }
@@ -395,6 +515,8 @@ private class AapValidator(private val context: Context) {
         }
 
     companion object {
+        private const val MIDI_DEVICE_SERVICE_INTERFACE = "android.media.midi.MidiDeviceService"
+        private const val MIDI_UMP_DEVICE_SERVICE_INTERFACE = "android.media.midi.MidiUmpDeviceService"
         private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
         private const val PROCESS_TIMEOUT_NANOSECONDS = 1_000_000_000L
         private const val MAX_STATE_BYTES = 1_048_576

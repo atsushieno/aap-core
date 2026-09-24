@@ -62,7 +62,7 @@ fun SystemPluginManagerMain() {
 fun LocalPluginManagerMain() {
     val context = LocalContext.current
     val scope = remember { PluginManagerScope(context,
-        listOf(AudioPluginServiceHelper.getLocalAudioPluginService(context)).toMutableStateList())
+        AudioPluginServiceHelper.getLocalAudioPluginServices(context).toMutableStateList())
     }
     GenericPluginManagerMain(scope, listTitleBarText = "Plugins in this application")
 }

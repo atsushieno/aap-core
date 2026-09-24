@@ -52,7 +52,7 @@ class AudioPluginMidiDeviceInstance private constructor(
                 ret.midiBufferSize, midiTransport)
 
             val pluginInfo = ownerService.plugins.first { p -> p.pluginId == pluginId }
-            client.connectToPluginService(pluginInfo.packageName)
+            client.connectToPluginService(pluginInfo)
             ret.instantiatePlugin(pluginId)
             ret.activate()
 

@@ -1,5 +1,6 @@
 package org.androidaudioplugin.hosting
 
+import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -33,7 +34,16 @@ object AudioPluginHostHelper {
 
     const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V4"
     const val AAP_METADATA_NAME_PLUGINS = "$AAP_ACTION_NAME#Plugins"
+    /**
+     * The plugin metadata of an AudioPluginService other than the primary one, in a plugin package
+     * that runs its plugins in more than one process. It is the same as [AAP_METADATA_NAME_PLUGINS],
+     * except that hosts built with aap-core 0.11.1 or earlier do not know it and ignore the service.
+     * They only support one AudioPluginService per package, and would block on the plugins of the
+     * other services.
+     */
+    const val AAP_METADATA_NAME_SECONDARY_PLUGINS = "$AAP_ACTION_NAME#SecondaryPlugins"
     const val AAP_METADATA_NAME_EXTENSIONS = "$AAP_ACTION_NAME#Extensions"
+    const val AAP_METADATA_NAME_VIEW_SERVICE = "$AAP_ACTION_NAME#ViewService"
     const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
     const val AAP_METADATA_EXT_PARAMETERS_NS = "urn://androidaudioplugin.org/extensions/parameters"
     const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
@@ -198,15 +208,20 @@ object AudioPluginHostHelper {
         try {
             val xp =
                 serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_PLUGINS)
+                    ?: serviceInfo.loadXmlMetaData(context.packageManager, AAP_METADATA_NAME_SECONDARY_PLUGINS)
                     ?: return AudioPluginServiceInformationResult(null, listOf(
-                        "No AAP metadata resource named $AAP_METADATA_NAME_PLUGINS was found for ${serviceInfo.packageName}/${serviceInfo.name}."))
-            val isOutProcess = serviceInfo.packageName != context.packageName
+                        "No AAP metadata resource named $AAP_METADATA_NAME_PLUGINS or $AAP_METADATA_NAME_SECONDARY_PLUGINS was found for ${serviceInfo.packageName}/${serviceInfo.name}."))
+            // A plugin package may run its services in several processes, so being in the same
+            // package does not mean being in the same process.
+            val isOutProcess = serviceInfo.packageName != context.packageName ||
+                    serviceInfo.processName != Application.getProcessName()
             val label = serviceInfo.loadLabel(context.packageManager).toString()
             val packageName = serviceInfo.packageName
             val className = serviceInfo.name
             val plugin = parseAapMetadata(isOutProcess, label, packageName, className, xp) {
                 diagnostics.add(it.message ?: it.toString())
             }
+            plugin.processName = serviceInfo.processName
             if (serviceInfo.icon != 0)
                 plugin.icon = serviceInfo.loadIcon(context.packageManager)
             if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
@@ -214,6 +229,7 @@ object AudioPluginHostHelper {
             val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
             if (extensions != null)
                 plugin.extensions = extensions.toString().split(',').toMutableList()
+            plugin.viewServiceClassName = serviceInfo.metaData.getString(AAP_METADATA_NAME_VIEW_SERVICE)
             return AudioPluginServiceInformationResult(plugin, diagnostics)
         } catch (ex: Exception) {
             val message = "Failed to load AAP metadata for ${serviceInfo.packageName}/${serviceInfo.name}: ${ex.message ?: ex.javaClass.simpleName}"
@@ -222,9 +238,33 @@ object AudioPluginHostHelper {
         }
     }
 
+    /**
+     * Selects the "primary" AudioPluginService of a plugin package, which package-only requests
+     * (that do not tell which service is needed) connect to: the one declared with the stock
+     * `org.androidaudioplugin.AudioPluginService` class, or the first one if there is none.
+     * A plugin package that runs its plugins in more than one process declares the stock class
+     * for one process and derived classes for the others.
+     */
+    @JvmStatic
+    fun selectPrimaryAudioPluginService(services: List<PluginServiceInformation>): PluginServiceInformation? =
+        services.firstOrNull { it.className == AudioPluginService::class.java.name } ?: services.firstOrNull()
+
+    /** Returns the primary AudioPluginService of [packageName] (see [selectPrimaryAudioPluginService]). */
+    @JvmStatic
+    fun queryPrimaryAudioPluginService(context: Context, packageName: String) =
+        selectPrimaryAudioPluginService(queryAudioPluginServices(context, packageName).toList())
+            ?: throw AudioPluginException("No AudioPluginService was found in $packageName.")
+
+    @Deprecated("A plugin package may have more than one AudioPluginService, and this returns only the primary one. Use the overload that takes the service class name.",
+        ReplaceWith("queryAudioPluginService(context, packageName, className)"))
     @JvmStatic
     fun queryAudioPluginService(context: Context, packageName: String) =
-        queryAudioPluginServices(context, packageName).first()
+        queryPrimaryAudioPluginService(context, packageName)
+
+    @JvmStatic
+    fun queryAudioPluginService(context: Context, packageName: String, className: String) =
+        queryAudioPluginServices(context, packageName).firstOrNull { it.className == className }
+            ?: throw AudioPluginException("AudioPluginService $packageName/$className was not found.")
 
     @JvmStatic
     fun queryAudioPluginServices(context: Context, packageNameFilter: String? = null): Array<PluginServiceInformation> {
@@ -285,19 +325,35 @@ object AudioPluginHostHelper {
         return createAudioPluginServiceInformation(context, serviceInfo)!!
     }
 
+    @Deprecated("A plugin package may have more than one AudioPluginService. Use the overload that takes the service class name.",
+        ReplaceWith("ensureBinderConnected(servicePackageName, serviceClassName, connector)"))
     @JvmStatic
-    fun ensureBinderConnected(servicePackageName: String, connector: AudioPluginServiceConnector) {
-        ensureBinderConnected(
-            queryAudioPluginService(
-                connector.context,
-                servicePackageName
-            ), connector
-        )
+    fun ensureBinderConnected(servicePackageName: String, connector: AudioPluginServiceConnector) =
+        ensureBinderConnected(servicePackageName, null, connector)
+
+    /**
+     * Called by native code (`AAPJniFacade`). A null or empty [serviceClassName] is a package-only
+     * request, which does not tell which AudioPluginService is needed; it binds the primary one
+     * (see [selectPrimaryAudioPluginService]). Plugins hosted by the other services of the package
+     * need a request with their service class name (`PluginInformation.localName`).
+     *
+     * It always reports the completion to native code, even if the service was already
+     * connected: the native caller waits for it.
+     */
+    @JvmStatic
+    fun ensureBinderConnected(servicePackageName: String, serviceClassName: String?, connector: AudioPluginServiceConnector) {
+        val service =
+            if (serviceClassName.isNullOrEmpty())
+                queryPrimaryAudioPluginService(connector.context, servicePackageName)
+            else
+                queryAudioPluginService(connector.context, servicePackageName, serviceClassName)
+        ensureBinderConnected(service, connector)
+        connector.notifyServiceConnectedToNative(servicePackageName, serviceClassName ?: "")
     }
 
     @JvmStatic
     fun ensureBinderConnected(service: PluginServiceInformation, connector: AudioPluginServiceConnector) {
-        val existing = connector.findExistingServiceConnection(service.packageName)
+        val existing = connector.findExistingServiceConnection(service.packageName, service.className)
         if (existing != null)
             return
 

@@ -25,6 +25,7 @@ namespace aap {
         jobjectArray queryInstalledPluginsJNI();
 
         void ensureServiceConnectedFromJni(jint connectorInstanceId, std::string servicePackageName,
+                                           std::string serviceClassName,
                                            std::function<void(std::string &)> callback);
 
         void addScopedClientConnection(int32_t connectorInstanceId, std::string packageName, std::string className, void* connectionData);
@@ -58,7 +59,7 @@ namespace aap {
             int32_t scrollX,
             int32_t scrollY);
 
-        void handleServiceConnectedCallback(std::string servicePackageName);
+        void handleServiceConnectedCallback(std::string servicePackageName, std::string serviceClassName);
 
         jobject getPluginInstanceParameter(jlong nativeHost, jint instanceId, jint index);
 

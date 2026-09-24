@@ -2,6 +2,7 @@ package org.androidaudioplugin
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Size
 import android.view.View
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
@@ -10,9 +11,30 @@ import org.androidaudioplugin.hosting.AudioPluginHostHelper
 object AudioPluginServiceHelper {
     private val currentInstanceId = ThreadLocal<Int?>()
 
+    @Deprecated("A plugin package may have more than one AudioPluginService. Use getLocalAudioPluginServices(), getLocalAudioPluginService(context, serviceClassName) or findLocalPluginInformation().")
     fun getLocalAudioPluginService(context: Context) =
-        AudioPluginHostHelper.queryAudioPluginServices(context)
-            .first { svc -> svc.packageName == context.packageName }
+        AudioPluginHostHelper.selectPrimaryAudioPluginService(getLocalAudioPluginServices(context))
+            ?: throw AudioPluginException("No AudioPluginService was found in ${context.packageName}.")
+
+    /** Returns every AudioPluginService in this application package. */
+    @JvmStatic
+    fun getLocalAudioPluginServices(context: Context): List<PluginServiceInformation> =
+        AudioPluginHostHelper.queryAudioPluginServices(context, context.packageName).toList()
+
+    /** Returns the AudioPluginService in this application package whose class is [serviceClassName]. */
+    @JvmStatic
+    fun getLocalAudioPluginService(context: Context, serviceClassName: String): PluginServiceInformation {
+        val serviceInfo = context.packageManager.getServiceInfo(
+            ComponentName(context.packageName, serviceClassName), PackageManager.GET_META_DATA)
+        return AudioPluginHostHelper.createAudioPluginServiceInformation(context, serviceInfo)
+            ?: throw AudioPluginException("AudioPluginService '$serviceClassName' has no readable AAP metadata.")
+    }
+
+    /** Returns the plugin [pluginId] in this application package, whichever AudioPluginService hosts it. */
+    @JvmStatic
+    fun findLocalPluginInformation(context: Context, pluginId: String): PluginInformation? =
+        getLocalAudioPluginServices(context).firstNotNullOfOrNull { svc ->
+            svc.plugins.firstOrNull { it.pluginId == pluginId } }
 
     @JvmStatic
     fun getForegroundServiceType(context: Context, packageName: String, serviceClassName: String) =
@@ -47,7 +69,7 @@ object AudioPluginServiceHelper {
         }
 
     private fun createNativeViewFactory(context: Context, pluginId: String): AudioPluginViewFactory {
-        val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
+        val pluginInfo = findLocalPluginInformation(context, pluginId)
             ?: throw AudioPluginException("Specified plugin '$pluginId' was not found")
         val factoryClassName = pluginInfo.uiViewFactory
             ?: throw AudioPluginException("'ui-view-factory' attribute is not specified in aap_metadata.xml")

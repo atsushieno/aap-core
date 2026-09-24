@@ -31,6 +31,7 @@ public:
     }
 
     void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)> callback) override;
+    void ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string packageName, std::string className, std::function<void(std::string&)> callback) override;
 
     std::vector<std::string> getPluginPaths() override;
 

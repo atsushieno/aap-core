@@ -49,8 +49,13 @@ std::vector<PluginInformation*> AndroidPluginClientSystem::getPluginsFromMetadat
 }
 
 void AndroidPluginClientSystem::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string serviceName, std::function<void(std::string&)> callback) {
+    // an empty class name binds the primary AudioPluginService of the package.
+    ensurePluginServiceConnected(connections, serviceName, "", callback);
+}
+
+void AndroidPluginClientSystem::ensurePluginServiceConnected(aap::PluginClientConnectionList* connections, std::string packageName, std::string className, std::function<void(std::string&)> callback) {
     auto connId = AAPJniFacade::getInstance()->getConnectorInstanceId(connections);
-    AAPJniFacade::getInstance()->ensureServiceConnectedFromJni(connId, serviceName, callback);
+    AAPJniFacade::getInstance()->ensureServiceConnectedFromJni(connId, packageName, className, callback);
 }
 
 // -------------------------------------------------------

@@ -71,21 +71,52 @@ object AapAutomationRuntime {
     fun setPluginCatalog(json: String) = onEngine { nativeSetPluginCatalog(json) }
 
     /**
-     * Host-provided hook that binds a plugin's Android service by package name, synchronously, and
-     * returns true on success. AAP must bind the plugin service before instancing, so the JS facade
-     * (`aap.instancing.connect` / auto-connect in `aap.instancing.create`) calls into this.
+     * Host-provided hook that binds the primary AudioPluginService of a plugin package, synchronously,
+     * and returns true on success. `aap.instancing.connect(packageName)` calls into this, and so does
+     * the auto-connect in `aap.instancing.create` when [pluginServiceConnector] is not wired.
      *
      * Wire it from the host, typically wrapping the suspend `AudioPluginClientBase.connectToPluginService`:
      * ```kotlin
-     * AapAutomationRuntime.serviceConnector = { pkg -> runBlocking { client.connectToPluginService(pkg); true } }
+     * AapAutomationRuntime.serviceConnector = { pkg -> runBlocking {
+     *     val service = AudioPluginHostHelper.queryPrimaryAudioPluginService(context, pkg)
+     *     client.connectToPluginService(service.packageName, service.className); true } }
      * ```
      */
     @JvmStatic
     var serviceConnector: ((String) -> Boolean)? = null
 
-    /** Invoked from native (the `__aap_connect_service` binding) to bind a plugin service. */
+    /**
+     * Host-provided hook that binds the AudioPluginService that hosts a plugin, synchronously, and
+     * returns true on success. AAP must bind the plugin service before instancing, so the auto-connect
+     * in `aap.instancing.create` calls into this with the package name and the plugin ID. A plugin
+     * package may have more than one AudioPluginService (in separate processes), so the plugin ID
+     * is needed to bind the right one.
+     * ```kotlin
+     * AapAutomationRuntime.pluginServiceConnector = { pkg, pluginId -> runBlocking {
+     *     val plugin = AudioPluginHostHelper.queryAudioPluginServices(context, pkg)
+     *         .flatMap { it.plugins }.first { it.pluginId == pluginId }
+     *     client.connectToPluginService(plugin); true } }
+     * ```
+     */
     @JvmStatic
-    fun connectService(packageName: String): Boolean {
+    var pluginServiceConnector: ((String, String) -> Boolean)? = null
+
+    /**
+     * Invoked from native (the `__aap_connect_service` binding) to bind a plugin service.
+     * [pluginId] is given by the auto-connect in `aap.instancing.create`, and null for
+     * `aap.instancing.connect`.
+     */
+    @JvmStatic
+    fun connectService(packageName: String, pluginId: String?): Boolean {
+        val pluginConnector = pluginServiceConnector
+        if (pluginId != null && pluginConnector != null) {
+            return try {
+                pluginConnector(packageName, pluginId)
+            } catch (e: Throwable) {
+                Log.e(LOG_TAG, "connectService($packageName, $pluginId) failed", e)
+                false
+            }
+        }
         val connector = serviceConnector
         if (connector == null) {
             Log.w(LOG_TAG, "connectService($packageName) called but no serviceConnector is wired")

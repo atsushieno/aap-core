@@ -105,7 +105,8 @@ class PluginViewScopeImpl(
     val parameters: Map<Int,Double>)
     : PluginViewScope {
 
-    private val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(context).plugins.first { it.pluginId == instance.getPluginId() }
+    private val pluginInfo = AudioPluginServiceHelper.findLocalPluginInformation(context, instance.getPluginId())
+        ?: throw IllegalStateException("Plugin '${instance.getPluginId()}' was not found in this package.")
 
     override val pluginName: String
         get() = pluginInfo.displayName

@@ -15,7 +15,7 @@ internal class AudioPluginNatives
         external fun initializeAAPJni(applicationContext: Context)
 
         @JvmStatic
-        external fun createBinderForService() : IBinder
+        external fun createBinderForService(servicePackageName: String, serviceClassName: String) : IBinder
 
         @JvmStatic
         external fun destroyBinderForService(binder: IBinder)

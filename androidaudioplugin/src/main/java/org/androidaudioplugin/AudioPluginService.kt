@@ -13,7 +13,12 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 
 /**
- * The Audio plugin service class. It should not be derived. We check the service class name strictly.
+ * The Audio plugin service class.
+ *
+ * A plugin package normally declares this class as is. A package that runs its plugins in more
+ * than one process declares one AudioPluginService per process (`android:process`), and since a
+ * component class can be declared only once, the extra ones are empty derived classes.
+ * There must be only one AudioPluginService per process.
  *
  * Every AAP should implement AudioPluginInterface.aidl, in native code.
  *
@@ -44,7 +49,7 @@ open class AudioPluginService : Service()
      * Not to be confused with AAP extension in the native (audio plugin) API context (`get_extension()`).
      *
      * By registering this extension as a `<meta-data>` element in AndroidManifest.xml, whose
-     * `android:name` is `org.androidaudioplugin.AudioPluginService#Extensions`, the implementation
+     * `android:name` is `org.androidaudioplugin.AudioPluginService.V4#Extensions`, the implementation
      * class that is specified in the `android:value` attribute of the `<meta-data>` element
      * will be instantiated and those members are invoked, wherever appropriate.
      */
@@ -66,7 +71,7 @@ open class AudioPluginService : Service()
 
         createNotificationChannel()
 
-        val si = AudioPluginServiceHelper.getLocalAudioPluginService(this)
+        val si = AudioPluginServiceHelper.getLocalAudioPluginService(this, javaClass.name)
         si.extensions.forEach { e ->
             if(e == "")
                 return@forEach
@@ -109,7 +114,7 @@ open class AudioPluginService : Service()
         if (existing != null)
             return existing
 
-        nativeBinder = AudioPluginNatives.createBinderForService()
+        nativeBinder = AudioPluginNatives.createBinderForService(packageName, javaClass.name)
 
         // no need to worry about the Looper retaining; it will be released at onUnbind()
         Thread {

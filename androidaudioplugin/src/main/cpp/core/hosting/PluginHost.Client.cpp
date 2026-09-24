@@ -19,7 +19,7 @@ void aap::PluginClient::connectToPluginService(const std::string& packageName, c
         std::string error{};
         callback(error);
     } else {
-        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, packageName, callback);
+        PluginClientSystem::getInstance()->ensurePluginServiceConnected(connections, packageName, className, callback);
     }
 }
 

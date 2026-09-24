@@ -213,10 +213,12 @@ void AapJsControllerRuntime::registerBindings() {
         return Value(pluginCatalogJson_);
     });
 
-    // Bind a plugin's Android service by package name (JVM upcall). Must happen before
-    // instancing; the JS facade calls this from aap.instancing.connect / auto-connect in create.
+    // Bind a plugin's Android service (JVM upcall). Must happen before instancing; the JS facade
+    // calls this from aap.instancing.connect (package name only: the primary service) and from the
+    // auto-connect in create (package name and plugin ID: the service that hosts the plugin).
     ctx.registerFunction("__aap_connect_service", [](choc::javascript::ArgumentList args) -> Value {
-        return Value(aap::js::jvmConnectService(args.get<std::string>(0)));
+        auto pluginId = args.size() > 1 ? args.get<std::string>(1) : std::string{};
+        return Value(aap::js::jvmConnectService(args.get<std::string>(0), pluginId));
     });
 
     ctx.registerFunction("__aap_instance_create", [this](choc::javascript::ArgumentList args) -> Value {

@@ -68,7 +68,7 @@ The `meta-data` whose `android:name` is `org.androidaudioplugin.AudioPluginServi
 </plugins>
 ```
 
-In `AndroidManifest.xml`, only one `<service>` and an `aap_metadata.xml` file is required. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins e.g. [aap-lv2-mda](https://github.com/atsushieno/aap-lv2-mda) does), and they have to be listed on the AAP metadata.
+In `AndroidManifest.xml`, only one `<service>` and an `aap_metadata.xml` file is required. A plugin application package can contain more than one plugins (like an LV2 bundle can contain more than one plugins e.g. [aap-lv2-mda](https://github.com/atsushieno/aap-lv2-mda) does), and they have to be listed on the AAP metadata. If the plugins cannot share a process, see [Running plugins in separate processes](#running-plugins-in-separate-processes).
 
 The `aap_metadata.xml` metadata format is somewhat hacky for now and subject to change. The metadata content is similar to what LV2 metadata `*.ttl` provides. AAP hosts can query AAP metadata resources from all the installed app packages, without instantiating those AAP services (XML is the only viable format for that; it is impossible to choose JSON for example).
 
@@ -106,6 +106,54 @@ Here is the XML content details:
 `entrypoint` is an optional attribute to sprcify custom entrypoint function. `GetAndroidAudioPluginFactory()` is the default value. It is useful if your library has more than one plugin factory entrypoints (like our `libandroidaudioplugin.so` does).
 
 In the current specification, parameter values at the AAP API surface are plain values. When they are transported over MIDI 2.0 controller payloads or AAP parameter SysEx8 messages, they are normalized to 0.0-1.0 using their `minimum` and `maximum` values and encoded as 32-bit unsigned integers. `enumeration` will restrict the value options to the child `<enumeration>` element items. (TODO: not implemented yet)
+
+### Running plugins in separate processes
+
+Some plugins in one package cannot share a process. For example, two JUCE-based plugin libraries cannot run in one process, because each library has its own JUCE runtime and JUCE binds its native code to Java classes that exist only once per process. Such a package runs each plugin in its own process:
+
+- **One AudioPluginService per process.** Declare an AudioPluginService with `android:process` for each process. A component class can be declared only once in a manifest, so the extra ones are empty derived classes (`class MyOtherAudioPluginService : AudioPluginService()`). Keep the stock `org.androidaudioplugin.AudioPluginService` for the *primary* process: hosts that connect by package name only reach the primary service. Hosts connect to the others by the service class name.
+- **One `aap_metadata.xml` per AudioPluginService**, listing only the plugins that the service hosts. The primary service declares it as the usual `org.androidaudioplugin.AudioPluginService.V4#Plugins` meta-data. The other services declare theirs as `org.androidaudioplugin.AudioPluginService.V4#SecondaryPlugins`, with the same format. Hosts built with aap-core 0.11.1 or earlier do not know that name and ignore those services: they support only one AudioPluginService per package, and would block when instantiating the plugins of the other services. They see (and can use) only the plugins of the primary service.
+- **A view service in each process.** Native plugin UI is created in the process that hosts the plugin instance, so each process that hosts a plugin with `ui-view-factory` needs its own `AudioPluginViewService`. For the extra processes, declare an empty derived class in that process, and name it in the `org.androidaudioplugin.AudioPluginService.V4#ViewService` meta-data of the AudioPluginService (the value must be a fully-qualified class name). Without the meta-data, hosts bind the stock `org.androidaudioplugin.AudioPluginViewService`.
+- **MIDI device services** stay in the main process; they reach the plugins through binder. A MIDI device service component serves only one MIDI device, so expose one port per plugin and map each port by the `plugin-id` attribute (see [MIDI device service](#midi-device-service-metadata)).
+
+```xml
+<service android:name="org.androidaudioplugin.AudioPluginService"
+    android:process=":first" android:exported="true" ...>
+  <intent-filter><action android:name="org.androidaudioplugin.AudioPluginService.V4" /></intent-filter>
+  <meta-data android:name="org.androidaudioplugin.AudioPluginService.V4#Plugins" android:resource="@xml/aap_metadata" />
+</service>
+<service android:name="org.androidaudioplugin.AudioPluginViewService"
+    android:process=":first" android:exported="true" />
+
+<service android:name="com.example.SecondAudioPluginService"
+    android:process=":second" android:exported="true" ...>
+  <intent-filter><action android:name="org.androidaudioplugin.AudioPluginService.V4" /></intent-filter>
+  <meta-data android:name="org.androidaudioplugin.AudioPluginService.V4#SecondaryPlugins" android:resource="@xml/aap_metadata_second" />
+  <meta-data android:name="org.androidaudioplugin.AudioPluginService.V4#ViewService"
+      android:value="com.example.SecondAudioPluginViewService" />
+</service>
+<service android:name="com.example.SecondAudioPluginViewService"
+    android:process=":second" android:exported="true" />
+```
+
+Hosts connect to the service of each plugin by `PluginInformation.packageName` and `PluginInformation.localName` (the service class name), e.g. `AudioPluginClientBase.connectToPluginService(pluginInfo)` in Kotlin, or `PluginClientSystem::ensurePluginServiceConnected(connections, packageName, className, callback)` in native code. The package-only variants reach the primary service; for the plugins of the other services, they end up with an error ("Plugin service is not started yet"), not a hang. An AudioPluginService refuses to instantiate a plugin that another service of the package hosts.
+
+`aapval` (see `samples/aaphostsample`) checks this layout (`AAPVAL-PROC-*`).
+
+### MIDI device service metadata
+
+`StandaloneAudioPluginMidiDeviceService` (and `StandaloneAudioPluginMidiUmpDeviceService`) expose the instrument plugins of the package as a MIDI device. The platform serves only the first `<device>` of a MIDI device service, and keeps only the `name` of each port. To tell which plugin receives the messages sent to a port, add the `plugin-id` attribute in the AAP core namespace:
+
+```xml
+<devices xmlns:aap="urn:org.androidaudioplugin.core">
+  <device name="My Instruments" manufacturer="example.com" product="My Instruments">
+    <input-port name="First" aap:plugin-id="urn:example:first" />
+    <input-port name="Second" aap:plugin-id="urn:example:second" />
+  </device>
+</devices>
+```
+
+The UMP variant (`ump_device_info.xml`) puts the same attribute on its `<port>` elements. Ports without `plugin-id` are matched by name: the plugin whose display name starts with the device name and ends with the port name.
 
 ## AAP Plugin API and implementation
 

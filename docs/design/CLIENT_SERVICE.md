@@ -2,6 +2,17 @@
 
 The basic messaging between AAP client (host) and service is achieved using NdkBinder and "AAP AIDL".
 
+## Service connections
+
+A client connection is made to one AudioPluginService component, identified by its package name and class name. A plugin package may have more than one AudioPluginService, each running in its own process (see "Running plugins in separate processes" in `DEVELOPERS.md`), so the package name alone does not identify a service. For a plugin, the service is `PluginInformation.packageName` and `PluginInformation.localName`:
+
+- Kotlin: `AudioPluginClientBase.connectToPluginService(pluginInfo)` (or `(packageName, className)`), `AudioPluginServiceConnector.findExistingServiceConnection(packageName, className)`.
+- native: `PluginClient::connectToPluginService()`, `PluginClientSystem::ensurePluginServiceConnected(connections, packageName, className, callback)`, `PluginClientConnectionList::getServiceHandleForConnectedPlugin(packageName, className)`.
+
+The package-only variants remain for compatibility. As they do not tell which AudioPluginService is needed, they connect the package's *primary* service: the one declared with the stock `org.androidaudioplugin.AudioPluginService` class, or the first one if there is none (`AudioPluginHostHelper.selectPrimaryAudioPluginService()`). Plugins hosted by the other services are only reachable with the service class name. A native `ensurePluginServiceConnected()` request is always completed (its callback is invoked) once the requested service is connected, including when it was already connected; a host that then instantiates a plugin of another service gets an error ("Plugin service is not started yet"), not a hang.
+
+On the service side, there is one AudioPluginService per process (the native service binder is a process-wide singleton). Each service lists the plugins of its own `aap_metadata.xml` (`#Plugins` for the primary service, `#SecondaryPlugins` for the others), and `beginCreate()` rejects a plugin that another service of the package hosts, so that a misrouted request never loads that plugin's library into the wrong process.
+
 ## AAP AIDL
 
 The AIDL provides primitive operations between client and service, namely:

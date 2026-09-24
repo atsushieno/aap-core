@@ -33,7 +33,7 @@ class PluginTest {
 
     @Test
     fun repeatDirectServiceOperations() {
-        val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginService(applicationContext).plugins.first()
+        val pluginInfo = AudioPluginServiceHelper.getLocalAudioPluginServices(applicationContext).flatMap { it.plugins }.first()
 
         for (i in 0 until 5)
             testing.testInstancingAndProcessing(pluginInfo)

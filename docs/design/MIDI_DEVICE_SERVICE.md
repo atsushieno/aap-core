@@ -64,7 +64,21 @@ It is requierd by Android framework to put in `res/xml` directory, like:
 </devices>
 ```
 
-By default, `AudioPluginMidiDeviceService` class assumes that your plugin's display name starts with the device name specified here, and ends with the port name specified here. Another assumption is that if there is only one plugin in scope, then the plugin is used.
+To map a port to a plugin explicitly, add the `plugin-id` attribute in the AAP core namespace to the port. The platform keeps only the `name` of each port, so `AudioPluginMidiDeviceService` reads the resource by itself (`AudioPluginMidiDeviceMetadata`):
+
+```
+<devices xmlns:aap="urn:org.androidaudioplugin.core">
+    <device name="aap-ayumi" manufacturer="androidaudioplugin.org" product="aap-ayumi">
+        <input-port name="input" aap:plugin-id="urn:org.androidaudioplugin/samples/aap-ayumi/AAPAyumi" />
+    </device>
+</devices>
+```
+
+The UMP device metadata (`MidiUmpDeviceService`) puts the same attribute on its `<port>` elements.
+
+For ports without `plugin-id`, `AudioPluginMidiDeviceService` class assumes that your plugin's display name starts with the device name specified here, and ends with the port name specified here. Another assumption is that if there is only one plugin in scope, then the plugin is used.
+
+`StandaloneAudioPluginMidiDeviceService` covers the plugins of every AudioPluginService in the package, including the ones running in other processes (see "Running plugins in separate processes" in `DEVELOPERS.md`). The MIDI device service itself can stay in the main process, as it connects to the plugins through binder.
 
 The file name must match the one specified in `AndroidManifest.xml`.
 
@@ -72,11 +86,11 @@ It is just compliant to Android MIDI API. The metadata should be modified to mat
 
 ## Design limitations
 
-First of all, there seems no way to specify multiple `<device>` elements within the top-level `<devices>` element in the `midi_device_info.xml` (or whatever you name). As far as I tried, only the first `<device>` element is recognized (see [the relevant issue](https://github.com/atsushieno/aap-core/issues/91)).
+First of all, there seems no way to specify multiple `<device>` elements within the top-level `<devices>` element in the `midi_device_info.xml` (or whatever you name). As far as I tried, only the first `<device>` element is recognized (see [the relevant issue](https://github.com/atsushieno/aap-core/issues/91)). The platform source explains why: `MidiService` does register every sibling `<device>`, but `MidiDeviceService.onCreate()` takes `getServiceDeviceInfo(packageName, className)`, which returns the first device of the component, and every device binds the same component. So one MIDI device service component effectively serves one device, and a package with more than one instrument plugin exposes them as ports of that device.
 
 Also We cannot dynamically add or remove `<port>`s in the meta-data XML. Therefore, whenever you want to instantiate an arbitrary AAP instrument, you have to designate particular AAPs in the `<port>` elements in prior.
 
-For that reason, we leave `<port>` elements AAP-agnostic. On the other hand, we also have to provide ways to associate an AAP to a `<port>` element in case there are more than one instrument plugins in a service (see `aap-mda-lv2` module in `aap-lv2-mda` project).
+The platform ignores any port attribute other than `name`, so the association between a `<port>` element and an AAP is given by the AAP-specific `aap:plugin-id` attribute described above, or by the name-matching fallback (see `aap-mda-lv2` module in `aap-lv2-mda` project).
 
 ## MIDI 1.0/2.0 protocols
 

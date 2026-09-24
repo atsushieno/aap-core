@@ -2,6 +2,7 @@
 #include "../core/AAPJniFacade.h"
 #include "ALooperMessage.h"
 #include "aap/core/host/audio-plugin-host.h"
+#include <mutex>
 #include <string>
 
 namespace aap {
@@ -704,12 +705,37 @@ namespace aap {
 // --------------------------------------------------
 
     jobject audio_plugin_service_connector{nullptr};
+    // Keyed by "package/class". A plugin package may have more than one AudioPluginService, so the
+    // package name alone is not unique. An empty class name means "the primary service of the package".
+    // Java code (AudioPluginHostHelper.ensureBinderConnected()) always reports the exact key back
+    // once the request is complete, even if the services were already connected.
+    // It is accessed from the requesting thread and from the main looper (onServiceConnected()).
     std::map<std::string, std::function<void(std::string &)> > inProgressCallbacks{};
+    std::mutex inProgressCallbacksMutex{};
+
+    static std::string serviceConnectionKey(const std::string& packageName, const std::string& className) {
+        return packageName + "/" + className;
+    }
+
+    static std::function<void(std::string &)> takeInProgressCallback(const std::string& key) {
+        std::lock_guard<std::mutex> lock{inProgressCallbacksMutex};
+        auto entry = inProgressCallbacks.find(key);
+        if (entry == inProgressCallbacks.end())
+            return nullptr;
+        auto callback = entry->second;
+        inProgressCallbacks.erase(entry);
+        return callback;
+    }
 
     void AAPJniFacade::ensureServiceConnectedFromJni(jint connectorInstanceId,
                                                      std::string servicePackageName,
+                                                     std::string serviceClassName,
                                                      std::function<void(std::string &)> callback) {
-        inProgressCallbacks[servicePackageName] = callback;
+        auto callbackKey = serviceConnectionKey(servicePackageName, serviceClassName);
+        {
+            std::lock_guard<std::mutex> lock{inProgressCallbacksMutex};
+            inProgressCallbacks[callbackKey] = callback;
+        }
 
         usingJNIEnv<void *>([&](JNIEnv *env) {
             if (audio_plugin_service_connector == nullptr) {
@@ -740,33 +766,38 @@ namespace aap {
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
             jmethodID j_method_ensure_instance_created = env->GetStaticMethodID(
                     java_audio_plugin_host_helper_class, "ensureBinderConnected",
-                    "(Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
+                    "(Ljava/lang/String;Ljava/lang/String;Lorg/androidaudioplugin/hosting/AudioPluginServiceConnector;)V");
             if (!j_method_ensure_instance_created)
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.
 
             env->CallStaticVoidMethod(java_audio_plugin_host_helper_class,
                                       j_method_ensure_instance_created,
                                       env->NewStringUTF(servicePackageName.c_str()),
+                                      env->NewStringUTF(serviceClassName.c_str()),
                                       audio_plugin_service_connector);
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
                 auto throwable = env->ExceptionOccurred();
                 env->ExceptionClear();
                 std::string error{"ensureBinderConnected threw Java exception"};
-                if (throwable)
-                    callback(error);
+                if (throwable) {
+                    // unless it has been already reported as connected
+                    auto pending = takeInProgressCallback(callbackKey);
+                    if (pending)
+                        pending(error);
+                }
             }
             return nullptr;
         });
     }
 
-    void AAPJniFacade::handleServiceConnectedCallback(std::string servicePackageName) {
-        auto entry = inProgressCallbacks.find(servicePackageName);
-        if (entry != inProgressCallbacks.end()) {
+    void AAPJniFacade::handleServiceConnectedCallback(std::string servicePackageName, std::string serviceClassName) {
+        // A package-only request (empty class name) is reported by its own key when the request
+        // completes (AudioPluginHostHelper.ensureBinderConnected()), not by the service connection.
+        auto callback = takeInProgressCallback(serviceConnectionKey(servicePackageName, serviceClassName));
+        if (callback) {
             // FIXME: what kind of error propagation could be achieved here?
             std::string empty{};
-            auto callback = entry->second;
-            inProgressCallbacks.erase(entry);
             callback(empty);
         }
     }
