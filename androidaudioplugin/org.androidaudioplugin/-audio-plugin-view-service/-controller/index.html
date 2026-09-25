@@ -43,11 +43,11 @@
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
         <div class="library-version" id="library-version">
-0.11.1        </div>
+0.11.2        </div>
         <div class="navigation-controls">
         <ul class="filter-section filter-section_loading" id="filter-section" aria-label="Target filter">
                 <button class="platform-tag platform-selector jvm-like" data-active="" aria-pressed="true"
-                        data-filter=":androidaudioplugin/main">androidJvm</button>
+                        data-filter=":androidaudioplugin/release">release</button>
             <div class="dropdown filter-section--dropdown" data-role="dropdown" id="filter-section-dropdown">
                 <button class="button button_dropdown filter-section--dropdown-toggle" role="combobox"
                         data-role="dropdown-toggle"
@@ -64,10 +64,10 @@
                     </div>
                         <li role="option" class="dropdown--option platform-selector-option jvm-like" tabindex="0">
                             <label class="checkbox">
-                                <input type="checkbox" class="checkbox--input" id=":androidaudioplugin/main"
-                                       data-filter=":androidaudioplugin/main"/>
+                                <input type="checkbox" class="checkbox--input" id=":androidaudioplugin/release"
+                                       data-filter=":androidaudioplugin/release"/>
                                 <span class="checkbox--icon"></span>
-                                androidJvm
+                                release
                             </label>
                         </li>
                 </ul>
@@ -103,28 +103,28 @@
         </nav>
         <div id="resizer" class="resizer" data-item-type="BAR"></div>
         <div id="main" data-item-type="SECTION" role="main">
-<div class="main-content" data-page-type="classlike" id="content" pageIds="androidaudioplugin::org.androidaudioplugin/AudioPluginViewService.Controller///PointingToDeclaration//-2088260241">
+<div class="main-content" data-page-type="classlike" id="content" pageIds="androidaudioplugin::org.androidaudioplugin/AudioPluginViewService.Controller///PointingToDeclaration//-264888130">
   <div class="breadcrumbs"><a href="../../../../index.html">androidaudioplugin</a><span class="delimiter">/</span><a href="../../index.html">org.androidaudioplugin</a><span class="delimiter">/</span><a href="../index.html">AudioPluginViewService</a><span class="delimiter">/</span><span class="current">Controller</span></div>
   <div class="cover ">
     <h1 class="cover"><span><span>Controller</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">Controller</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>service<span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>instanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>guiInstanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>guiSessionId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span> : <a href="https://developer.android.com/reference/kotlin/java/lang/AutoCloseable.html">AutoCloseable</a></div></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">Controller</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>service<span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>instanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>guiInstanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>guiSessionId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span> : <a href="https://developer.android.com/reference/kotlin/java/lang/AutoCloseable.html">AutoCloseable</a></div></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="CONSTRUCTOR">
         <h2 class="tableheader">Constructors</h2>
-        <div class="table"><a data-name="-1351895770%2FConstructors%2F-2088260241" anchor-label="Controller" id="-1351895770%2FConstructors%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+        <div class="table"><a data-name="-1351895770%2FConstructors%2F-264888130" anchor-label="Controller" id="-1351895770%2FConstructors%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-togglable="CONSTRUCTOR" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-controller.html"><span><span>Controller</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1351895770%2FConstructors%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1351895770%2FConstructors%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">service<span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a><span class="token punctuation">, </span></span><span class="parameter ">pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">instanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter ">guiInstanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">guiSessionId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">service<span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a><span class="token punctuation">, </span></span><span class="parameter ">pluginId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">instanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter ">guiInstanceId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">guiSessionId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
@@ -133,92 +133,92 @@
       </div>
       <div data-togglable="PROPERTY">
         <h2 class="tableheader">Properties</h2>
-        <div class="table"><a data-name="774488361%2FProperties%2F-2088260241" anchor-label="guiInstanceId" id="774488361%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+        <div class="table"><a data-name="774488361%2FProperties%2F-264888130" anchor-label="guiInstanceId" id="774488361%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="gui-instance-id.html"><span>gui</span><wbr></wbr><span>Instance</span><wbr></wbr><span><span>Id</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="774488361%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="774488361%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="gui-instance-id.html">guiInstanceId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="gui-instance-id.html">guiInstanceId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-1191847152%2FProperties%2F-2088260241" anchor-label="guiSessionId" id="-1191847152%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="-1191847152%2FProperties%2F-264888130" anchor-label="guiSessionId" id="-1191847152%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="gui-session-id.html"><span>gui</span><wbr></wbr><span>Session</span><wbr></wbr><span><span>Id</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1191847152%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1191847152%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="gui-session-id.html">guiSessionId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="gui-session-id.html">guiSessionId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-2066999709%2FProperties%2F-2088260241" anchor-label="hostToken" id="-2066999709%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="-2066999709%2FProperties%2F-264888130" anchor-label="hostToken" id="-2066999709%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="host-token.html"><span>host</span><wbr></wbr><span><span>Token</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2066999709%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2066999709%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="host-token.html">hostToken</a><span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="host-token.html">hostToken</a><span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-67245738%2FProperties%2F-2088260241" anchor-label="instanceId" id="-67245738%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="-67245738%2FProperties%2F-264888130" anchor-label="instanceId" id="-67245738%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="instance-id.html"><span>instance</span><wbr></wbr><span><span>Id</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-67245738%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-67245738%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="instance-id.html">instanceId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="instance-id.html">instanceId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1567576632%2FProperties%2F-2088260241" anchor-label="pluginId" id="1567576632%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="1567576632%2FProperties%2F-264888130" anchor-label="pluginId" id="1567576632%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="plugin-id.html"><span>plugin</span><wbr></wbr><span><span>Id</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1567576632%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1567576632%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="plugin-id.html">pluginId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="plugin-id.html">pluginId</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-1444304097%2FProperties%2F-2088260241" anchor-label="service" id="-1444304097%2FProperties%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="-1444304097%2FProperties%2F-264888130" anchor-label="service" id="-1444304097%2FProperties%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="service.html"><span><span>service</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1444304097%2FProperties%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1444304097%2FProperties%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="service.html">service</a><span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">val </span><a href="service.html">service</a><span class="token operator">: </span><a href="../index.html">AudioPluginViewService</a></div></div></div>
                 </div>
               </div>
             </div>
@@ -227,62 +227,92 @@
       </div>
       <div data-togglable="FUNCTION">
         <h2 class="tableheader">Functions</h2>
-        <div class="table"><a data-name="24504060%2FFunctions%2F-2088260241" anchor-label="close" id="24504060%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+        <div class="table"><a data-name="24504060%2FFunctions%2F-264888130" anchor-label="close" id="24504060%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="close.html"><span><span>close</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="24504060%2FFunctions%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="24504060%2FFunctions%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword">override </span><span class="token keyword">fun </span><a href="close.html"><span class="token function">close</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword">override </span><span class="token keyword">fun </span><a href="close.html"><span class="token function">close</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="1435416567%2FFunctions%2F-2088260241" anchor-label="configureViewport" id="1435416567%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="1435416567%2FFunctions%2F-264888130" anchor-label="configureViewport" id="1435416567%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="configure-viewport.html"><span>configure</span><wbr></wbr><span><span>Viewport</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1435416567%2FFunctions%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1435416567%2FFunctions%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="configure-viewport.html"><span class="token function">configureViewport</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">viewportWidth<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">viewportHeight<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">contentWidth<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">contentHeight<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">scrollX<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">scrollY<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="configure-viewport.html"><span class="token function">configureViewport</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">viewportWidth<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">viewportHeight<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">contentWidth<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">contentHeight<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">scrollX<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">scrollY<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-341979645%2FFunctions%2F-2088260241" anchor-label="initialize" id="-341979645%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="2126789109%2FFunctions%2F-264888130" anchor-label="hideIme" id="2126789109%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="hide-ime.html"><span>hide</span><wbr></wbr><span><span>Ime</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2126789109%2FFunctions%2F-264888130"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="hide-ime.html"><span class="token function">hideIme</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-341979645%2FFunctions%2F-264888130" anchor-label="initialize" id="-341979645%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="initialize.html"><span><span>initialize</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-341979645%2FFunctions%2F-2088260241"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-341979645%2FFunctions%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="initialize.html"><span class="token function">initialize</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">messengerToSendReply<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/Messenger.html">Messenger</a><span class="token punctuation">, </span></span><span class="parameter ">hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter ">inputTransferToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/window/InputTransferToken.html">InputTransferToken</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">displayId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">width<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">height<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="initialize.html"><span class="token function">initialize</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">messengerToSendReply<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/Messenger.html">Messenger</a><span class="token punctuation">, </span></span><span class="parameter ">hostToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/os/IBinder.html">IBinder</a><span class="token punctuation">, </span></span><span class="parameter ">inputTransferToken<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/android/window/InputTransferToken.html">InputTransferToken</a><span class="token operator">?</span><span class="token punctuation">, </span></span><span class="parameter ">displayId<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">width<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">height<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="299172365%2FFunctions%2F-2088260241" anchor-label="resize" id="299172365%2FFunctions%2F-2088260241" data-filterable-set=":androidaudioplugin/main"></a>
-          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/main" data-filterable-set=":androidaudioplugin/main">
+<a data-name="-2108852731%2FFunctions%2F-264888130" anchor-label="requestHostFocus" id="-2108852731%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="resize.html"><span><span>resize</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="299172365%2FFunctions%2F-2088260241"></span>
+                  <div><a href="request-host-focus.html"><span>request</span><wbr></wbr><span>Host</span><wbr></wbr><span><span>Focus</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2108852731%2FFunctions%2F-264888130"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="resize.html"><span class="token function">resize</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">width<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">height<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="request-host-focus.html"><span class="token function">requestHostFocus</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="299172365%2FFunctions%2F-264888130" anchor-label="resize" id="299172365%2FFunctions%2F-264888130" data-filterable-set=":androidaudioplugin/release"></a>
+          <div class="table-row table-row_content" data-filterable-current=":androidaudioplugin/release" data-filterable-set=":androidaudioplugin/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="resize.html"><span><span>resize</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="299172365%2FFunctions%2F-264888130"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":androidaudioplugin/release"><div class="symbol monospace"><span class="token keyword">fun </span><a href="resize.html"><span class="token function">resize</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">width<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a><span class="token punctuation">, </span></span><span class="parameter ">height<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html">Int</a></span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
