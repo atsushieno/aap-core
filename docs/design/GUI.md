@@ -136,7 +136,7 @@ Since it is communication between the host and the plugin, the API will have to 
 
 In-plugin-process View is useful if Android Views are feasible.
 
-In-plugin-process View can be any `android.view.View` implementation, as long as it is interoperable enough over `SurfaceControlViewHost`. The `View` instance has to be returned by `AudioPluginViewFactory.createView(context: Context, pluginId: String, instanceId: Int)`. Each plugin declares a GUI factory which must be derived from this `AudioPluginViewFactory` class. `createView()` is an abstract method. The factory class is described in `aap_metadata.xml`.
+In-plugin-process View can be any `android.view.View` implementation, as long as it is interoperable enough over `SurfaceControlViewHost`. The `View` instance has to be returned by `AudioPluginViewFactory.createView(context: Context, pluginId: String, instanceId: Int)`. Each plugin declares a GUI factory which must be derived from this `AudioPluginViewFactory` class. `createView()` is an abstract method. When the UI session for the view is closed, `maybeDestroyView(context, pluginId, instanceId, view)` is called; override it if the view holds resources that should not stay alive until the next `createView()` (e.g. a native editor). The factory class is described in `aap_metadata.xml`.
 
 Hosting wise, we can directly use it as either `AndroidView` in Jetpack Compose, or `juce::AndroidViewComponent` in aap-juce apps.
 

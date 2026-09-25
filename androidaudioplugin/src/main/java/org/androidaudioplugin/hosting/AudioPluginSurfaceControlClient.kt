@@ -153,13 +153,24 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         }
     }
 
+    // getPreferredSize() blocks its caller (possibly the main thread) until the reply arrives, so
+    // that reply is handled on this thread.
     private val messageHandlerThread = HandlerThread("IncomingMessengerHandler").apply { start() }
+    // The other replies touch the SurfaceView (setChildSurfacePackage()) and the host UI state,
+    // which must happen on the thread that owns the view hierarchy.
     private val incomingMessenger = Messenger(ClientReplyHandler(
-        messageHandlerThread.looper,
+        context.mainLooper,
         onSurfacePackageReceived = onSurfacePackageReceived@ { guiSessionId, pluginId, instanceId, surfacePackage ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (connectedPluginId == null) {
+                    // The UI was disconnected (or this client closed) while the reply was in flight.
+                    Log.w(LOG_TAG, "Ignoring surface package for disconnected UI pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId")
+                    surfacePackage.release()
+                    return@onSurfacePackageReceived
+                }
                 if (!isExpectedReply(pluginId, instanceId, null)) {
                     Log.w(LOG_TAG, "Ignoring surface package for unexpected UI route pluginId:$pluginId instanceId:$instanceId guiSessionId:$guiSessionId expectedPluginId:$connectedPluginId expectedInstanceId:$connectedInstanceId")
+                    surfacePackage.release()
                     return@onSurfacePackageReceived
                 }
                 connectedGuiSessionId = guiSessionId

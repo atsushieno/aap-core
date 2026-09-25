@@ -497,6 +497,7 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
                 viewHost?.release()
                 viewHost = null
                 viewportView = null
+                pluginView?.let { AudioPluginServiceHelper.maybeDestroyNativeView(service, pluginId, instanceId, it) }
                 pluginView = null
                 replyMessenger = null
             }

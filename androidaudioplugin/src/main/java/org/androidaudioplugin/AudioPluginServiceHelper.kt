@@ -46,6 +46,12 @@ object AudioPluginServiceHelper {
             createNativeViewFactory(context, pluginId).createView(context, pluginId, instanceId)
         }
 
+    @JvmStatic
+    fun maybeDestroyNativeView(context: Context, pluginId: String, instanceId: Int, view: View) =
+        withInstanceScope(instanceId) {
+            createNativeViewFactory(context, pluginId).maybeDestroyView(context, pluginId, instanceId, view)
+        }
+
     private fun createNativeViewFactory(context: Context, pluginId: String): AudioPluginViewFactory {
         val pluginInfo = getLocalAudioPluginService(context).plugins.firstOrNull { it.pluginId == pluginId }
             ?: throw AudioPluginException("Specified plugin '$pluginId' was not found")

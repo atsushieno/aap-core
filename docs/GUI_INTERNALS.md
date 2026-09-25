@@ -381,6 +381,8 @@ Service behavior:
 3. if the GUI service session ID is stale, ignore
 4. otherwise close controller and remove it from map
 
+Closing a controller releases its `SurfaceControlViewHost` and then calls `AudioPluginViewFactory.maybeDestroyView()` for the plugin view, so that the factory can release what the view holds (e.g. aap-juce deletes the JUCE editor there). The same happens when a reconnect replaces the controller.
+
 The GUI service session ID check exists specifically to avoid tearing down a newly-created controller because of a delayed stale disconnect from an older session.
 
 ## Controller identity rules
