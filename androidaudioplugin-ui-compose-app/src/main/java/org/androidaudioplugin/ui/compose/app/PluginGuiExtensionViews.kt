@@ -3,6 +3,7 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.webkit.WebView
 import android.view.View
+import android.view.WindowManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -97,11 +98,14 @@ fun PluginSurfaceControlUI(pluginInfo: PluginInformation,
         // window through the *host* window's focus transfer target
         // (SurfaceView.onFocusChanged() -> IWindowSession.grantEmbeddedWindowFocus()).
         // Outside clicks must not dismiss it; this is a floating plugin editor window.
+        // FLAG_NOT_TOUCH_MODAL keeps touches outside this window reaching the host; without it a
+        // focusable popup is touch-modal and swallows them. FLAG_LAYOUT_NO_LIMITS = clippingEnabled false.
         properties = PopupProperties(
-            focusable = true,
+            flags = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-            clippingEnabled = false
+            dismissOnClickOutside = false
         )
     ) {
         Column(Modifier.padding(10.dp)) {
