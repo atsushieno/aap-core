@@ -40,6 +40,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.androidaudioplugin.AudioPluginViewService
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -53,11 +54,14 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
         private const val FOCUS_REQUEST_RETRY_MILLIS = 100L
         private const val FOCUS_REQUEST_MAX_ATTEMPTS = 20
 
-        private val viewToClient = java.util.Collections.synchronizedMap(java.util.WeakHashMap<android.view.View, AudioPluginSurfaceControlClient>())
+        // The value must not be held strongly: the client references its view (`surface`), which
+        // would keep the WeakHashMap key reachable forever. The view's own `owner` keeps the
+        // client alive for as long as the view is.
+        private val viewToClient = java.util.Collections.synchronizedMap(java.util.WeakHashMap<android.view.View, WeakReference<AudioPluginSurfaceControlClient>>())
 
         /** Returns the [AudioPluginSurfaceControlClient] that owns [view], or null if not known. */
         @JvmStatic
-        fun fromSurfaceView(view: android.view.View): AudioPluginSurfaceControlClient? = viewToClient[view]
+        fun fromSurfaceView(view: android.view.View): AudioPluginSurfaceControlClient? = viewToClient[view]?.get()
     }
 
     internal class AudioPluginSurfaceView(context: Context, private val owner: AudioPluginSurfaceControlClient) : SurfaceView(context) {
@@ -207,7 +211,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
     val surfaceView: View
         get() = getOrCreateSurfaceView()
 
-    private fun createSurfaceView() = AudioPluginSurfaceView(context, this).also { viewToClient[it] = this }
+    private fun createSurfaceView() = AudioPluginSurfaceView(context, this).also { viewToClient[it] = WeakReference(this) }
 
     private fun getOrCreateSurfaceView(): AudioPluginSurfaceView =
         surface ?: createSurfaceView().also { surface = it }
@@ -649,6 +653,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
 
     override fun close() {
         handleSurfaceDetachedFromWindow()
+        surface?.let { viewToClient.remove(it) }
         messageHandlerThread.quitSafely()
     }
 }
