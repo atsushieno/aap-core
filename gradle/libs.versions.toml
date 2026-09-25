@@ -73,7 +73,6 @@ test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.
 ktmidi = { module = "dev.atsushieno:ktmidi", version.ref = "ktmidi" }
 
 oboe = { module = "com.google.oboe:oboe", version.ref = "oboe" }
-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-rules = { group = "androidx.test", name = "rules", version.ref = "rules" }
 
 [plugins]

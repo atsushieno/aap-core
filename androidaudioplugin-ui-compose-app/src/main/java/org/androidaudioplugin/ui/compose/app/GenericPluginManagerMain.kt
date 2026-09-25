@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -24,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,16 +36,6 @@ import kotlinx.coroutines.launch
 import org.androidaudioplugin.AudioPluginServiceHelper
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import kotlin.system.exitProcess
-
-@Preview
-@Composable
-fun GenericPluginHostPreview() {
-    PluginManagerTheme {
-        Surface {
-            SystemPluginManagerMain()
-        }
-    }
-}
 
 @Composable
 fun SystemPluginManagerMain() {
