@@ -1,0 +1,67 @@
+name: build SFZ bundle app
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.SIGNING_KEY_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - uses: android-actions/setup-android@v4
+
+      - run: chmod +x ./gradlew
+
+      - name: Bump version
+        run: sed -i -E 's/versionCode [0-9]+/versionCode ${{ github.run_number }}/' app/build.gradle
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Build release AAB
+        run: ./gradlew :app:bundleRelease
+
+      - name: Sign app bundle
+        if: env.HAS_SIGNING_KEY == 'true'
+        uses: ilharp/sign-android-release@v2
+        id: sign_app
+        with:
+          releaseDir: app/build/outputs/bundle/release
+          signingKey: ${{ secrets.SIGNING_KEY_BASE64 }}
+          keyAlias: ${{ secrets.SIGNING_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1.21.0
+        with:
+          artifacts: ${{ steps.sign_app.outputs.signedFile && format('app/build/outputs/apk/debug/*.apk,{0}', steps.sign_app.outputs.signedFile) || 'app/build/outputs/apk/debug/*.apk' }}
