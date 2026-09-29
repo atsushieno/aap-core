@@ -276,7 +276,25 @@ bool aap::internal::updateCachedParameterValueById(aap::PluginInstance& instance
     return true;
 }
 
+namespace {
+void updateParameterValueCacheFromBuffer(aap::PluginInstance& instance, void* buffer, bool acceptChannelVoiceMessages);
+}
+
 void aap::internal::updateParameterValueCacheFromOutputBuffer(aap::PluginInstance& instance, void* buffer) {
+    updateParameterValueCacheFromBuffer(instance, buffer, true);
+}
+
+void aap::internal::updateParameterValueCacheFromInputBuffer(aap::PluginInstance& instance, void* buffer) {
+    // On the input side, CC / assignable controllers that were not translated to AAP parameter
+    // SysEx8 (by the MIDI mapping policy) are meant for the plugin as plain MIDI, so only the
+    // SysEx8 form counts as a parameter change.
+    updateParameterValueCacheFromBuffer(instance, buffer, false);
+}
+
+namespace {
+void updateParameterValueCacheFromBuffer(aap::PluginInstance& instance, void* buffer, bool acceptChannelVoiceMessages) {
+    using namespace aap;
+    using namespace aap::internal;
     if (!buffer)
         return;
     auto* state = get_parameter_state(&instance);
@@ -305,7 +323,7 @@ void aap::internal::updateParameterValueCacheFromOutputBuffer(aap::PluginInstanc
         if (messageSize <= 0 || offset + static_cast<uint32_t>(messageSize) > mbh->length)
             break;
 
-        if (messageType == 4 && messageSize >= 8) {
+        if (acceptChannelVoiceMessages && messageType == 4 && messageSize >= 8) {
             auto word0 = ump[0];
             auto word1 = ump[1];
             auto status = (word0 >> 16) & 0xF0;
@@ -362,6 +380,7 @@ void aap::internal::updateParameterValueCacheFromOutputBuffer(aap::PluginInstanc
         offset += static_cast<uint32_t>(messageSize);
     }
 
+}
 }
 
 double aap::internal::getParameterValue(aap::PluginInstance& instance, int32_t index) {

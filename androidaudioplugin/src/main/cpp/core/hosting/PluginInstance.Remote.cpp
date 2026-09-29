@@ -229,6 +229,18 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         event_midi2_buffer_offset = 0;
     }
 
+    // Keep the parameter value cache in sync with the changes that the host is sending now;
+    // otherwise hosts that read values back from the cache (e.g. the compose-app host UI) see
+    // their own changes reverted, unless the plugin happens to echo them to its MIDI2 output.
+    for (auto i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
+            port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
+            continue;
+        auto aapBuffer = getAudioPluginBuffer();
+        internal::updateParameterValueCacheFromInputBuffer(*this, aapBuffer->get_buffer(aapBuffer, i));
+    }
+
     // now we can pass the input to the plugin.
     plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
 

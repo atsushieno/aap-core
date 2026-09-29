@@ -16,6 +16,8 @@ void rebuildParameterIndexAndValues(PluginInstance& instance);
 // Reindexes ids and preserves values from the already-populated cached_parameters (no rescan).
 void reindexParameterValues(PluginInstance& instance);
 void updateParameterValueCacheFromOutputBuffer(PluginInstance& instance, void* buffer);
+// Records host-originated parameter changes (AAP parameter SysEx8 in a MIDI2 input buffer).
+void updateParameterValueCacheFromInputBuffer(PluginInstance& instance, void* buffer);
 bool updateCachedParameterValueById(PluginInstance& instance, int32_t parameterId, double plainValue);
 double getParameterValue(PluginInstance& instance, int32_t index);
 void handleParameterLayoutChanged(PluginInstance& instance);
