@@ -9,6 +9,7 @@
 #include "midi-aapxs.h"
 #include "gui-aapxs.h"
 #include "urid-aapxs.h"
+#include "performance-hint-aapxs.h"
 #include <functional>
 
 namespace aap::xs {
@@ -66,6 +67,9 @@ namespace aap::xs {
         virtual int32_t hideGui(aap_gui_instance_id guiInstanceId) = 0;
         virtual int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) = 0;
         virtual int32_t destroyGui(aap_gui_instance_id guiInstanceId) = 0;
+
+        // Performance hint (host side only; the service consumes it in the framework)
+        virtual PerformanceHintClientAAPXS* getPerformanceHintClient() { return nullptr; }
     };
 
     class ClientStandardExtensions : public StandardExtensions {
@@ -76,6 +80,7 @@ namespace aap::xs {
         std::unique_ptr<StateClientAAPXS> state{nullptr};
         std::unique_ptr<GuiClientAAPXS> gui{nullptr};
         std::unique_ptr<UridClientAAPXS> urid{nullptr};
+        std::unique_ptr<PerformanceHintClientAAPXS> performance_hint{nullptr};
 
     public:
         void initialize(AAPXSClientDispatcher* dispatcher) {
@@ -87,6 +92,7 @@ namespace aap::xs {
             state = std::make_unique<StateClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI));
             gui = std::make_unique<GuiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_GUI_EXTENSION_URI), dispatcher->getSerialization(AAP_GUI_EXTENSION_URI));
             urid = std::make_unique<UridClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_URID_EXTENSION_URI), dispatcher->getSerialization(AAP_URID_EXTENSION_URI));
+            performance_hint = std::make_unique<PerformanceHintClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PERFORMANCE_HINT_EXTENSION_URI), dispatcher->getSerialization(AAP_PERFORMANCE_HINT_EXTENSION_URI));
             initialized = true;
         }
 
@@ -161,6 +167,9 @@ namespace aap::xs {
         int32_t hideGui(aap_gui_instance_id guiInstanceId) override { return gui->hideGui(guiInstanceId); }
         int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui->resizeGui(guiInstanceId, width, height); }
         int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { return gui->destroyGui(guiInstanceId); }
+
+        // Performance hint
+        PerformanceHintClientAAPXS* getPerformanceHintClient() override { return performance_hint.get(); }
     };
 
     class ServiceStandardExtensions : public StandardExtensions {

@@ -1,6 +1,7 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
+#include "ServicePerformanceHint.h"
 #include <unordered_map>
 #include <vector>
 
@@ -73,7 +74,8 @@ aap::LocalPluginInstance::LocalPluginInstance(
           host(host),
           aapxs_host_session(eventMidi2InputBufferSize),
           feature_registry(new xs::AAPXSDefinitionServiceRegistry(aapxsRegistry)),
-          aapxs_dispatcher(aapxsRegistry)
+          aapxs_dispatcher(aapxsRegistry),
+          performance_hint(std::make_unique<ServicePerformanceHint>())
           {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
@@ -200,7 +202,9 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
     {
         const std::lock_guard<NanoSleepLock> pluginCallLock{plugin_call_mutex};
+        auto hintBegin = performance_hint->beginProcess();
         plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
+        performance_hint->endProcess(hintBegin);
     }
 
     if (mbh) // make sure to reset incoming length here
@@ -321,7 +325,8 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     auto registry = feature_registry.get()->items();
     auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
 
-    if (def) { // ignore undefined extensions here
+    // An unknown URI resolves to the empty "unmapped" slot rather than nullptr, so check its content too.
+    if (def && def->uri && def->process_incoming_plugin_aapxs_request) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
         AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
@@ -342,6 +347,8 @@ void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *c
         // plugin request
         auto& dispatcher = getAAPXSDispatcher();
         auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
+        if (!aapxsInstance || !aapxsInstance->serialization || !aapxsInstance->serialization->data)
+            return; // unknown extension
         // We need to copy extension data buffer before calling it.
         memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
         aapxsInstance->serialization->data_size = context->dataSize;

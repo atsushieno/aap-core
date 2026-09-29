@@ -23,6 +23,7 @@ namespace aap {
 
     class PluginSharedMemoryStore;
     class PluginHost;
+    class ServicePerformanceHint;
     class PluginClient;
 
 /**
@@ -191,6 +192,7 @@ namespace aap {
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
+        std::unique_ptr<ServicePerformanceHint> performance_hint;
 
         static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
             return ((LocalPluginInstance*) host->context)->getHostExtension(0, uri);
@@ -265,6 +267,9 @@ namespace aap {
         }
 
         void handleAAPXSInput(aap_midi2_aapxs_parse_context *context);
+
+        // ADPF hint session driven by the performance-hint AAPXS.
+        ServicePerformanceHint* getPerformanceHint() { return performance_hint.get(); }
     };
 
     typedef bool(*aapxs_client_ipc_sender)(void* context,

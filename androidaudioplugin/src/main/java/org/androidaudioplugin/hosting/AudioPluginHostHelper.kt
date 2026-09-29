@@ -34,6 +34,7 @@ object AudioPluginHostHelper {
     const val AAP_ACTION_NAME = "org.androidaudioplugin.AudioPluginService.V4"
     const val AAP_METADATA_NAME_PLUGINS = "$AAP_ACTION_NAME#Plugins"
     const val AAP_METADATA_NAME_EXTENSIONS = "$AAP_ACTION_NAME#Extensions"
+    const val AAP_METADATA_NAME_FRAMEWORK_EXTENSIONS = "$AAP_ACTION_NAME#FrameworkExtensions"
     const val AAP_METADATA_CORE_NS = "urn:org.androidaudioplugin.core"
     const val AAP_METADATA_EXT_PARAMETERS_NS = "urn://androidaudioplugin.org/extensions/parameters"
     const val AAP_METADATA_PORT_PROPERTIES_NS = "urn:org.androidaudioplugin.port"
@@ -214,6 +215,18 @@ object AudioPluginHostHelper {
             val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
             if (extensions != null)
                 plugin.extensions = extensions.toString().split(',').toMutableList()
+            // Extensions provided by the service framework (libandroidaudioplugin) apply to every plugin in the package.
+            // A service built with an older framework lacks this metadata, and hosts must not send it those extension requests.
+            val frameworkExtensions = try {
+                context.packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA).metaData
+                    ?.getString(AAP_METADATA_NAME_FRAMEWORK_EXTENSIONS)
+            } catch (_: PackageManager.NameNotFoundException) { null }
+            frameworkExtensions?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.forEach { uri ->
+                plugin.plugins.forEach { p ->
+                    if (p.extensions.none { it.uri == uri })
+                        p.extensions.add(ExtensionInformation(false, uri))
+                }
+            }
             return AudioPluginServiceInformationResult(plugin, diagnostics)
         } catch (ex: Exception) {
             val message = "Failed to load AAP metadata for ${serviceInfo.packageName}/${serviceInfo.name}: ${ex.message ?: ex.javaClass.simpleName}"

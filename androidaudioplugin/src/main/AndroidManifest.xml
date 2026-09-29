@@ -3,4 +3,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!-- Extensions that libandroidaudioplugin consumes on behalf of every plugin in the package.
+             Merged into each plugin app, so that hosts can tell whether a service knows them without IPC. -->
+        <meta-data
+            android:name="org.androidaudioplugin.AudioPluginService.V4#FrameworkExtensions"
+            android:value="urn://androidaudioplugin.org/extensions/performance-hint/v1" />
+    </application>
 </manifest>

@@ -7,6 +7,7 @@ aap::xs::AAPXSDefinition_Presets presets;
 aap::xs::AAPXSDefinition_State state;
 aap::xs::AAPXSDefinition_Gui gui;
 aap::xs::AAPXSDefinition_Urid urid;
+aap::xs::AAPXSDefinition_PerformanceHint performance_hint;
 
 aap::xs::AAPXSDefinitionRegistry::AAPXSDefinitionRegistry(
         std::unique_ptr<UridMapping> mapping,
@@ -24,7 +25,9 @@ aap::xs::AAPXSDefinitionRegistry standard_extensions{std::make_unique<aap::xs::U
     parameters.asPublic(),
     presets.asPublic(),
     state.asPublic(),
-    gui.asPublic()
+    gui.asPublic(),
+    // appended last so that the URIDs of the other extensions stay compatible with older services.
+    performance_hint.asPublic()
 })};
 
 aap::xs::AAPXSDefinitionRegistry *aap::xs::AAPXSDefinitionRegistry::getStandardExtensions() {
