@@ -275,6 +275,11 @@ aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *ur
         return &host_plugin_info;
     }
 
+    // The host's own implementation takes precedence over the AAPXS-provided receiver.
+    if (getHostExtension)
+        if (auto hostExtension = getHostExtension(this, urid, uri))
+            return hostExtension;
+
     auto registry = getAAPXSRegistry()->items();
     auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);
     if (definition && definition->get_host_extension_receiver) {
@@ -286,10 +291,6 @@ aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *ur
                 return receiver.as_host_extension(&receiver);
         }
     }
-
-    // look for user-implemented host extensions
-    if (getHostExtension)
-        return getHostExtension(this, urid, uri);
     return nullptr;
 }
 
@@ -403,17 +404,8 @@ aap::RemotePluginInstance::processPluginAAPXSReply(AAPXSRequestContext* request)
 
 void
 aap::RemotePluginInstance::sendHostAAPXSReply(AAPXSRequestContext* request) {
-    // If it is at ACTIVE state it has to switch to AAPXS SysEx8 MIDI messaging mode,
-    // otherwise it goes to the Binder route.
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        // aapxsInstance already contains binary data here, so we retrieve data from there.
-        int32_t group = 0; // will we have to give special semantics on it?
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, group,
-                                 request->request_id, request->urid, request->uri, request->serialization->data,
-                                 request->serialization->data_size, request->opcode);
-    } else {
-        // it was done synchronously, nothing to do here
-    }
+    (void) request;
+    // Host extension requests only arrive via Binder, and complete via its callback: nothing to send.
 }
 
 void

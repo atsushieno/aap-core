@@ -14,6 +14,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/aap_midi2_helper.cpp"
 	"core/hosting/audio-plugin-host.cpp"
 	"core/hosting/PluginHost.cpp"
+	"core/hosting/host-aapxs-request-queue.cpp"
 	"core/hosting/PluginHost.Client.cpp"
 	"core/hosting/PluginHost.Service.cpp"
 	"core/hosting/plugin-client-system.cpp"

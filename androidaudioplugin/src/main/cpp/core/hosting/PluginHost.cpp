@@ -5,6 +5,7 @@
 #include <aap/core/aapxs/extension-service.h>
 #include <aap/core/aapxs/standard-extensions.h>
 #include "audio-plugin-host-internals.h"
+#include "host-aapxs-request-queue.h"
 
 #define LOG_TAG "AAP.PluginHost"
 
@@ -21,10 +22,61 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
     aapxs_definition_registry = aapxsDefinitionRegistry ? aapxsDefinitionRegistry : xs::AAPXSDefinitionRegistry::getStandardExtensions();
 }
 
+namespace {
+
+struct AAPXSInstanceContext {
+    AAPXSDefinition* definition;
+    void* context;
+};
+
+template <typename Dispatcher, typename GetInitiator, typename GetRecipient>
+void collectAAPXSInstanceContexts(aap::xs::AAPXSDefinitionRegistry* registry, Dispatcher& dispatcher,
+                                  GetInitiator getInitiator, GetRecipient getRecipient,
+                                  std::vector<AAPXSInstanceContext>& result) {
+    for (auto& definition : *registry) {
+        if (!definition.uri || !definition.release_instance_context)
+            continue;
+        if (auto initiator = getInitiator(dispatcher, definition.uri); initiator && initiator->aapxs_context)
+            result.push_back({&definition, initiator->aapxs_context});
+        if (auto recipient = getRecipient(dispatcher, definition.uri); recipient && recipient->aapxs_context)
+            result.push_back({&definition, recipient->aapxs_context});
+    }
+}
+
+// AAPXS instances are set up during instantiation; they do not exist before (or if it failed).
+bool hasAAPXSInstances(aap::PluginInstance* instance) {
+    auto state = instance->getInstanceState();
+    return state != aap::PLUGIN_INSTANTIATION_STATE_INITIAL && state != aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+}
+
+std::vector<AAPXSInstanceContext> collectAAPXSInstanceContexts(aap::PluginInstance* instance) {
+    std::vector<AAPXSInstanceContext> result;
+    if (!hasAAPXSInstances(instance))
+        return result;
+    if (auto local = dynamic_cast<aap::LocalPluginInstance*>(instance))
+        collectAAPXSInstanceContexts(local->getAAPXSRegistry()->items(), local->getAAPXSDispatcher(),
+                                     [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
+                                     [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
+                                     result);
+    else if (auto remote = dynamic_cast<aap::RemotePluginInstance*>(instance))
+        collectAAPXSInstanceContexts(remote->getAAPXSRegistry()->items(), remote->getAAPXSDispatcher(),
+                                     [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
+                                     [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
+                                     result);
+    return result;
+}
+
+}
+
 void aap::PluginHost::destroyInstance(PluginInstance* instance)
 {
     instances.erase(std::find(instances.begin(), instances.end(), instance));
+    // The plugin may hold pointers into these contexts until it is released (at `delete`).
+    auto aapxsContexts = collectAAPXSInstanceContexts(instance);
     delete instance;
+    for (auto& c : aapxsContexts)
+        c.definition->release_instance_context(c.definition, c.context);
+    internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
 }
 
 aap::PluginInstance* aap::PluginHost::getInstanceByIndex(int32_t index) {

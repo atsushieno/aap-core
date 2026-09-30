@@ -46,7 +46,7 @@ AAPXSInitiatorInstance aap::xs::AAPXSClientDispatcher::populateAAPXSInitiatorIns
         uint8_t urid,
         aapxs_initiator_send_func sendAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {
-    AAPXSInitiatorInstance instance{this,
+    AAPXSInitiatorInstance instance{nullptr,
                                     hostContext,
                                     serialization,
                                     urid,
@@ -60,7 +60,7 @@ aap::xs::AAPXSClientDispatcher::populateAAPXSRecipientInstance(
         void* hostContext,
         AAPXSSerializationContext *serialization,
         aapxs_recipient_send_func sendAapxsReply) {
-    AAPXSRecipientInstance instance{this,
+    AAPXSRecipientInstance instance{nullptr,
                                     hostContext,
                                     serialization,
                                     sendAapxsReply};
@@ -109,7 +109,7 @@ aap::xs::AAPXSServiceDispatcher::populateAAPXSRecipientInstance(
         void* hostContext,
         AAPXSSerializationContext *serialization,
         aapxs_recipient_send_func sendAAPXSReply) {
-    AAPXSRecipientInstance instance{this,
+    AAPXSRecipientInstance instance{nullptr,
                                     hostContext,
                                     serialization,
                                     sendAAPXSReply};
@@ -123,7 +123,7 @@ aap::xs::AAPXSServiceDispatcher::populateAAPXSInitiatorInstance(
         uint8_t urid,
         aapxs_initiator_send_func sendHostAAPXSRequest,
         initiator_get_new_request_id_func getNewRequestId) {
-    AAPXSInitiatorInstance instance{this,
+    AAPXSInitiatorInstance instance{nullptr,
                                     hostContext,
                                     serialization,
                                     urid,

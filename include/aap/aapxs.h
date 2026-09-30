@@ -173,6 +173,15 @@ typedef struct AAPXSDefinition {
             struct AAPXSDefinition* definition,
             AAPXSRecipientInstance *aapxsInstance,
             AndroidAudioPluginHost *host);
+
+    /**
+     * Releases what the AAPXS stored in the `aapxs_context` of its per-plugin-instance
+     * AAPXSInitiatorInstance / AAPXSRecipientInstance. Invoked once for each non-null context,
+     * after the plugin instance is destroyed. May be nullptr if the AAPXS does not use them.
+     */
+    void (*release_instance_context) (
+            struct AAPXSDefinition* definition,
+            void* aapxsContext);
 } AAPXSDefinition;
 
 typedef struct AAPXSExtensionClientProxy {

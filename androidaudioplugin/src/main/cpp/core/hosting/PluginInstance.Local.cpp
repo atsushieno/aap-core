@@ -3,6 +3,7 @@
 #include "plugin-parameter-state.h"
 #include <unordered_map>
 #include <vector>
+#include "host-aapxs-request-queue.h"
 
 #define LOG_TAG "AAP.Local.Instance"
 
@@ -90,6 +91,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
 }
 
 aap::LocalPluginInstance::~LocalPluginInstance() {
+    internal::HostAAPXSRequestQueue::getInstance().closeOwner(this);
     if (aapxs_out_midi2_buffer)
         free(aapxs_out_midi2_buffer);
     if (aapxs_out_merge_buffer)
@@ -264,6 +266,7 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
                                     staticSendAAPXSReply,
                                     staticSendAAPXSRequest,
                                     staticGetNewRequestId);
+    internal::HostAAPXSRequestQueue::getInstance().start();
 }
 
 void
@@ -290,15 +293,20 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     // synchronous Binder route and never the AAPXS SysEx8 channel. (is_command_rt_safe is therefore
     // only consulted for the plugin direction, in RemotePluginInstance::sendPluginAAPXSRequest.)
     // The actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-    ipc_send_extension_message_func(ipc_send_extension_message_context,
-                                    request->uri,
-                                    getInstanceId(),
-                                    request->opcode,
-                                    request->request_id,
-                                    request->callback,
-                                    request->callback_user_data,
-                                    &plugin_host_facade,
-                                    request->error_callback);
+    internal::HostAAPXSRequest queued{this,
+                                      ipc_send_extension_message_func,
+                                      ipc_send_extension_message_context,
+                                      request->uri,
+                                      getInstanceId(),
+                                      request->opcode,
+                                      static_cast<int32_t>(request->request_id),
+                                      request->callback,
+                                      request->callback_user_data,
+                                      &plugin_host_facade,
+                                      request->error_callback};
+    // Plugins may call host extensions on the audio thread, so the IPC happens on the queue's worker.
+    if (internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) == internal::HostAAPXSRequestQueue::EnqueueResult::Full)
+        queued.sendNow();
     return request->callback != nullptr;
 }
 
