@@ -23,45 +23,45 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plug
     auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
     switch (request->opcode) {
         case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
-            *((int32_t*) aapxsInstance->serialization->data) = (ext && ext->get_parameter_count) ? ext->get_parameter_count(ext, plugin) : -1;
+            *((int32_t*) request->serialization->data) = (ext && ext->get_parameter_count) ? ext->get_parameter_count(ext, plugin) : -1;
             request->serialization->data_size = sizeof(int32_t);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         case OPCODE_PARAMETERS_GET_PARAMETER:
             if (ext != nullptr && ext->get_parameter) {
-                int32_t index = *((int32_t *) aapxsInstance->serialization->data);
+                int32_t index = *((int32_t *) request->serialization->data);
                 auto p = ext->get_parameter(ext, plugin, index);
-                memcpy(aapxsInstance->serialization->data, (const void *) &p, sizeof(p));
+                memcpy(request->serialization->data, (const void *) &p, sizeof(p));
             } else {
-                memset(aapxsInstance->serialization->data, 0, sizeof(aap_parameter_info_t));
+                memset(request->serialization->data, 0, sizeof(aap_parameter_info_t));
             }
             request->serialization->data_size = sizeof(aap_parameter_info_t);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         case OPCODE_PARAMETERS_GET_PROPERTY: {
-            int32_t parameterId = *((int32_t *) aapxsInstance->serialization->data);
-            int32_t propertyId = *((int32_t *) aapxsInstance->serialization->data + 1);
-            *((double *) aapxsInstance->serialization->data) =
+            int32_t parameterId = *((int32_t *) request->serialization->data);
+            int32_t propertyId = *((int32_t *) request->serialization->data + 1);
+            *((double *) request->serialization->data) =
                     ext != nullptr && ext->get_parameter_property ? ext->get_parameter_property(ext, plugin, parameterId, propertyId): 0.0;
             request->serialization->data_size = sizeof(double);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         }
         case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT: {
-            int32_t parameterId = *((int32_t *) aapxsInstance->serialization->data);
-            *((int32_t *) aapxsInstance->serialization->data) = ext != nullptr && ext->get_enumeration_count ? ext->get_enumeration_count(ext, plugin, parameterId) : 0;
+            int32_t parameterId = *((int32_t *) request->serialization->data);
+            *((int32_t *) request->serialization->data) = ext != nullptr && ext->get_enumeration_count ? ext->get_enumeration_count(ext, plugin, parameterId) : 0;
             request->serialization->data_size = sizeof(int32_t);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
             break;
         }
         case OPCODE_PARAMETERS_GET_ENUMERATION:
             if (ext != nullptr && ext->get_enumeration) {
-                int32_t parameterId = *((int32_t *) aapxsInstance->serialization->data);
-                int32_t enumIndex = *((int32_t *) aapxsInstance->serialization->data + 1);
+                int32_t parameterId = *((int32_t *) request->serialization->data);
+                int32_t enumIndex = *((int32_t *) request->serialization->data + 1);
                 auto e = ext->get_enumeration(ext, plugin, parameterId, enumIndex);
-                memcpy(aapxsInstance->serialization->data, (const void *) &e, sizeof(e));
+                memcpy(request->serialization->data, (const void *) &e, sizeof(e));
             } else {
-                memset(aapxsInstance->serialization->data, 0, sizeof(aap_parameter_enum_t));
+                memset(request->serialization->data, 0, sizeof(aap_parameter_enum_t));
             }
             request->serialization->data_size = sizeof(aap_parameter_enum_t);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
@@ -158,8 +158,7 @@ void* aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_as_host_receiver(
 // AAPXSParametersClient
 
 int32_t aap::xs::ParametersClientAAPXS::getParameterCount() {
-    serialization->data_size = 0;
-    auto result = callAndWait<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT,
+    auto result = callAndWait<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT, nullptr, 0,
                                        [](AAPXSSerializationContext* ctx) -> int32_t {
         return getTypedResult<int32_t>(ctx);
     });
@@ -167,9 +166,7 @@ int32_t aap::xs::ParametersClientAAPXS::getParameterCount() {
 }
 
 aap_parameter_info_t aap::xs::ParametersClientAAPXS::getParameter(int32_t index) {
-    *((int32_t*) serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    auto result = callAndWait<aap_parameter_info_t>(OPCODE_PARAMETERS_GET_PARAMETER,
+    auto result = callAndWait<aap_parameter_info_t>(OPCODE_PARAMETERS_GET_PARAMETER, &index, sizeof(index),
                                                     [](AAPXSSerializationContext* ctx) -> aap_parameter_info_t {
         return getTypedResult<aap_parameter_info_t>(ctx);
     });
@@ -177,10 +174,8 @@ aap_parameter_info_t aap::xs::ParametersClientAAPXS::getParameter(int32_t index)
 }
 
 double aap::xs::ParametersClientAAPXS::getProperty(int32_t index, int32_t propertyId) {
-    *((int32_t*) serialization->data) = index;
-    *((int32_t*) serialization->data + 1) = propertyId;
-    serialization->data_size = sizeof(int32_t) * 2;
-    auto result = callAndWait<double>(OPCODE_PARAMETERS_GET_PROPERTY,
+    int32_t payload[] {index, propertyId};
+    auto result = callAndWait<double>(OPCODE_PARAMETERS_GET_PROPERTY, payload, sizeof(payload),
                                       [](AAPXSSerializationContext* ctx) -> double {
         return getTypedResult<double>(ctx);
     });
@@ -188,9 +183,7 @@ double aap::xs::ParametersClientAAPXS::getProperty(int32_t index, int32_t proper
 }
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationCount(int32_t index) {
-    *((int32_t*) serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    auto result = callAndWait<int32_t>(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT,
+    auto result = callAndWait<int32_t>(OPCODE_PARAMETERS_GET_ENUMERATION_COUNT, &index, sizeof(index),
                                        [](AAPXSSerializationContext* ctx) -> int32_t {
         return getTypedResult<int32_t>(ctx);
     });
@@ -199,80 +192,33 @@ int32_t aap::xs::ParametersClientAAPXS::getEnumerationCount(int32_t index) {
 
 aap_parameter_enum_t
 aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex) {
-    *((int32_t*) serialization->data) = index;
-    *((int32_t*) serialization->data + 1) = enumIndex;
-    serialization->data_size = sizeof(int32_t) * 2;
-    auto result = callAndWait<aap_parameter_enum_t>(OPCODE_PARAMETERS_GET_ENUMERATION,
+    int32_t payload[] {index, enumIndex};
+    auto result = callAndWait<aap_parameter_enum_t>(OPCODE_PARAMETERS_GET_ENUMERATION, payload, sizeof(payload),
                                                     [](AAPXSSerializationContext* ctx) -> aap_parameter_enum_t {
         return getTypedResult<aap_parameter_enum_t>(ctx);
     });
     return result.isOk() ? result.value : aap_parameter_enum_t{};
 }
 
-void aap::xs::ParametersClientAAPXS::completeWithParameterCallback (void* callbackData, void* pluginOrHost) {
-    auto cb = (CallbackData*) callbackData;
-    auto thiz = (ParametersClientAAPXS *) cb->context;
-    auto result = thiz->getTypedResult<aap_parameter_info_t>(thiz->serialization);
-    ((aapxs_async_get_parameter_callback) cb->callback) (thiz, pluginOrHost, cb->index, result);
-    cb->context = nullptr;
-}
-
-void aap::xs::ParametersClientAAPXS::completeWithEnumCallback (void* callbackData, void* pluginOrHost) {
-    auto cb = (CallbackData*) callbackData;
-    auto thiz = (ParametersClientAAPXS *) cb->context;
-    auto result = getTypedResult<aap_parameter_enum_t>(thiz->serialization);
-    ((aapxs_async_get_enumeration_callback) cb->callback) (thiz, pluginOrHost, cb->index, cb->enum_index, result);
-    cb->context = nullptr;
-}
-
-
+// The callbacks receive null `pluginOrHost`, as the async core does not carry it.
 int32_t
 aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index,
                                                   aapxs_async_get_parameter_callback* callback) {
-    *((int32_t*) serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-
-    uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-    CallbackData *callbackData = nullptr;
-    for (size_t i = 0; i < UINT8_MAX; i++)
-        if (pending_calls[i].context == nullptr)
-            callbackData = pending_calls + i;
-    if (!callbackData) {
-        AAP_ASSERT_FALSE;
-        return -1;
-    }
-    *callbackData = {this, callback, index, 0};
-    AAPXSRequestContext request{completeWithParameterCallback, callbackData, serialization,
-                                0, AAP_PARAMETERS_EXTENSION_URI, requestId,
-                                OPCODE_PARAMETERS_GET_PARAMETER};
-
-    aapxs_instance->send_aapxs_request(aapxs_instance, &request);
-
-    return requestId;
+    return callFunctionAsync(OPCODE_PARAMETERS_GET_PARAMETER, &index, sizeof(index),
+                             [this, index, callback](const std::string& error, AAPXSSerializationContext* ctx) {
+        auto result = error.empty() ? getTypedResult<aap_parameter_info_t>(ctx) : aap_parameter_info_t{};
+        ((aapxs_async_get_parameter_callback) callback) (this, nullptr, index, result);
+    });
 }
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32_t enumIndex,
                                                             aapxs_async_get_enumeration_callback* callback) {
-    *((int32_t*) serialization->data) = index;
-    *((int32_t*) serialization->data + 1) = enumIndex;
-    serialization->data_size = sizeof(int32_t) * 2;
-
-    uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-    CallbackData *callbackData = nullptr;
-    for (size_t i = 0; i < UINT8_MAX; i++)
-        if (pending_calls[i].context == nullptr)
-            callbackData = pending_calls + i;
-    if (!callbackData) {
-        AAP_ASSERT_FALSE;
-        return -1;
-    }
-    *callbackData = {this, callback, index, enumIndex};
-    AAPXSRequestContext request{completeWithEnumCallback, callbackData, serialization,
-                                0, AAP_PARAMETERS_EXTENSION_URI, requestId, OPCODE_PARAMETERS_GET_ENUMERATION};
-
-    aapxs_instance->send_aapxs_request(aapxs_instance, &request);
-
-    return requestId;
+    int32_t payload[] {index, enumIndex};
+    return callFunctionAsync(OPCODE_PARAMETERS_GET_ENUMERATION, payload, sizeof(payload),
+                             [this, index, enumIndex, callback](const std::string& error, AAPXSSerializationContext* ctx) {
+        auto result = error.empty() ? getTypedResult<aap_parameter_enum_t>(ctx) : aap_parameter_enum_t{};
+        ((aapxs_async_get_enumeration_callback) callback) (this, nullptr, index, enumIndex, result);
+    });
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {

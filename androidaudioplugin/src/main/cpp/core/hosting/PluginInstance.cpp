@@ -2,6 +2,7 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
+#include "aapxs-transport.h"
 #include "aap/ext/midi.h"
 #include <algorithm>
 #include <array>
@@ -264,6 +265,7 @@ static void reindex_parameter_values_locked(aap::PluginInstance& instance, Plugi
 }
 
 aap::PluginInstance::~PluginInstance() {
+    internal::releaseAAPXSBinderChannels(this);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
     if (plugin != nullptr)
         plugin_factory->release(plugin_factory, plugin);
@@ -383,6 +385,9 @@ void aap::PluginInstance::startPortConfiguration() {
     */
 }
 
+// Parameter IDs are 0..16383 (see aap_parameter_info_t::stable_id); no sane plugin exceeds that for enumerations either.
+static constexpr int32_t MAX_SCANNED_PARAMETER_ITEMS = 16384;
+
 void aap::PluginInstance::scanParametersAndBuildList() {
     const std::lock_guard<std::mutex> scanLock{parameter_layout_scan_mutex};
 
@@ -394,6 +399,11 @@ void aap::PluginInstance::scanParametersAndBuildList() {
 
     // if parameters extension does not exist, do not populate cached parameters list.
     // (The empty list means no parameters in metadata either.)
+    // A broken reply must not make us allocate or loop on a garbage count; keep the old list instead.
+    if (parameterCount > MAX_SCANNED_PARAMETER_ITEMS) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: invalid parameter count %d", parameterCount);
+        return;
+    }
     auto scannedParameters = std::make_unique<std::vector<ParameterInformation>>();
     scannedParameters->reserve(parameterCount);
 
@@ -405,7 +415,12 @@ void aap::PluginInstance::scanParametersAndBuildList() {
                                para.max_value,
                                para.default_value};
         auto parameterId = para.stable_id;
-        for (auto e = 0, en = ext.getEnumerationCount(parameterId); e < en; e++) {
+        auto enumCount = ext.getEnumerationCount(parameterId);
+        if (parameterId < 0 || enumCount < 0 || enumCount > MAX_SCANNED_PARAMETER_ITEMS) {
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: invalid parameter %d at %d (enumeration count: %d)", parameterId, i, enumCount);
+            return;
+        }
+        for (auto e = 0; e < enumCount; e++) {
             auto pe = ext.getEnumeration(parameterId, e);
             ParameterInformation::Enumeration eDef{e, pe.value, fixed_string(pe.name, AAP_MAX_PARAMETER_ENUM_NAME)};
             p.addEnumeration(eDef);
@@ -727,9 +742,9 @@ aap_plugin_info_t aap::PluginInstance::get_plugin_info(aap_host_plugin_info_exte
     return ret;
 }
 
-uint32_t aapxs_request_id_serial{0};
+std::atomic<uint32_t> aapxs_request_id_serial{0};
 uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
-    return aapxs_request_id_serial++;
+    return aapxs_request_id_serial.fetch_add(1);
 }
 
 // AAPXS (v2 too)

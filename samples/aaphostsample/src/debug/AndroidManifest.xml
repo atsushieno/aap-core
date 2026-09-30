@@ -14,5 +14,12 @@
                 <action android:name="org.androidaudioplugin.aaphostsample.VALIDATE" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".AapParameterStressReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.androidaudioplugin.aaphostsample.STRESS_PARAMETERS" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

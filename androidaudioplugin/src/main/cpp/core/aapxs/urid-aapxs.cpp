@@ -55,9 +55,10 @@ aap::xs::AAPXSDefinition_Urid::aapxs_urid_get_plugin_proxy(struct AAPXSDefinitio
 }
 
 void aap::xs::UridClientAAPXS::map(uint8_t urid, const char *uri) {
-    *(uint8_t*) serialization->data = urid;
-    size_t len = strlen(uri);
-    *(uint32_t*) ((uint8_t*) serialization->data + 1) = len;
-    memcpy((uint8_t*) serialization->data + 1 + sizeof(int32_t), uri, len);
-    callVoidFunctionSynchronously(OPCODE_MAP);
+    uint32_t len = strlen(uri);
+    std::vector<uint8_t> payload(1 + sizeof(int32_t) + len);
+    payload[0] = urid;
+    memcpy(payload.data() + 1, &len, sizeof(len));
+    memcpy(payload.data() + 1 + sizeof(int32_t), uri, len);
+    callVoidFunctionSynchronously(OPCODE_MAP, payload.data(), payload.size());
 }

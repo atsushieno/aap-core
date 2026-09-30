@@ -1,56 +1,13 @@
 #include <algorithm>
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
+#include "aapxs-transport.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
 #include "aap/core/aap_midi2_helper.h"
 #include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Remote.Instance"
-
-namespace {
-void filterOutAAPXSReplies(void* buffer) {
-    auto mbh = (AAPMidiBufferHeader*) buffer;
-    auto* data = (uint8_t*) (mbh + 1);
-    uint32_t outputOffset = 0;
-    uint32_t inputOffset = 0;
-    uint8_t parseData[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
-    uint8_t parseConversion[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
-    aap_midi2_aapxs_parse_context parseContext{};
-    aap_midi2_aapxs_parse_context_prepare(&parseContext, parseData, parseConversion, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
-
-    while (inputOffset < mbh->length) {
-        auto* iter = data + inputOffset;
-        auto remaining = mbh->length - inputOffset;
-        auto* ump = (cmidi2_ump*) iter;
-        auto messageSize = cmidi2_ump_get_message_size_bytes(ump);
-        if (messageSize <= 0)
-            break;
-        if (aap_midi2_parse_aapxs_sysex8(&parseContext, iter, remaining)) {
-            do {
-                inputOffset += messageSize;
-                if (inputOffset >= mbh->length)
-                    break;
-                iter = data + inputOffset;
-                ump = (cmidi2_ump*) iter;
-                if (cmidi2_ump_get_message_type(ump) != CMIDI2_MESSAGE_TYPE_SYSEX8_MDS)
-                    break;
-                messageSize = cmidi2_ump_get_message_size_bytes(ump);
-            } while (cmidi2_ump_get_status_code(ump) < CMIDI2_SYSEX_END);
-            continue;
-        }
-
-        if (outputOffset + static_cast<uint32_t>(messageSize) > mbh->length)
-            break;
-        if (outputOffset != inputOffset)
-            memmove(data + outputOffset, iter, messageSize);
-        outputOffset += messageSize;
-        inputOffset += messageSize;
-    }
-
-    mbh->length = outputOffset;
-}
-}
 
 aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
                                                 xs::AAPXSDefinitionRegistry *aapxsRegistry,
@@ -254,7 +211,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         void* data = aapBuffer->get_buffer(aapBuffer, i);
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
-        filterOutAAPXSReplies(data);
+        internal::sysex8::filterOutMessages(data);
         internal::updateParameterValueCacheFromOutputBuffer(*this, data);
     }
 
@@ -343,6 +300,7 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
 }
 
 void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
+    internal::abortAAPXSBinderChannels(this, error.c_str(), plugin);
     std::vector<xs::TypedAAPXS*> snapshot;
     {
         std::lock_guard<std::mutex> lock(async_abort_registry->mutex);
@@ -354,12 +312,8 @@ void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri, int32_t opcode, void *data, int32_t dataSize, uint32_t newRequestId) {
-    auto& dispatcher = getAAPXSDispatcher();
-    auto aapxsInstance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri);
-    auto serialization = aapxsInstance->serialization;
-    memcpy(serialization->data, data, dataSize);
-    serialization->data_size = dataSize;
-    AAPXSRequestContext request{nullptr, nullptr, serialization, urid, uri, newRequestId, opcode};
+    AAPXSSerializationContext serialization{data, (size_t) dataSize, (size_t) dataSize};
+    AAPXSRequestContext request{nullptr, nullptr, &serialization, urid, uri, newRequestId, opcode};
     return sendPluginAAPXSRequest(&request);
 }
 
@@ -379,27 +333,33 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
             definition->is_command_rt_safe(definition, /*isHostExtension=*/ false, request->opcode);
 
     if (useSysEx8) {
-        // request->serialization already contains binary data here, so we retrieve data from there.
-        // This is an asynchronous function, so we do not wait for the result, and it has no awaiter (hence std::nullopt)
-        aapxs_session.addSession(aapxsSessionAddEventUmpInput,
-                                 this, request);
-        return true;
-    } else {
-        // Here we have to get a native plugin instance and send extension message.
-        // It is kind af annoying because we used to implement Binder-specific part only within the
-        // plugin API (binder-client-as-plugin.cpp)...
-        // So far, instead of rewriting a lot of code to do so, we let AAPClientContext
-        // assign its implementation details that handle Binder messaging as a std::function.
-        return ipc_send_extension_message_impl(plugin->plugin_specific,
-                                               request->uri,
-                                               getInstanceId(),
-                                               request->serialization->data_size,
-                                               request->request_id,
-                                               request->opcode,
-                                               request->callback,
-                                               request->callback_user_data,
-                                               request->error_callback);
+        // The request is encoded into SysEx8 right away; its reply is written into its own buffer.
+        // A request without callback expects no reply.
+        AAPXSRequestContext routed = *request;
+        if (!request->callback || internal::sysex8::registerRequest(*request, routed)) {
+            aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, &routed);
+            return true;
+        }
+        // Too many pending SysEx8 requests: fall back to Binder.
     }
+
+    auto aapxsInstance = request->urid != 0 ? dispatcher.getPluginAAPXSByUrid(request->urid) : dispatcher.getPluginAAPXSByUri(request->uri);
+    if (!aapxsInstance || !aapxsInstance->serialization)
+        return false;
+    auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
+        return [this](const AAPXSRequestContext& routed) {
+            return ipc_send_extension_message_impl(plugin->plugin_specific,
+                                                   routed.uri,
+                                                   getInstanceId(),
+                                                   routed.serialization->data_size,
+                                                   routed.request_id,
+                                                   routed.opcode,
+                                                   routed.callback,
+                                                   routed.callback_user_data,
+                                                   routed.error_callback);
+        };
+    });
+    return channel->send(request);
 }
 
 void
@@ -452,9 +412,16 @@ void aap::RemotePluginInstance::handleAAPXSReply(aap_midi2_aapxs_parse_context *
         if (context->opcode >= 0) {
             // plugin AAPXS reply
             auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
-            memcpy(aapxsInstance->serialization->data, context->data, context->dataSize);
-            aapxsInstance->serialization->data_size = context->dataSize;
-            AAPXSRequestContext request{nullptr, nullptr, aapxsInstance->serialization, context->urid, context->uri, context->request_id, context->opcode};
+            // The reply goes into its request's own buffer, never into the shared memory that Binder requests use.
+            AAPXSSerializationContext unrequested{context->data, (size_t) context->dataSize, (size_t) context->dataSize};
+            auto target = internal::sysex8::findRequestBuffer(context->request_id);
+            if (target) {
+                auto size = std::min((size_t) context->dataSize, target->data_capacity);
+                memcpy(target->data, context->data, size);
+                target->data_size = size;
+            } else
+                target = &unrequested;
+            AAPXSRequestContext request{nullptr, nullptr, target, context->urid, context->uri, context->request_id, context->opcode};
             if (aapxs->process_incoming_plugin_aapxs_reply)
                 aapxs->process_incoming_plugin_aapxs_reply(aapxs, aapxsInstance, plugin, &request);
             else

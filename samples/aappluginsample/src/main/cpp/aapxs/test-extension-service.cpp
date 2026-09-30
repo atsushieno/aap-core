@@ -103,15 +103,15 @@ namespace aap::xs {
     };
 
     int32_t ExampleClientAAPXS::foo(int32_t input) {
-        *((int32_t*)serialization->data) = input;
-        return callTypedFunctionSynchronously<int32_t>(AAPXS_EXAMPLE_TEST_OPCODE_FOO);
+        return callTypedFunctionSynchronously<int32_t>(AAPXS_EXAMPLE_TEST_OPCODE_FOO, &input, sizeof(input));
     }
 
     void ExampleClientAAPXS::bar(const char *msg) {
-        auto len = strlen(msg);
-        *((int32_t*)serialization->data) = len;
-        strncpy((char*) serialization->data + sizeof(int32_t), msg, len);
-        callVoidFunctionSynchronously(AAPXS_EXAMPLE_TEST_OPCODE_BAR);
+        int32_t len = strlen(msg);
+        std::vector<uint8_t> payload(sizeof(int32_t) + len);
+        memcpy(payload.data(), &len, sizeof(len));
+        memcpy(payload.data() + sizeof(int32_t), msg, len);
+        callVoidFunctionSynchronously(AAPXS_EXAMPLE_TEST_OPCODE_BAR, payload.data(), payload.size());
     }
 
     class StateServiceAAPXS : public TypedAAPXS {

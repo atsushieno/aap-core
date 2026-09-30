@@ -48,21 +48,9 @@ namespace aap::xs {
         typedef void (*aapxs_async_get_parameter_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, aap_parameter_info_t result);
         typedef void (*aapxs_async_get_enumeration_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, int32_t enumIndex, aap_parameter_enum_t result);
 
-        struct CallbackData {
-            void* context{nullptr};
-            void* callback{nullptr};
-            int32_t index{0};
-            int32_t enum_index{0};
-        };
-
-        CallbackData pending_calls[UINT8_MAX];
-        static void completeWithParameterCallback(void *callbackData, void *pluginOrHost);
-        static void completeWithEnumCallback(void *callbackData, void *pluginOrHost);
-
     public:
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : TypedAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
-            memset(pending_calls, 0, sizeof(CallbackData) * UINT8_MAX);
         }
 
         int32_t getParameterCount();

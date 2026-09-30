@@ -157,8 +157,7 @@ void* aap::xs::AAPXSDefinition_Presets::aapxs_presets_as_host_receiver(
 // Strongly-typed client implementation (plugin extension functions)
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetCount() {
-    serialization->data_size = 0;
-    auto result = callAndWait<int32_t>(OPCODE_GET_PRESET_COUNT,
+    auto result = callAndWait<int32_t>(OPCODE_GET_PRESET_COUNT, nullptr, 0,
                                        [](AAPXSSerializationContext* ctx) -> int32_t {
         return getTypedResult<int32_t>(ctx);
     });
@@ -179,24 +178,18 @@ namespace {
 
 std::string aap::xs::PresetsClientAAPXS::getPreset(int32_t index, aap_preset_t &preset) {
     // request: 0..3 index
-    *(int32_t*) (serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    return callAndWait<bool>(OPCODE_GET_PRESET_DATA, [&preset](AAPXSSerializationContext* ctx) -> bool {
+    return callAndWait<bool>(OPCODE_GET_PRESET_DATA, &index, sizeof(index), [&preset](AAPXSSerializationContext* ctx) -> bool {
         preset = deserializePreset(ctx);
         return true;
     }).error;
 }
 
 std::string aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
-    *(int32_t*) (serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    return callAndWait<bool>(OPCODE_SET_PRESET_INDEX, [](AAPXSSerializationContext*) -> bool { return true; }).error;
+    return callAndWait<bool>(OPCODE_SET_PRESET_INDEX, &index, sizeof(index), [](AAPXSSerializationContext*) -> bool { return true; }).error;
 }
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) {
-    *(int32_t*) (serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    return callFunctionAsync(OPCODE_GET_PRESET_DATA,
+    return callFunctionAsync(OPCODE_GET_PRESET_DATA, &index, sizeof(index),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* ctx) {
         if (!callback)
             return;
@@ -208,9 +201,7 @@ int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function
 }
 
 int32_t aap::xs::PresetsClientAAPXS::setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) {
-    *(int32_t*) (serialization->data) = index;
-    serialization->data_size = sizeof(int32_t);
-    return callFunctionAsync(OPCODE_SET_PRESET_INDEX,
+    return callFunctionAsync(OPCODE_SET_PRESET_INDEX, &index, sizeof(index),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*) {
         if (callback)
             callback(Result<bool>{error.empty(), error});
@@ -220,9 +211,9 @@ int32_t aap::xs::PresetsClientAAPXS::setPresetIndexAsync(int32_t index, std::fun
 // Strongly-typed service implementation (host extension functions)
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetLoaded() {
-    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESET_LOADED);
+    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESET_LOADED, nullptr, 0);
 }
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetsUpdated() {
-    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESETS_UPDATED);
+    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESETS_UPDATED, nullptr, 0);
 }

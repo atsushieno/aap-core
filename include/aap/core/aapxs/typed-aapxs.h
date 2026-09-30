@@ -9,7 +9,9 @@
 #include <memory>
 #include <mutex>
 #include <atomic>
+#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <cstring>
 #include "aap/aapxs.h"
@@ -26,12 +28,6 @@
 namespace aap { class PluginInstance; }
 
 namespace aap::xs {
-    template<typename T, typename R>
-    struct WithPromise {
-        void* data;
-        std::promise<R>* promise;
-    };
-
     class TypedAAPXS;
 
     // Shared-owned registry of a plugin instance's async-capable AAPXS clients. Held by *both* the
@@ -71,54 +67,31 @@ namespace aap::xs {
 
         virtual ~TypedAAPXS();
 
-        // This must be visible to consuming code i.e. defined in this header file.
-        template<typename T>
-        static void getTypedCallback(void* callbackContext, void* pluginOrHost) {
-            auto callbackData = (WithPromise<void*, T>*) callbackContext;
-            T result = *(T*) (callbackData->data);
-            callbackData->promise->set_value(result);
-        }
-
         template<typename T>
         static T getTypedResult(AAPXSSerializationContext* serialization) {
             return *(T*) (serialization->data);
         }
 
-        static void getVoidCallback(void* callbackContext, void* pluginOrHost) {
-            auto callbackData = (WithPromise<void*, int32_t>*) callbackContext;
-            callbackData->promise->set_value(0); // dummy result, just signaling the std::future
-        }
-
-        // This must be visible to consuming code i.e. defined in this header file.
+        // Waits without a timeout (unlike callAndWait()). Returns T{} on error.
         // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
         //  which means there should be another RT-safe version of this function.
         template<typename T>
-        T callTypedFunctionSynchronously(int32_t opcode) {
-            std::promise<T> promise{};
-            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            auto future = promise.get_future();
-            WithPromise<void, T> callbackData{serialization->data, &promise};
-            AAPXSRequestContext request{getTypedCallback<T>, &callbackData, serialization, aapxs_instance->urid, uri, requestId, opcode};
-
-            if (aapxs_instance->send_aapxs_request(aapxs_instance, &request)) {
-                future.wait();
-                return future.get();
-            }
-            else
-                return getTypedResult<T>(serialization);
+        T callTypedFunctionSynchronously(int32_t opcode, const void* payload, size_t payloadSize) {
+            auto promise = std::make_shared<std::promise<T>>();
+            auto future = promise->get_future();
+            send(opcode, makeCall(payload, payloadSize, sizeof(T), [promise](const std::string& error, AAPXSSerializationContext* s) {
+                promise->set_value(error.empty() ? getTypedResult<T>(s) : T{});
+            }));
+            return future.get();
         }
 
-        // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
-        //  which means there should be another RT-safe version of this function.
-        void callVoidFunctionSynchronously(int32_t opcode) {
-            std::promise<int32_t> promise{};
-            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            WithPromise<void, int32_t> callbackData{serialization->data, &promise};
-            auto future = promise.get_future();
-            AAPXSRequestContext request{getVoidCallback, &callbackData, serialization, aapxs_instance->urid, uri, requestId, opcode};
-
-            if (aapxs_instance->send_aapxs_request(aapxs_instance, &request))
-                future.wait();
+        void callVoidFunctionSynchronously(int32_t opcode, const void* payload, size_t payloadSize) {
+            auto promise = std::make_shared<std::promise<void>>();
+            auto future = promise->get_future();
+            send(opcode, makeCall(payload, payloadSize, 0, [promise](const std::string&, AAPXSSerializationContext*) {
+                promise->set_value();
+            }));
+            future.wait();
         }
 
         // "Fire and forget" invocation: sends a request with no completion callback (the
@@ -128,7 +101,8 @@ namespace aap::xs {
         // presets' notify*), via the same callFunctionAsync / callAndWait path as plugin extensions.
         void fireVoidFunctionAndForget(int32_t opcode) {
             uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            AAPXSRequestContext request{nullptr, nullptr, serialization, aapxs_instance->urid, uri, requestId,
+            AAPXSSerializationContext empty{nullptr, 0, 0};
+            AAPXSRequestContext request{nullptr, nullptr, &empty, aapxs_instance->urid, uri, requestId,
                                         opcode};
             aapxs_instance->send_aapxs_request(aapxs_instance, &request);
         }
@@ -139,10 +113,10 @@ namespace aap::xs {
         // A request returns immediately with a request id; the registered `deliver` closure is
         // invoked exactly once — on reply (`error` empty), timeout, or service death (`error` set).
         //
-        // Shared-memory safety (N=1): each extension instance owns a single serialization block.
-        // While a request is in flight, further requests are *deferred* (not dropped, not blocked):
-        // their payload is snapshotted and replayed when the block frees up. With per-plugin-instance
-        // blocks this only ever serializes the rare same-instance/same-extension overlap.
+        // Every request has its own buffer (`AsyncCall::serialization`) that carries its payload and
+        // receives its reply, so requests never share memory with each other; the transport copies
+        // it through the extension's shared memory when it has to. Callers pass the payload in, and
+        // must never write `serialization->data` themselves.
     protected:
         int32_t request_timeout_ms{AAPXS_REQUEST_TIMEOUT_DEFAULT_MS};
 
@@ -151,19 +125,16 @@ namespace aap::xs {
             uint32_t request_id{0};
             std::atomic<bool> fired{false};
             std::atomic<bool> detached{false};
+            std::vector<uint8_t> buffer{};
+            AAPXSSerializationContext serialization{};
             // error empty == success; the closure reads `serialization` only on success.
             std::function<void(const std::string& error)> deliver{};
         };
 
+        using ResultHandler = std::function<void(const std::string& error, AAPXSSerializationContext* ctx)>;
+
         std::mutex calls_mutex{};
         std::map<uint32_t, std::unique_ptr<AsyncCall>> in_flight{};
-
-        struct DeferredCall {
-            int32_t opcode{0};
-            std::vector<uint8_t> payload{};
-            std::unique_ptr<AsyncCall> call{};
-        };
-        std::deque<DeferredCall> deferred{};
 
         static void onAsyncReply(void* ctx, void* /*pluginOrHost*/) {
             auto call = (AsyncCall*) ctx;
@@ -186,16 +157,39 @@ namespace aap::xs {
             owner->finish(call, error ? error : "error");
         }
 
-        // assumes `calls_mutex` is held on entry; releases it before doing IPC.
-        int32_t sendLocked(int32_t opcode, std::unique_ptr<AsyncCall> call, std::unique_lock<std::mutex>& lock) {
+        // `replyCapacity` bounds the reply that is kept (and copied back from shared memory); it is
+        // clamped to the extension's capacity.
+        std::unique_ptr<AsyncCall> makeCall(const void* payload, size_t payloadSize, size_t replyCapacity, ResultHandler onResult) {
+            auto call = std::make_unique<AsyncCall>();
+            auto raw = call.get();
+            call->owner.store(this);
+            call->request_id = aapxs_instance->get_new_request_id(aapxs_instance);
+            call->deliver = [raw, onResult = std::move(onResult)](const std::string& error) {
+                if (onResult)
+                    onResult(error, &raw->serialization);
+            };
+            auto capacity = std::max(payloadSize, std::min(replyCapacity, serialization->data_capacity));
+            call->buffer.resize(capacity);
+            if (payloadSize > 0)
+                memcpy(call->buffer.data(), payload, payloadSize);
+            call->serialization = AAPXSSerializationContext{call->buffer.data(), payloadSize, capacity};
+            return call;
+        }
+
+        int32_t send(int32_t opcode, std::unique_ptr<AsyncCall> call) {
             uint32_t requestId = call->request_id;
             AsyncCall* raw = call.get();
-            in_flight[requestId] = std::move(call);
-            AAPXSRequestContext request{onAsyncReply, raw, serialization, aapxs_instance->urid,
+            if (call->serialization.data_size > serialization->data_capacity) {
+                call->deliver("request payload exceeds the AAPXS shared memory capacity");
+                return requestId;
+            }
+            {
+                std::lock_guard<std::mutex> lock(calls_mutex);
+                in_flight[requestId] = std::move(call);
+            }
+            AAPXSRequestContext request{onAsyncReply, raw, &raw->serialization, aapxs_instance->urid,
                                         uri, requestId, opcode, onAsyncError};
-            lock.unlock();
-            bool sent = aapxs_instance->send_aapxs_request(aapxs_instance, &request);
-            if (!sent)
+            if (!aapxs_instance->send_aapxs_request(aapxs_instance, &request))
                 finish(raw, "request could not be sent");
             return requestId;
         }
@@ -203,24 +197,14 @@ namespace aap::xs {
         void finish(AsyncCall* call, const std::string& error) {
             if (call->fired.exchange(true))
                 return; // exactly-once: reply vs. timeout vs. death may race
-            // Deliver (copies results out of `serialization`) before any deferred replay overwrites it.
             if (call->deliver)
                 call->deliver(error);
-            std::unique_lock<std::mutex> lock(calls_mutex);
+            std::lock_guard<std::mutex> lock(calls_mutex);
             in_flight.erase(call->request_id); // deletes the AsyncCall; do not touch `call` afterwards
-            if (!deferred.empty() && in_flight.empty()) {
-                DeferredCall d = std::move(deferred.front());
-                deferred.pop_front();
-                if (!d.payload.empty())
-                    memcpy(serialization->data, d.payload.data(), d.payload.size());
-                serialization->data_size = d.payload.size();
-                sendLocked(d.opcode, std::move(d.call), lock);
-            }
         }
 
         void detachAllPending(const std::string& error) {
             std::vector<std::unique_ptr<AsyncCall>> pending;
-            std::deque<DeferredCall> abortedDeferred;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
                 pending.reserve(in_flight.size());
@@ -230,23 +214,16 @@ namespace aap::xs {
                     pending.push_back(std::move(kv.second));
                 }
                 in_flight.clear();
-                abortedDeferred = std::move(deferred);
-                deferred.clear();
             }
 
-            // In-flight Binder calls still have a raw callback context. Complete their promises now,
-            // then release ownership so the eventual Binder callback can delete the detached context.
+            // In-flight calls still have a raw callback context. Complete their promises now,
+            // then release ownership so the eventual callback can delete the detached context.
             for (auto& call : pending) {
                 if (call->deliver)
                     call->deliver(error);
                 call->detached.store(true);
                 (void) call.release();
             }
-
-            // Deferred calls were never sent to Binder, so no external callback can reference them.
-            for (auto& d : abortedDeferred)
-                if (d.call && !d.call->fired.exchange(true) && d.call->deliver)
-                    d.call->deliver(error);
         }
 
         // Registers/unregisters this instance with the owning plugin instance's abort registry,
@@ -259,73 +236,59 @@ namespace aap::xs {
     public:
         void setRequestTimeoutMs(int32_t ms) { request_timeout_ms = ms; }
 
-        // Fail every in-flight and not-yet-sent request with `error`. Used on hard transport
-        // failure (e.g. Binder service death) where no reply will ever arrive. Safe because the
-        // death handler then becomes the sole completer (Binder `completed()` cannot fire again).
+        // Fail every in-flight request with `error`. Used on hard transport failure (e.g. Binder
+        // service death) where no reply will ever arrive. Safe because the death handler then
+        // becomes the sole completer (Binder `completed()` cannot fire again).
         void failAllPending(const std::string& error) {
             std::vector<AsyncCall*> pending;
-            std::deque<DeferredCall> abortedDeferred;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
                 pending.reserve(in_flight.size());
                 for (auto& kv : in_flight)
                     pending.push_back(kv.second.get());
-                // Clear deferred first so finish()'s pump does not replay onto a dead service.
-                abortedDeferred = std::move(deferred);
-                deferred.clear();
             }
             for (auto* call : pending)
                 finish(call, error);
-            for (auto& d : abortedDeferred)
-                if (d.call && !d.call->fired.exchange(true) && d.call->deliver)
-                    d.call->deliver(error);
         }
 
-        // Low-level async primitive. `serialization->data` must already hold the request payload.
-        // `onResult(error, serialization)` is invoked exactly once; it must copy out whatever it
-        // needs from `serialization` (the block may be reused right after it returns).
-        int32_t callFunctionAsync(int32_t opcode,
-                                  std::function<void(const std::string& error, AAPXSSerializationContext* ctx)> onResult) {
-            auto ctx = serialization;
-            auto call = std::make_unique<AsyncCall>();
-            call->owner.store(this);
-            call->deliver = [ctx, onResult = std::move(onResult)](const std::string& error) {
-                if (onResult)
-                    onResult(error, ctx);
-            };
-            std::unique_lock<std::mutex> lock(calls_mutex);
-            uint32_t requestId = aapxs_instance->get_new_request_id(aapxs_instance);
-            call->request_id = requestId;
-            if (!in_flight.empty()) {
-                // block busy: defer with a snapshot of the current request payload.
-                DeferredCall d;
-                d.opcode = opcode;
-                auto data = (uint8_t*) ctx->data;
-                d.payload.assign(data, data + ctx->data_size);
-                d.call = std::move(call);
-                deferred.push_back(std::move(d));
-                return requestId;
-            }
-            return sendLocked(opcode, std::move(call), lock);
+        // Low-level async primitive. `payload` is copied, so it need not outlive this call.
+        // `onResult(error, serialization)` is invoked exactly once, with the request's own buffer.
+        // `replyCapacity` (defaults to the extension's capacity) bounds the reply it may read.
+        int32_t callFunctionAsync(int32_t opcode, const void* payload, size_t payloadSize, ResultHandler onResult,
+                                  size_t replyCapacity = SIZE_MAX) {
+            return send(opcode, makeCall(payload, payloadSize, replyCapacity, std::move(onResult)));
         }
 
         // Blocking-sync built on top of async: waits up to `request_timeout_ms`. `deserialize`
-        // runs inside the completion (safe window) and produces the success value.
+        // runs inside the completion and produces the success value. It is skipped once we have
+        // timed out, so it may capture the caller's locals by reference.
         template<typename R>
-        Result<R> callAndWait(int32_t opcode, std::function<R(AAPXSSerializationContext*)> deserialize) {
-            auto promise = std::make_shared<std::promise<Result<R>>>();
-            auto future = promise->get_future();
-            callFunctionAsync(opcode, [promise, deserialize = std::move(deserialize)](
+        Result<R> callAndWait(int32_t opcode, const void* payload, size_t payloadSize,
+                              std::function<R(AAPXSSerializationContext*)> deserialize,
+                              size_t replyCapacity = SIZE_MAX) {
+            enum : int { PENDING, DELIVERING, ABANDONED };
+            struct Waiter {
+                std::atomic<int> state{PENDING};
+                std::promise<Result<R>> promise{};
+            };
+            auto waiter = std::make_shared<Waiter>();
+            auto future = waiter->promise.get_future();
+            send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
                     const std::string& error, AAPXSSerializationContext* s) {
+                int expected = PENDING;
+                if (!waiter->state.compare_exchange_strong(expected, DELIVERING))
+                    return;
                 if (!error.empty())
-                    promise->set_value(Result<R>{R{}, error});
+                    waiter->promise.set_value(Result<R>{R{}, error});
                 else
-                    promise->set_value(Result<R>{deserialize(s), ""});
-            });
+                    waiter->promise.set_value(Result<R>{deserialize(s), ""});
+            }));
             if (future.wait_for(std::chrono::milliseconds(request_timeout_ms)) == std::future_status::ready)
                 return future.get();
-            // Leave the request registered: the transport timeout sweep / death handler will
-            // release it (and the shared promise keeps the late set_value harmless).
+            int expected = PENDING;
+            if (!waiter->state.compare_exchange_strong(expected, ABANDONED))
+                return future.get(); // being delivered right now
+            // Leave the request registered: the transport timeout sweep / death handler will release it.
             return Result<R>{R{}, "timeout"};
         }
     };

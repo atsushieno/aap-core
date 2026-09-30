@@ -60,5 +60,5 @@ aap::xs::AAPXSDefinition_Midi::aapxs_midi_get_plugin_proxy(struct AAPXSDefinitio
 }
 
 enum aap_midi_mapping_policy aap::xs::MidiClientAAPXS::getMidiMappingPolicy() {
-    return callTypedFunctionSynchronously<enum aap_midi_mapping_policy>(OPCODE_GET_MAPPING_POLICY);
+    return callTypedFunctionSynchronously<enum aap_midi_mapping_policy>(OPCODE_GET_MAPPING_POLICY, nullptr, 0);
 }

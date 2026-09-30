@@ -76,14 +76,23 @@ aap::xs::AAPXSDefinition_State::aapxs_state_get_plugin_proxy(struct AAPXSDefinit
     return client->client_proxy;
 }
 
+namespace {
+    // request: 0..3 size, 4.. data
+    std::vector<uint8_t> serializeStateToLoad(const aap_state_t& state) {
+        std::vector<uint8_t> payload(sizeof(int32_t) + state.data_size);
+        *((int32_t*) payload.data()) = static_cast<int32_t>(state.data_size);
+        if (state.data_size > 0)
+            memcpy(payload.data() + sizeof(int32_t), state.data, state.data_size);
+        return payload;
+    }
+}
+
 size_t aap::xs::StateClientAAPXS::getStateSize() {
-    serialization->data_size = 0;
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_STATE_SIZE);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_STATE_SIZE, nullptr, 0);
 }
 
 std::string aap::xs::StateClientAAPXS::getState(aap_state_t &state) {
-    serialization->data_size = 0;
-    auto result = callAndWait<int32_t>(OPCODE_GET_STATE, [&state](AAPXSSerializationContext* s) -> int32_t {
+    auto result = callAndWait<int32_t>(OPCODE_GET_STATE, nullptr, 0, [&state](AAPXSSerializationContext* s) -> int32_t {
         auto serializedData = (uint8_t*) s->data;
         auto actualSize = *((int32_t*) serializedData);
         auto copySize = std::min(state.data_size, static_cast<size_t>(actualSize));
@@ -97,15 +106,12 @@ std::string aap::xs::StateClientAAPXS::getState(aap_state_t &state) {
 }
 
 std::string aap::xs::StateClientAAPXS::setState(aap_state_t &state) {
-    *((int32_t*) serialization->data) = static_cast<int32_t>(state.data_size);
-    memcpy((uint8_t*) serialization->data + sizeof(int32_t), state.data, state.data_size);
-    serialization->data_size = state.data_size + sizeof(int32_t);
-    return callAndWait<bool>(OPCODE_SET_STATE, [](AAPXSSerializationContext*) -> bool { return true; }).error;
+    auto payload = serializeStateToLoad(state);
+    return callAndWait<bool>(OPCODE_SET_STATE, payload.data(), payload.size(), [](AAPXSSerializationContext*) -> bool { return true; }).error;
 }
 
 int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<aap_state_t>)> callback) {
-    serialization->data_size = 0;
-    return callFunctionAsync(OPCODE_GET_STATE,
+    return callFunctionAsync(OPCODE_GET_STATE, nullptr, 0,
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* s) {
         if (!callback)
             return;
@@ -125,10 +131,8 @@ int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<a
 }
 
 int32_t aap::xs::StateClientAAPXS::setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) {
-    *((int32_t*) serialization->data) = static_cast<int32_t>(stateToLoad.data_size);
-    memcpy((uint8_t*) serialization->data + sizeof(int32_t), stateToLoad.data, stateToLoad.data_size);
-    serialization->data_size = stateToLoad.data_size + sizeof(int32_t);
-    return callFunctionAsync(OPCODE_SET_STATE,
+    auto payload = serializeStateToLoad(stateToLoad);
+    return callFunctionAsync(OPCODE_SET_STATE, payload.data(), payload.size(),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*) {
         if (callback)
             callback(Result<bool>{error.empty(), error});

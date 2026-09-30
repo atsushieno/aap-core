@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "host-aapxs-request-queue.h"
+#include "aapxs-transport.h"
 
 #define LOG_TAG "AAP.Local.Instance"
 
@@ -197,6 +198,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         auto aapBuffer = getAudioPluginBuffer();
         void *data = aapBuffer->get_buffer(aapBuffer, i);
         aapxs_midi2_in_session.process(data);
+        internal::sysex8::filterOutMessages(data);
         mbh = (AAPMidiBufferHeader*) data;
     }
 
@@ -270,9 +272,16 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
     internal::HostAAPXSRequestQueue::getInstance().start();
 }
 
+namespace {
+// Set while a SysEx8 request is handled; it is processed in its own buffer, as the shared memory may
+// be in use by a Binder request at the same time. Its reply also goes back via SysEx8, synchronously,
+// whereas Binder requests complete when extension() returns.
+thread_local AAPXSSerializationContext* sysex8_request_buffer{nullptr};
+}
+
 void
 aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE && sysex8_request_buffer) {
         aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
                                         this,
                                         request->urid,
@@ -294,25 +303,43 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     // synchronous Binder route and never the AAPXS SysEx8 channel. (is_command_rt_safe is therefore
     // only consulted for the plugin direction, in RemotePluginInstance::sendPluginAAPXSRequest.)
     // The actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-    internal::HostAAPXSRequest queued{this,
-                                      ipc_send_extension_message_func,
-                                      ipc_send_extension_message_context,
-                                      request->uri,
-                                      getInstanceId(),
-                                      request->opcode,
-                                      static_cast<int32_t>(request->request_id),
-                                      request->callback,
-                                      request->callback_user_data,
-                                      &plugin_host_facade,
-                                      request->error_callback};
     // Our own parameter list has to follow the plugin's layout change too, not only the host's.
     if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
         internal::requestParameterLayoutRefresh(*this);
 
     // Plugins may call host extensions on the audio thread, so the IPC happens on the queue's worker.
-    if (internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) == internal::HostAAPXSRequestQueue::EnqueueResult::Full)
-        queued.sendNow();
-    return request->callback != nullptr;
+    auto enqueue = [this](const AAPXSRequestContext& r) {
+        internal::HostAAPXSRequest queued{this,
+                                          ipc_send_extension_message_func,
+                                          ipc_send_extension_message_context,
+                                          r.uri,
+                                          getInstanceId(),
+                                          r.opcode,
+                                          static_cast<int32_t>(r.request_id),
+                                          r.callback,
+                                          r.callback_user_data,
+                                          &plugin_host_facade,
+                                          r.error_callback};
+        if (internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) == internal::HostAAPXSRequestQueue::EnqueueResult::Full)
+            queued.sendNow();
+        return true;
+    };
+
+    // A notification without payload does not touch the shared memory, and stays RT-safe.
+    bool hasPayload = request->serialization && request->serialization->data_size > 0;
+    if (!request->callback && !hasPayload) {
+        enqueue(*request);
+        return false;
+    }
+
+    auto& dispatcher = getAAPXSDispatcher();
+    auto aapxsInstance = request->urid != 0 ? dispatcher.getHostAAPXSByUrid(request->urid) : dispatcher.getHostAAPXSByUri(request->uri);
+    if (!aapxsInstance || !aapxsInstance->serialization)
+        return false;
+    auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [enqueue] {
+        return enqueue;
+    });
+    return channel->send(request);
 }
 
 void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
@@ -337,7 +364,8 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
-        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
+        auto serialization = sysex8_request_buffer ? sysex8_request_buffer : instance->serialization;
+        AAPXSRequestContext context{nullptr, nullptr, serialization, urid, uri.c_str(), requestId, opcode};
         bool canRunDuringProcess =
                 def->is_command_rt_safe &&
                 def->is_command_rt_safe(def, /*isHostExtension=*/ false, opcode);
@@ -353,12 +381,13 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
 void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *context) {
     if (context->opcode >= 0) {
         // plugin request
-        auto& dispatcher = getAAPXSDispatcher();
-        auto aapxsInstance = context->urid != 0 ? dispatcher.getPluginAAPXSByUrid(context->urid) : dispatcher.getPluginAAPXSByUri(context->uri);
-        // We need to copy extension data buffer before calling it.
-        memcpy(aapxsInstance->serialization->data, (int32_t*) context->data, context->dataSize);
-        aapxsInstance->serialization->data_size = context->dataSize;
+        // Not the parse buffer: replies are encoded into it.
+        uint8_t requestData[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
+        memcpy(requestData, context->data, context->dataSize);
+        AAPXSSerializationContext requestBuffer{requestData, context->dataSize, sizeof(requestData)};
+        sysex8_request_buffer = &requestBuffer;
         controlExtension(context->urid, context->uri, context->opcode, context->request_id);
+        sysex8_request_buffer = nullptr;
     } else {
         // host reply
         auto& dispatcher = getAAPXSDispatcher();

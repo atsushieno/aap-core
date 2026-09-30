@@ -107,37 +107,26 @@ void aap::xs::AAPXSDefinition_Gui::aapxs_gui_process_incoming_host_aapxs_reply(
 
 aap_gui_instance_id aap::xs::GuiClientAAPXS::createGui(std::string pluginId, int32_t instanceId,
                                                         void* audioPluginView) {
-    memset(serialization->data, 0, AAP_MAX_PLUGIN_ID_SIZE);
-    strncpy((char*) serialization->data, pluginId.c_str(), AAP_MAX_PLUGIN_ID_SIZE - 1);
-    *((int32_t*)((uint8_t*) serialization->data + AAP_MAX_PLUGIN_ID_SIZE)) = instanceId;
-    *((void**)((uint8_t*) serialization->data + AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t))) = audioPluginView;
-    serialization->data_size = AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t) + sizeof(void*);
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_CREATE_GUI);
+    uint8_t payload[AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t) + sizeof(void*)]{};
+    strncpy((char*) payload, pluginId.c_str(), AAP_MAX_PLUGIN_ID_SIZE - 1);
+    memcpy(payload + AAP_MAX_PLUGIN_ID_SIZE, &instanceId, sizeof(int32_t));
+    memcpy(payload + AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t), &audioPluginView, sizeof(void*));
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_CREATE_GUI, payload, sizeof(payload));
 }
 
 int32_t aap::xs::GuiClientAAPXS::showGui(aap_gui_instance_id guiInstanceId) {
-    *((int32_t*) serialization->data) = guiInstanceId;
-    serialization->data_size = sizeof(int32_t);
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_SHOW_GUI);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_SHOW_GUI, &guiInstanceId, sizeof(guiInstanceId));
 }
 
 int32_t aap::xs::GuiClientAAPXS::hideGui(aap_gui_instance_id guiInstanceId) {
-    *((int32_t*) serialization->data) = guiInstanceId;
-    serialization->data_size = sizeof(int32_t);
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_HIDE_GUI);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_HIDE_GUI, &guiInstanceId, sizeof(guiInstanceId));
 }
 
 int32_t aap::xs::GuiClientAAPXS::resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) {
-    auto data = (int32_t*) serialization->data;
-    data[0] = guiInstanceId;
-    data[1] = width;
-    data[2] = height;
-    serialization->data_size = sizeof(int32_t) * 3;
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_RESIZE_GUI);
+    int32_t payload[] {guiInstanceId, width, height};
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_RESIZE_GUI, payload, sizeof(payload));
 }
 
 int32_t aap::xs::GuiClientAAPXS::destroyGui(aap_gui_instance_id guiInstanceId) {
-    *((int32_t*) serialization->data) = guiInstanceId;
-    serialization->data_size = sizeof(int32_t);
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_DESTROY_GUI);
+    return callTypedFunctionSynchronously<int32_t>(OPCODE_DESTROY_GUI, &guiInstanceId, sizeof(guiInstanceId));
 }

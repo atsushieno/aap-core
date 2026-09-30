@@ -100,7 +100,8 @@ bool aap_midi2_parse_aapxs_sysex8(aap_midi2_aapxs_parse_context* context,
     // Retrieve simple binary data array.
     context->group = cmidi2_ump_get_group(ump);
     cmidi2_ump_binary_read_state state;
-    cmidi2_ump_binary_read_state_init(&state, nullptr, context->conversionHelperBuffer, context->conversionHelperBufferSize, false);
+    // stop at the END of this message; the buffer may contain more messages after it.
+    cmidi2_ump_binary_read_state_init(&state, nullptr, context->conversionHelperBuffer, context->conversionHelperBufferSize, true);
     if (cmidi2_ump_get_sysex8_data(sysex8_binary_reader_helper_select_stream, &state, nullptr, ump, umpSize / 4) == 0)
         return false;
     if (state.resultCode != CMIDI2_BINARY_READER_RESULT_COMPLETE)
