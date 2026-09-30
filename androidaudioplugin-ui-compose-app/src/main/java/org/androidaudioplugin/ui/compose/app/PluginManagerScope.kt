@@ -3,11 +3,14 @@ package org.androidaudioplugin.ui.compose.app
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -94,7 +97,11 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     var instance = mutableStateOf<NativeRemotePluginInstance?>(null)
     var isProcessing = mutableStateOf(false)
     val parameterValues = mutableStateListOf<Double>()
+    // Incremented whenever the plugin changes its parameter layout (names, ranges, and/or count),
+    // so that views that render parameter metadata recompose even if the count did not change.
+    val parameterLayoutRevision = mutableIntStateOf(0)
     val outputMessages = mutableStateListOf<String>()
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val midiOutputScratch = ByteArray(8192)
     private val parameterIdToIndex = mutableMapOf<Int, Int>()
 
@@ -128,6 +135,7 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         if (alreadyDisposed)
             return
         alreadyDisposed = true
+        instance.value?.setParameterLayoutChangedListener(null)
         if (pluginPlayerDelegate.isInitialized())
             pluginPlayer.close()
     }
@@ -136,6 +144,15 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
             manager.client.connectToPluginService(pluginInfo.packageName)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
+        // Register before prepare(): plugins often (re)build their parameter list there.
+        result.setParameterLayoutChangedListener {
+            mainHandler.post {
+                if (alreadyDisposed || instance.value !== result)
+                    return@post
+                syncParametersFromInstance()
+                parameterLayoutRevision.intValue++
+            }
+        }
         if (!alreadyDisposed) {
             // Prepare the instance up front so that preset/state/parameter interactions on
             // PluginDetails are valid before playback starts. Plugins (e.g. the LV2 bridge) may

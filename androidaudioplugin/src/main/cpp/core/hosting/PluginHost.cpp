@@ -6,6 +6,7 @@
 #include <aap/core/aapxs/standard-extensions.h>
 #include "audio-plugin-host-internals.h"
 #include "host-aapxs-request-queue.h"
+#include "plugin-parameter-state.h"
 
 #define LOG_TAG "AAP.PluginHost"
 
@@ -73,10 +74,12 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
     instances.erase(std::find(instances.begin(), instances.end(), instance));
     // The plugin may hold pointers into these contexts until it is released (at `delete`).
     auto aapxsContexts = collectAAPXSInstanceContexts(instance);
+    internal::closeParameterLayoutRefresh(*instance);
     delete instance;
     for (auto& c : aapxsContexts)
         c.definition->release_instance_context(c.definition, c.context);
     internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
+    internal::forgetParameterLayoutRefresh(*instance);
 }
 
 aap::PluginInstance* aap::PluginHost::getInstanceByIndex(int32_t index) {

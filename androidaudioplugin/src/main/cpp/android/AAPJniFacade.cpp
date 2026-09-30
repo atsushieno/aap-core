@@ -3,6 +3,7 @@
 #include "ALooperMessage.h"
 #include "aap/core/host/audio-plugin-host.h"
 #include <string>
+#include "../core/hosting/plugin-parameter-state.h"
 
 namespace aap {
     const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
@@ -777,7 +778,10 @@ namespace aap {
         return usingJNIEnv<jobject>([&](JNIEnv* env) {
             auto host = (aap::PluginHost *) (void *) nativeHost;
             auto instance = host->getInstanceById(instanceId);
-            auto para = instance->getParameter(index);
+            // The index can be out of range when the plugin just shrank its parameter list.
+            auto para = aap::internal::getParameterSafely(*instance, index);
+            if (!para)
+                return (jobject) nullptr;
             auto klass = env->FindClass(java_parameter_information_class_name);
             if (!klass)
                 AAP_ASSERT_FALSE; // ... and leave WTF JNI causes.

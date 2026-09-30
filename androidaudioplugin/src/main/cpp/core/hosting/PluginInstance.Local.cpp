@@ -243,6 +243,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
 void aap::LocalPluginInstance::setupAAPXS() {
     standards = std::make_unique<xs::ServiceStandardExtensions>(plugin);
+    internal::setParameterLayoutRefreshReady(*this);
 }
 
 static inline void staticSendAAPXSReply(AAPXSRecipientInstance* instance, AAPXSRequestContext* context) {
@@ -304,6 +305,10 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
                                       request->callback_user_data,
                                       &plugin_host_facade,
                                       request->error_callback};
+    // Our own parameter list has to follow the plugin's layout change too, not only the host's.
+    if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
+        internal::requestParameterLayoutRefresh(*this);
+
     // Plugins may call host extensions on the audio thread, so the IPC happens on the queue's worker.
     if (internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) == internal::HostAAPXSRequestQueue::EnqueueResult::Full)
         queued.sendNow();

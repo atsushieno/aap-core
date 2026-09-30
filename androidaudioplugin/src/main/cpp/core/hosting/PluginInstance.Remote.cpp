@@ -268,12 +268,22 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
 #endif
 }
 
+namespace {
+aap_parameters_host_extension_t hosting_parameters_host_extension{
+        nullptr,
+        [](aap_parameters_host_extension_t*, AndroidAudioPluginHost* host) {
+            aap::internal::requestParameterLayoutRefresh(*(aap::RemotePluginInstance*) host->context);
+        }};
+}
+
 void *
 aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *uri) {
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
+    if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0)
+        return &hosting_parameters_host_extension;
 
     // The host's own implementation takes precedence over the AAPXS-provided receiver.
     if (getHostExtension)
@@ -363,6 +373,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
                        ? dispatcher.getDefinitionByUrid(request->urid)
                        : dispatcher.getDefinitionByUri(request->uri);
     bool useSysEx8 =
+            !internal::ScopedBinderOnlyAAPXS::isActive() &&
             instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE &&
             definition && definition->is_command_rt_safe &&
             definition->is_command_rt_safe(definition, /*isHostExtension=*/ false, request->opcode);

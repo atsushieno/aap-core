@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include <android/sharedmem_jni.h>
 #include <cstdlib>
+#include <pthread.h>
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
 #include "aidl/org/androidaudioplugin/BpAudioPluginInterface.h"
@@ -299,6 +300,74 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroy(JNIEnv *e
     client->destroyInstance(instance);
 }
 
+// Parameter layout changes
+
+namespace {
+// Holds a global reference to the Java listener; deleted when the listener is replaced or cleared.
+struct JavaParameterLayoutListener {
+    jobject listener;
+
+    explicit JavaParameterLayoutListener(JNIEnv* env, jobject listener) : listener(env->NewGlobalRef(listener)) {}
+
+    ~JavaParameterLayoutListener() {
+        withJNIEnv([&](JNIEnv* env) { env->DeleteGlobalRef(listener); });
+    }
+
+    void invoke() {
+        withJNIEnv([&](JNIEnv* env) {
+            auto klass = env->GetObjectClass(listener);
+            auto run = env->GetMethodID(klass, "run", "()V");
+            env->CallVoidMethod(listener, run);
+            if (env->ExceptionCheck()) {
+                env->ExceptionDescribe();
+                env->ExceptionClear();
+            }
+            env->DeleteLocalRef(klass);
+        });
+    }
+
+    // The listener is invoked on aap-core's parameter layout worker thread, which is not attached
+    // to the JVM by default.
+    static void withJNIEnv(const std::function<void(JNIEnv*)>& func) {
+        auto vm = aap::get_android_jvm();
+        JNIEnv* env{nullptr};
+        auto envState = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+        if (envState == JNI_EDETACHED) {
+            // keep the thread name; ART renames unnamed attached threads to "Thread-NNN".
+            char name[16]{};
+            pthread_getname_np(pthread_self(), name, sizeof(name));
+            JavaVMAttachArgs args{JNI_VERSION_1_6, name, nullptr};
+            if (vm->AttachCurrentThread(&env, &args) != JNI_OK)
+                return;
+        }
+        func(env);
+        if (envState == JNI_EDETACHED)
+            vm->DetachCurrentThread();
+    }
+};
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setParameterLayoutChangedListener(JNIEnv *env,
+                                                                                                jclass clazz,
+                                                                                                jlong nativeClient,
+                                                                                                jint instanceId,
+                                                                                                jobject listener) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
+    if (!instance)
+        return;
+    if (!listener) {
+        aap::internal::setParameterLayoutChangedListener(*instance, {});
+        return;
+    }
+    auto holder = std::make_shared<JavaParameterLayoutListener>(env, listener);
+    aap::internal::setParameterLayoutChangedListener(*instance, [holder] {
+        holder->invoke();
+    });
+}
+
 // State extensions
 
 extern "C"
@@ -474,7 +543,8 @@ jint implPluginHostGetParameterCount(jlong nativeHost,
                                      jint instanceId) {
     auto host = (aap::PluginHost *) (void *) nativeHost;
     auto instance = host->getInstanceById(instanceId);
-    return instance->getNumParameters();
+    // consistent with a concurrent parameter layout refresh
+    return aap::internal::getParameterCountSafely(*instance);
 }
 
 jdouble implPluginHostGetParameterValue(jlong nativeHost,

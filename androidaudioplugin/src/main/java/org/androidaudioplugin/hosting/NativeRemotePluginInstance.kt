@@ -119,7 +119,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     }
     fun getParameter(index: Int): ParameterInformation =
         try {
-            getParameter(client, instanceId, index)
+            // null if the plugin just shrank its parameter list (see setParameterLayoutChangedListener())
+            getParameter(client, instanceId, index) ?: ParameterInformation(index, "Unavailable")
         } catch (ex: RemoteException) {
             markError(ex)
             ParameterInformation(index, "Unavailable")
@@ -127,6 +128,10 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getParameterValue(index: Int) = runCatchingRemoteException(0.0) {
         getParameterValue(client, instanceId, index)
     }
+
+    /** Invoked on a native worker thread once the plugin's new parameter list is in place; null clears it. */
+    fun setParameterLayoutChangedListener(listener: Runnable?) =
+        setParameterLayoutChangedListener(client, instanceId, listener)
     fun getPortCount() = runCatchingRemoteException(0) {
         getPortCount(client, instanceId)
     }
@@ -175,10 +180,13 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         external fun getParameterCount(nativeClient: Long, instanceId: Int) : Int
 
         @JvmStatic
-        external fun getParameter(nativeClient: Long, instanceId: Int, index: Int) : ParameterInformation
+        external fun getParameter(nativeClient: Long, instanceId: Int, index: Int) : ParameterInformation?
 
         @JvmStatic
         external fun getParameterValue(nativeClient: Long, instanceId: Int, index: Int) : Double
+
+        @JvmStatic
+        external fun setParameterLayoutChangedListener(nativeClient: Long, instanceId: Int, listener: Runnable?)
 
         @JvmStatic
         external fun getPortCount(nativeClient: Long, instanceId: Int) : Int

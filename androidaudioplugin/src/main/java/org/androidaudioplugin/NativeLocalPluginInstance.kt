@@ -8,7 +8,8 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
     fun getPortCount() = getPortCount(service.native, instanceId)
     fun getPort(index: Int) = getPort(service.native, instanceId, index)
     fun getParameterCount() = getParameterCount(service.native, instanceId)
-    fun getParameter(index: Int) = getParameter(service.native, instanceId, index)
+    // null from native if the plugin just shrank its parameter list
+    fun getParameter(index: Int) = getParameter(service.native, instanceId, index) ?: ParameterInformation(index, "Unavailable")
 
     fun addEventUmpInput(data: ByteBuffer, size: Int) = addEventUmpInput(service.native, instanceId, data, size)
     fun readGuiListenerMidi2Output(buffer: ByteBuffer, size: Int) =
@@ -31,7 +32,7 @@ class NativeLocalPluginInstance(private val service: NativePluginService, privat
         @JvmStatic
         private external fun getParameterCount(nativeService: Long, instanceId: Int): Int
         @JvmStatic
-        private external fun getParameter(nativeService: Long, instanceId: Int, index: Int): ParameterInformation
+        private external fun getParameter(nativeService: Long, instanceId: Int, index: Int): ParameterInformation?
 
         @JvmStatic
         private external fun addEventUmpInput(nativeService: Long, instanceId: Int, data: ByteBuffer, size: Int)

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.State
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,17 +51,26 @@ internal class RemotePluginViewScopeImpl(
     val context: Context,
     val instance: NativeRemotePluginInstance,
     val parameters: List<Double>,
-    val pluginInfo: PluginInformation)
+    val pluginInfo: PluginInformation,
+    val parameterLayoutRevision: State<Int>)
     : PluginViewScope {
 
     override val pluginName: String
         get() = pluginInfo.displayName
 
+    // Follows the synced values, not the live native count, which may be ahead of them.
+    // Reading the revision makes the composition observe metadata-only changes too.
     override val parameterCount: Int
-        get() = instance.getParameterCount()
+        get() {
+            parameterLayoutRevision.value
+            return parameters.size
+        }
 
-    override fun getParameter(parameterIndex: Int): PluginViewScopeParameter =
-        PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex), parameters[parameterIndex])
+    override fun getParameter(parameterIndex: Int): PluginViewScopeParameter {
+        parameterLayoutRevision.value
+        return PluginViewScopeParameterImpl(parameterIndex, instance.getParameter(parameterIndex),
+            parameters.getOrElse(parameterIndex) { 0.0 })
+    }
 
     override val portCount: Int
         get() = instance.getPortCount()
@@ -112,8 +122,8 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         }
     }
 
-    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo)) }
-    pluginViewScope.PluginView(getParameterValue = { scope.parameterValues[it].toFloat() },
+    val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo, scope.parameterLayoutRevision)) }
+    pluginViewScope.PluginView(getParameterValue = { scope.parameterValues.getOrElse(it) { 0.0 }.toFloat() },
         parameterListMaxHeight = parameterListMaxHeight,
         onParameterChange = { index, value ->
             scope.setParameterValue(index, value)

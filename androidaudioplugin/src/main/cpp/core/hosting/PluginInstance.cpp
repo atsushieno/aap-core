@@ -4,10 +4,18 @@
 #include "plugin-parameter-state.h"
 #include "aap/ext/midi.h"
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <mutex>
+#include <shared_mutex>
+#include <thread>
 #include <unordered_map>
 #include <vector>
+#include <pthread.h>
+#include <semaphore.h>
 #include "../include_cmidi2.h"
 
 #define LOG_TAG "AAP.Instance"
@@ -34,6 +42,161 @@ PluginParameterState* get_parameter_state(aap::PluginInstance* instance, bool cr
     auto* ret = state.get();
     parameter_state_registry[instance] = std::move(state);
     return ret;
+}
+
+// ---- Plugin-initiated parameter layout changes (see plugin-parameter-state.h)
+
+struct ParameterLayoutState {
+    std::shared_mutex list_mutex{};
+    // Replaced lists stay alive until the instance is destroyed, so getParameter() pointers stay valid.
+    std::vector<std::unique_ptr<std::vector<aap::ParameterInformation>>> retired_lists{};
+    std::atomic<bool> ready{false};
+    std::mutex listener_mutex{};
+    std::function<void()> listener{};
+};
+
+std::mutex parameter_layout_state_registry_mutex;
+std::unordered_map<aap::PluginInstance*, std::unique_ptr<ParameterLayoutState>> parameter_layout_state_registry;
+
+ParameterLayoutState* get_parameter_layout_state(aap::PluginInstance* instance, bool create = true) {
+    const std::lock_guard<std::mutex> lock{parameter_layout_state_registry_mutex};
+    auto it = parameter_layout_state_registry.find(instance);
+    if (it != parameter_layout_state_registry.end())
+        return it->second.get();
+    if (!create)
+        return nullptr;
+    auto state = std::make_unique<ParameterLayoutState>();
+    auto* ret = state.get();
+    parameter_layout_state_registry[instance] = std::move(state);
+    return ret;
+}
+
+void refresh_parameter_layout(aap::PluginInstance* instance) {
+    auto instanceState = instance->getInstanceState();
+    if (instanceState == aap::PLUGIN_INSTANTIATION_STATE_INITIAL ||
+        instanceState == aap::PLUGIN_INSTANTIATION_STATE_TERMINATED ||
+        instanceState == aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+        return; // the host scans parameters right after instantiation anyway
+
+    auto layout = get_parameter_layout_state(instance);
+    auto remote = dynamic_cast<aap::RemotePluginInstance*>(instance);
+    if (!remote && !layout->ready.load(std::memory_order_acquire))
+        return;
+
+    {
+        aap::internal::ScopedBinderOnlyAAPXS binderOnly;
+        instance->scanParametersAndBuildList();
+    }
+
+    if (remote) {
+        if (remote->parametersChangedHandler)
+            remote->parametersChangedHandler(*remote);
+        std::function<void()> listener;
+        {
+            const std::lock_guard<std::mutex> lock{layout->listener_mutex};
+            listener = layout->listener;
+        }
+        if (listener)
+            listener();
+    }
+}
+
+// A process-wide worker that runs refresh_parameter_layout(). request() is RT-safe once started,
+// and an instance that is already pending is not queued twice.
+class ParameterLayoutRefreshQueue {
+    aap::NanoSleepLock lock{};
+    std::array<aap::PluginInstance*, 256> pending{};
+    size_t pending_count{0};
+    std::array<const aap::PluginInstance*, 64> closed{};
+    aap::PluginInstance* refreshing{nullptr};
+    sem_t available{};
+    std::once_flag start_once{};
+    std::atomic<bool> started{false};
+
+    bool isPending(aap::PluginInstance* instance) const {
+        return std::find(pending.begin(), pending.begin() + pending_count, instance) != pending.begin() + pending_count;
+    }
+
+    bool isClosed(const aap::PluginInstance* instance) const {
+        return std::find(closed.begin(), closed.end(), instance) != closed.end();
+    }
+
+    void removePending(aap::PluginInstance* instance) {
+        auto end = std::remove(pending.begin(), pending.begin() + pending_count, instance);
+        pending_count = end - pending.begin();
+    }
+
+    aap::PluginInstance* takeNext() {
+        const std::lock_guard<aap::NanoSleepLock> guard{lock};
+        if (pending_count == 0)
+            return nullptr;
+        refreshing = pending[0];
+        std::move(pending.begin() + 1, pending.begin() + pending_count, pending.begin());
+        pending_count--;
+        return refreshing;
+    }
+
+    void run() {
+        pthread_setname_np(pthread_self(), "AAP.ParamLayout");
+        while (true) {
+            while (sem_wait(&available) != 0 && errno == EINTR) {}
+            while (auto instance = takeNext()) {
+                refresh_parameter_layout(instance);
+                const std::lock_guard<aap::NanoSleepLock> guard{lock};
+                refreshing = nullptr;
+            }
+        }
+    }
+
+public:
+    // Not RT-safe.
+    void start() {
+        std::call_once(start_once, [this] {
+            sem_init(&available, 0, 0);
+            std::thread([this] { run(); }).detach();
+            started.store(true, std::memory_order_release);
+        });
+    }
+
+    void request(aap::PluginInstance* instance) {
+        if (!started.load(std::memory_order_acquire))
+            start();
+        {
+            const std::lock_guard<aap::NanoSleepLock> guard{lock};
+            if (isClosed(instance) || isPending(instance) || pending_count == pending.size())
+                return;
+            pending[pending_count++] = instance;
+        }
+        sem_post(&available);
+    }
+
+    void close(aap::PluginInstance* instance) {
+        while (true) {
+            {
+                const std::lock_guard<aap::NanoSleepLock> guard{lock};
+                removePending(instance);
+                if (!isClosed(instance)) {
+                    auto slot = std::find(closed.begin(), closed.end(), nullptr);
+                    if (slot != closed.end())
+                        *slot = instance;
+                }
+                if (refreshing != instance)
+                    return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    void forget(aap::PluginInstance* instance) {
+        const std::lock_guard<aap::NanoSleepLock> guard{lock};
+        std::replace(closed.begin(), closed.end(), (const aap::PluginInstance*) instance, (const aap::PluginInstance*) nullptr);
+    }
+};
+
+// Intentionally never destroyed: the worker runs for the process lifetime.
+ParameterLayoutRefreshQueue& parameter_layout_refresh_queue() {
+    static auto* queue = new ParameterLayoutRefreshQueue();
+    return *queue;
 }
 
 std::string fixed_string(const char* s, size_t capacity) {
@@ -73,6 +236,33 @@ static void rebuild_parameter_id_index(aap::PluginInstance* instance,
     }
 }
 
+// Rebuilds the id->index map and value vector for the *current* parameter list, preserving
+// previously-known values by id. The caller must hold state.mutex.
+static void reindex_parameter_values_locked(aap::PluginInstance& instance, PluginParameterState& state) {
+    std::unordered_map<int32_t, double> previousValues;
+    previousValues.reserve(state.values.size());
+    for (auto& entry : state.id_to_index) {
+        auto index = entry.second;
+        if (index >= 0 && index < state.values.size())
+            previousValues[entry.first] = state.values[index];
+    }
+
+    std::unordered_map<int32_t, int32_t> newIdToIndex;
+    std::vector<double> newValues;
+    newValues.reserve(instance.getNumParameters());
+    for (int32_t i = 0, n = instance.getNumParameters(); i < n; ++i) {
+        auto* parameter = instance.getParameter(i);
+        if (!parameter)
+            break;
+        newIdToIndex[parameter->getId()] = i;
+        auto it = previousValues.find(parameter->getId());
+        newValues.emplace_back(it != previousValues.end() ? it->second : parameter->getDefaultValue());
+    }
+
+    state.id_to_index = std::move(newIdToIndex);
+    state.values = std::move(newValues);
+}
+
 aap::PluginInstance::~PluginInstance() {
     instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
     if (plugin != nullptr)
@@ -84,6 +274,10 @@ aap::PluginInstance::~PluginInstance() {
     if (event_midi2_merge_buffer)
         free(event_midi2_merge_buffer);
     internal::cleanupParameterState(*this);
+    {
+        const std::lock_guard<std::mutex> lock{parameter_layout_state_registry_mutex};
+        parameter_layout_state_registry.erase(this);
+    }
 }
 
 aap_buffer_t* aap::PluginInstance::getAudioPluginBuffer() {
@@ -194,7 +388,7 @@ void aap::PluginInstance::scanParametersAndBuildList() {
 
     auto& ext = getStandardExtensions();
     auto parameterCount = ext.getParameterCount();
-    if (parameterCount == -1) { // explicitly indicates that the code is not going to return the parameter list.
+    if (parameterCount < 0) { // -1 explicitly indicates that the code is not going to return the parameter list (or it failed).
         return;
     }
 
@@ -218,7 +412,17 @@ void aap::PluginInstance::scanParametersAndBuildList() {
         }
         scannedParameters->emplace_back(p);
     }
+
+    // Publish and reindex under both the value lock (audio thread) and the list lock (safe readers).
+    // The old list is retired, not freed, so that getParameter() pointers stay valid.
+    auto* state = get_parameter_state(this);
+    auto* layout = get_parameter_layout_state(this);
+    const std::lock_guard<NanoSleepLock> valueLock{state->mutex};
+    const std::unique_lock<std::shared_mutex> listLock{layout->list_mutex};
+    if (cached_parameters)
+        layout->retired_lists.emplace_back(std::move(cached_parameters));
     cached_parameters = std::move(scannedParameters);
+    reindex_parameter_values_locked(*this, *state);
 }
 
 void aap::internal::cleanupParameterState(aap::PluginInstance& instance) {
@@ -227,39 +431,16 @@ void aap::internal::cleanupParameterState(aap::PluginInstance& instance) {
 }
 
 void aap::internal::reindexParameterValues(aap::PluginInstance& instance) {
-    // Rebuilds the id->index map and value vector from the *current* cached_parameters, preserving
-    // previously-known values by id. The caller must have already populated cached_parameters.
     auto* state = get_parameter_state(&instance);
     if (!state)
         return;
-    std::unordered_map<int32_t, double> previousValues;
-    previousValues.reserve(state->values.size());
-    for (auto& entry : state->id_to_index) {
-        auto index = entry.second;
-        if (index >= 0 && index < state->values.size())
-            previousValues[entry.first] = state->values[index];
-    }
-
-    rebuild_parameter_id_index(&instance, state->id_to_index);
-
-    std::vector<double> newValues;
-    newValues.reserve(instance.getNumParameters());
-    for (int32_t i = 0, n = instance.getNumParameters(); i < n; ++i) {
-        auto* parameter = instance.getParameter(i);
-        auto it = previousValues.find(parameter->getId());
-        if (it != previousValues.end())
-            newValues.emplace_back(it->second);
-        else
-            newValues.emplace_back(parameter->getDefaultValue());
-    }
-
     const std::lock_guard<NanoSleepLock> lock{state->mutex};
-    state->values = std::move(newValues);
+    reindex_parameter_values_locked(instance, *state);
 }
 
 void aap::internal::rebuildParameterIndexAndValues(aap::PluginInstance& instance) {
+    // scanParametersAndBuildList() reindexes the values when it publishes the new list.
     instance.scanParametersAndBuildList();
-    reindexParameterValues(instance);
 }
 
 bool aap::internal::updateCachedParameterValueById(aap::PluginInstance& instance, int32_t parameterId, double plainValue) {
@@ -556,4 +737,45 @@ uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
 void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2InitiatorSession* client, void* context, int32_t messageSize) {
     auto instance = (aap::RemotePluginInstance *) context;
     instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
+}
+
+// ---- Plugin-initiated parameter layout changes (see plugin-parameter-state.h)
+
+thread_local bool aap::internal::ScopedBinderOnlyAAPXS::active{false};
+
+void aap::internal::requestParameterLayoutRefresh(aap::PluginInstance& instance) {
+    parameter_layout_refresh_queue().request(&instance);
+}
+
+void aap::internal::setParameterLayoutRefreshReady(aap::PluginInstance& instance) {
+    get_parameter_layout_state(&instance)->ready.store(true, std::memory_order_release);
+    parameter_layout_refresh_queue().start();
+}
+
+void aap::internal::setParameterLayoutChangedListener(aap::RemotePluginInstance& instance, std::function<void()> listener) {
+    auto* layout = get_parameter_layout_state(&instance);
+    const std::lock_guard<std::mutex> lock{layout->listener_mutex};
+    layout->listener = std::move(listener);
+}
+
+void aap::internal::closeParameterLayoutRefresh(aap::PluginInstance& instance) {
+    parameter_layout_refresh_queue().close(&instance);
+}
+
+void aap::internal::forgetParameterLayoutRefresh(aap::PluginInstance& instance) {
+    parameter_layout_refresh_queue().forget(&instance);
+}
+
+int32_t aap::internal::getParameterCountSafely(aap::PluginInstance& instance) {
+    auto* layout = get_parameter_layout_state(&instance);
+    const std::shared_lock<std::shared_mutex> lock{layout->list_mutex};
+    return instance.getNumParameters();
+}
+
+const aap::ParameterInformation* aap::internal::getParameterSafely(aap::PluginInstance& instance, int32_t index) {
+    auto* layout = get_parameter_layout_state(&instance);
+    const std::shared_lock<std::shared_mutex> lock{layout->list_mutex};
+    if (index < 0 || index >= instance.getNumParameters())
+        return nullptr;
+    return instance.getParameter(index);
 }

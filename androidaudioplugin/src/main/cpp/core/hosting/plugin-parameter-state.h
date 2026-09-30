@@ -8,6 +8,7 @@ namespace aap {
 
 class PluginInstance;
 class RemotePluginInstance;
+class ParameterInformation;
 
 namespace internal {
 
@@ -21,6 +22,32 @@ void updateParameterValueCacheFromInputBuffer(PluginInstance& instance, void* bu
 bool updateCachedParameterValueById(PluginInstance& instance, int32_t parameterId, double plainValue);
 double getParameterValue(PluginInstance& instance, int32_t index);
 void handleParameterLayoutChanged(PluginInstance& instance);
+
+// ---- Plugin-initiated parameter layout changes (aap-core#130)
+
+// Rescans the parameter list on a worker thread. RT-safe; coalesced per instance.
+void requestParameterLayoutRefresh(PluginInstance& instance);
+// Service side: the instance can be rescanned once its standard extensions are set up.
+void setParameterLayoutRefreshReady(PluginInstance& instance);
+// Client side: invoked on the worker thread after each refresh, after parametersChangedHandler.
+void setParameterLayoutChangedListener(RemotePluginInstance& instance, std::function<void()> listener);
+// PluginHost::destroyInstance() calls them before and after `delete`.
+void closeParameterLayoutRefresh(PluginInstance& instance);
+void forgetParameterLayoutRefresh(PluginInstance& instance);
+
+// Blocking AAPXS calls must not wait for SysEx8 replies, which only arrive while audio is processed.
+class ScopedBinderOnlyAAPXS {
+    static thread_local bool active;
+public:
+    ScopedBinderOnlyAAPXS() { active = true; }
+    ~ScopedBinderOnlyAAPXS() { active = false; }
+    static bool isActive() { return active; }
+};
+
+// Consistent with a concurrent refresh, unlike the inline getters in the public header.
+// Returns null if out of range; the pointer stays valid for the lifetime of the instance.
+int32_t getParameterCountSafely(PluginInstance& instance);
+const ParameterInformation* getParameterSafely(PluginInstance& instance, int32_t index);
 
 }
 }
