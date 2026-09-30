@@ -1,19 +1,15 @@
 
+#include <mutex>
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/plugin-instance.h"
-#include "../hosting/plugin-parameter-state.h"
 #include "aap/unstable/utility.h"
 
 namespace {
 void notify_parameters_changed(aap_parameters_host_extension_t* ext,
                                AndroidAudioPluginHost* host) {
     (void) ext;
-    auto* instance = (aap::RemotePluginInstance*) host->context;
-    if (!instance)
-        return;
-    if (instance->parametersChangedHandler)
-        instance->parametersChangedHandler(*instance);
+    (void) host;
 }
 
 aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_parameters_changed};
@@ -125,11 +121,21 @@ AAPXSExtensionClientProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_
 AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_host_proxy(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AAPXSSerializationContext *serialization) {
-    auto service = (AAPXSDefinition_Parameters*) feature->aapxs_context;
-    service->typed_service = std::make_unique<ParametersServiceAAPXS>(aapxsInstance, serialization);
-    service->service_proxy.aapxs_context = service->typed_service.get();
-    service->service_proxy.as_host_extension = aapxs_parameters_as_host_extension;
-    return service->service_proxy;
+    (void) feature;
+    // One sender per plugin instance, owned through the instance's aapxs_context.
+    static std::mutex creation_mutex;
+    {
+        const std::lock_guard<std::mutex> lock{creation_mutex};
+        if (!aapxsInstance->aapxs_context)
+            aapxsInstance->aapxs_context = new ParametersServiceAAPXS(aapxsInstance, serialization);
+    }
+    return AAPXSExtensionServiceProxy{aapxsInstance->aapxs_context, aapxs_parameters_as_host_extension};
+}
+
+void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_release_instance_context(
+        struct AAPXSDefinition* feature, void* aapxsContext) {
+    (void) feature;
+    delete (ParametersServiceAAPXS*) aapxsContext;
 }
 
 AAPXSExtensionHostReceiver

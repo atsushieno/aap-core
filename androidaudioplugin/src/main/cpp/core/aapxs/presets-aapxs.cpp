@@ -1,3 +1,4 @@
+#include <mutex>
 #include "aap/core/aapxs/presets-aapxs.h"
 #include "aap/core/host/plugin-instance.h"
 
@@ -119,10 +120,21 @@ AAPXSExtensionServiceProxy
 aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefinition *feature,
                                                                AAPXSInitiatorInstance *aapxsInstance,
                                                                AAPXSSerializationContext *serialization) {
-    auto service = (AAPXSDefinition_Presets*) feature->aapxs_context;
-    service->typed_service = std::make_unique<PresetsServiceAAPXS>(aapxsInstance, serialization);
-    service->service_proxy = AAPXSExtensionServiceProxy{service->typed_service.get(), aapxs_presets_as_host_extension};
-    return service->service_proxy;
+    (void) feature;
+    // One sender per plugin instance, owned through the instance's aapxs_context.
+    static std::mutex creation_mutex;
+    {
+        const std::lock_guard<std::mutex> lock{creation_mutex};
+        if (!aapxsInstance->aapxs_context)
+            aapxsInstance->aapxs_context = new PresetsServiceAAPXS(aapxsInstance, serialization);
+    }
+    return AAPXSExtensionServiceProxy{aapxsInstance->aapxs_context, aapxs_presets_as_host_extension};
+}
+
+void aap::xs::AAPXSDefinition_Presets::aapxs_presets_release_instance_context(
+        struct AAPXSDefinition* feature, void* aapxsContext) {
+    (void) feature;
+    delete (PresetsServiceAAPXS*) aapxsContext;
 }
 
 AAPXSExtensionHostReceiver

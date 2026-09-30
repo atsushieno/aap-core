@@ -130,6 +130,7 @@ namespace aap::xs {
                 AAPXSInitiatorInstance *aapxsInstance,
                 AAPXSSerializationContext *serialization);
 
+        static void aapxs_parameters_release_instance_context(struct AAPXSDefinition* feature, void* aapxsContext);
         static AAPXSExtensionHostReceiver aapxs_parameters_get_host_receiver(
                 struct AAPXSDefinition *feature,
                 AAPXSRecipientInstance *aapxsInstance,
@@ -167,7 +168,8 @@ namespace aap::xs {
                                          aapxs_parameters_get_plugin_proxy,
                                          aapxs_parameters_get_host_proxy,
                                          aapxs_parameters_is_command_rt_safe,
-                                         aapxs_parameters_get_host_receiver
+                                         aapxs_parameters_get_host_receiver,
+                                         aapxs_parameters_release_instance_context
         };
 
     public:
