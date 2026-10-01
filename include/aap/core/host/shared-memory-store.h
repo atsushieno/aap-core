@@ -81,6 +81,7 @@ namespace aap {
         int32_t getPortDirection(int32_t portIndex) override { return instance->getPort(portIndex)->getPortDirection(); }
 
         inline void setBuffer(size_t index, void* buffer) { buffers[index] = buffer; }
+        inline void setBufferSize(size_t index, int32_t size) { buffer_sizes[index] = size; }
 
         void unmapSharedMemory() {
             for (size_t i = 0; i < numPorts(); i++) {

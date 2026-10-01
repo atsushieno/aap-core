@@ -2,6 +2,9 @@
 // As a principle, there must not be Android-specific references in this code.
 // Anything Android specific must to into `android` directory.
 #include <sys/stat.h>
+#if ANDROID
+#include <android/sharedmem.h>
+#endif
 #include <sys/mman.h>
 #include <vector>
 #include "aap/core/host/audio-plugin-host.h"
@@ -71,6 +74,7 @@ int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, siz
 		if (!mapped)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
 		port_buffer->setBuffer(i, mapped);
+		port_buffer->setBufferSize(i, memSize);
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
@@ -96,11 +100,17 @@ int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_
 		int32_t fd = clientFDs[i];
 		if (!fd)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
+#if ANDROID
+		// The host decides the buffer size (e.g. its MIDI2 buffer size), so follow the actual memory.
+		if (auto actualSize = ASharedMemory_getSize(fd); actualSize > 0)
+			memSize = actualSize;
+#endif
 		port_buffer_fds->emplace_back(fd);
 		auto mapped = mmap(nullptr, memSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 		if (!mapped)
 			return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
         port_buffer->setBuffer(i, mapped);
+        port_buffer->setBufferSize(i, memSize);
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;

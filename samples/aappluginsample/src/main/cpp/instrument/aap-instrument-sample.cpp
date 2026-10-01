@@ -12,6 +12,8 @@
 #include <aap/ext/gui.h>
 #include <assert.h>
 #include <atomic>
+#include <cstdlib>
+#include <sys/system_properties.h>
 #include "cmidi2.h"
 
 extern "C" {
@@ -47,6 +49,8 @@ typedef struct AyumiHandle {
     int32_t audio_out_l_port{-1};
     int32_t audio_out_r_port{-1};
     std::atomic<bool> state_parameter_outputs_pending{false};
+    // debug-only: see sample_plugin_prepare()
+    uint32_t debug_bogus_midi2_out_length{0};
 } AyumiHandle;
 
 typedef struct AyumiState {
@@ -239,6 +243,18 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_b
                          port.name(&port));
         }
     }
+
+#ifndef NDEBUG
+    // Host robustness tests (aap-core#226, #227): report the MIDI2 buffer sizes we got, and if
+    // `adb shell setprop debug.aap.sample.midi2_out_length <N>` is set, report a bogus MIDI2
+    // output length N after every process().
+    for (int32_t i = 0; i < buffer->num_ports(buffer); i++)
+        if (i == context->midi2_in_port || i == context->midi2_out_port)
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "MIDI2 port %d buffer size: %d", i, buffer->get_buffer_size(buffer, i));
+    char bogusLength[PROP_VALUE_MAX]{};
+    if (__system_property_get("debug.aap.sample.midi2_out_length", bogusLength) > 0)
+        context->debug_bogus_midi2_out_length = (uint32_t) strtoul(bogusLength, nullptr, 0);
+#endif
 }
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {
@@ -476,6 +492,11 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         outL[i] = (float) context->impl->left;
         outR[i] = (float) context->impl->right;
     }
+
+#ifndef NDEBUG
+    if (context->debug_bogus_midi2_out_length > 0 && context->midi2_out_port >= 0)
+        ((AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_out_port))->length = context->debug_bogus_midi2_out_length;
+#endif
 }
 
 void sample_plugin_deactivate(AndroidAudioPlugin *plugin) {

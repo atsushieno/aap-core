@@ -21,5 +21,12 @@
                 <action android:name="org.androidaudioplugin.aaphostsample.STRESS_PARAMETERS" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".AapStateReloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.androidaudioplugin.aaphostsample.STATE_RELOAD" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

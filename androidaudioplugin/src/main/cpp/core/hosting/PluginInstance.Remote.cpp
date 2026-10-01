@@ -2,6 +2,7 @@
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
 #include "aapxs-transport.h"
+#include "midi2-port-buffer.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
 #include "aap/core/aap_midi2_helper.h"
@@ -59,6 +60,10 @@ AndroidAudioPluginHost* aap::RemotePluginInstance::getHostFacadeForCompleteInsta
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate) {
+    prepare(frameCount, sampleRate, DEFAULT_CONTROL_BUFFER_SIZE);
+}
+
+void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate, int32_t controlBytesPerBlock) {
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to prepare() at state: %d (instanceId: %d)",
@@ -69,7 +74,7 @@ void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate) {
     sample_rate = sampleRate;
     auto numPorts = getNumPorts();
     auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
-    auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, DEFAULT_CONTROL_BUFFER_SIZE);
+    auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, controlBytesPerBlock > 0 ? controlBytesPerBlock : DEFAULT_CONTROL_BUFFER_SIZE);
     if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
         aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
     }
@@ -177,6 +182,13 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
     }
 #endif
 
+    // The plugin resets the input lengths; do not trust them.
+    for (auto i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+            internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
+    }
+
     // merge input from AAPXS SysEx8 into the host's MIDI inputs
     if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
         merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
@@ -207,8 +219,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
-        auto aapBuffer = getAudioPluginBuffer();
-        void* data = aapBuffer->get_buffer(aapBuffer, i);
+        void* data = internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
         // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
         aapxs_session.completeSession(data, plugin);
         internal::sysex8::filterOutMessages(data);

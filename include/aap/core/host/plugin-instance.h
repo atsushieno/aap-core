@@ -335,6 +335,8 @@ namespace aap {
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
         void prepare(int frameCount, int32_t sampleRate) override;
+        // `controlBytesPerBlock` is the buffer size of each MIDI2 port.
+        void prepare(int frameCount, int32_t sampleRate, int32_t controlBytesPerBlock);
 
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;
 

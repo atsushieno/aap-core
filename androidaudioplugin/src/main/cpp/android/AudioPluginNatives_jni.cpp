@@ -254,8 +254,8 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_prepare(JNIEnv *e
 																			jint sampleRate,
 																			jint defaultControlBytesPerBlock) {
 	auto client = (aap::PluginClient*) (void*) nativeClient;
-	auto instance = client->getInstanceById(instanceId);
-    instance->prepare(frameCount, sampleRate);
+	auto instance = (aap::RemotePluginInstance*) client->getInstanceById(instanceId);
+    instance->prepare(frameCount, sampleRate, defaultControlBytesPerBlock);
 }
 
 extern "C"
@@ -389,8 +389,11 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getState(JNIEnv *
 																		jbyteArray data) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
-	auto state = instance->getStandardExtensions().getState().value;
-	env->SetByteArrayRegion(data, 0, state.data_size, static_cast<const jbyte *>(state.data));
+	auto result = instance->getStandardExtensions().getState();
+	if (!result.isOk())
+		return; // e.g. the plugin is gone
+	auto size = std::min(static_cast<jsize>(result.value.data_size), env->GetArrayLength(data));
+	env->SetByteArrayRegion(data, 0, size, static_cast<const jbyte *>(result.value.data));
 }
 
 extern "C"
