@@ -592,6 +592,13 @@ double aap::internal::getParameterValue(aap::PluginInstance& instance, int32_t i
     return parameter ? parameter->getDefaultValue() : 0.0;
 }
 
+void aap::internal::setCachedParameterValue(aap::PluginInstance& instance, int32_t index, double plainValue) {
+    auto* state = get_parameter_state(&instance);
+    const std::lock_guard<NanoSleepLock> lock{state->mutex};
+    if (index >= 0 && index < state->values.size())
+        state->values[index] = plainValue;
+}
+
 void aap::internal::handleParameterLayoutChanged(aap::PluginInstance& instance) {
     // A plugin can notify a parameter-layout change from within its own instantiate()
     // (e.g. JUCE/Dexed populate parameters during construction), which arrives before

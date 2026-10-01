@@ -208,6 +208,9 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
         if (ins != null) {
             if (index in parameterValues.indices)
                 parameterValues[index] = value.toDouble()
+            // While not processing, the change stays queued in the player, so record it in the
+            // native value cache; otherwise syncParametersFromInstance() reverts it (aap-core#220).
+            ins.setCachedParameterValue(index, value.toDouble())
             pluginPlayer.setParameterValue(ins.getParameter(index), value.toDouble())
         }
     }

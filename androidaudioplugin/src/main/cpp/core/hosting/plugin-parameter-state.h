@@ -21,6 +21,9 @@ void updateParameterValueCacheFromOutputBuffer(PluginInstance& instance, void* b
 void updateParameterValueCacheFromInputBuffer(PluginInstance& instance, void* buffer);
 bool updateCachedParameterValueById(PluginInstance& instance, int32_t parameterId, double plainValue);
 double getParameterValue(PluginInstance& instance, int32_t index);
+// Records a value that the host has just sent (or queued) to the plugin, by parameter index.
+// Hosts that are not processing yet would otherwise read back the stale value until process() runs.
+void setCachedParameterValue(PluginInstance& instance, int32_t index, double plainValue);
 void handleParameterLayoutChanged(PluginInstance& instance);
 
 // ---- Plugin-initiated parameter layout changes (aap-core#130)

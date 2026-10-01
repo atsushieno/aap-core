@@ -128,6 +128,9 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getParameterValue(index: Int) = runCatchingRemoteException(0.0) {
         getParameterValue(client, instanceId, index)
     }
+    /** Records a value the host has sent to the plugin, so that getParameterValue() reflects it before the plugin processes it. */
+    fun setCachedParameterValue(index: Int, value: Double) =
+        setCachedParameterValue(client, instanceId, index, value)
 
     /** Invoked on a native worker thread once the plugin's new parameter list is in place; null clears it. */
     fun setParameterLayoutChangedListener(listener: Runnable?) =
@@ -184,6 +187,9 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
         @JvmStatic
         external fun getParameterValue(nativeClient: Long, instanceId: Int, index: Int) : Double
+
+        @JvmStatic
+        external fun setCachedParameterValue(nativeClient: Long, instanceId: Int, index: Int, value: Double)
 
         @JvmStatic
         external fun setParameterLayoutChangedListener(nativeClient: Long, instanceId: Int, listener: Runnable?)

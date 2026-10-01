@@ -692,6 +692,20 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterValue
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setCachedParameterValue(JNIEnv*,
+                                                                                       jclass,
+                                                                                       jlong nativeClient,
+                                                                                       jint instanceId,
+                                                                                       jint index,
+                                                                                       jdouble value) {
+    auto host = (aap::PluginHost*) (void*) nativeClient;
+    auto instance = host->getInstanceById(instanceId);
+    if (instance)
+        aap::internal::setCachedParameterValue(*instance, index, value);
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortCount(JNIEnv *,
                                                                             jclass ,
