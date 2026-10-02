@@ -195,12 +195,26 @@ namespace aap::xs {
         }
 
         void finish(AsyncCall* call, const std::string& error) {
-            if (call->fired.exchange(true))
-                return; // exactly-once: reply vs. timeout vs. death may race
-            if (call->deliver)
-                call->deliver(error);
-            std::lock_guard<std::mutex> lock(calls_mutex);
-            in_flight.erase(call->request_id); // deletes the AsyncCall; do not touch `call` afterwards
+            finishMatchingCall(call, error, 0, false);
+        }
+
+        void finishMatchingCall(AsyncCall* call, const std::string& error, uint32_t requestId, bool matchId) {
+            std::unique_ptr<AsyncCall> completing;
+            {
+                std::lock_guard<std::mutex> lock(calls_mutex);
+                // Compare addresses before dereferencing: a failure snapshot may have been
+                // completed already. Remove ownership before invoking reentrant user code.
+                auto it = matchId ? in_flight.find(requestId) :
+                        std::find_if(in_flight.begin(), in_flight.end(), [call](auto& entry) {
+                            return entry.second.get() == call;
+                        });
+                if (it == in_flight.end() || it->second.get() != call || it->second->fired.exchange(true))
+                    return;
+                completing = std::move(it->second);
+                in_flight.erase(it);
+            }
+            if (completing->deliver)
+                completing->deliver(error);
         }
 
         void detachAllPending(const std::string& error) {
@@ -237,18 +251,18 @@ namespace aap::xs {
         void setRequestTimeoutMs(int32_t ms) { request_timeout_ms = ms; }
 
         // Fail every in-flight request with `error`. Used on hard transport failure (e.g. Binder
-        // service death) where no reply will ever arrive. Safe because the death handler then
-        // becomes the sole completer (Binder `completed()` cannot fire again).
+        // service death). Match snapshots by request ID and address because replies or other
+        // failure paths may have completed a call before its snapshot is processed.
         void failAllPending(const std::string& error) {
-            std::vector<AsyncCall*> pending;
+            std::vector<std::pair<uint32_t, AsyncCall*>> pending;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
                 pending.reserve(in_flight.size());
                 for (auto& kv : in_flight)
-                    pending.push_back(kv.second.get());
+                    pending.emplace_back(kv.first, kv.second.get());
             }
-            for (auto* call : pending)
-                finish(call, error);
+            for (auto& entry : pending)
+                finishMatchingCall(entry.second, error, entry.first, true);
         }
 
         // Low-level async primitive. `payload` is copied, so it need not outlive this call.
