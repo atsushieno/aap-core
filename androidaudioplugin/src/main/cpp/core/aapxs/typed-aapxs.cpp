@@ -1,12 +1,25 @@
 #include <algorithm>
 #include "aap/core/aapxs/typed-aapxs.h"
 #include "aap/core/host/plugin-instance.h"
+#include "../hosting/aapxs-transport.h"
 
 // These are defined out-of-line (not in typed-aapxs.h) because they need the full
 // aap::PluginInstance definition, and typed-aapxs.h is included *by* plugin-instance.h
 // (via standard-extensions.h) — including it back here would be circular.
 
 namespace aap::xs {
+
+    void TypedAAPXS::cancelPendingTransportRequests(const std::string& error) {
+        std::vector<std::pair<uint32_t, void*>> pending;
+        {
+            std::lock_guard<std::mutex> lock(calls_mutex);
+            pending.reserve(in_flight.size());
+            for (auto& entry : in_flight)
+                pending.emplace_back(entry.first, entry.second.get());
+        }
+        for (auto& entry : pending)
+            internal::sysex8::cancelRequest(entry.first, entry.second, error.c_str());
+    }
 
     TypedAAPXS::~TypedAAPXS() {
         detachAllPending("AAPXS owner destroyed");

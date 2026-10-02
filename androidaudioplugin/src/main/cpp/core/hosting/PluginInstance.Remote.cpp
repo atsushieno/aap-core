@@ -2,6 +2,7 @@
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
 #include "aapxs-transport.h"
+#include "aapxs-midi2-session-internal.h"
 #include "midi2-port-buffer.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
@@ -311,6 +312,7 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
 }
 
 void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
+    internal::AAPXSMidi2SessionAccess::cancelPending(aapxs_session, error.c_str(), plugin);
     internal::abortAAPXSBinderChannels(this, error.c_str(), plugin);
     std::vector<xs::TypedAAPXS*> snapshot;
     {
@@ -344,13 +346,10 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
             definition->is_command_rt_safe(definition, /*isHostExtension=*/ false, request->opcode);
 
     if (useSysEx8) {
-        // The request is encoded into SysEx8 right away; its reply is written into its own buffer.
-        // A request without callback expects no reply.
-        AAPXSRequestContext routed = *request;
-        if (!request->callback || internal::sysex8::registerRequest(*request, routed)) {
-            aapxs_session.addSession(aapxsSessionAddEventUmpInput, this, &routed);
+        // Registration, encoding and cancellation share one session gate.
+        if (internal::AAPXSMidi2SessionAccess::sendRequest(
+                aapxs_session, aapxsSessionAddEventUmpInput, this, request))
             return true;
-        }
         // Too many pending SysEx8 requests: fall back to Binder.
     }
 

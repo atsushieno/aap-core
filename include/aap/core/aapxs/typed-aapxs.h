@@ -217,7 +217,11 @@ namespace aap::xs {
                 completing->deliver(error);
         }
 
+        // Defined out of line to keep transport/session internals out of the public header.
+        void cancelPendingTransportRequests(const std::string& error);
+
         void detachAllPending(const std::string& error) {
+            cancelPendingTransportRequests(error);
             std::vector<std::unique_ptr<AsyncCall>> pending;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
@@ -251,9 +255,10 @@ namespace aap::xs {
         void setRequestTimeoutMs(int32_t ms) { request_timeout_ms = ms; }
 
         // Fail every in-flight request with `error`. Used on hard transport failure (e.g. Binder
-        // service death). Match snapshots by request ID and address because replies or other
-        // failure paths may have completed a call before its snapshot is processed.
+        // service death). Cancel SysEx8 registrations and wait for any ongoing delivery before
+        // releasing their request buffers; audio replies/timeouts may race the death handler.
         void failAllPending(const std::string& error) {
+            cancelPendingTransportRequests(error);
             std::vector<std::pair<uint32_t, AsyncCall*>> pending;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);

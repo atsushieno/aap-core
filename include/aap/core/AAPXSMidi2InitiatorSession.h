@@ -14,12 +14,14 @@
 #endif
 
 namespace aap {
+    namespace internal { struct AAPXSMidi2SessionAccess; }
     class AAPXSMidi2InitiatorSession;
     const size_t MAX_PENDING_CALLBACKS = UINT8_MAX;
 
     typedef void (*add_midi2_event_func) (AAPXSMidi2InitiatorSession* session, void* userData, int32_t messageSize);
 
     class AAPXSMidi2InitiatorSession {
+        friend struct internal::AAPXSMidi2SessionAccess;
 
         struct CallbackUnit {
             uint32_t request_id;

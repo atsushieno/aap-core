@@ -1,4 +1,5 @@
 #include "aapxs-transport.h"
+#include "aapxs-midi2-session-internal.h"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -208,17 +209,22 @@ namespace sysex8 {
 namespace {
 struct Entry {
     bool used{false};
+    bool delivering{false};
+    uintptr_t token{0};
     uint32_t request_id{0};
     aapxs_completion_callback callback{nullptr};
     aapxs_error_callback error_callback{nullptr};
     void* callback_user_data{nullptr};
     AAPXSSerializationContext* buffer{nullptr};
+    AAPXSMidi2InitiatorSession* session{nullptr};
 };
 
 constexpr size_t MAX_PENDING_REQUESTS = 1024;
 
 struct Table {
     NanoSleepLock lock{};
+    std::recursive_mutex unowned_gate{};
+    uintptr_t next_token{0};
     std::array<Entry, MAX_PENDING_REQUESTS> entries{};
 };
 
@@ -227,44 +233,148 @@ Table& table() {
     return *t;
 }
 
-Entry take(Entry* entry) {
+Entry lookupToken(uintptr_t token) {
     const std::lock_guard<NanoSleepLock> guard{table().lock};
-    Entry ret = *entry;
-    *entry = Entry{};
-    return ret;
+    for (auto& entry : table().entries)
+        if (entry.used && entry.token == token)
+            return entry;
+    return {};
+}
+
+// Keep the slot reserved while delivering, so cancellation can find its session gate and wait
+// until the reply copy and callback are finished. Tokens prevent an old callback taking a newly
+// registered request that happens to reuse the same slot.
+void deliverToken(uintptr_t token, void* pluginOrHost, const char* error) {
+    auto snapshot = lookupToken(token);
+    if (!snapshot.used)
+        return;
+    auto state = snapshot.session ? getAAPXSMidi2SessionState(snapshot.session) : nullptr;
+    std::lock_guard<std::recursive_mutex> gate{state ? state->gate : table().unowned_gate};
+    Entry completed{};
+    {
+        const std::lock_guard<NanoSleepLock> guard{table().lock};
+        for (auto& entry : table().entries) {
+            if (!entry.used || entry.token != token || entry.delivering)
+                continue;
+            entry.delivering = true;
+            completed = entry;
+            break;
+        }
+    }
+    if (!completed.used)
+        return;
+    struct Release {
+        uintptr_t token;
+        ~Release() {
+            const std::lock_guard<NanoSleepLock> guard{table().lock};
+            for (auto& entry : table().entries)
+                if (entry.used && entry.token == token) {
+                    entry = Entry{};
+                    break;
+                }
+        }
+    } release{token};
+    if (error && completed.error_callback)
+        completed.error_callback(completed.callback_user_data, pluginOrHost, error);
+    else if (completed.callback)
+        completed.callback(completed.callback_user_data, pluginOrHost);
 }
 
 void onReply(void* context, void* pluginOrHost) {
-    auto entry = take((Entry*) context);
-    if (entry.callback)
-        entry.callback(entry.callback_user_data, pluginOrHost);
+    deliverToken(reinterpret_cast<uintptr_t>(context), pluginOrHost, nullptr);
 }
 
 void onError(void* context, void* pluginOrHost, const char* error) {
-    auto entry = take((Entry*) context);
-    if (entry.error_callback)
-        entry.error_callback(entry.callback_user_data, pluginOrHost, error);
-    else if (entry.callback)
-        entry.callback(entry.callback_user_data, pluginOrHost);
+    deliverToken(reinterpret_cast<uintptr_t>(context), pluginOrHost, error ? error : "error");
+}
+
+bool cancel(uint32_t requestId, void* callbackContext, const char* error, void* pluginOrHost) {
+    auto& t = table();
+    Entry snapshot{};
+    {
+        const std::lock_guard<NanoSleepLock> guard{t.lock};
+        for (auto& entry : t.entries)
+            if (entry.used && entry.request_id == requestId && entry.callback_user_data == callbackContext) {
+                snapshot = entry;
+                break;
+            }
+    }
+    if (!snapshot.used)
+        return false;
+    auto state = snapshot.session ? getAAPXSMidi2SessionState(snapshot.session) : nullptr;
+    std::lock_guard<std::recursive_mutex> gate{state ? state->gate : t.unowned_gate};
+    Entry cancelled{};
+    {
+        const std::lock_guard<NanoSleepLock> guard{t.lock};
+        for (auto& entry : t.entries) {
+            if (!entry.used || entry.token != snapshot.token)
+                continue;
+            if (entry.delivering)
+                return true; // reentrant cancellation of the callback currently being delivered
+            cancelled = entry;
+            entry = Entry{};
+            break;
+        }
+    }
+    if (!cancelled.used)
+        return false; // completed while waiting for the session gate
+    if (cancelled.session)
+        AAPXSMidi2SessionAccess::forgetRequest(*cancelled.session, requestId);
+    if (cancelled.error_callback)
+        cancelled.error_callback(cancelled.callback_user_data, pluginOrHost, error);
+    else if (cancelled.callback)
+        cancelled.callback(cancelled.callback_user_data, pluginOrHost);
+    return true;
 }
 }
 
 bool registerRequest(const AAPXSRequestContext& request, AAPXSRequestContext& routed) {
+    return registerRequest(request, routed, nullptr);
+}
+
+bool registerRequest(const AAPXSRequestContext& request, AAPXSRequestContext& routed,
+                     AAPXSMidi2InitiatorSession* session) {
     auto& t = table();
     const std::lock_guard<NanoSleepLock> guard{t.lock};
+    for (auto& entry : t.entries)
+        if (entry.used && entry.request_id == request.request_id)
+            return false;
     for (size_t i = 0; i < MAX_PENDING_REQUESTS; i++) {
         auto& entry = t.entries[(request.request_id + i) % MAX_PENDING_REQUESTS];
         if (entry.used)
             continue;
-        entry = Entry{true, request.request_id, request.callback, request.error_callback,
-                      request.callback_user_data, request.serialization};
+        uintptr_t token;
+        do {
+            token = ++t.next_token;
+        } while (token == 0 || std::any_of(t.entries.begin(), t.entries.end(), [token](auto& e) {
+            return e.used && e.token == token;
+        }));
+        entry = Entry{true, false, token, request.request_id, request.callback, request.error_callback,
+                      request.callback_user_data, request.serialization, session};
         routed = request;
         routed.callback = onReply;
         routed.error_callback = onError;
-        routed.callback_user_data = &entry;
+        routed.callback_user_data = reinterpret_cast<void*>(token);
         return true;
     }
     return false;
+}
+
+bool cancelRequest(uint32_t requestId, void* callbackContext, const char* error) {
+    return cancel(requestId, callbackContext, error, nullptr);
+}
+
+void cancelRequestsForSession(AAPXSMidi2InitiatorSession* session, const char* error, void* pluginOrHost) {
+    std::array<Entry, MAX_PENDING_REQUESTS> pending{};
+    size_t count = 0;
+    {
+        const std::lock_guard<NanoSleepLock> guard{table().lock};
+        for (auto& entry : table().entries)
+            if (entry.used && entry.session == session && !entry.delivering)
+                pending[count++] = entry;
+    }
+    for (size_t i = 0; i < count; i++)
+        cancel(pending[i].request_id, pending[i].callback_user_data, error, pluginOrHost);
 }
 
 AAPXSSerializationContext* findRequestBuffer(uint32_t requestId) {
@@ -272,7 +382,7 @@ AAPXSSerializationContext* findRequestBuffer(uint32_t requestId) {
     const std::lock_guard<NanoSleepLock> guard{t.lock};
     for (size_t i = 0; i < MAX_PENDING_REQUESTS; i++) {
         auto& entry = t.entries[(requestId + i) % MAX_PENDING_REQUESTS];
-        if (entry.used && entry.request_id == requestId)
+        if (entry.used && !entry.delivering && entry.request_id == requestId)
             return entry.buffer;
     }
     return nullptr;

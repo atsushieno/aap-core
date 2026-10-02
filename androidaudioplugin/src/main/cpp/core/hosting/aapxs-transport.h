@@ -9,6 +9,8 @@
 #include <mutex>
 #include "aap/aapxs.h"
 
+namespace aap { class AAPXSMidi2InitiatorSession; }
+
 namespace aap::internal {
 
 // Carries AAPXS requests over one extension's shared memory block, one at a time, in FIFO order.
@@ -57,10 +59,16 @@ void abortAAPXSBinderChannels(const void* owner, const char* error, void* plugin
 void releaseAAPXSBinderChannels(const void* owner);
 
 // Pending SysEx8 requests, so that each reply is written into its own request buffer.
-// All functions are RT-safe.
+// Bookkeeping is bounded; callback delivery and cancellation share the session gate.
 namespace sysex8 {
     // Returns a copy of `request` whose callbacks go through the pending table, or false if the table is full.
     bool registerRequest(const AAPXSRequestContext& request, AAPXSRequestContext& routed);
+    // Internal overload associates the request with the gate protecting its session.
+    bool registerRequest(const AAPXSRequestContext& request, AAPXSRequestContext& routed,
+                         AAPXSMidi2InitiatorSession* session);
+    // Cancels a typed request before its callback context can be released.
+    bool cancelRequest(uint32_t requestId, void* callbackContext, const char* error);
+    void cancelRequestsForSession(AAPXSMidi2InitiatorSession* session, const char* error, void* pluginOrHost);
     // The buffer of the pending request `requestId`, or null if it is unknown (e.g. timed out).
     AAPXSSerializationContext* findRequestBuffer(uint32_t requestId);
     // Removes AAPXS SysEx8 messages from a MIDI2 port buffer (AAPMidiBufferHeader + UMPs), once
