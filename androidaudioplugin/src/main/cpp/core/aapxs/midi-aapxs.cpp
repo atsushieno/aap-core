@@ -1,6 +1,9 @@
 
 #include "aap/core/aapxs/midi-aapxs.h"
 #include "../AAPJniFacade.h"
+#include "aap/core/host/plugin-instance.h"
+#include "midi-policy-payload.h"
+#include <array>
 
 int32_t getMidiSettingsFromLocalConfig2(std::string pluginId) {
     return aap::AAPJniFacade::getInstance()->getMidiSettingsFromLocalConfig(pluginId);
@@ -10,22 +13,23 @@ void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_req
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
     switch (request->opcode) {
-        case OPCODE_GET_MAPPING_POLICY:
-            auto len = *(int32_t *) request->serialization->data;
-            char *pluginId = nullptr;
-            int32_t midiSettings = 0;
-            if (len >= AAP_MAX_PLUGIN_ID_SIZE) {
-                AAP_ASSERT_FALSE;
-            } else {
-                pluginId = (char *) calloc(len + 1, 1);
-                strncpy(pluginId, (const char *) ((int32_t *) request->serialization->data + 1), len);
-                midiSettings = getMidiSettingsFromLocalConfig2(pluginId);
+        case OPCODE_GET_MAPPING_POLICY: {
+            auto* data = request->serialization;
+            if (!data || !data->data || data->data_capacity < sizeof(int32_t)) {
+                if (data)
+                    data->data_size = 0;
+                aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+                break;
             }
-            *((int32_t *) request->serialization->data) = midiSettings;
+            auto* instance = static_cast<aap::PluginInstance*>(aapxsInstance->host_context);
+            auto* info = instance ? instance->getPluginInformation() : nullptr;
+            auto pluginId = internal::readMidiPolicyPluginId(*data, info ? info->getPluginID() : std::string{});
+            int32_t midiSettings = pluginId.empty() ? AAP_PARAMETERS_MAPPING_POLICY_NONE : getMidiSettingsFromLocalConfig2(pluginId);
+            memcpy(data->data, &midiSettings, sizeof(midiSettings));
+            data->data_size = sizeof(midiSettings);
             aapxsInstance->send_aapxs_reply(aapxsInstance, request);
-            if (pluginId)
-                free(pluginId);
             break;
+        }
     }
 }
 
@@ -60,5 +64,18 @@ aap::xs::AAPXSDefinition_Midi::aapxs_midi_get_plugin_proxy(struct AAPXSDefinitio
 }
 
 enum aap_midi_mapping_policy aap::xs::MidiClientAAPXS::getMidiMappingPolicy() {
-    return callTypedFunctionSynchronously<enum aap_midi_mapping_policy>(OPCODE_GET_MAPPING_POLICY, nullptr, 0);
+    auto* instance = static_cast<aap::PluginInstance*>(aapxs_instance->host_context);
+    auto* info = instance ? instance->getPluginInformation() : nullptr;
+    std::array<char, MIDI_SHARED_MEMORY_SIZE> payload{};
+    auto size = internal::writeMidiPolicyPluginId(payload.data(), payload.size(), info ? info->getPluginID() : std::string{});
+    if (!size)
+        return AAP_PARAMETERS_MAPPING_POLICY_NONE;
+    auto result = callAndWait<int32_t>(OPCODE_GET_MAPPING_POLICY, payload.data(), size,
+        [](AAPXSSerializationContext* ctx) {
+            int32_t policy = AAP_PARAMETERS_MAPPING_POLICY_NONE;
+            if (ctx && ctx->data && ctx->data_size >= sizeof(policy) && ctx->data_capacity >= sizeof(policy))
+                memcpy(&policy, ctx->data, sizeof(policy));
+            return policy;
+        }, sizeof(int32_t));
+    return result.isOk() ? static_cast<aap_midi_mapping_policy>(result.value) : AAP_PARAMETERS_MAPPING_POLICY_NONE;
 }

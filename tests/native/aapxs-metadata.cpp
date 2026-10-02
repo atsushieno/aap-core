@@ -1,7 +1,19 @@
 #include <cstdio>
 #include <stdexcept>
 #include "parameter-layout-reader.h"
+#include "midi-policy-payload.h"
 
+namespace {
+std::string queriedPlugin;
+}
+aap::AAPJniFacade* aap::AAPJniFacade::getInstance() {
+    static AAPJniFacade facade;
+    return &facade;
+}
+int32_t aap::AAPJniFacade::getMidiSettingsFromLocalConfig(std::string pluginId) {
+    queriedPlugin = pluginId;
+    return AAP_PARAMETERS_MAPPING_POLICY_CC;
+}
 using namespace aap;
 using namespace aap::internal;
 void check(bool value, const char* message) {
@@ -100,7 +112,94 @@ void parameterScans() {
     fixture.count = -1;
     check(!readParameterLayout(reader).isOk(), "unavailable extension preserves existing layout");
 }
+void midiIdentity() {
+    char bytes[AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t)]{};
+    std::string id = "org.example.plugin";
+    auto size = writeMidiPolicyPluginId(bytes, sizeof(bytes), id);
+    AAPXSSerializationContext data{bytes, size, sizeof(bytes)};
+    check(size == sizeof(int32_t) + id.size(), "existing wire record size");
+    check(readMidiPolicyPluginId(data, "") == id, "identity wire roundtrip");
+    data.data_size = 0;
+    check(readMidiPolicyPluginId(data, "") == id, "legacy Binder unknown length");
+    memset(bytes, 0xFF, sizeof(bytes));
+    check(readMidiPolicyPluginId(data, id) == id, "old client stale data uses instance identity");
+    check(readMidiPolicyPluginId(data, "").empty(), "negative length rejected");
+    int32_t length = AAP_MAX_PLUGIN_ID_SIZE;
+    memcpy(bytes, &length, sizeof(length));
+    check(readMidiPolicyPluginId(data, "").empty(), "oversized length rejected");
+    length = 5;
+    memcpy(bytes, &length, sizeof(length));
+    data.data_size = sizeof(int32_t) + 2;
+    check(readMidiPolicyPluginId(data, "").empty(), "truncated request rejected");
+    data.data_capacity = 2;
+    check(readMidiPolicyPluginId(data, "").empty(), "short shared buffer rejected");
+    std::string longest(AAP_MAX_PLUGIN_ID_SIZE - 1, 'x');
+    check(writeMidiPolicyPluginId(bytes, sizeof(bytes), longest) > 0, "maximum valid plugin ID");
+    longest += 'x';
+    check(writeMidiPolicyPluginId(bytes, sizeof(bytes), longest) == 0, "invalid ID never sent");
+}
+void midiHandler() {
+    xs::AAPXSDefinition_Midi wrapper;
+    auto& definition = wrapper.asPublic();
+    int replies = 0;
+    AAPXSRecipientInstance recipient{&replies, nullptr, nullptr,
+        [](auto* self, auto*) { ++*static_cast<int*>(self->aapxs_context); }};
+    char bytes[MIDI_SHARED_MEMORY_SIZE]{};
+    auto size = writeMidiPolicyPluginId(bytes, sizeof(bytes), "org.example.policy");
+    AAPXSSerializationContext data{bytes, size, sizeof(bytes)};
+    AAPXSRequestContext request{nullptr, nullptr, &data, 1, AAP_MIDI_EXTENSION_URI, 1, OPCODE_GET_MAPPING_POLICY};
+    definition.process_incoming_plugin_aapxs_request(&definition, &recipient, nullptr, &request);
+    int32_t policy{};
+    memcpy(&policy, bytes, sizeof(policy));
+    check(replies == 1 && data.data_size == sizeof(policy), "MIDI handler declares reply size");
+    check(queriedPlugin == "org.example.policy" && policy == AAP_PARAMETERS_MAPPING_POLICY_CC, "MIDI handler queries intended preference key");
+    queriedPlugin.clear();
+    memset(bytes, 0xFF, sizeof(bytes));
+    data.data_size = 0;
+    definition.process_incoming_plugin_aapxs_request(&definition, &recipient, nullptr, &request);
+    memcpy(&policy, bytes, sizeof(policy));
+    check(replies == 2 && queriedPlugin.empty() && policy == 0, "malformed legacy request returns NONE without preference lookup");
+    data.data_capacity = 2;
+    definition.process_incoming_plugin_aapxs_request(&definition, &recipient, nullptr, &request);
+    check(replies == 3 && data.data_size == 0, "short buffer receives an empty reply safely");
+}
+void midiClient() {
+    struct Transport {
+        uint32_t id{};
+        int mode{};
+        AAPXSInitiatorInstance initiator{this, nullptr, nullptr, 1,
+            [](auto* self) { return ++static_cast<Transport*>(self->aapxs_context)->id; },
+            [](auto* self, auto* request) {
+                auto* test = static_cast<Transport*>(self->aapxs_context);
+                auto* data = request->serialization;
+                int32_t length = -1;
+                memcpy(&length, data->data, sizeof(length));
+                check(request->opcode == OPCODE_GET_MAPPING_POLICY && data->data_size == 4 && length == 0,
+                      "client without metadata still sends a valid empty identity record");
+                if (test->mode == 1) {
+                    request->error_callback(request->callback_user_data, nullptr, "disconnected");
+                    return true;
+                }
+                int32_t policy = AAP_PARAMETERS_MAPPING_POLICY_CC;
+                memcpy(data->data, &policy, sizeof(policy));
+                data->data_size = test->mode == 2 ? 2 : sizeof(policy);
+                request->callback(request->callback_user_data, nullptr);
+                return true;
+            }};
+    } fixture;
+    char bytes[MIDI_SHARED_MEMORY_SIZE]{};
+    AAPXSSerializationContext data{bytes, 0, sizeof(bytes)};
+    xs::MidiClientAAPXS client{&fixture.initiator, &data};
+    check(client.getMidiMappingPolicy() == AAP_PARAMETERS_MAPPING_POLICY_CC, "typed MIDI policy success");
+    fixture.mode = 1;
+    check(client.getMidiMappingPolicy() == AAP_PARAMETERS_MAPPING_POLICY_NONE, "typed MIDI policy transport failure");
+    fixture.mode = 2;
+    check(client.getMidiMappingPolicy() == AAP_PARAMETERS_MAPPING_POLICY_NONE, "typed MIDI short reply rejected");
+}
 int main() {
     parameterScans();
-    puts("AAPXS parameter metadata regression tests passed");
+    midiIdentity();
+    midiHandler();
+    midiClient();
+    puts("AAPXS metadata regression tests passed");
 }
