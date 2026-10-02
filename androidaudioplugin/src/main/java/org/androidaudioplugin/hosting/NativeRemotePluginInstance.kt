@@ -157,8 +157,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     }
 
     companion object {
-        fun create(pluginId: String, nativeClient: Long) =
-            NativeRemotePluginInstance(createRemotePluginInstance(pluginId, nativeClient), nativeClient)
+        fun create(pluginId: String, nativeClient: Long): NativeRemotePluginInstance {
+            val instanceId = createRemotePluginInstance(pluginId, nativeClient)
+            if (instanceId < 0)
+                throw org.androidaudioplugin.AudioPluginException("Plugin service disconnected or instance creation failed: $pluginId")
+            return NativeRemotePluginInstance(instanceId, nativeClient)
+        }
 
         // invoked from AAPJniFacade
         @JvmStatic

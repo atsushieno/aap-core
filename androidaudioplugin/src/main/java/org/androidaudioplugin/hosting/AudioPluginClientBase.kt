@@ -3,6 +3,7 @@ package org.androidaudioplugin.hosting
 import android.content.Context
 import android.media.AudioManager
 import org.androidaudioplugin.AudioPluginNatives
+import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.PluginInformation
 
 open class AudioPluginClientBase(private val context: Context) {
@@ -41,7 +42,8 @@ open class AudioPluginClientBase(private val context: Context) {
 
     fun instantiateNativePlugin(pluginInfo: PluginInformation) : NativeRemotePluginInstance {
         val conn = serviceConnector.findExistingServiceConnection(pluginInfo.packageName)
-        assert(conn != null)
+        if (conn == null)
+            throw AudioPluginException("Plugin service is not connected: ${pluginInfo.packageName}")
         return native.createInstanceFromExistingConnection(pluginInfo.pluginId!!)
     }
 
