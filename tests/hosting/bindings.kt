@@ -152,7 +152,70 @@ private suspend fun lifecycleTests() = supervisorScope {
     println("PASS: binding terminal events, reentrant callbacks, retry identity, closure, failure, and 100 races")
 }
 
+private suspend fun cancellationTests() = supervisorScope {
+    val platform = Platform(); val connector = AudioPluginServiceConnector(platform)
+    val pending = bind(connector); val old = platform.attempts.last()
+    pending.cancelAndJoin()
+    check(platform.releases == listOf(old) && connector.connectedServices.isEmpty())
+    val retry = bind(connector); val fresh = platform.attempts.last()
+    old.onServiceConnected(null, Binder()); old.onBindingDied(null)
+    check(!retry.isCompleted)
+    fresh.onServiceConnected(null, Binder()); retry.await().getOrThrow()
+    connector.close(); check(platform.releases == listOf(old, fresh))
+
+    // Cancellation after publication but before continuation delivery must release the connection.
+    for (duringNativeRegistration in listOf(false, true)) {
+        val p = Platform(); val c = AudioPluginServiceConnector(p); val result = bind(c)
+        if (duringNativeRegistration)
+            AudioPluginNatives.onAdd = { result.cancel() }
+        else
+            c.onConnectedListeners.add { result.cancel() }
+        p.attempts.last().onServiceConnected(null, Binder())
+        result.join()
+        AudioPluginNatives.onAdd = {}
+        check(p.releases.size == 1 && c.connectedServices.isEmpty())
+        c.close()
+    }
+    // Cancellation while bindService is still running defers the release until it returns.
+    val p = Platform(); val c = AudioPluginServiceConnector(p)
+    val entered = CountDownLatch(1); val leave = CountDownLatch(1)
+    p.onBind = { entered.countDown(); check(leave.await(2, TimeUnit.SECONDS)); true }
+    val running = async(Dispatchers.Default) { runCatching { c.bindAudioPluginService(service) } }
+    check(entered.await(2, TimeUnit.SECONDS))
+    running.cancel()
+    check(p.releases.isEmpty())
+    leave.countDown(); running.join()
+    check(p.releases.size == 1 && c.connectedServices.isEmpty())
+    c.close()
+    println("PASS: cancellation before delivery, during registration, and during platform bind")
+}
+
+private suspend fun deadlineTest() = supervisorScope {
+    val platform = Platform(); val connector = AudioPluginServiceConnector(platform)
+    val started = System.nanoTime()
+    val result = bind(connector).await()
+    check(result.exceptionOrNull() is AudioPluginException)
+    check(result.exceptionOrNull()!!.message!!.contains("Timed out"))
+    val elapsed = (System.nanoTime() - started) / 1_000_000
+    check(elapsed in 9_000..15_000) { "Unexpected bind deadline: $elapsed ms" }
+    val old = platform.attempts.last()
+    check(platform.releases == listOf(old))
+    val retry = bind(connector)
+    old.onServiceConnected(null, Binder()); old.onNullBinding(null)
+    check(!retry.isCompleted)
+    platform.attempts.last().onServiceConnected(null, Binder())
+    retry.await().getOrThrow(); connector.close()
+    check(platform.releases.size == 2)
+    println("PASS: real 10-second bind deadline, release, and retry after timeout")
+}
+
 fun main(args: Array<String>) {
     System.load(args[0])
-    runBlocking { withTimeout(5_000) { lifecycleTests() } }
+    runBlocking {
+        withTimeout(25_000) {
+            lifecycleTests()
+            cancellationTests()
+            deadlineTest()
+        }
+    }
 }

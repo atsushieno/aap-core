@@ -14,7 +14,8 @@ import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 import java.util.Collections
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 
 /*
   A host client class that manages one or more connections to AudioPluginServices.
@@ -88,69 +89,74 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
 
     @Volatile private var isClosed = false
 
-    suspend fun bindAudioPluginService(service: PluginServiceInformation) = suspendCoroutine<PluginServiceConnection> { continuation ->
-        val pendingKey = PendingServiceConnection(service.packageName, service.className)
-        val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
-        intent.component = ComponentName(service.packageName, service.className)
-        val requestForeground = context is Activity
-        intent.putExtra(AudioPluginService.EXTRA_REQUEST_FOREGROUND, requestForeground)
+    suspend fun bindAudioPluginService(service: PluginServiceInformation) = withTimeoutOrNull(10_000L) {
+        suspendCancellableCoroutine<PluginServiceConnection> { continuation ->
+            val pendingKey = PendingServiceConnection(service.packageName, service.className)
+            val intent = Intent(AudioPluginHostHelper.AAP_ACTION_NAME)
+            intent.component = ComponentName(service.packageName, service.className)
+            val requestForeground = context is Activity
+            intent.putExtra(AudioPluginService.EXTRA_REQUEST_FOREGROUND, requestForeground)
 
-        lateinit var conn: Connection
-        conn = Connection(this, service) { result ->
-            if (result == null)
-                failBinding(conn, AudioPluginException("Failed to bind AudioPluginService: Intent = $intent"))
-            else
-                finishBinding(conn, Result.success(result))
-        }
-        val binding = PendingBinding(pendingKey) { continuation.resumeWith(it) }
-        val existing = synchronized(connectionMutation) {
-            if (isClosed)
-                throw AudioPluginException("AudioPluginServiceConnector is closed")
-            val found = findExistingServiceConnection(service.packageName, service.className)
-            if (found == null) {
-                if (pendingServices.containsKey(pendingKey))
-                    throw AudioPluginException("AudioPluginService is already being bound: ${service.packageName}/${service.className}")
-                pendingServices[pendingKey] = binding
-                bindings[conn] = binding
+            lateinit var conn: Connection
+            conn = Connection(this@AudioPluginServiceConnector, service) { result ->
+                if (result == null)
+                    failBinding(conn, AudioPluginException("Failed to bind AudioPluginService: Intent = $intent"))
+                else
+                    finishBinding(conn, Result.success(result))
             }
-            found
-        }
-        if (existing != null) {
-            continuation.resume(existing)
-            return@suspendCoroutine
-        }
-        if (!isBindingPending(conn))
-            return@suspendCoroutine
-
-        try {
-            if (requestForeground) {
-                try {
-                    if (context.startForegroundService(intent) == null)
-                        Log.w("AAP", "AudioPluginServiceConnector: startForegroundService returned null for $pendingKey")
-                } catch (ex: Exception) {
-                    Log.w("AAP", "AudioPluginServiceConnector: startForegroundService failed for $pendingKey", ex)
+            val binding = PendingBinding(pendingKey) { continuation.resumeWith(it) }
+            val existing = synchronized(connectionMutation) {
+                if (isClosed)
+                    throw AudioPluginException("AudioPluginServiceConnector is closed")
+                val found = findExistingServiceConnection(service.packageName, service.className)
+                if (found == null) {
+                    if (pendingServices.containsKey(pendingKey))
+                        throw AudioPluginException("AudioPluginService is already being bound: ${service.packageName}/${service.className}")
+                    pendingServices[pendingKey] = binding
+                    bindings[conn] = binding
                 }
+                found
             }
-            if (!synchronized(connectionMutation) {
-                    if (binding.releaseRequested) false else {
-                        binding.bindStarted = true
-                        true
+            if (existing != null) {
+                continuation.resume(existing)
+                return@suspendCancellableCoroutine
+            }
+            continuation.invokeOnCancellation { error ->
+                failBinding(conn, error ?: AudioPluginException("AudioPluginService binding cancelled"))
+            }
+            if (!isBindingPending(conn))
+                return@suspendCancellableCoroutine
+
+            try {
+                if (requestForeground) {
+                    try {
+                        if (context.startForegroundService(intent) == null)
+                            Log.w("AAP", "AudioPluginServiceConnector: startForegroundService returned null for $pendingKey")
+                    } catch (ex: Exception) {
+                        Log.w("AAP", "AudioPluginServiceConnector: startForegroundService failed for $pendingKey", ex)
                     }
-                })
-                return@suspendCoroutine
-            if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
-                failBinding(conn, AudioPluginException("AudioPluginServiceConnector: bindService returned false for $pendingKey"))
-        } catch (ex: Exception) {
-            failBinding(conn, ex)
-        } finally {
-            val release = synchronized(connectionMutation) {
-                binding.bindReturned = true
-                binding.releaseRequested
+                }
+                if (!synchronized(connectionMutation) {
+                        if (binding.releaseRequested) false else {
+                            binding.bindStarted = true
+                            true
+                        }
+                    })
+                    return@suspendCancellableCoroutine
+                if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
+                    failBinding(conn, AudioPluginException("AudioPluginServiceConnector: bindService returned false for $pendingKey"))
+            } catch (ex: Exception) {
+                failBinding(conn, ex)
+            } finally {
+                val release = synchronized(connectionMutation) {
+                    binding.bindReturned = true
+                    binding.releaseRequested
+                }
+                if (release)
+                    releaseBinding(conn)
             }
-            if (release)
-                releaseBinding(conn)
         }
-    }
+    } ?: throw AudioPluginException("Timed out binding AudioPluginService: ${service.packageName}/${service.className}")
 
     private fun isBindingPending(connection: ServiceConnection) = synchronized(connectionMutation) {
         bindings[connection]?.let { !it.finished && !it.releaseRequested } == true
