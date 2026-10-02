@@ -7,3 +7,5 @@ Request ID zero is covered for reply delivery, coexistence with ID one, timeout,
 Typed completion removes the request from the client map before invoking user code, keeping the request buffer owned until delivery returns. A regression callback destroys its own typed client. Failure snapshots also match request ID and address before completing a call.
 
 Lifecycle tests cover typed/session destruction, 400 successive cancellations, late replies, stale callback tokens, concurrent cancellation during reply copying, reentrant callbacks, and legacy unsolicited host requests. Session gates live in a private sidecar to preserve the public ABI. Registrations are removed before request storage is freed. Binder connection/abort-registry races and real-time allocation/locking remain outside this fix.
+
+Saturation tests cover 255 session callbacks and 1,024 global requests, immediate rejection without encoding or Binder fallback, subsequent capacity reuse, and encoding failure releasing its registration. Limits and public signatures remain unchanged. Legacy calls without an error callback receive their completion callback as the fallback failure notification.

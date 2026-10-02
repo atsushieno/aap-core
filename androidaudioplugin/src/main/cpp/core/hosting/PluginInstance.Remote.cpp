@@ -346,11 +346,10 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
             definition->is_command_rt_safe(definition, /*isHostExtension=*/ false, request->opcode);
 
     if (useSysEx8) {
-        // Registration, encoding and cancellation share one session gate.
-        if (internal::AAPXSMidi2SessionAccess::sendRequest(
-                aapxs_session, aapxsSessionAddEventUmpInput, this, request))
-            return true;
-        // Too many pending SysEx8 requests: fall back to Binder.
+        // Registration, encoding and cancellation share one session gate. A full table fails
+        // through the existing completion contract, without switching to Binder on this thread.
+        return internal::AAPXSMidi2SessionAccess::sendRequest(
+                aapxs_session, aapxsSessionAddEventUmpInput, this, request);
     }
 
     auto aapxsInstance = request->urid != 0 ? dispatcher.getPluginAAPXSByUrid(request->urid) : dispatcher.getPluginAAPXSByUri(request->uri);

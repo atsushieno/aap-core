@@ -100,35 +100,39 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
         reject(*request, "AAPXS session closed");
         return;
     }
-    // store its callback to the pending callbacks, before its reply could arrive
-    if (request->callback) {
+    const char* error = nullptr;
+    {
         const std::lock_guard<NanoSleepLock> guard{session_lock};
-        size_t i = 0;
-        auto cbu = CallbackUnit{request->request_id, request->callback,
-                                            request->callback_user_data,
-                                            request->error_callback,
-                                            std::chrono::steady_clock::now() +
-                                                std::chrono::milliseconds(request_timeout_ms)};
-        for (; i < MAX_PENDING_CALLBACKS; i++) {
-            if (!pending_callbacks[i].func) {
-                pending_callbacks[i] = cbu;
-                break;
+        size_t slot = MAX_PENDING_CALLBACKS;
+        if (request->callback) {
+            for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++)
+                if (!pending_callbacks[i].func) {
+                    slot = i;
+                    break;
+                }
+            if (slot == MAX_PENDING_CALLBACKS)
+                error = "too many pending AAPXS callbacks";
+        }
+        if (!error) {
+            size_t size = aap_midi2_generate_aapxs_sysex8(
+                    (uint32_t*) aapxs_rt_midi_buffer, midi_buffer_size / sizeof(int32_t),
+                    aapxs_rt_conversion_helper_buffer, midi_buffer_size,
+                    0, request->request_id, request->urid, request->uri, request->opcode,
+                    (uint8_t*) request->serialization->data, request->serialization->data_size);
+            if (size == 0)
+                error = "AAPXS request could not be encoded";
+            else {
+                if (request->callback)
+                    pending_callbacks[slot] = CallbackUnit{request->request_id, request->callback,
+                            request->callback_user_data, request->error_callback,
+                            std::chrono::steady_clock::now() + std::chrono::milliseconds(request_timeout_ms)};
+                addMidi2Event(this, addMidi2EventUserData, size);
             }
         }
-        if (i == MAX_PENDING_CALLBACKS) {
-            aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, "AAPXSMidi2InitiatorSession reached max pending callbacks.");
-            AAP_ASSERT_FALSE; //
-        }
     }
-    int32_t group = 0; // will we have to give special semantics on it?
-    addSession(addMidi2Event, addMidi2EventUserData,
-               group,
-               request->request_id,
-               request->urid,
-               request->uri,
-               request->serialization->data,
-               request->serialization->data_size,
-               request->opcode);
+    // This may complete and delete the caller's request context. Do not access it afterwards.
+    if (error)
+        reject(*request, error);
 }
 
 void aap::AAPXSMidi2InitiatorSession::sweepTimeouts(void* pluginOrHost) {
@@ -213,8 +217,13 @@ bool AAPXSMidi2SessionAccess::sendRequest(AAPXSMidi2InitiatorSession& session,
         return completes;
     }
     AAPXSRequestContext routed = *request;
-    if (request->callback && !sysex8::registerRequest(*request, routed, &session))
+    if (request->callback && !sysex8::registerRequest(*request, routed, &session)) {
+        if (request->error_callback) {
+            reject(*request, "too many pending AAPXS requests");
+            return true;
+        }
         return false;
+    }
     session.addSession(addEvent, userData, &routed);
     return true;
 }

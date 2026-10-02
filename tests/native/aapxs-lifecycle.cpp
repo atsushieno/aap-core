@@ -38,10 +38,55 @@ AAPXSRequestContext makeRequest(AAPXSSerializationContext& data, uint32_t id, Re
     return {Results::completed, &result, &data, 1, uri, id, 1, Results::failed};
 }
 
-void staleToken() {
+void zeroAndSessionCap() {
+    AAPXSMidi2InitiatorSession session(8192);
+    int handlers = 0, value = 42;
+    session.setReplyHandler([&](auto*) { ++handlers; });
+    MidiBuffer midi;
+    Results result;
+    AAPXSSerializationContext data{&value, 4, 4};
+    for (uint32_t id = 0; id < 256; ++id) {
+        auto request = makeRequest(data, id, result);
+        check(AAPXSMidi2SessionAccess::sendRequest(session, MidiBuffer::collect, &midi, &request), "async send contract");
+    }
+    check(result.errors == 1 && result.successes == 0, "256th request fails immediately");
+    check(sysex8::findRequestBuffer(255) == nullptr, "rejection releases global slot");
+    session.completeSession(midi.header(), nullptr);
+    check(result.successes == 255 && handlers == 255, "all accepted callbacks including zero complete");
+    midi.header()->length = 0;
+    auto request = makeRequest(data, 256, result);
+    AAPXSMidi2SessionAccess::sendRequest(session, MidiBuffer::collect, &midi, &request);
+    session.completeSession(midi.header(), nullptr);
+    check(result.successes == 256 && result.errors == 1, "session accepts another request after saturation");
+
+    AAPXSMidi2InitiatorSession zeroTimeout(8192);
+    zeroTimeout.setRequestTimeoutMs(0);
+    midi.header()->length = 0;
+    request = makeRequest(data, 0, result);
+    AAPXSMidi2SessionAccess::sendRequest(zeroTimeout, MidiBuffer::collect, &midi, &request);
+    midi.header()->length = 0;
+    zeroTimeout.completeSession(midi.header(), nullptr);
+    check(result.errors == 2 && sysex8::findRequestBuffer(0) == nullptr, "ID zero times out and frees its slot");
+}
+
+void globalCapAndStaleToken() {
     int value = 42;
     AAPXSSerializationContext data{&value, 4, 4};
     Results result;
+    std::vector<AAPXSRequestContext> routed(1024);
+    for (uint32_t id = 0; id < 1024; ++id) {
+        auto request = makeRequest(data, id, result);
+        check(sysex8::registerRequest(request, routed[id]), "1024 global requests fit");
+    }
+    AAPXSMidi2InitiatorSession session(8192);
+    MidiBuffer midi;
+    auto overflow = makeRequest(data, 2048, result);
+    check(AAPXSMidi2SessionAccess::sendRequest(session, MidiBuffer::collect, &midi, &overflow), "table overflow delivered asynchronously");
+    check(result.errors == 1 && midi.header()->length == 0, "full table reports error without encoding or Binder fallback");
+    for (auto& request : routed)
+        request.error_callback(request.callback_user_data, nullptr, "cleanup");
+    check(result.errors == 1025, "each occupied global entry cleaned up once");
+
     auto old = makeRequest(data, 7, result);
     AAPXSRequestContext stale{}, fresh{};
     check(sysex8::registerRequest(old, stale), "register old callback");
@@ -56,6 +101,7 @@ void staleToken() {
     fresh.callback(fresh.callback_user_data, nullptr);
     check(result.successes == 1, "fresh callback completes once");
 }
+
 struct Fixture {
     AAPXSMidi2InitiatorSession session{8192};
     MidiBuffer replies;
@@ -202,10 +248,22 @@ void legacyHostRequest() {
     check(hostRequests == 1, "unsolicited legacy host requests still reach the handler");
 }
 
+void encodingFailure() {
+    AAPXSMidi2InitiatorSession session(32);
+    MidiBuffer midi;
+    Results result;
+    int value = 42;
+    AAPXSSerializationContext data{&value, 4, 4};
+    auto request = makeRequest(data, 60000, result);
+    AAPXSMidi2SessionAccess::sendRequest(session, MidiBuffer::collect, &midi, &request);
+    check(result.errors == 1 && midi.header()->length == 0 && sysex8::findRequestBuffer(60000) == nullptr,
+          "unencodable request fails and releases its registration");
+}
+
 int main() {
     try {
-        staleToken(); cancellationAndDestruction();
-        cancellationRacesReply(); reentrantAndClosedSession(); legacyHostRequest(); callbackDestroysClient();
+        zeroAndSessionCap(); globalCapAndStaleToken(); cancellationAndDestruction();
+        cancellationRacesReply(); reentrantAndClosedSession(); encodingFailure(); legacyHostRequest(); callbackDestroysClient();
         std::puts("AAPXS lifecycle tests passed");
     } catch (const std::exception& error) {
         std::fprintf(stderr, "AAPXS lifecycle test failed: %s\n", error.what());
