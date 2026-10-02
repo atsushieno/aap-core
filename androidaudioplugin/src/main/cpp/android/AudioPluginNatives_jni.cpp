@@ -80,6 +80,11 @@ Java_org_androidaudioplugin_AudioPluginNatives_stopNativeLooper(JNIEnv *env, jcl
 // --------------------------------------------------
 
 std::map<AIBinder*,aap::AndroidPluginClientConnectionData*> live_connection_data{};
+namespace {
+// Only registration takes this mutex; Binder callbacks never do. A repeated Java Binder
+// must not replace the service callback and orphan instances on its existing connection.
+std::mutex connection_initialization_mutex;
+}
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -92,65 +97,34 @@ Java_org_androidaudioplugin_AudioPluginNatives_addBinderForClient(JNIEnv *env, j
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "addBinderForClient: failed to convert Java binder for %s/%s",
                      packageNameString.c_str(), classNameString.c_str());
+        auto exception = env->FindClass("org/androidaudioplugin/AudioPluginException");
+        if (exception)
+            env->ThrowNew(exception, "Failed to convert plugin service Binder");
         return;
     }
+    std::lock_guard<std::mutex> initialization{connection_initialization_mutex};
 	aap::AndroidPluginClientConnectionData* connectionData = nullptr;
 	for (auto &pair : live_connection_data)
 		if (pair.first == aiBinder)
 			connectionData = pair.second;
     if (!connectionData) {
         connectionData = new aap::AndroidPluginClientConnectionData(aiBinder);
-        if (!connectionData->isValid()) {
-            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
-                         "addBinderForClient: failed to initialize binder client for %s/%s",
-                         packageNameString.c_str(), classNameString.c_str());
-            delete connectionData;
-            return;
-        }
-        connectionData->request_process = [connectionData](int32_t instanceId) {
-            auto instance = connectionData->getRemoteInstance(instanceId);
-            if (!instance)
-                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote instance not found");
-            return ::ndk::ScopedAStatus::ok();
-        };
-        connectionData->host_extension = [connectionData](int32_t instanceId,
-                                                          const std::string& uri,
-                                                          int32_t opcode,
-                                                          int32_t requestId,
-                                                          const std::shared_ptr<aidl::org::androidaudioplugin::IAudioPluginExtensionCallback>& callback) {
-            auto instance = connectionData->getRemoteInstance(instanceId);
-            if (!instance) {
-                if (callback)
-                    callback->completed(instanceId, requestId, "remote instance not found");
-                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "remote instance not found");
-            }
-
-            auto& dispatcher = instance->getAAPXSDispatcher();
-            auto aapxsInstance = dispatcher.getHostAAPXSByUri(uri.c_str());
-            if (!aapxsInstance) {
-                if (callback)
-                    callback->completed(instanceId, requestId, "host extension not registered");
-                return ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(1, "host extension not registered");
-            }
-
-            AAPXSRequestContext context{nullptr, nullptr, aapxsInstance->serialization, 0, uri.c_str(), static_cast<uint32_t>(requestId), opcode};
-            std::string error{};
-            try {
-                instance->processHostAAPXSRequest(&context);
-            } catch (const std::exception& ex) {
-                error = ex.what();
-            } catch (...) {
-                error = "Unknown host extension error";
-            }
-            if (callback)
-                callback->completed(instanceId, requestId, error);
-            return ::ndk::ScopedAStatus::ok();
-        };
         live_connection_data[aiBinder] = connectionData;
 		AIBinder_incStrong(aiBinder);
     }
 	AIBinder_decStrong(aiBinder);
 
+    if (!connectionData->isValid()) {
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
+                     "addBinderForClient: failed to initialize binder client for %s/%s",
+                     packageNameString.c_str(), classNameString.c_str());
+        // Keep the callback/death-recipient owner alive in the existing process-lifetime
+        // registry even if death raced initialization. Never publish it as a scoped connection.
+        auto exception = env->FindClass("org/androidaudioplugin/AudioPluginException");
+        if (exception)
+            env->ThrowNew(exception, "Plugin service disconnected during connection initialization");
+        return;
+    }
     aap::AAPJniFacade::getInstance()->addScopedClientConnection(connectorInstanceId,
 																packageNameString, classNameString, connectionData);
 }

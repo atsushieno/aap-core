@@ -7,6 +7,7 @@
 #include "audio-plugin-host-internals.h"
 #include "host-aapxs-request-queue.h"
 #include "plugin-parameter-state.h"
+#include "remote-instance-lifetime.h"
 
 #define LOG_TAG "AAP.PluginHost"
 
@@ -44,16 +45,10 @@ void collectAAPXSInstanceContexts(aap::xs::AAPXSDefinitionRegistry* registry, Di
     }
 }
 
-// AAPXS instances are set up during instantiation; they do not exist before (or if it failed).
-bool hasAAPXSInstances(aap::PluginInstance* instance) {
-    auto state = instance->getInstanceState();
-    return state != aap::PLUGIN_INSTANTIATION_STATE_INITIAL && state != aap::PLUGIN_INSTANTIATION_STATE_ERROR;
-}
-
+// Empty dispatchers return null. Collect initialized contexts even if creation failed
+// partway through, so a rejected factory result does not leak extension-owned contexts.
 std::vector<AAPXSInstanceContext> collectAAPXSInstanceContexts(aap::PluginInstance* instance) {
     std::vector<AAPXSInstanceContext> result;
-    if (!hasAAPXSInstances(instance))
-        return result;
     if (auto local = dynamic_cast<aap::LocalPluginInstance*>(instance))
         collectAAPXSInstanceContexts(local->getAAPXSRegistry()->items(), local->getAAPXSDispatcher(),
                                      [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
@@ -71,15 +66,22 @@ std::vector<AAPXSInstanceContext> collectAAPXSInstanceContexts(aap::PluginInstan
 
 void aap::PluginHost::destroyInstance(PluginInstance* instance)
 {
-    instances.erase(std::find(instances.begin(), instances.end(), instance));
-    // The plugin may hold pointers into these contexts until it is released (at `delete`).
-    auto aapxsContexts = collectAAPXSInstanceContexts(instance);
-    internal::closeParameterLayoutRefresh(*instance);
-    delete instance;
-    for (auto& c : aapxsContexts)
-        c.definition->release_instance_context(c.definition, c.context);
-    internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
-    internal::forgetParameterLayoutRefresh(*instance);
+    auto found = std::find(instances.begin(), instances.end(), instance);
+    if (found == instances.end())
+        return;
+    instances.erase(found);
+    auto destroy = [instance] {
+        // The plugin may hold pointers into these contexts until it is released (at `delete`).
+        auto aapxsContexts = collectAAPXSInstanceContexts(instance);
+        internal::closeParameterLayoutRefresh(*instance);
+        delete instance;
+        for (auto& c : aapxsContexts)
+            c.definition->release_instance_context(c.definition, c.context);
+        internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
+        internal::forgetParameterLayoutRefresh(*instance);
+    };
+    if (!internal::retireRemoteInstanceLifetime(instance, destroy))
+        destroy();
 }
 
 aap::PluginInstance* aap::PluginHost::getInstanceByIndex(int32_t index) {

@@ -1,3 +1,4 @@
+#include "../core/hosting/connection-list-lock.h"
 #include "aap/core/android/android-application-context.h"
 #include "../core/AAPJniFacade.h"
 #include "ALooperMessage.h"
@@ -817,6 +818,7 @@ namespace aap {
     std::map<jint, aap::PluginClientConnectionList*> client_connection_list_per_scope{};
 
     int32_t AAPJniFacade::getConnectorInstanceId(aap::PluginClientConnectionList* connections) {
+        const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
         for (auto entry : client_connection_list_per_scope)
             if (entry.second == connections)
                 return entry.first;
@@ -824,6 +826,7 @@ namespace aap {
     }
 
     aap::PluginClientConnectionList* AAPJniFacade::getPluginConnectionListFromJni(jint connectorInstanceId, bool createIfNotExist) {
+        const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
         if (client_connection_list_per_scope.find(connectorInstanceId) != client_connection_list_per_scope.end())
             return client_connection_list_per_scope[connectorInstanceId];
         if (!createIfNotExist)
@@ -834,15 +837,20 @@ namespace aap {
     }
 
     void AAPJniFacade::addScopedClientConnection(int32_t connectorInstanceId, std::string packageName, std::string className, void* connectionData) {
+        const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
         auto list = client_connection_list_per_scope[connectorInstanceId];
         if (list == nullptr) {
             client_connection_list_per_scope[connectorInstanceId] = new aap::PluginClientConnectionList();
             list = client_connection_list_per_scope[connectorInstanceId];
         }
+        // Re-registration replaces the scoped lookup; existing instances retain their old
+        // connection through the process-lifetime native connection registry.
+        list->remove(packageName, className);
         list->add(std::make_unique<aap::PluginClientConnection>(packageName, className, connectionData));
     }
 
     void AAPJniFacade::removeScopedClientConnection(int32_t connectorInstanceId, std::string packageName, std::string className) {
+        const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
         auto list = client_connection_list_per_scope[connectorInstanceId];
         if (list != nullptr)
             list->remove(packageName.c_str(), className.c_str());

@@ -296,7 +296,7 @@ void aap::PluginInstance::completeInstantiation()
     if (plugin) {
         instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
     } else {
-        AAP_ASSERT_FALSE;
+        aap::a_log(AAP_LOG_LEVEL_WARN, LOG_TAG, "Plugin factory could not create an instance");
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
     }
 }

@@ -76,6 +76,10 @@ aap::PluginClient::Result<int32_t> aap::PluginClient::instantiateRemotePlugin(co
             instances.emplace_back(instance);
             instance->setupAAPXS(); // this needs to be done before setupAAPXSInstances() which is invoked by completeInstantiation() in binder-client-as-plugin.
             instance->completeInstantiation();
+            if (!instance->getPlugin()) {
+                destroyInstance(instance);
+                return Result<int32_t>{-1, "Plugin service disconnected or instance creation failed: " + descriptor->getPluginID()};
+            }
             instance->configurePorts();
             instance->scanParametersAndBuildList();
             internal::handleParameterLayoutChanged(*instance);

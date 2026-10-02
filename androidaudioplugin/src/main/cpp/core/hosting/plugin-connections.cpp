@@ -1,6 +1,7 @@
 
 #include "aap/core/host/plugin-connections.h"
 #include "aap/core/host/plugin-client-system.h"
+#include "connection-list-lock.h"
 
 namespace aap {
 
@@ -13,6 +14,7 @@ PluginListSnapshot PluginListSnapshot::queryServices() {
 
 void* PluginClientConnectionList::getServiceHandleForConnectedPlugin(std::string packageName, std::string className)
 {
+    const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
     for (int i = 0; i < serviceConnections.size(); i++) {
         auto s = serviceConnections[i];
         if (s->getPackageName() == packageName && s->getClassName() == className)

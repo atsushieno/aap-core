@@ -15,6 +15,7 @@
 #include "AudioPluginInterfaceImpl.h"
 #include "../core/hosting/audio-plugin-host-internals.h"
 #include "audio-plugin-host-android-internal.h"
+#include "../core/hosting/connection-list-lock.h"
 
 #define AAP_PXORY_LOG_TAG "AAP.proxy"
 
@@ -69,7 +70,7 @@ AAPClientContext::~AAPClientContext() {
     if (connection_data && instance_id >= 0) {
         connection_data->unregisterRemoteInstance(instance_id);
     }
-	if (instance_id >= 0) {
+	if (instance_id >= 0 && connection_data && getProxy()) {
 		getProxy()->destroy(instance_id);
         instance_id = -1;
 	}
@@ -276,22 +277,33 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
     }
 
     auto client = (aap::PluginClient*) pluginFactory->factory_context;
-    auto ctx = new AAPClientContext();
+    auto instance = static_cast<aap::RemotePluginInstance*>(host->context);
+    if (!instance)
+        return nullptr;
+    auto descriptor = instance->getPluginInformation();
+    auto ctxOwner = std::make_unique<AAPClientContext>();
+    auto ctx = ctxOwner.get();
     ctx->host = *host;
-    ctx->connection_data = (aap::AndroidPluginClientConnectionData*) client->getConnections()->getServiceHandleForConnectedPlugin(pluginUniqueId);
+    {
+        const std::lock_guard<std::recursive_mutex> lock{aap::internal::connectionListMutex()};
+        ctx->connection_data = (aap::AndroidPluginClientConnectionData*) client->getConnections()->getServiceHandleForConnectedPlugin(descriptor->getPluginPackageName(), descriptor->getPluginLocalName());
+        // Published connection data is retained in the process-lifetime native registry.
+        // The scoped entry can disappear, but this connection/proxy cannot be freed underneath us.
+        if (!ctx->connection_data || !ctx->connection_data->isValid() || !ctx->getProxy()) {
+            aap::a_log(AAP_LOG_LEVEL_WARN, AAP_PXORY_LOG_TAG, "Plugin service disconnected before beginCreate()");
+            return nullptr;
+        }
+    }
 
     ctx->unique_id = pluginUniqueId;
 
     auto status = ctx->getProxy()->beginCreate(pluginUniqueId, &ctx->instance_id);
     if (!status.isOk()) {
 		aap_bcap_log_error_with_details("beginCreate() failed", status);
-        // It will still return the plugin instance anyways, even though it is not really usable.
-        ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
+        return nullptr;
     } else {
 
-        auto instance = (aap::RemotePluginInstance *) host->context;
 		instance->setInstanceId(ctx->instance_id);
-        ctx->connection_data->registerRemoteInstance(ctx->instance_id, instance);
 
         // It is a nasty workaround to not expose Binder back to platform-agnostic aap::RemotePluginInstance; we set a callable function for them here.
         instance->setIpcExtensionMessageSender(aap_client_as_plugin_send_extension_message_delegate);
@@ -317,16 +329,24 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
 
         if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
+            // Publish callbacks only after the dispatcher and buffers are fully initialized.
+            // endCreate() instantiates the plugin backend, which may call host extensions.
+            ctx->connection_data->registerRemoteInstance(ctx->instance_id, instance);
+            if (!ctx->connection_data->isValid())
+                return nullptr;
             status = ctx->getProxy()->endCreate(ctx->instance_id);
             if (!status.isOk()) {
                 aap_bcap_log_error_with_details("endCreate() failed", status);
                 ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
             }
-            ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
+            if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR)
+                ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_INACTIVE;
         }
     }
+    if (ctx->proxy_state == aap::PLUGIN_INSTANTIATION_STATE_ERROR || !ctx->connection_data->isValid())
+        return nullptr;
 
-	auto result = new AndroidAudioPlugin {
+    auto result = new AndroidAudioPlugin {
 		ctx,
 		aap_client_as_plugin_prepare,
 		aap_client_as_plugin_activate,
@@ -336,6 +356,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
 		aap_client_as_plugin_get_plugin_info
 		};
     ctx->plugin = result;
+    ctxOwner.release();
     return result;
 }
 

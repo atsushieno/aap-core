@@ -18,7 +18,7 @@ open class AudioPluginClientBase(private val context: Context) {
 
     fun dispose() {
         onDispose()
-        serviceConnector.connectedServices.forEach { disconnectPluginService(it.serviceInfo.packageName) }
+        serviceConnector.connectedServices.toTypedArray().forEach { disconnectPluginService(it.serviceInfo.packageName) }
         native.dispose()
     }
 

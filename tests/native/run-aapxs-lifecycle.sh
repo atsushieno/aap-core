@@ -16,9 +16,12 @@ inline int clock_nanosleep(clockid_t, int, const timespec* delay, timespec* rema
 HEADER
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in zero-id typed-completion lifecycle metadata; do
+    for test in zero-id typed-completion lifecycle metadata connections; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
+        if [ "$test" = connections ]; then
+            set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/hosting/plugin-connections.cpp"
+        fi
         if [ "$test" = metadata ] && [ -f "$script_dir/midi-jni-stub.h" ]; then
             set -- "$@" -include "$script_dir/midi-jni-stub.h" \
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/midi-aapxs.cpp"
