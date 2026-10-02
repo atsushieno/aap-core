@@ -2,6 +2,7 @@
 #include "aap/core/host/shared-memory-store.h"
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
+#include "parameter-layout-reader.h"
 #include "aapxs-transport.h"
 #include "aap/ext/midi.h"
 #include <algorithm>
@@ -200,11 +201,6 @@ ParameterLayoutRefreshQueue& parameter_layout_refresh_queue() {
     return *queue;
 }
 
-std::string fixed_string(const char* s, size_t capacity) {
-    if (!s || capacity == 0)
-        return {};
-    return {s, strnlen(s, capacity)};
-}
 }
 
 aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
@@ -385,48 +381,16 @@ void aap::PluginInstance::startPortConfiguration() {
     */
 }
 
-// Parameter IDs are 0..16383 (see aap_parameter_info_t::stable_id); no sane plugin exceeds that for enumerations either.
-static constexpr int32_t MAX_SCANNED_PARAMETER_ITEMS = 16384;
-
 void aap::PluginInstance::scanParametersAndBuildList() {
     const std::lock_guard<std::mutex> scanLock{parameter_layout_scan_mutex};
-
-    auto& ext = getStandardExtensions();
-    auto parameterCount = ext.getParameterCount();
-    if (parameterCount < 0) { // -1 explicitly indicates that the code is not going to return the parameter list (or it failed).
+    internal::ParameterLayoutReader reader{getStandardExtensions()};
+    auto result = internal::readParameterLayout(reader);
+    if (!result.isOk()) {
+        if (result.error != "parameters extension unavailable")
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: %s", result.error.c_str());
         return;
     }
-
-    // if parameters extension does not exist, do not populate cached parameters list.
-    // (The empty list means no parameters in metadata either.)
-    // A broken reply must not make us allocate or loop on a garbage count; keep the old list instead.
-    if (parameterCount > MAX_SCANNED_PARAMETER_ITEMS) {
-        aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: invalid parameter count %d", parameterCount);
-        return;
-    }
-    auto scannedParameters = std::make_unique<std::vector<ParameterInformation>>();
-    scannedParameters->reserve(parameterCount);
-
-    for (auto i = 0; i < parameterCount; i++) {
-        auto para = ext.getParameter(i);
-        ParameterInformation p{para.stable_id,
-                               fixed_string(para.display_name, AAP_MAX_PARAMETER_NAME_CHARS),
-                               para.min_value,
-                               para.max_value,
-                               para.default_value};
-        auto parameterId = para.stable_id;
-        auto enumCount = ext.getEnumerationCount(parameterId);
-        if (parameterId < 0 || enumCount < 0 || enumCount > MAX_SCANNED_PARAMETER_ITEMS) {
-            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: invalid parameter %d at %d (enumeration count: %d)", parameterId, i, enumCount);
-            return;
-        }
-        for (auto e = 0; e < enumCount; e++) {
-            auto pe = ext.getEnumeration(parameterId, e);
-            ParameterInformation::Enumeration eDef{e, pe.value, fixed_string(pe.name, AAP_MAX_PARAMETER_ENUM_NAME)};
-            p.addEnumeration(eDef);
-        }
-        scannedParameters->emplace_back(p);
-    }
+    auto scannedParameters = std::make_unique<std::vector<ParameterInformation>>(std::move(result.value));
 
     // Publish and reindex under both the value lock (audio thread) and the list lock (safe readers).
     // The old list is retired, not freed, so that getParameter() pointers stay valid.
