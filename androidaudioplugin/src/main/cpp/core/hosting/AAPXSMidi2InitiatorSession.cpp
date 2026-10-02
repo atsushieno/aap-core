@@ -74,7 +74,7 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
                                             std::chrono::steady_clock::now() +
                                                 std::chrono::milliseconds(request_timeout_ms)};
         for (; i < MAX_PENDING_CALLBACKS; i++) {
-            if (pending_callbacks[i].request_id == 0) {
+            if (!pending_callbacks[i].func) {
                 pending_callbacks[i] = cbu;
                 break;
             }
@@ -103,7 +103,7 @@ void aap::AAPXSMidi2InitiatorSession::sweepTimeouts(void* pluginOrHost) {
         const std::lock_guard<NanoSleepLock> guard{session_lock};
         for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
             auto& unit = pending_callbacks[i];
-            if (unit.request_id == 0)
+            if (!unit.func)
                 continue;
             if (now < unit.deadline)
                 continue;
@@ -129,7 +129,7 @@ void aap::AAPXSMidi2InitiatorSession::completeSession(void* buffer, void* plugin
             {
                 const std::lock_guard<NanoSleepLock> guard{session_lock};
                 for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
-                    if (pending_callbacks[i].request_id == aapxs_parse_context.request_id) {
+                    if (pending_callbacks[i].func && pending_callbacks[i].request_id == aapxs_parse_context.request_id) {
                         unit = pending_callbacks[i];
                         memset(pending_callbacks + i, 0, sizeof(CallbackUnit));
                         break;
