@@ -55,6 +55,7 @@ aap::xs::AAPXSDefinition_Urid::aapxs_urid_get_plugin_proxy(struct AAPXSDefinitio
 }
 
 void aap::xs::UridClientAAPXS::map(uint8_t urid, const char *uri) {
+    if (aap::RealtimeScope::isActive()) return;
     uint32_t len = strlen(uri);
     std::vector<uint8_t> payload(1 + sizeof(int32_t) + len);
     payload[0] = urid;

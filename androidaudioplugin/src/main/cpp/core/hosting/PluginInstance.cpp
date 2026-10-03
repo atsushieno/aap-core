@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstring>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <thread>
 #include <unordered_map>
@@ -26,7 +27,6 @@
 #define LOG_TAG "AAP.Instance"
 
 namespace {
-std::mutex parameter_layout_scan_mutex;
 
 // ---- Plugin-initiated parameter layout changes (see plugin-parameter-state.h)
 
@@ -97,6 +97,7 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
           pluginInfo(pluginInformation),
         event_midi2_buffer_size(eventMidi2InputBufferSize) {
     parameter_values = std::make_unique<internal::ParameterValueCache>();
+    host_plugin_info.get = get_plugin_info;
     if (!pluginInformation)
         AAP_ASSERT_FALSE; // should not happen
     if (!loadedPluginFactory)
@@ -133,9 +134,7 @@ aap::PluginInstance::~PluginInstance() {
     stopExtensionWorker();
     internal::releaseAAPXSBinderChannels(this);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
-    if (plugin != nullptr)
-        plugin_factory->release(plugin_factory, plugin);
-    plugin = nullptr;
+    releasePlugin();
     delete shared_memory_store;
     if (event_midi2_buffer)
         free(event_midi2_buffer);
@@ -145,6 +144,14 @@ aap::PluginInstance::~PluginInstance() {
     {
         const std::lock_guard<std::mutex> lock{parameter_layout_state_registry_mutex};
         parameter_layout_state_registry.erase(this);
+    }
+}
+
+void aap::PluginInstance::releasePlugin() {
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
+    if (plugin) {
+        plugin_factory->release(plugin_factory, plugin);
+        plugin = nullptr;
     }
 }
 
@@ -252,7 +259,13 @@ void aap::PluginInstance::startPortConfiguration() {
 }
 
 void aap::PluginInstance::scanParametersAndBuildList() {
-    const std::lock_guard<std::mutex> scanLock{parameter_layout_scan_mutex};
+    if (RealtimeScope::isActive()) {
+        internal::requestParameterLayoutRefresh(*this);
+        return;
+    }
+    std::optional<internal::ProcessingQuiescence::Control> suspension;
+    if (dynamic_cast<LocalPluginInstance*>(this)) suspension.emplace(realtime_state->processing);
+    const std::lock_guard<std::mutex> scanLock{realtime_state->parameter_scan_mutex};
     internal::ParameterLayoutReader reader{getStandardExtensions()};
     auto result = internal::readParameterLayout(reader);
     if (!result.isOk()) {
@@ -278,7 +291,7 @@ void aap::internal::cleanupParameterState(aap::PluginInstance&) {
 }
 
 void aap::internal::reindexParameterValues(aap::PluginInstance& instance) {
-    const std::lock_guard<std::mutex> writers{parameter_layout_scan_mutex};
+    const std::lock_guard<std::mutex> writers{instance.getRealtimeState().parameter_scan_mutex};
     publish_parameter_values(instance);
 }
 
@@ -408,6 +421,9 @@ void aap::internal::handleParameterLayoutChanged(aap::PluginInstance& instance) 
 }
 
 void aap::PluginInstance::activate() {
+    if (RealtimeScope::isActive()) return;
+    std::optional<internal::ProcessingQuiescence::Control> suspension;
+    if (dynamic_cast<LocalPluginInstance*>(this)) suspension.emplace(realtime_state->processing);
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE)
         return;
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
@@ -420,6 +436,9 @@ void aap::PluginInstance::activate() {
 }
 
 void aap::PluginInstance::deactivate() {
+    if (RealtimeScope::isActive()) return;
+    std::optional<internal::ProcessingQuiescence::Control> suspension;
+    if (dynamic_cast<LocalPluginInstance*>(this)) suspension.emplace(realtime_state->processing);
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE ||
         instantiation_state == PLUGIN_INSTANTIATION_STATE_UNPREPARED)
         return;
@@ -437,17 +456,22 @@ void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
 }
 
 bool aap::PluginInstance::tryAddEventUmpInput(const void* input, int32_t size) {
-    return size > 0 && realtime_state->ump_input.tryPush(input, static_cast<size_t>(size));
+    return size > 0 && size <= event_midi2_buffer_size &&
+            internal::isCompleteUmpSequence(input, static_cast<size_t>(size)) &&
+            realtime_state->ump_input.tryPush(input, static_cast<size_t>(size));
 }
 
 void aap::PluginInstance::startExtensionWorker() {
     realtime_state->worker.start([this] {
         pollExtensionWorker();
-        pollParameterLayoutRefresh();
+        if (!realtime_state->worker.isStopping()) pollParameterLayoutRefresh();
     });
 }
 void aap::PluginInstance::stopExtensionWorker() {
     if (realtime_state) realtime_state->worker.stop();
+}
+void aap::PluginInstance::requestExtensionWorkerStop() {
+    if (realtime_state) realtime_state->worker.requestStop();
 }
 bool aap::PluginInstance::isOnExtensionWorkerThread() const {
     return realtime_state && realtime_state->worker.isCurrentThread();
@@ -612,15 +636,9 @@ void aap::internal::forgetParameterLayoutRefresh(aap::PluginInstance&) {
 }
 
 int32_t aap::internal::getParameterCountSafely(aap::PluginInstance& instance) {
-    auto* layout = get_parameter_layout_state(&instance);
-    const std::shared_lock<std::shared_mutex> lock{layout->list_mutex};
     return instance.getNumParameters();
 }
 
 const aap::ParameterInformation* aap::internal::getParameterSafely(aap::PluginInstance& instance, int32_t index) {
-    auto* layout = get_parameter_layout_state(&instance);
-    const std::shared_lock<std::shared_mutex> lock{layout->list_mutex};
-    if (index < 0 || index >= instance.getNumParameters())
-        return nullptr;
     return instance.getParameter(index);
 }

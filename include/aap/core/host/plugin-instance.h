@@ -4,6 +4,7 @@
 
 #include <mutex>
 #include <atomic>
+#include <array>
 #include "../realtime.h"
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"
@@ -61,10 +62,10 @@ namespace aap {
         void* event_midi2_merge_buffer{nullptr};
         int32_t event_midi2_buffer_size{0};
         int32_t event_midi2_buffer_offset{0};
-        NanoSleepLock plugin_call_mutex{};
         std::unique_ptr<internal::InstanceRealtimeState> realtime_state;
         virtual void pollExtensionWorker() {}
         void startExtensionWorker();
+        void releasePlugin(); // derived destructors call while their host facade/proxies still exist
         void mergeQueuedUmp(aap_port_direction direction, bool output = false);
 
         PluginInstance(const PluginInformation *pluginInformation,
@@ -83,6 +84,7 @@ namespace aap {
         internal::ParameterValueCache& getParameterValueCache() { return *parameter_values; }
         void pollParameterLayoutRefresh(); // extension worker only
         void stopExtensionWorker();
+        void requestExtensionWorkerStop();
         bool isOnExtensionWorkerThread() const;
 
         virtual int32_t getInstanceId() = 0;
@@ -111,13 +113,10 @@ namespace aap {
             if (index < 0) return nullptr;
             auto* parameters = published_parameters.load(std::memory_order_acquire);
             if (!parameters)
-                return pluginInfo->getDeclaredParameter(index);
+                return index < pluginInfo->getNumDeclaredParameters() ? pluginInfo->getDeclaredParameter(index) : nullptr;
             if (parameters->size() > static_cast<size_t>(index))
                 return &(*parameters)[index];
-            else {
-                AAP_ASSERT_FALSE;
-                return nullptr;
-            }
+            return nullptr;
         }
 
         int32_t getNumPorts() {
@@ -201,12 +200,10 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
+        std::array<void*, 256> host_extension_proxies{};
         std::atomic<bool> process_requested_to_host{false};
 
         AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
-        void* aapxs_out_midi2_buffer{nullptr};
-        void* aapxs_out_merge_buffer{nullptr};
-        int32_t aapxs_out_midi2_buffer_offset{0};
 
         static void* internalGetHostExtension(AndroidAudioPluginHost *host, const char *uri) {
             return ((LocalPluginInstance*) host->context)->getHostExtension(0, uri);
@@ -311,6 +308,7 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         AAPXSMidi2InitiatorSession aapxs_session;
         std::unique_ptr<RemotePluginNativeUIController> native_ui_controller{};
+        std::array<void*, 256> plugin_extension_proxies{};
 
         void* internalGetHostExtension(uint8_t urid, const char *uri);
 
@@ -429,6 +427,11 @@ namespace aap {
         std::function<void(RemotePluginInstance& instance)> parametersChangedHandler;
 
         void setupStandardExtensions();
+        void* getPluginExtensionProxy(const char* uri) {
+            if (!uri) return nullptr;
+            auto urid = feature_registry->items()->getUridMapping()->getUrid(uri);
+            return plugin_extension_proxies[urid];
+        }
     };
 }
 

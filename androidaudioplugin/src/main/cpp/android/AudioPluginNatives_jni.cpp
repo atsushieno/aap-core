@@ -15,6 +15,7 @@
 #include "audio-plugin-host-android-internal.h"
 #include "../core/hosting/plugin-service-list.h"
 #include "../core/hosting/plugin-parameter-state.h"
+#include "../core/hosting/instance-realtime-state.h"
 #include "../core/AAPJniFacade.h"
 
 #define LOG_TAG "AAP.JNI"
@@ -766,6 +767,7 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getPresetCount(JNIEnv*,
                                                                      jint instanceId) {
     auto service = (aap::PluginService *) (void *) nativeService;
     auto instance = service->getInstanceById(instanceId);
+    const aap::internal::ProcessingQuiescence::Control suspension{instance->getRealtimeState().processing};
     return (jint) instance->getStandardExtensions().getPresetCount();
 }
 
@@ -778,6 +780,7 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_getPresetName(JNIEnv* env,
                                                                      jint index) {
     auto service = (aap::PluginService *) (void *) nativeService;
     auto instance = service->getInstanceById(instanceId);
+    const aap::internal::ProcessingQuiescence::Control suspension{instance->getRealtimeState().processing};
     std::string name = instance->getStandardExtensions().getPresetName(index);
     return env->NewStringUTF(name.c_str());
 }
@@ -790,6 +793,7 @@ Java_org_androidaudioplugin_NativeLocalPluginInstance_setPresetIndex(JNIEnv *env
                                                                     jint instanceId, jint index) {
     auto service = (aap::PluginService *) (void *) nativeService;
     auto instance = service->getInstanceById(instanceId);
+    const aap::internal::ProcessingQuiescence::Control suspension{instance->getRealtimeState().processing};
     instance->getStandardExtensions().setCurrentPresetIndex(index);
 }
 

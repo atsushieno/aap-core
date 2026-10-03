@@ -64,6 +64,7 @@ aap::xs::AAPXSDefinition_Midi::aapxs_midi_get_plugin_proxy(struct AAPXSDefinitio
 }
 
 enum aap_midi_mapping_policy aap::xs::MidiClientAAPXS::getMidiMappingPolicy() {
+    if (aap::RealtimeScope::isActive()) return AAP_PARAMETERS_MAPPING_POLICY_NONE;
     auto* instance = static_cast<aap::PluginInstance*>(aapxs_instance->host_context);
     auto* info = instance ? instance->getPluginInformation() : nullptr;
     std::array<char, MIDI_SHARED_MEMORY_SIZE> payload{};

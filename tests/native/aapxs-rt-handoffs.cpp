@@ -47,6 +47,9 @@ void concurrentProducers() {
             for (uint32_t serial = 0; serial < count; ++serial) {
                 Record record{producer, serial, producer ^ serial ^ 0xf3ef12};
                 aap::RealtimeScope rt;
+                check(aap::RealtimeScope::isActive(), "concurrent processing scope registered");
+                { aap::RealtimeScope nested; check(aap::RealtimeScope::isActive(), "nested scope registered"); }
+                check(aap::RealtimeScope::isActive(), "outer scope retained after nested exit");
                 if (queue.tryPush(&record, sizeof(record))) ++accepted;
             }
             ++finished;
@@ -63,7 +66,10 @@ void concurrentProducers() {
         ++consumed;
         return true;
     };
-    while (finished != producers) queue.tryConsume(consume);
+    while (finished != producers) {
+        check(!aap::RealtimeScope::isActive(), "other threads do not annotate consumer");
+        queue.tryConsume(consume);
+    }
     for (auto& thread : threads) thread.join();
     while (queue.tryConsume(consume)) {}
     check(consumed == accepted, "all accepted records delivered once");

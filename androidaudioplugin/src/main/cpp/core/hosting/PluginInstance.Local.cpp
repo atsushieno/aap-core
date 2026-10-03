@@ -3,7 +3,6 @@
 #include "plugin-parameter-state.h"
 #include <unordered_map>
 #include <vector>
-#include "host-aapxs-request-queue.h"
 #include "aapxs-transport.h"
 #include "midi2-port-buffer.h"
 #include "instance-realtime-state.h"
@@ -49,8 +48,6 @@ aap::LocalPluginInstance::LocalPluginInstance(
           {
     shared_memory_store = new aap::ServicePluginSharedMemoryStore();
     instance_id = instanceId;
-    aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
-    aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
 
 
     aapxs_midi2_in_session.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
@@ -60,11 +57,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
 
 aap::LocalPluginInstance::~LocalPluginInstance() {
     stopExtensionWorker();
-    internal::HostAAPXSRequestQueue::getInstance().closeOwner(this);
-    if (aapxs_out_midi2_buffer)
-        free(aapxs_out_midi2_buffer);
-    if (aapxs_out_merge_buffer)
-        free(aapxs_out_merge_buffer);
+    releasePlugin();
 
 }
 
@@ -77,22 +70,12 @@ AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstan
 
 void *
 aap::LocalPluginInstance::getHostExtension(uint8_t urid, const char *uri) {
-    // FIXME: in the future maybe we want to eliminate this kind of special cases.
-    //  It is also not suitable for RT processing.
+    // Plugin info is exposed directly; the remaining proxies were cached at setup.
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
-    // Look up host extension and get proxy via AAPXSDefinition.
-    auto registry = getAAPXSRegistry()->items();
-    auto definition = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri);
-    if (definition && definition->get_host_extension_proxy) {
-        auto& dispatcher = getAAPXSDispatcher();
-        auto aapxsInstance = urid != 0 ? dispatcher.getHostAAPXSByUrid(urid) : dispatcher.getHostAAPXSByUri(uri);
-        auto proxy = definition->get_host_extension_proxy(definition, aapxsInstance, aapxsInstance->serialization);
-        return proxy.as_host_extension(&proxy);
-    }
-    return nullptr;
+    if (!urid) urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(uri);
+    return host_extension_proxies[urid];
 }
 
 void aap::LocalPluginInstance::internalRequestProcess(AndroidAudioPluginHost *host) {
@@ -120,7 +103,8 @@ void aap::LocalPluginInstance::requestProcessToHost() {
 }
 
 void aap::LocalPluginInstance::addEventUmpOutput(void* input, int32_t size) {
-    if (size > 0) realtime_state->ump_output.tryPush(input, static_cast<size_t>(size));
+    if (size > 0 && size <= event_midi2_buffer_size && internal::isCompleteUmpSequence(input, size))
+        realtime_state->ump_output.tryPush(input, static_cast<size_t>(size));
 }
 
 void aap::LocalPluginInstance::pollExtensionWorker() {
@@ -137,14 +121,14 @@ void aap::LocalPluginInstance::pollExtensionWorker() {
     if (notifications & 1) send(AAP_PARAMETERS_EXTENSION_URI, OPCODE_NOTIFY_PARAMETERS_CHANGED, aapxsRequestIdSerial());
     if (notifications & 2) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESET_LOADED, aapxsRequestIdSerial());
     if (notifications & 4) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESETS_UPDATED, aapxsRequestIdSerial());
-    for (unsigned n = 0; n < 64; ++n) {
+    for (unsigned n = 0; n < 64 && !realtime_state->worker.isStopping(); ++n) {
         if (!realtime_state->host_notifications.tryConsume([&](void* data, size_t) {
             auto& notification = *static_cast<internal::HostNotification*>(data);
             send(notification.uri, notification.opcode, notification.request_id);
             return true;
         })) break;
     }
-    for (unsigned n = 0; n < 64; ++n) {
+    for (unsigned n = 0; n < 64 && !realtime_state->worker.isStopping(); ++n) {
         if (!realtime_state->aapxs_input.tryConsume([this](void* data, size_t) {
             aapxs_midi2_in_session.process(data);
             return true;
@@ -155,6 +139,27 @@ void aap::LocalPluginInstance::pollExtensionWorker() {
 const char* local_trace_name = "AAP::LocalPluginInstance_process";
 void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
     RealtimeScope realtime;
+    internal::ProcessingQuiescence::Process activity(realtime_state->processing);
+    if (!activity || instantiation_state != PLUGIN_INSTANTIATION_STATE_ACTIVE) {
+        // Unsafe control work runs between blocks. Handoff extension requests, discard
+        // this block's MIDI input, and emit silence rather than waiting on the control thread.
+        auto buffer = getAudioPluginBuffer();
+        for (int i = 0; i < getNumPorts(); ++i) {
+            auto port = getPort(i);
+            if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2) {
+                auto header = internal::getMidi2PortBuffer(buffer, i);
+                if (!header) continue;
+                if (port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                    internal::sysex8::filterOutMessages(header, realtime_state.get(), internal::queueAAPXSMidi2Input);
+                header->length = 0;
+            } else if (port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT) {
+                auto data = buffer->get_buffer(buffer, i);
+                auto size = buffer->get_buffer_size(buffer, i);
+                if (data && size > 0) memset(data, 0, size);
+            }
+        }
+        return;
+    }
     process_requested_to_host = false;
 
     struct timespec timeSpecBegin{}, timeSpecEnd{};
@@ -167,8 +172,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
     mergeQueuedUmp(AAP_PORT_DIRECTION_INPUT);
 
-    // retrieve AAPXS SysEx8 requests and start extension calls, if any.
-    // (might be synchronously done)
+    // Copy AAPXS SysEx8 requests for extension-worker dispatch.
     AAPMidiBufferHeader* mbh{nullptr};
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
         auto port = getPort(i);
@@ -180,10 +184,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         mbh = (AAPMidiBufferHeader*) data;
     }
 
-    {
-        const std::lock_guard<NanoSleepLock> pluginCallLock{plugin_call_mutex};
-        plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
-    }
+    plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
 
     if (mbh) // make sure to reset incoming length here
         mbh->length = 0;
@@ -249,7 +250,13 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
                                     staticSendAAPXSReply,
                                     staticSendAAPXSRequest,
                                     staticGetNewRequestId);
-    internal::HostAAPXSRequestQueue::getInstance().start();
+    for (auto& definition : *getAAPXSRegistry()->items()) {
+        if (!definition.uri || !definition.get_host_extension_proxy) continue;
+        auto initiator = aapxs_dispatcher.getHostAAPXSByUri(definition.uri);
+        auto proxy = definition.get_host_extension_proxy(&definition, initiator, initiator->serialization);
+        auto urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(definition.uri);
+        host_extension_proxies[urid] = proxy.as_host_extension ? proxy.as_host_extension(&proxy) : nullptr;
+    }
     startExtensionWorker();
 }
 
@@ -280,6 +287,7 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
+    if (realtime_state->worker.isStopping()) return false;
     bool hasPayload = request->serialization && request->serialization->data_size > 0;
     if (!request->callback && !request->error_callback && !hasPayload && request->uri) {
         uint32_t bit = 0;
@@ -305,26 +313,26 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     if (RealtimeScope::isActive()) return false;
     if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
         internal::requestParameterLayoutRefresh(*this);
-    auto enqueue = [this](const AAPXSRequestContext& r) {
-        internal::HostAAPXSRequest queued{this, ipc_send_extension_message_func,
-                ipc_send_extension_message_context, r.uri, instance_id, r.opcode,
-                static_cast<int32_t>(r.request_id), r.callback, r.callback_user_data,
-                &plugin_host_facade, r.error_callback};
-        return internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) ==
-                internal::HostAAPXSRequestQueue::EnqueueResult::Queued;
-    };
 
     auto& dispatcher = getAAPXSDispatcher();
     auto aapxsInstance = request->urid != 0 ? dispatcher.getHostAAPXSByUrid(request->urid) : dispatcher.getHostAAPXSByUri(request->uri);
     if (!aapxsInstance || !aapxsInstance->serialization)
         return false;
-    auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [enqueue] {
-        return enqueue;
+    auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
+        return [this](const AAPXSRequestContext& routed) {
+            if (!ipc_send_extension_message_func) return false;
+            ipc_send_extension_message_func(ipc_send_extension_message_context, routed.uri, instance_id,
+                    routed.opcode, static_cast<int32_t>(routed.request_id), routed.callback,
+                    routed.callback_user_data, &plugin_host_facade, routed.error_callback);
+            return true;
+        };
     });
     return channel->send(request);
 }
 
 void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
+    if (RealtimeScope::isActive()) return; // control dispatch belongs to Binder/extension workers
+    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
     // special case URID mapping request: this hosting implementation also consumes it and
     // adds the URID mapping.
     // Note that it is handled only at UNPREPARED state and thus no realtime special casing happens.
@@ -348,15 +356,9 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
         auto serialization = sysex8_request_buffer ? sysex8_request_buffer : instance->serialization;
         AAPXSRequestContext context{nullptr, nullptr, serialization, urid, uri.c_str(), requestId, opcode};
-        bool canRunDuringProcess =
-                def->is_command_rt_safe &&
-                def->is_command_rt_safe(def, /*isHostExtension=*/ false, opcode);
-        if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE && !canRunDuringProcess) {
-            const std::lock_guard<NanoSleepLock> pluginCallLock{plugin_call_mutex};
-            def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
-        } else {
-            def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
-        }
+        // RT-safe does not imply safe concurrent access to plugin state. All control
+        // handlers run between DSP blocks, including requests from older SysEx8 peers.
+        def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
     }
 }
 

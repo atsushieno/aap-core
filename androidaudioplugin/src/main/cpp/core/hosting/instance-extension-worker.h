@@ -26,8 +26,11 @@ public:
         });
     }
     bool isCurrentThread() const { return thread.joinable() && thread.get_id() == std::this_thread::get_id(); }
+    bool isStopping() const { return stopping.load(std::memory_order_acquire); }
+    void requestStop() { stopping.store(true, std::memory_order_release); }
     void stop() {
-        stopping.store(true, std::memory_order_release);
+        requestStop();
+        if (isCurrentThread()) return; // a control/lifecycle caller will join after this poll
         if (thread.joinable()) thread.join();
     }
 };

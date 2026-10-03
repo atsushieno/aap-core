@@ -49,6 +49,7 @@ namespace aap::xs {
         virtual int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) = 0;
         virtual int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) = 0;
         Result<bool> setState(void* stateToLoad, int32_t dataSize) {
+            if (aap::RealtimeScope::isActive()) return {false, "RT caller"};
             if (tmp_state_capacity < static_cast<size_t>(dataSize)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
@@ -78,6 +79,16 @@ namespace aap::xs {
         std::unique_ptr<UridClientAAPXS> urid{nullptr};
 
     public:
+        // These proxies are owned by this instance and constructed before processing.
+        void* asNativePluginExtension(const char* uri) {
+            if (!uri) return nullptr;
+            if (!strcmp(uri, AAP_MIDI_EXTENSION_URI)) return midi ? midi->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_PARAMETERS_EXTENSION_URI)) return parameters ? parameters->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return presets ? presets->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_STATE_EXTENSION_URI)) return state ? state->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_URID_EXTENSION_URI)) return urid ? urid->asPluginExtension() : nullptr;
+            return nullptr;
+        }
         void initialize(AAPXSClientDispatcher* dispatcher) {
             if (initialized)
                 return;
@@ -133,6 +144,7 @@ namespace aap::xs {
         Result<size_t> getStateSize() override { return state->getStateSize(); }
         // OBSOLETE: use requestStateAsync() instead.
         Result<aap_state_t> getState() override {
+            if (aap::RealtimeScope::isActive()) return {{nullptr, 0}, "RT caller"};
             if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
                 if (tmp_state.data)
                     free(tmp_state.data);

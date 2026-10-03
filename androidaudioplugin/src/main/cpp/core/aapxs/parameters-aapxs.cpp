@@ -202,6 +202,7 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
 
 // Context and errors use the same typed completion path as all other extensions.
 int32_t aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index, ParameterCallback callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     return callFunctionAsync(OPCODE_PARAMETERS_GET_PARAMETER, &index, sizeof(index),
         [this, index, callback](const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost) {
             if (!callback)
@@ -223,6 +224,7 @@ int32_t aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index, Paramet
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32_t enumIndex,
                                                           EnumerationCallback callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     int32_t payload[] {index, enumIndex};
     return callFunctionAsync(OPCODE_PARAMETERS_GET_ENUMERATION, payload, sizeof(payload),
         [this, index, enumIndex, callback](const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost) {

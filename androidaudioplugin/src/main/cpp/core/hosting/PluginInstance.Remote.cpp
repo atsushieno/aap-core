@@ -33,10 +33,15 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
 
 aap::RemotePluginInstance::~RemotePluginInstance() {
     stopExtensionWorker();
+    abortAllPendingAAPXS("AAPXS instance destroyed");
+    releasePlugin();
 }
 
 void aap::RemotePluginInstance::pollExtensionWorker() {
-    for (unsigned n = 0; n < 64; ++n) {
+    // A nested blocking call from a completion must not wait for this worker to
+    // consume another SysEx8 reply. Binder delivery runs independently.
+    internal::ScopedBinderOnlyAAPXS binderOnly;
+    for (unsigned n = 0; n < 64 && !realtime_state->worker.isStopping(); ++n) {
         if (!realtime_state->aapxs_input.tryConsume([this](void* data, size_t) {
             aapxs_session.completeSession(data, plugin);
             return true;
@@ -44,7 +49,7 @@ void aap::RemotePluginInstance::pollExtensionWorker() {
     }
     // Timeouts must also progress while processing has stopped or no MIDI arrives.
     AAPMidiBufferHeader empty{};
-    aapxs_session.completeSession(&empty, plugin);
+    if (!realtime_state->worker.isStopping()) aapxs_session.completeSession(&empty, plugin);
 }
 
 void aap::RemotePluginInstance::configurePorts() {
@@ -258,7 +263,6 @@ aap_parameters_host_extension_t hosting_parameters_host_extension{
 void *
 aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *uri) {
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
-        host_plugin_info.get = get_plugin_info;
         return &host_plugin_info;
     }
     if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0)
@@ -318,6 +322,17 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
                                            staticGetNewRequestId))
         return false;
     standards->initialize(&aapxs_dispatcher);
+    for (auto& definition : *getAAPXSRegistry()->items()) {
+        if (!definition.uri || !definition.get_plugin_extension_proxy) continue;
+        auto urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(definition.uri);
+        auto proxyPointer = standards->asNativePluginExtension(definition.uri);
+        if (!proxyPointer) {
+            auto initiator = aapxs_dispatcher.getPluginAAPXSByUri(definition.uri);
+            auto proxy = definition.get_plugin_extension_proxy(&definition, initiator, initiator->serialization);
+            proxyPointer = proxy.as_plugin_extension ? proxy.as_plugin_extension(&proxy) : nullptr;
+        }
+        plugin_extension_proxies[urid] = proxyPointer;
+    }
     startExtensionWorker();
     return true;
 }
@@ -343,6 +358,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(uint8_t urid, const char *uri,
 
 bool
 aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) {
+    if (RealtimeScope::isActive() || realtime_state->worker.isStopping()) return false;
     // A request can switch to the RT-safe AAPXS SysEx8 MIDI messaging mode only if the plugin is at
     // ACTIVE state AND the AAPXS itself declares this command (opcode) as RT-safe. Otherwise (including
     // when the extension does not implement is_command_rt_safe at all) it goes to the Binder route.

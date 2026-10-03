@@ -41,9 +41,10 @@ void forgetParameterLayoutRefresh(PluginInstance& instance);
 // Blocking AAPXS calls must not wait for SysEx8 replies, which only arrive while audio is processed.
 class ScopedBinderOnlyAAPXS {
     static thread_local bool active;
+    bool previous;
 public:
-    ScopedBinderOnlyAAPXS() { active = true; }
-    ~ScopedBinderOnlyAAPXS() { active = false; }
+    ScopedBinderOnlyAAPXS() : previous(active) { active = true; }
+    ~ScopedBinderOnlyAAPXS() { active = previous; }
     static bool isActive() { return active; }
 };
 

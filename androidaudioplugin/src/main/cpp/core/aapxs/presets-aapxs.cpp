@@ -189,6 +189,7 @@ std::string aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
 }
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     return callFunctionAsync(OPCODE_GET_PRESET_DATA, &index, sizeof(index),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* ctx, void*) {
         if (!callback)
@@ -201,6 +202,7 @@ int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function
 }
 
 int32_t aap::xs::PresetsClientAAPXS::setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     return callFunctionAsync(OPCODE_SET_PRESET_INDEX, &index, sizeof(index),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*, void*) {
         if (callback)
@@ -211,9 +213,9 @@ int32_t aap::xs::PresetsClientAAPXS::setPresetIndexAsync(int32_t index, std::fun
 // Strongly-typed service implementation (host extension functions)
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetLoaded() {
-    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESET_LOADED, nullptr, 0);
+    fireVoidFunctionAndForget(OPCODE_NOTIFY_PRESET_LOADED);
 }
 
 void aap::xs::PresetsServiceAAPXS::notifyPresetsUpdated() {
-    callVoidFunctionSynchronously(OPCODE_NOTIFY_PRESETS_UPDATED, nullptr, 0);
+    fireVoidFunctionAndForget(OPCODE_NOTIFY_PRESETS_UPDATED);
 }

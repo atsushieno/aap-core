@@ -116,11 +116,13 @@ std::string aap::xs::StateClientAAPXS::getState(aap_state_t &state) {
 }
 
 std::string aap::xs::StateClientAAPXS::setState(aap_state_t &state) {
+    if (aap::RealtimeScope::isActive()) return "RT caller";
     auto payload = serializeStateToLoad(state);
     return callAndWait<bool>(OPCODE_SET_STATE, payload.data(), payload.size(), [](AAPXSSerializationContext*) -> bool { return true; }).error;
 }
 
 int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<aap_state_t>)> callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     return callFunctionAsync(OPCODE_GET_STATE, nullptr, 0,
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* s, void*) {
         if (!callback)
@@ -141,6 +143,7 @@ int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<a
 }
 
 int32_t aap::xs::StateClientAAPXS::setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) {
+    if (aap::RealtimeScope::isActive()) return -1;
     auto payload = serializeStateToLoad(stateToLoad);
     return callFunctionAsync(OPCODE_SET_STATE, payload.data(), payload.size(),
                              [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*, void*) {

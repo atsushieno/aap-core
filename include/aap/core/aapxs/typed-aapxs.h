@@ -15,6 +15,7 @@
 #include <string>
 #include <cstring>
 #include "aap/aapxs.h"
+#include "aap/core/realtime.h"
 #include "../../android-audio-plugin.h"
 #include "aap/unstable/utility.h"
 #include "result.h"
@@ -267,6 +268,9 @@ namespace aap::xs {
         // `replyCapacity` (defaults to the extension's capacity) bounds the reply it may read.
         int32_t callFunctionAsync(int32_t opcode, const void* payload, size_t payloadSize, ResultHandler onResult,
                                   size_t replyCapacity = SIZE_MAX) {
+            // No request is accepted on a processing thread; no completion runs there.
+            // -1 reports this local refusal before allocation or calls_mutex acquisition.
+            if (aap::RealtimeScope::isActive()) return -1;
             return send(opcode, makeCall(payload, payloadSize, replyCapacity, std::move(onResult)));
         }
 
@@ -277,6 +281,7 @@ namespace aap::xs {
         Result<R> callAndWait(int32_t opcode, const void* payload, size_t payloadSize,
                               std::function<R(AAPXSSerializationContext*)> deserialize,
                               size_t replyCapacity = SIZE_MAX) {
+            if (aap::RealtimeScope::isActive()) return {R{}, "RT caller"};
             enum : int { PENDING, DELIVERING, ABANDONED };
             struct Waiter {
                 std::atomic<int> state{PENDING};

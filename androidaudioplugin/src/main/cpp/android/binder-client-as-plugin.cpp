@@ -195,18 +195,7 @@ void* aap_client_as_plugin_get_extension(AndroidAudioPlugin *plugin, const char 
 {
 	auto ctx = (AAPClientContext*) plugin->plugin_specific;
     auto instance = (aap::RemotePluginInstance*) ctx->host.context;
-    auto aapxsDefinition = instance->getAAPXSRegistry()->items()->getByUri(uri);
-    if (!aapxsDefinition) {
-        aap::a_log_f(AAP_LOG_LEVEL_WARN, AAP_PXORY_LOG_TAG,
-                     "unregistered extension requested: %s",
-                     uri ? uri : "(null)");
-        return nullptr;
-    }
-    if (!aapxsDefinition->get_plugin_extension_proxy)
-        return nullptr;
-    auto aapxsInstance = instance->getAAPXSDispatcher().getPluginAAPXSByUri(uri);
-    auto proxy = aapxsDefinition->get_plugin_extension_proxy(aapxsDefinition, aapxsInstance, aapxsInstance->serialization);
-    return proxy.as_plugin_extension(&proxy);
+    return instance->getPluginExtensionProxy(uri);
 }
 
 aap_plugin_info_t aap_client_as_plugin_get_plugin_info(AndroidAudioPlugin *plugin)

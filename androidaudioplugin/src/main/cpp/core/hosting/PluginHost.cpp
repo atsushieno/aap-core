@@ -5,7 +5,6 @@
 #include <aap/core/aapxs/extension-service.h>
 #include <aap/core/aapxs/standard-extensions.h>
 #include "audio-plugin-host-internals.h"
-#include "host-aapxs-request-queue.h"
 #include "plugin-parameter-state.h"
 #include "remote-instance-lifetime.h"
 #include <thread>
@@ -79,12 +78,12 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
         delete instance;
         for (auto& c : aapxsContexts)
             c.definition->release_instance_context(c.definition, c.context);
-        internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
         internal::forgetParameterLayoutRefresh(*instance);
     };
     if (instance->isOnExtensionWorkerThread()) {
         // A completion may destroy its instance. Join after that callback has returned,
         // before freeing the session, dispatcher or plugin used by the worker's current poll.
+        instance->requestExtensionWorkerStop();
         std::thread([instance, destroy = std::move(destroy)] {
             if (!internal::retireRemoteInstanceLifetime(instance, destroy)) destroy();
         }).detach();

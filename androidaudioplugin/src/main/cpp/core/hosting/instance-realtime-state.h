@@ -27,6 +27,7 @@ struct InstanceRealtimeState {
     ProcessingQuiescence processing;
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes
     size_t gui_read_offset{0};
+    std::mutex parameter_scan_mutex; // control/worker scans of this instance only
 };
 
 inline void queueAAPXSMidi2Input(void* context, const void* data, size_t size) {

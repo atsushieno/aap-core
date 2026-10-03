@@ -7,6 +7,19 @@
 
 namespace aap::internal {
 
+inline bool isCompleteUmpSequence(const void* data, size_t size) {
+    if (!data || size == 0) return false;
+    auto* bytes = static_cast<const uint8_t*>(data);
+    size_t offset = 0;
+    while (offset < size) {
+        if (size - offset < sizeof(uint32_t)) return false;
+        auto packetSize = cmidi2_ump_get_num_bytes(cmidi2_ump_read_uint32_bytes(bytes + offset));
+        if (packetSize == 0 || static_cast<size_t>(packetSize) > size - offset) return false;
+        offset += packetSize;
+    }
+    return true;
+}
+
 // Returns the MIDI2 buffer of `portIndex`, whose length is written by the other process: it is
 // trimmed to the last complete UMP within the buffer, so that it can be iterated safely. RT-safe.
 inline AAPMidiBufferHeader* getMidi2PortBuffer(aap_buffer_t* buffer, int32_t portIndex) {
