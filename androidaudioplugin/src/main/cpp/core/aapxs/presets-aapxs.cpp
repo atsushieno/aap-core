@@ -190,7 +190,7 @@ std::string aap::xs::PresetsClientAAPXS::setPresetIndex(int32_t index) {
 
 int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) {
     return callFunctionAsync(OPCODE_GET_PRESET_DATA, &index, sizeof(index),
-                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* ctx) {
+                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* ctx, void*) {
         if (!callback)
             return;
         if (!error.empty())
@@ -202,7 +202,7 @@ int32_t aap::xs::PresetsClientAAPXS::getPresetAsync(int32_t index, std::function
 
 int32_t aap::xs::PresetsClientAAPXS::setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) {
     return callFunctionAsync(OPCODE_SET_PRESET_INDEX, &index, sizeof(index),
-                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*) {
+                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*, void*) {
         if (callback)
             callback(Result<bool>{error.empty(), error});
     });

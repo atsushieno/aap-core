@@ -44,11 +44,14 @@ namespace aap::xs {
                                                        staticGetEnumerationCount,
                                                        staticGetEnumeration};
 
-        // async invocation support
-        typedef void (*aapxs_async_get_parameter_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, aap_parameter_info_t result);
-        typedef void (*aapxs_async_get_enumeration_callback) (aap::xs::ParametersClientAAPXS*, void * pluginOrHost, int32_t index, int32_t enumIndex, aap_parameter_enum_t result);
-
     public:
+        // Non-realtime callbacks: result.error distinguishes failure from valid default data.
+        using ParameterCallback = void (*)(ParametersClientAAPXS*, void* pluginOrHost,
+                                           int32_t index, Result<aap_parameter_info_t> result);
+        using EnumerationCallback = void (*)(ParametersClientAAPXS*, void* pluginOrHost,
+                                             int32_t index, int32_t enumIndex,
+                                             Result<aap_parameter_enum_t> result);
+
         ParametersClientAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : TypedAAPXS(AAP_PARAMETERS_EXTENSION_URI, initiatorInstance, serialization) {
         }
@@ -60,9 +63,9 @@ namespace aap::xs {
         aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex);
 
         // returns request ID
-        int32_t getParameterAsync(int32_t index, aapxs_async_get_parameter_callback* callback);
+        int32_t getParameterAsync(int32_t index, ParameterCallback callback);
         // returns request ID
-        int32_t getEnumerationAsync(int32_t index, int32_t enumIndex, aapxs_async_get_enumeration_callback* callback);
+        int32_t getEnumerationAsync(int32_t index, int32_t enumIndex, EnumerationCallback callback);
 
         aap_parameters_extension_t* asPluginExtension() { return &as_plugin_extension; }
 

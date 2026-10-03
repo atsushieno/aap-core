@@ -73,7 +73,8 @@ namespace aap::xs {
         }
 
         // Waits for a reply up to request_timeout_ms. Returns T{} on error or timeout.
-        // These wrappers allocate, lock, and wait; processing threads must use async/cached values.
+        // These wrappers allocate, lock, and wait. This typed transport is not realtime safe,
+        // including async completion; processing threads require a separate handoff/cached path.
         template<typename T>
         T callTypedFunctionSynchronously(int32_t opcode, const void* payload, size_t payloadSize) {
             return callAndWait<T>(opcode, payload, payloadSize,
@@ -119,15 +120,15 @@ namespace aap::xs {
             std::vector<uint8_t> buffer{};
             AAPXSSerializationContext serialization{};
             // error empty == success; the closure reads `serialization` only on success.
-            std::function<void(const std::string& error)> deliver{};
+            std::function<void(const std::string& error, void* pluginOrHost)> deliver{};
         };
 
-        using ResultHandler = std::function<void(const std::string& error, AAPXSSerializationContext* ctx)>;
+        using ResultHandler = std::function<void(const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost)>;
 
         std::mutex calls_mutex{};
         std::map<uint32_t, std::unique_ptr<AsyncCall>> in_flight{};
 
-        static void onAsyncReply(void* ctx, void* /*pluginOrHost*/) {
+        static void onAsyncReply(void* ctx, void* pluginOrHost) {
             auto call = (AsyncCall*) ctx;
             auto owner = call->owner.load();
             if (!owner) {
@@ -135,9 +136,9 @@ namespace aap::xs {
                     delete call;
                 return;
             }
-            owner->finish(call, "");
+            owner->finish(call, "", pluginOrHost);
         }
-        static void onAsyncError(void* ctx, void* /*pluginOrHost*/, const char* error) {
+        static void onAsyncError(void* ctx, void* pluginOrHost, const char* error) {
             auto call = (AsyncCall*) ctx;
             auto owner = call->owner.load();
             if (!owner) {
@@ -145,7 +146,7 @@ namespace aap::xs {
                     delete call;
                 return;
             }
-            owner->finish(call, error ? error : "error");
+            owner->finish(call, error ? error : "error", pluginOrHost);
         }
 
         // `replyCapacity` bounds the reply that is kept (and copied back from shared memory); it is
@@ -155,9 +156,9 @@ namespace aap::xs {
             auto raw = call.get();
             call->owner.store(this);
             call->request_id = aapxs_instance->get_new_request_id(aapxs_instance);
-            call->deliver = [raw, onResult = std::move(onResult)](const std::string& error) {
+            call->deliver = [raw, onResult = std::move(onResult)](const std::string& error, void* pluginOrHost) {
                 if (onResult)
-                    onResult(error, &raw->serialization);
+                    onResult(error, &raw->serialization, pluginOrHost);
             };
             auto capacity = std::max(payloadSize, std::min(replyCapacity, serialization->data_capacity));
             call->buffer.resize(capacity);
@@ -171,7 +172,7 @@ namespace aap::xs {
             uint32_t requestId = call->request_id;
             AsyncCall* raw = call.get();
             if (call->serialization.data_size > serialization->data_capacity) {
-                call->deliver("request payload exceeds the AAPXS shared memory capacity");
+                call->deliver("request payload exceeds the AAPXS shared memory capacity", nullptr);
                 return requestId;
             }
             {
@@ -185,11 +186,11 @@ namespace aap::xs {
             return requestId;
         }
 
-        void finish(AsyncCall* call, const std::string& error) {
-            finishMatchingCall(call, error, 0, false);
+        void finish(AsyncCall* call, const std::string& error, void* pluginOrHost = nullptr) {
+            finishMatchingCall(call, error, 0, false, pluginOrHost);
         }
 
-        void finishMatchingCall(AsyncCall* call, const std::string& error, uint32_t requestId, bool matchId) {
+        void finishMatchingCall(AsyncCall* call, const std::string& error, uint32_t requestId, bool matchId, void* pluginOrHost = nullptr) {
             std::unique_ptr<AsyncCall> completing;
             {
                 std::lock_guard<std::mutex> lock(calls_mutex);
@@ -205,7 +206,7 @@ namespace aap::xs {
                 in_flight.erase(it);
             }
             if (completing->deliver)
-                completing->deliver(error);
+                completing->deliver(error, pluginOrHost);
         }
 
         // Defined out of line to keep transport/session internals out of the public header.
@@ -229,7 +230,7 @@ namespace aap::xs {
             // then release ownership so the eventual callback can delete the detached context.
             for (auto& call : pending) {
                 if (call->deliver)
-                    call->deliver(error);
+                    call->deliver(error, nullptr);
                 call->detached.store(true);
                 (void) call.release();
             }
@@ -262,7 +263,7 @@ namespace aap::xs {
         }
 
         // Low-level async primitive. `payload` is copied, so it need not outlive this call.
-        // `onResult(error, serialization)` is invoked exactly once, with the request's own buffer.
+        // `onResult(error, serialization, pluginOrHost)` is invoked exactly once, with the request's own buffer.
         // `replyCapacity` (defaults to the extension's capacity) bounds the reply it may read.
         int32_t callFunctionAsync(int32_t opcode, const void* payload, size_t payloadSize, ResultHandler onResult,
                                   size_t replyCapacity = SIZE_MAX) {
@@ -285,7 +286,7 @@ namespace aap::xs {
             auto waiter = std::make_shared<Waiter>();
             auto future = waiter->promise.get_future();
             send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
-                    const std::string& error, AAPXSSerializationContext* s) {
+                    const std::string& error, AAPXSSerializationContext* s, void*) {
                 int expected = PENDING;
                 if (!waiter->state.compare_exchange_strong(expected, DELIVERING))
                     return;

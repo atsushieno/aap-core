@@ -17,7 +17,7 @@ int main() {
         }};
     auto client = std::make_unique<xs::TypedAAPXS>("urn:aap:typed-completion-test", &initiator, &data);
     int callbacks = 0;
-    client->callFunctionAsync(1, &value, 4, [&](const std::string& error, auto* reply) {
+    client->callFunctionAsync(1, &value, 4, [&](const std::string& error, auto* reply, void*) {
         if (!error.empty() || *static_cast<int*>(reply->data) != 42)
             throw std::runtime_error("self-destroying callback reply");
         client.reset();

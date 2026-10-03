@@ -112,7 +112,7 @@ std::string aap::xs::StateClientAAPXS::setState(aap_state_t &state) {
 
 int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<aap_state_t>)> callback) {
     return callFunctionAsync(OPCODE_GET_STATE, nullptr, 0,
-                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* s) {
+                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext* s, void*) {
         if (!callback)
             return;
         if (!error.empty()) {
@@ -133,7 +133,7 @@ int32_t aap::xs::StateClientAAPXS::requestStateAsync(std::function<void(Result<a
 int32_t aap::xs::StateClientAAPXS::setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) {
     auto payload = serializeStateToLoad(stateToLoad);
     return callFunctionAsync(OPCODE_SET_STATE, payload.data(), payload.size(),
-                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*) {
+                             [callback = std::move(callback)](const std::string& error, AAPXSSerializationContext*, void*) {
         if (callback)
             callback(Result<bool>{error.empty(), error});
     });

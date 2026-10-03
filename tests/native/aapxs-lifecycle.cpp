@@ -130,7 +130,7 @@ struct Fixture {
             target->data_size = 4;
         });
     }
-    int32_t request(std::function<void(const std::string&, AAPXSSerializationContext*)> callback) {
+    int32_t request(std::function<void(const std::string&, AAPXSSerializationContext*, void*)> callback) {
         // Nonempty payload makes a valid multi-packet request that we reuse as its test reply.
         int value = 0;
         return typed->callFunctionAsync(1, &value, 4, std::move(callback), 4);
@@ -141,7 +141,7 @@ void cancellationAndDestruction() {
     Fixture fixture;
     int errors = 0;
     for (int i = 0; i < 400; ++i) {
-        auto id = fixture.request([&](auto& error, auto*) {
+        auto id = fixture.request([&](auto& error, auto*, void*) {
             check(error == "cancelled", "typed cancellation error is preserved");
             ++errors;
         });
@@ -150,7 +150,7 @@ void cancellationAndDestruction() {
         fixture.replies.header()->length = 0;
     }
     check(errors == 400, "cancellation reclaims session and global capacity");
-    fixture.request([&](auto& error, auto*) {
+    fixture.request([&](auto& error, auto*, void*) {
         check(error == "AAPXS owner destroyed", "typed destructor completes request");
         ++errors;
     });
@@ -179,7 +179,7 @@ void cancellationRacesReply() {
         auto resumeFuture = resume.get_future().share();
         fixture.beforeCopy = [&] { copying.set_value(); resumeFuture.wait(); };
         int successes = 0, errors = 0;
-        auto id = fixture.request([&](auto& error, auto* reply) {
+        auto id = fixture.request([&](auto& error, auto* reply, void*) {
             if (error.empty()) {
                 check(*static_cast<int*>(reply->data) == 42, "reply copied before delivery");
                 ++successes;
@@ -203,10 +203,10 @@ void cancellationRacesReply() {
 void reentrantAndClosedSession() {
     Fixture fixture;
     int successes = 0, errors = 0;
-    fixture.request([&](auto& error, auto*) {
+    fixture.request([&](auto& error, auto*, void*) {
         check(error.empty(), "first reply succeeds");
         ++successes;
-        fixture.request([&](auto& nestedError, auto*) {
+        fixture.request([&](auto& nestedError, auto*, void*) {
             check(nestedError == "service disconnected", "reentrant request is cancelled");
             ++errors;
         });
@@ -215,7 +215,7 @@ void reentrantAndClosedSession() {
     fixture.session.completeSession(fixture.replies.header(), nullptr);
     check(successes == 1 && errors == 1, "reply callback can enqueue and cancel without deadlock");
     auto length = fixture.replies.header()->length;
-    fixture.request([&](auto& error, auto*) {
+    fixture.request([&](auto& error, auto*, void*) {
         check(error == "AAPXS session closed", "closed session reports existing error callback");
         ++errors;
     });
@@ -225,7 +225,7 @@ void reentrantAndClosedSession() {
 void callbackDestroysClient() {
     Fixture fixture;
     int callbacks = 0;
-    auto id = fixture.request([&](auto& error, auto* reply) {
+    auto id = fixture.request([&](auto& error, auto* reply, void*) {
         check(error.empty() && *static_cast<int*>(reply->data) == 42, "self-destroying callback receives reply");
         fixture.typed.reset();
         ++callbacks;

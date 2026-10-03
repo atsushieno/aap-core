@@ -6,53 +6,6 @@
 #include "aap/unstable/utility.h"
 
 namespace {
-// The public typed result handler has no plugin/host argument. Keep the transport's
-// context scoped to this exact request while its existing completion machinery runs.
-// Matching the serialization prevents a nested failure of another call from inheriting it.
-struct ParameterReplyContext {
-    AAPXSSerializationContext* serialization;
-    void* pluginOrHost;
-};
-thread_local ParameterReplyContext parameter_reply_context{};
-struct ParameterReplyScope {
-    ParameterReplyContext previous{parameter_reply_context};
-    ParameterReplyScope(AAPXSSerializationContext* serialization, void* pluginOrHost) {
-        parameter_reply_context = {serialization, pluginOrHost};
-    }
-    ~ParameterReplyScope() { parameter_reply_context = previous; }
-};
-void* parameterReplyContext(AAPXSSerializationContext* serialization) {
-    return parameter_reply_context.serialization == serialization
-            ? parameter_reply_context.pluginOrHost : nullptr;
-}
-
-// Local counterpart of TypedAAPXS::send: preserve the existing raw AsyncCall callback
-// identity (used by cancellation) and all ownership/error behavior, but scope context
-// forwarding to the two parameter async methods. No SDK declarations or fields change.
-template<auto Reply, auto Error, typename Call, typename Publish>
-int32_t sendParameterCall(int32_t opcode, std::unique_ptr<Call> call,
-                         AAPXSInitiatorInstance* initiator, size_t capacity, Publish publish) {
-    auto requestId = call->request_id;
-    auto raw = call.get();
-    if (call->serialization.data_size > capacity) {
-        call->deliver("request payload exceeds the AAPXS shared memory capacity");
-        return requestId;
-    }
-    publish(requestId, std::move(call));
-    AAPXSRequestContext request{
-        [](void* context, void* pluginOrHost) {
-            ParameterReplyScope scope(&static_cast<Call*>(context)->serialization, pluginOrHost);
-            Reply(context, pluginOrHost);
-        }, raw, &raw->serialization, initiator->urid, AAP_PARAMETERS_EXTENSION_URI, requestId, opcode,
-        [](void* context, void* pluginOrHost, const char* error) {
-            ParameterReplyScope scope(&static_cast<Call*>(context)->serialization, pluginOrHost);
-            Error(context, pluginOrHost, error);
-        }};
-    if (!initiator->send_aapxs_request(initiator, &request))
-        request.error_callback(raw, nullptr, "request could not be sent");
-    return requestId;
-}
-
 void notify_parameters_changed(aap_parameters_host_extension_t* ext,
                                AndroidAudioPluginHost* host) {
     (void) ext;
@@ -247,37 +200,47 @@ aap::xs::ParametersClientAAPXS::getEnumeration(int32_t index, int32_t enumIndex)
     return result.isOk() ? result.value : aap_parameter_enum_t{};
 }
 
-// Forward pluginOrHost from the actual transport completion, including error replies.
-int32_t
-aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index,
-                                                  aapxs_async_get_parameter_callback* callback) {
-    auto call = makeCall(&index, sizeof(index), SIZE_MAX,
-                             [this, index, callback](const std::string& error, AAPXSSerializationContext* ctx) {
-        auto result = error.empty() ? getTypedResult<aap_parameter_info_t>(ctx) : aap_parameter_info_t{};
-        ((aapxs_async_get_parameter_callback) callback) (this, parameterReplyContext(ctx), index, result);
-    });
-    return sendParameterCall<onAsyncReply, onAsyncError>(OPCODE_PARAMETERS_GET_PARAMETER,
-            std::move(call), aapxs_instance, serialization->data_capacity,
-            [this](uint32_t id, auto pending) {
-                std::lock_guard<std::mutex> lock(calls_mutex);
-                in_flight[id] = std::move(pending);
-            });
+// Context and errors use the same typed completion path as all other extensions.
+int32_t aap::xs::ParametersClientAAPXS::getParameterAsync(int32_t index, ParameterCallback callback) {
+    return callFunctionAsync(OPCODE_PARAMETERS_GET_PARAMETER, &index, sizeof(index),
+        [this, index, callback](const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost) {
+            if (!callback)
+                return;
+            if (!error.empty()) {
+                callback(this, pluginOrHost, index, {aap_parameter_info_t{}, error});
+                return;
+            }
+            if (!ctx || !ctx->data || ctx->data_size < sizeof(aap_parameter_info_t) ||
+                    ctx->data_capacity < sizeof(aap_parameter_info_t)) {
+                callback(this, pluginOrHost, index, {aap_parameter_info_t{}, "short parameter reply"});
+                return;
+            }
+            aap_parameter_info_t value{};
+            memcpy(&value, ctx->data, sizeof(value));
+            callback(this, pluginOrHost, index, {value, ""});
+        }, sizeof(aap_parameter_info_t));
 }
 
 int32_t aap::xs::ParametersClientAAPXS::getEnumerationAsync(int32_t index, int32_t enumIndex,
-                                                            aapxs_async_get_enumeration_callback* callback) {
+                                                          EnumerationCallback callback) {
     int32_t payload[] {index, enumIndex};
-    auto call = makeCall(payload, sizeof(payload), SIZE_MAX,
-                             [this, index, enumIndex, callback](const std::string& error, AAPXSSerializationContext* ctx) {
-        auto result = error.empty() ? getTypedResult<aap_parameter_enum_t>(ctx) : aap_parameter_enum_t{};
-        ((aapxs_async_get_enumeration_callback) callback) (this, parameterReplyContext(ctx), index, enumIndex, result);
-    });
-    return sendParameterCall<onAsyncReply, onAsyncError>(OPCODE_PARAMETERS_GET_ENUMERATION,
-            std::move(call), aapxs_instance, serialization->data_capacity,
-            [this](uint32_t id, auto pending) {
-                std::lock_guard<std::mutex> lock(calls_mutex);
-                in_flight[id] = std::move(pending);
-            });
+    return callFunctionAsync(OPCODE_PARAMETERS_GET_ENUMERATION, payload, sizeof(payload),
+        [this, index, enumIndex, callback](const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost) {
+            if (!callback)
+                return;
+            if (!error.empty()) {
+                callback(this, pluginOrHost, index, enumIndex, {aap_parameter_enum_t{}, error});
+                return;
+            }
+            if (!ctx || !ctx->data || ctx->data_size < sizeof(aap_parameter_enum_t) ||
+                    ctx->data_capacity < sizeof(aap_parameter_enum_t)) {
+                callback(this, pluginOrHost, index, enumIndex, {aap_parameter_enum_t{}, "short enumeration reply"});
+                return;
+            }
+            aap_parameter_enum_t value{};
+            memcpy(&value, ctx->data, sizeof(value));
+            callback(this, pluginOrHost, index, enumIndex, {value, ""});
+        }, sizeof(aap_parameter_enum_t));
 }
 
 void aap::xs::ParametersServiceAAPXS::notifyParametersChanged() {
