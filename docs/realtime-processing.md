@@ -24,7 +24,7 @@ Replies and notifications still have worker scheduling latency; a SysEx8 reply i
 
 ## Control exclusion
 
-Control calls serialize off the processing thread. The control thread publishes suspension and waits for any previously entered DSP block to leave. Processing announces activity and checks suspension using lock-free atomics. A suspended/inactive local block clears its outputs and MIDI input instead of calling DSP or waiting. Its complete AAPXS requests are still copied to the worker inbox. Ordinary MIDI for that block is discarded; queued UI MIDI is retained until DSP resumes.
+Control calls serialize off the processing thread. The control thread publishes suspension and blocks on a separate eventfd notification until previously entered DSP blocks leave. The last leaving block signals only while a control thread is waiting; there is no periodic control wait. Processing announces activity and checks suspension using lock-free atomics. A suspended/inactive local block clears its outputs and MIDI input instead of calling DSP or waiting. Its complete AAPXS requests are still copied to the worker inbox. Ordinary MIDI for that block is discarded; queued UI MIDI is retained until DSP resumes.
 
 All worker/Binder plugin extension handlers run between DSP blocks. `is_command_rt_safe` continues selecting the existing SysEx8 transport at the initiator, but does not authorize concurrent access to plugin state. Parameter scans, local preset JNI controls and activation/deactivation use the same exclusion. “RT-safe” alone does not imply thread-safe concurrent access. Control operations can produce silent blocks, especially long state/preset operations.
 
