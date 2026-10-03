@@ -72,26 +72,17 @@ namespace aap::xs {
             return *(T*) (serialization->data);
         }
 
-        // Waits without a timeout (unlike callAndWait()). Returns T{} on error.
-        // FIXME: use spinlock instead of promise<T> for RT-safe extension functions,
-        //  which means there should be another RT-safe version of this function.
+        // Waits for a reply up to request_timeout_ms. Returns T{} on error or timeout.
+        // These wrappers allocate, lock, and wait; processing threads must use async/cached values.
         template<typename T>
         T callTypedFunctionSynchronously(int32_t opcode, const void* payload, size_t payloadSize) {
-            auto promise = std::make_shared<std::promise<T>>();
-            auto future = promise->get_future();
-            send(opcode, makeCall(payload, payloadSize, sizeof(T), [promise](const std::string& error, AAPXSSerializationContext* s) {
-                promise->set_value(error.empty() ? getTypedResult<T>(s) : T{});
-            }));
-            return future.get();
+            return callAndWait<T>(opcode, payload, payloadSize,
+                    [](AAPXSSerializationContext* s) { return getTypedResult<T>(s); }, sizeof(T)).value;
         }
 
         void callVoidFunctionSynchronously(int32_t opcode, const void* payload, size_t payloadSize) {
-            auto promise = std::make_shared<std::promise<void>>();
-            auto future = promise->get_future();
-            send(opcode, makeCall(payload, payloadSize, 0, [promise](const std::string&, AAPXSSerializationContext*) {
-                promise->set_value();
-            }));
-            future.wait();
+            (void) callAndWait<bool>(opcode, payload, payloadSize,
+                    [](AAPXSSerializationContext*) { return true; }, 0);
         }
 
         // "Fire and forget" invocation: sends a request with no completion callback (the
@@ -290,6 +281,7 @@ namespace aap::xs {
                 std::atomic<int> state{PENDING};
                 std::promise<Result<R>> promise{};
             };
+            const auto timeoutMs = request_timeout_ms;
             auto waiter = std::make_shared<Waiter>();
             auto future = waiter->promise.get_future();
             send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
@@ -302,7 +294,7 @@ namespace aap::xs {
                 else
                     waiter->promise.set_value(Result<R>{deserialize(s), ""});
             }));
-            if (future.wait_for(std::chrono::milliseconds(request_timeout_ms)) == std::future_status::ready)
+            if (future.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready)
                 return future.get();
             int expected = PENDING;
             if (!waiter->state.compare_exchange_strong(expected, ABANDONED))
