@@ -15,11 +15,24 @@ namespace aap::internal {
 struct AAPXSBinderChannel::Pending {
     std::shared_ptr<AAPXSBinderChannel> channel;
     AAPXSRequestContext request;
+    // Protected by the channel mutex. Completion/abort claim delivery only once.
+    bool finished{false};
+    bool advance_ready{false};
+    bool delivery_done{false};
+    std::shared_ptr<Pending> previous{};
+    // Abort waits for a claimed completion to finish using the callback context.
+    std::recursive_mutex delivery_mutex{};
     // set for requests without callback, whose sender waits for the result.
     std::shared_ptr<std::promise<std::string>> sync{};
 };
 
 namespace {
+thread_local AAPXSBinderChannel* delivering_channel{};
+struct BinderDeliveryScope {
+    AAPXSBinderChannel* previous{delivering_channel};
+    explicit BinderDeliveryScope(AAPXSBinderChannel* channel) { delivering_channel = channel; }
+    ~BinderDeliveryScope() { delivering_channel = previous; }
+};
 void deliver(const AAPXSRequestContext& request, const char* error, void* pluginOrHost) {
     if (error && request.error_callback)
         request.error_callback(request.callback_user_data, pluginOrHost, error);
@@ -32,6 +45,16 @@ bool AAPXSBinderChannel::send(AAPXSRequestContext* request) {
     auto pending = std::make_shared<Pending>();
     pending->channel = shared_from_this();
     pending->request = *request;
+    // A callback may issue a blocking request on this same channel. Release its head before
+    // that nested send, retaining the active delivery in the private predecessor chain.
+    if (delivering_channel == this) {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (current && current->finished)
+                current->advance_ready = true;
+        }
+        sendNext();
+    }
     std::future<std::string> syncResult;
     if (!request->callback) {
         pending->sync = std::make_shared<std::promise<std::string>>();
@@ -46,9 +69,18 @@ bool AAPXSBinderChannel::send(AAPXSRequestContext* request) {
             return true;
         }
         busy = true;
+        pending->previous = current;
         current = pending;
     }
     if (!dispatch(pending)) {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (current != pending || pending->finished)
+                return !pending->sync; // another path already delivered the result
+            pending->finished = true;
+            pending->delivery_done = true;
+            pending->advance_ready = true;
+        }
         sendNext();
         return false;
     }
@@ -60,13 +92,18 @@ bool AAPXSBinderChannel::send(AAPXSRequestContext* request) {
 }
 
 bool AAPXSBinderChannel::dispatch(const std::shared_ptr<Pending>& pending) {
-    auto source = pending->request.serialization;
-    size_t size = source ? source->data_size : 0;
-    if (size > shared_block->data_capacity)
-        return false;
-    if (size > 0 && source != shared_block)
-        memcpy(shared_block->data, source->data, size);
-    shared_block->data_size = size;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (current != pending || pending->finished)
+            return true; // aborted before dispatch; do not touch its released request buffer
+        auto source = pending->request.serialization;
+        size_t size = source ? source->data_size : 0;
+        if (size > shared_block->data_capacity)
+            return false;
+        if (size > 0 && source != shared_block)
+            memcpy(shared_block->data, source->data, size);
+        shared_block->data_size = size;
+    }
 
     AAPXSRequestContext routed = pending->request;
     routed.serialization = shared_block;
@@ -95,10 +132,12 @@ void AAPXSBinderChannel::onFailed(void* context, void* pluginOrHost, const char*
 }
 
 void AAPXSBinderChannel::complete(Pending* pending, const char* error, void* pluginOrHost) {
+    std::lock_guard<std::recursive_mutex> deliveryLock(pending->delivery_mutex);
     {
         std::lock_guard<std::mutex> lock(mutex);
-        if (current.get() != pending)
+        if (current.get() != pending || pending->finished)
             return; // aborted; the request buffer may be gone already
+        pending->finished = true;
         auto target = pending->request.serialization;
         if (!error && target && target != shared_block) {
             auto size = std::min(target->data_capacity, shared_block->data_capacity);
@@ -106,11 +145,34 @@ void AAPXSBinderChannel::complete(Pending* pending, const char* error, void* plu
             target->data_size = size;
         }
     }
+    {
+        BinderDeliveryScope scope(this);
+        if (pending->sync)
+            pending->sync->set_value(error ? error : "");
+        else
+            deliver(pending->request, error, pluginOrHost);
+    }
+    // Keep this request visible to abort until its callback has returned. Only a head whose
+    // delivery has finished may advance; stale completions cannot release a replacement head.
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        pending->delivery_done = true;
+        if (current.get() == pending)
+            pending->advance_ready = true;
+        // Remove finished predecessors, without losing any still-active outer callback.
+        if (current) {
+            auto link = &current->previous;
+            while (*link) {
+                if ((*link)->delivery_done)
+                    *link = (*link)->previous;
+                else
+                    link = &(*link)->previous;
+            }
+        }
+        if (current && current->delivery_done && !current->previous && !busy)
+            current.reset();
+    }
     sendNext();
-    if (pending->sync)
-        pending->sync->set_value(error ? error : "");
-    else
-        deliver(pending->request, error, pluginOrHost);
 }
 
 void AAPXSBinderChannel::sendNext() {
@@ -118,39 +180,84 @@ void AAPXSBinderChannel::sendNext() {
         std::shared_ptr<Pending> next;
         {
             std::lock_guard<std::mutex> lock(mutex);
+            // An old completion may run after abort/replacement or another queue advance.
+            if (!current || !current->advance_ready)
+                return;
+            auto link = &current->previous;
+            while (*link) {
+                if ((*link)->delivery_done)
+                    *link = (*link)->previous;
+                else
+                    link = &(*link)->previous;
+            }
             if (queue.empty()) {
                 busy = false;
-                current.reset();
+                if (current->delivery_done && !current->previous)
+                    current.reset();
                 idle.notify_all();
                 return;
             }
             next = queue.front();
             queue.pop_front();
+            next->previous = current;
             current = next;
         }
         if (dispatch(next))
             return;
-        deliver(next->request, "request could not be sent", nullptr);
+        std::lock_guard<std::recursive_mutex> deliveryLock(next->delivery_mutex);
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (current != next || next->finished)
+                return;
+            next->finished = true;
+        }
+        {
+            BinderDeliveryScope scope(this);
+            deliver(next->request, "request could not be sent", nullptr);
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            next->delivery_done = true;
+            if (current == next)
+                next->advance_ready = true;
+        }
     }
 }
 
 void AAPXSBinderChannel::abort(const char* error, void* pluginOrHost) {
     std::shared_ptr<Pending> inFlight;
     std::deque<std::shared_ptr<Pending>> dropped;
+    bool deliverCurrent = false;
+    std::vector<std::shared_ptr<Pending>> activeDeliveries;
     {
         std::lock_guard<std::mutex> lock(mutex);
         inFlight = std::move(current);
         current.reset();
+        for (auto pending = inFlight; pending; pending = pending->previous)
+            if (pending->finished && !pending->delivery_done)
+                activeDeliveries.push_back(pending);
+        if (inFlight && !inFlight->finished) {
+            inFlight->finished = true;
+            deliverCurrent = true;
+        }
         dropped = std::move(queue);
         queue.clear();
+        for (auto& pending : dropped)
+            pending->finished = true;
         busy = false;
         idle.notify_all();
     }
     if (inFlight) {
-        if (inFlight->sync)
-            inFlight->sync->set_value(error);
-        else
-            deliver(inFlight->request, error, pluginOrHost);
+        std::lock_guard<std::recursive_mutex> deliveryLock(inFlight->delivery_mutex);
+        if (deliverCurrent) {
+            if (inFlight->sync)
+                inFlight->sync->set_value(error ? error : "error");
+            else
+                deliver(inFlight->request, error, pluginOrHost);
+        }
+    }
+    for (auto& pending : activeDeliveries) {
+        std::lock_guard<std::recursive_mutex> deliveryLock(pending->delivery_mutex);
     }
     for (auto& d : dropped)
         deliver(d->request, error, pluginOrHost);
