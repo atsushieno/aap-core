@@ -87,8 +87,18 @@ namespace {
     }
 }
 
-size_t aap::xs::StateClientAAPXS::getStateSize() {
-    return callTypedFunctionSynchronously<int32_t>(OPCODE_GET_STATE_SIZE, nullptr, 0);
+aap::Result<size_t> aap::xs::StateClientAAPXS::getStateSize() {
+    auto result = callAndWait<Result<size_t>>(OPCODE_GET_STATE_SIZE, nullptr, 0,
+        [](AAPXSSerializationContext* ctx) -> Result<size_t> {
+            if (!ctx || !ctx->data || ctx->data_size < sizeof(int32_t) || ctx->data_capacity < sizeof(int32_t))
+                return {0, "short state-size reply"};
+            int32_t value{};
+            memcpy(&value, ctx->data, sizeof(value));
+            if (value < 0)
+                return {0, "negative state size"};
+            return {static_cast<size_t>(value), ""};
+        }, sizeof(int32_t));
+    return result.isOk() ? std::move(result.value) : Result<size_t>{0, result.error};
 }
 
 std::string aap::xs::StateClientAAPXS::getState(aap_state_t &state) {

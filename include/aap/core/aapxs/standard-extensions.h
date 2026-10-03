@@ -43,7 +43,7 @@ namespace aap::xs {
         virtual aap_presets_extension_t* asPresetsExtension() { return nullptr; }
 
         // State
-        virtual int32_t getStateSize() = 0;
+        virtual Result<size_t> getStateSize() = 0;
         virtual Result<aap_state_t> getState() = 0;
         virtual Result<bool> setState(aap_state_t& stateToLoad) = 0;
         virtual int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) = 0;
@@ -130,7 +130,7 @@ namespace aap::xs {
         aap_presets_extension_t* asPresetsExtension() override { return presets ? presets->asPluginExtension() : nullptr; }
 
         // State
-        int32_t getStateSize() override { return state->getStateSize(); }
+        Result<size_t> getStateSize() override { return state->getStateSize(); }
         // OBSOLETE: use requestStateAsync() instead.
         Result<aap_state_t> getState() override {
             if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
@@ -226,9 +226,16 @@ namespace aap::xs {
         }
 
         // State
-        int32_t getStateSize() override { return state ? state->get_state_size(state, plugin) : 0; }
+        Result<size_t> getStateSize() override {
+            if (!state || !state->get_state_size)
+                return {0, "state extension not implemented"};
+            return {state->get_state_size(state, plugin), ""};
+        }
         Result<aap_state_t> getState() override {
-            auto stateSize = getStateSize();
+            auto sizeResult = getStateSize();
+            if (!sizeResult.isOk())
+                return {aap_state_t{nullptr, 0}, sizeResult.error};
+            auto stateSize = sizeResult.value;
             if (tmp_state.data_size < static_cast<size_t>(stateSize)) {
                 if (tmp_state.data)
                     free(tmp_state.data);

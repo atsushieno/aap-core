@@ -24,8 +24,10 @@ const int32_t STATE_SHARED_MEMORY_SIZE = 0x100000; // 1M
 namespace aap::xs {
     class StateClientAAPXS : public TypedAAPXS {
         // extension proxy support
+        // The peer-facing C extension remains value-only for older plugin/host callers.
+        // Framework consumers use the Result-bearing C++ API below.
         static size_t staticGetStateSize(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
-            return ((StateClientAAPXS*) ext->aapxs_context)->getStateSize();
+            return ((StateClientAAPXS*) ext->aapxs_context)->getStateSize().value;
         }
         static void staticGetState(aap_state_extension_t* ext, AndroidAudioPlugin* plugin, aap_state_t* stateToSave) {
             ((StateClientAAPXS*) ext->aapxs_context)->getState(*stateToSave);
@@ -43,7 +45,8 @@ namespace aap::xs {
                 : TypedAAPXS(AAP_STATE_EXTENSION_URI, initiatorInstance, serialization) {
         }
 
-        size_t getStateSize();
+        // Non-realtime. A successful zero size is distinct from a transport/format error.
+        Result<size_t> getStateSize();
         // Blocking-sync (built on the async core). Returns an error description; empty == success.
         std::string getState(aap_state_t& stateToSave);
         std::string setState(aap_state_t& stateToLoad);

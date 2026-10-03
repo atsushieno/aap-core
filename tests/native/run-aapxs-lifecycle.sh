@@ -16,11 +16,14 @@ inline int clock_nanosleep(clockid_t, int, const timespec* delay, timespec* rema
 HEADER
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context; do
+    for test in zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then
             set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/hosting/plugin-connections.cpp"
+        fi
+        if [ "$test" = state-size ]; then
+            set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/aapxs/state-aapxs.cpp"
         fi
         if [ "$test" = parameter-context ]; then
             set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/aapxs/parameters-aapxs.cpp"

@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include <android/sharedmem_jni.h>
 #include <cstdlib>
+#include <limits>
 #include <pthread.h>
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
@@ -352,7 +353,14 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getStateSize(JNIE
 																			jint instanceId) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = client->getInstanceById(instanceId);
-	return instance->getStandardExtensions().getStateSize();
+    auto result = instance->getStandardExtensions().getStateSize();
+    if (!result.isOk() || result.value > static_cast<size_t>(std::numeric_limits<jint>::max())) {
+        auto exception = env->FindClass("org/androidaudioplugin/AudioPluginException");
+        if (exception)
+            env->ThrowNew(exception, result.isOk() ? "State size exceeds the Java array limit" : result.error.c_str());
+        return 0; // ignored by Java while the exception is pending
+    }
+    return static_cast<jint>(result.value);
 }
 
 extern "C"

@@ -424,9 +424,15 @@ void AapJsControllerRuntime::registerBindings() {
     ctx.registerFunction("__aap_instance_get_state", [this](choc::javascript::ArgumentList args) -> Value {
         auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
         auto& ext = instance->getStandardExtensions();
-        if (ext.getStateSize() <= 0)
+        auto size = ext.getStateSize();
+        if (!size.isOk())
+            throw std::runtime_error(size.error);
+        if (size.value == 0)
             return Value(std::string());
-        auto state = ext.getState().value;
+        auto result = ext.getState();
+        if (!result.isOk())
+            throw std::runtime_error(result.error);
+        auto state = result.value;
         return Value(base64Encode(static_cast<const uint8_t*>(state.data), state.data_size));
     });
 
