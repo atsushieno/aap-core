@@ -98,8 +98,10 @@ void aap::LocalPluginInstance::confirmPorts() {
 }
 
 void aap::LocalPluginInstance::requestProcessToHost() {
-    if (!process_requested_to_host.exchange(true, std::memory_order_relaxed))
+    if (!process_requested_to_host.exchange(true, std::memory_order_relaxed)) {
         realtime_state->process_notification.store(true, std::memory_order_release);
+        realtime_state->worker.notify();
+    }
 }
 
 void aap::LocalPluginInstance::addEventUmpOutput(void* input, int32_t size) {
@@ -296,7 +298,10 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
             if (request->opcode == OPCODE_NOTIFY_PRESET_LOADED) bit = 2;
             if (request->opcode == OPCODE_NOTIFY_PRESETS_UPDATED) bit = 4;
         }
-        if (bit) realtime_state->standard_notifications.fetch_or(bit, std::memory_order_release);
+        if (bit) {
+            realtime_state->standard_notifications.fetch_or(bit, std::memory_order_release);
+            realtime_state->worker.notify();
+        }
         else {
             internal::HostNotification notification{};
             auto length = strnlen(request->uri, sizeof(notification.uri));
@@ -304,7 +309,8 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
             memcpy(notification.uri, request->uri, length + 1);
             notification.opcode = request->opcode;
             notification.request_id = request->request_id;
-            realtime_state->host_notifications.tryPush(&notification, sizeof(notification));
+            if (realtime_state->host_notifications.tryPush(&notification, sizeof(notification)))
+                realtime_state->worker.notify();
         }
         return false; // notifications have no reply
     }

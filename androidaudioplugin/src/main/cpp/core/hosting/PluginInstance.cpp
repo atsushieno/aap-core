@@ -172,6 +172,7 @@ void aap::PluginInstance::completeInstantiation()
     plugin = plugin_factory->instantiate(plugin_factory, pluginInfo->getPluginID().c_str(), asPluginAPI);
     if (plugin) {
         instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+        realtime_state->worker.notify();
     } else {
         aap::a_log(AAP_LOG_LEVEL_WARN, LOG_TAG, "Plugin factory could not create an instance");
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
@@ -465,7 +466,7 @@ void aap::PluginInstance::startExtensionWorker() {
     realtime_state->worker.start([this] {
         pollExtensionWorker();
         if (!realtime_state->worker.isStopping()) pollParameterLayoutRefresh();
-    });
+    }, [this] { return nextExtensionDeadline(); });
 }
 void aap::PluginInstance::stopExtensionWorker() {
     if (realtime_state) realtime_state->worker.stop();
@@ -608,17 +609,23 @@ thread_local bool aap::internal::ScopedBinderOnlyAAPXS::active{false};
 
 void aap::internal::requestParameterLayoutRefresh(aap::PluginInstance& instance) {
     instance.getRealtimeState().layout_refresh.store(true, std::memory_order_release);
+    instance.getRealtimeState().worker.notify();
 }
 
 void aap::PluginInstance::pollParameterLayoutRefresh() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL || !plugin) return;
+    if (!realtime_state->layout_refresh.load(std::memory_order_acquire)) return;
+    // Preserve early notifications until service extensions are ready. Readiness
+    // explicitly wakes the worker; there is no periodic retry to rely on.
+    if (dynamic_cast<LocalPluginInstance*>(this) &&
+        !get_parameter_layout_state(this)->ready.load(std::memory_order_acquire)) return;
     if (realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel))
         refresh_parameter_layout(this);
 }
 
 void aap::internal::setParameterLayoutRefreshReady(aap::PluginInstance& instance) {
     get_parameter_layout_state(&instance)->ready.store(true, std::memory_order_release);
-
+    instance.getRealtimeState().worker.notify();
 }
 
 void aap::internal::setParameterLayoutChangedListener(aap::RemotePluginInstance& instance, std::function<void()> listener) {

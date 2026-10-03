@@ -40,7 +40,7 @@ namespace aap {
         CallbackUnit pending_callbacks[MAX_PENDING_CALLBACKS];
 
         // Fires "timeout" for any in-flight request whose deadline has passed. Called from
-        // completeSession() on the instance's extension worker, including idle polls.
+        // completeSession() on the instance's extension worker at its next deadline.
         void sweepTimeouts(void* pluginOrHost);
 
     public:

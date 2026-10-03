@@ -35,7 +35,7 @@ void reject(const AAPXSRequestContext& request, const char* error, void* pluginO
 aap::AAPXSMidi2InitiatorSession::AAPXSMidi2InitiatorSession(int32_t midiBufferSize)
         : midi_buffer_size(midiBufferSize) {
     // Requests are encoded at the beginning of these buffers, possibly on other threads, while
-    // replies are parsed on the audio thread; parsing uses the extra space at the end.
+    // replies are parsed on the extension worker; parsing uses the extra space at the end.
     aapxs_rt_midi_buffer = (uint8_t*) calloc(1, midi_buffer_size + AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
     aapxs_rt_conversion_helper_buffer = (uint8_t*) calloc(1, midi_buffer_size + AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
     aap_midi2_aapxs_parse_context_prepare(&aapxs_parse_context,
@@ -99,6 +99,7 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
         return;
     }
     const char* error = nullptr;
+    bool deadlineChanged = false;
     {
         size_t slot = MAX_PENDING_CALLBACKS;
         if (request->callback) {
@@ -119,10 +120,12 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
             if (size == 0)
                 error = "AAPXS request could not be encoded";
             else {
-                if (request->callback)
+                if (request->callback) {
+                    deadlineChanged = true;
                     pending_callbacks[slot] = CallbackUnit{request->request_id, request->callback,
                             request->callback_user_data, request->error_callback,
                             std::chrono::steady_clock::now() + std::chrono::milliseconds(request_timeout_ms)};
+                }
                 if (!addMidi2Event(this, addMidi2EventUserData, size)) {
                     if (request->callback) pending_callbacks[slot] = {};
                     error = "AAPXS MIDI handoff full";
@@ -130,6 +133,7 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
             }
         }
     }
+    if (deadlineChanged && state->deadline_changed) state->deadline_changed();
     // This may complete and delete the caller's request context. Do not access it afterwards.
     if (error)
         reject(*request, error);
@@ -204,6 +208,22 @@ std::shared_ptr<AAPXSMidi2SessionState> getAAPXSMidi2SessionState(const AAPXSMid
     return it == sessionStates().items.end() ? nullptr : it->second;
 }
 
+void AAPXSMidi2SessionAccess::setDeadlineChangedHandler(AAPXSMidi2InitiatorSession& session, std::function<void()> handler) {
+    auto state = getAAPXSMidi2SessionState(&session);
+    const std::lock_guard<std::recursive_mutex> delivery{state->gate};
+    state->deadline_changed = std::move(handler);
+}
+
+std::chrono::steady_clock::time_point AAPXSMidi2SessionAccess::nextDeadline(const AAPXSMidi2InitiatorSession& session) {
+    auto state = getAAPXSMidi2SessionState(&session);
+    const std::lock_guard<std::recursive_mutex> delivery{state->gate};
+    auto deadline = std::chrono::steady_clock::time_point::max();
+    if (!state->closed)
+        for (auto& unit : session.pending_callbacks)
+            if (unit.func && unit.deadline < deadline) deadline = unit.deadline;
+    return deadline;
+}
+
 bool AAPXSMidi2SessionAccess::sendRequest(AAPXSMidi2InitiatorSession& session,
                                         add_midi2_event_func addEvent, void* userData,
                                         AAPXSRequestContext* request) {
@@ -232,6 +252,7 @@ void AAPXSMidi2SessionAccess::forgetRequest(AAPXSMidi2InitiatorSession& session,
     for (auto& unit : session.pending_callbacks)
         if (unit.func && unit.request_id == requestId) {
             unit = {};
+            if (state->deadline_changed) state->deadline_changed();
             return;
         }
 }
@@ -247,6 +268,7 @@ void AAPXSMidi2SessionAccess::cancelPending(AAPXSMidi2InitiatorSession& session,
         std::fill(std::begin(session.pending_callbacks), std::end(session.pending_callbacks),
                   AAPXSMidi2InitiatorSession::CallbackUnit{});
     }
+    if (state->deadline_changed) state->deadline_changed();
     for (auto& unit : pending) {
         if (unit.error_func)
             unit.error_func(unit.data, pluginOrHost, error);

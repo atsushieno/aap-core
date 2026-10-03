@@ -11,10 +11,13 @@ namespace aap::internal {
 struct AAPXSMidi2SessionState {
     std::recursive_mutex gate;
     bool closed{false};
+    std::function<void()> deadline_changed;
 };
 std::shared_ptr<AAPXSMidi2SessionState> getAAPXSMidi2SessionState(const AAPXSMidi2InitiatorSession* session);
 
 struct AAPXSMidi2SessionAccess {
+    static void setDeadlineChangedHandler(AAPXSMidi2InitiatorSession& session, std::function<void()> handler);
+    static std::chrono::steady_clock::time_point nextDeadline(const AAPXSMidi2InitiatorSession& session);
     static bool sendRequest(AAPXSMidi2InitiatorSession& session, add_midi2_event_func addEvent,
                             void* userData, AAPXSRequestContext* request);
     static void cancelPending(AAPXSMidi2InitiatorSession& session, const char* error, void* pluginOrHost);

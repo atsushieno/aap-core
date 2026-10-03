@@ -4,6 +4,7 @@
 
 #include <mutex>
 #include <atomic>
+#include <chrono>
 #include <array>
 #include "../realtime.h"
 #include "aap/core/aapxs/standard-extensions.h"
@@ -64,6 +65,7 @@ namespace aap {
         int32_t event_midi2_buffer_offset{0};
         std::unique_ptr<internal::InstanceRealtimeState> realtime_state;
         virtual void pollExtensionWorker() {}
+        virtual std::chrono::steady_clock::time_point nextExtensionDeadline() { return std::chrono::steady_clock::time_point::max(); }
         void startExtensionWorker();
         void releasePlugin(); // derived destructors call while their host facade/proxies still exist
         void mergeQueuedUmp(aap_port_direction direction, bool output = false);
@@ -322,6 +324,7 @@ namespace aap {
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
         void pollExtensionWorker() override;
+        std::chrono::steady_clock::time_point nextExtensionDeadline() override;
 
     public:
         // The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.

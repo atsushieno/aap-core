@@ -107,6 +107,11 @@ struct TestMemory : PluginSharedMemoryStore {
 };
 struct TestLocal : LocalPluginInstance {
     using LocalPluginInstance::LocalPluginInstance;
+    std::function<void()> beforeWorkerWait;
+    std::chrono::steady_clock::time_point nextExtensionDeadline() override {
+        if (beforeWorkerWait) beforeWorkerWait();
+        return std::chrono::steady_clock::time_point::max();
+    }
     void setupTestBuffer() {
         delete shared_memory_store; shared_memory_store = new TestMemory(*this);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
@@ -134,6 +139,13 @@ struct FakePlugin {
     xs::TypedAAPXS* typed{nullptr};
     std::atomic<bool>* released{nullptr};
     bool notifyOnRelease{false};
+    bool exposeParameters{false};
+    aap_parameters_extension_t parameters{this,
+        [](auto*, auto*) { return 1; },
+        [](auto*, auto*, int32_t) { return aap_parameter_info_t{17, "deferred-layout", "", 0, 100, 30, false}; },
+        [](auto*, auto*, int32_t, int32_t) { return 0.0; },
+        [](auto*, auto*, int32_t) { return 0; },
+        [](auto*, auto*, int32_t, int32_t) { return aap_parameter_enum_t{}; }};
     AndroidAudioPlugin api{this, [](auto*, auto, auto*) {}, [](auto*) {},
         [](auto* plugin, aap_buffer_t* buffer, int32_t, int64_t) {
             auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
@@ -164,7 +176,10 @@ struct FakePlugin {
                 check(!result.isOk() && result.error == "RT caller", "sync typed call refused without locks");
                 check(self.typed->callFunctionAsync(1, nullptr, 0, [](auto&, auto*, void*) {}) == -1, "async typed call refused before acceptance");
             }
-        }, [](auto*) {}, [](auto*, const char*) -> void* { return nullptr; }, nullptr};
+        }, [](auto*) {}, [](auto* plugin, const char* uri) -> void* {
+            auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
+            return self.exposeParameters && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) ? &self.parameters : nullptr;
+        }, nullptr};
     AndroidAudioPluginFactory factory{
         [](auto* factory, const char*, auto* host) -> AndroidAudioPlugin* {
             auto* self = static_cast<FakePlugin*>(factory->factory_context); self->host = host; return &self->api;
@@ -216,6 +231,10 @@ void localProcessing() {
     while ((notifications < 3 || callback.process_requests < 1) && std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
     check(notifications >= 3 && callback.process_requests >= 1, "all standard notifications delivered");
+    // Notification delivery precedes the worker's parameter scan. Join it before
+    // testing explicit control exclusion, so a second control operation cannot
+    // legitimately suspend the block we expect to resume.
+    instance.stopExtensionWorker();
     check(instance.getParameterValueCache().getByIndex(0) == 100, "local output cache updated");
     uint32_t read[2]{};
     extern int32_t readLocalGuiListenerMidi2Output(LocalPluginInstance*, void*, int32_t);
@@ -232,6 +251,41 @@ void localProcessing() {
     check(fake.blocks > before, "DSP resumes after control work");
     instance.stopExtensionWorker();
     // Context release follows the same order as PluginHost::destroyInstance.
+    for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI}) {
+        auto context = instance.getAAPXSDispatcher().getHostAAPXSByUri(uri);
+        instance.getAAPXSRegistry()->items()->getByUri(uri)->release_instance_context(
+                instance.getAAPXSRegistry()->items()->getByUri(uri), context->aapxs_context);
+        context->aapxs_context = nullptr;
+    }
+}
+void layoutReadiness() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeParameters = true;
+    TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 4, &descriptor.info, &fake.factory, 8192);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& definition : *instance.getAAPXSRegistry()->items()) {
+        if (!definition.uri || definition.data_capacity == 0) continue;
+        auto index = store->getExtensionBufferCount();
+        store->addExtensionFD(-1, definition.data_capacity);
+        store->getExtensionUriToIndexMap()[definition.uri] = index;
+    }
+    std::promise<void> attempted;
+    bool signaled = false; // worker only; callback installed before start
+    instance.beforeWorkerWait = [&] { if (!signaled) { signaled = true; attempted.set_value(); } };
+    instance.completeInstantiation();
+    internal::requestParameterLayoutRefresh(instance);
+    instance.setupAAPXSInstances();
+    check(attempted.get_future().wait_for(std::chrono::seconds(2)) == std::future_status::ready,
+          "early layout request dispatched before extensions are ready");
+    instance.setupAAPXS(); // readiness must wake the sleeping worker and preserve that request
+    auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (strcmp(instance.getParameter(0)->getName(), "deferred-layout") && std::chrono::steady_clock::now() < limit)
+        std::this_thread::yield();
+    check(!strcmp(instance.getParameter(0)->getName(), "deferred-layout"), "early layout request publishes after readiness without audio or another notification");
+    instance.stopExtensionWorker();
     for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI}) {
         auto context = instance.getAAPXSDispatcher().getHostAAPXSByUri(uri);
         instance.getAAPXSRegistry()->items()->getByUri(uri)->release_instance_context(
@@ -390,7 +444,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); localProcessing(); remoteProcessing();
+    guardProbes(); sharedObjectScope(); localProcessing(); layoutReadiness(); remoteProcessing();
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
 }

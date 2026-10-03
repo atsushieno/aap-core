@@ -123,9 +123,9 @@ void workerHandoff() {
         if (release) drained = true;
     });
     uint32_t value = 7;
-    { aap::RealtimeScope rt; check(queue.tryPush(&value, 4), "processing copies handoff"); }
+    { aap::RealtimeScope rt; check(queue.tryPush(&value, 4), "processing copies handoff"); worker.notify(); }
     while (!callbackEntered) std::this_thread::yield();
-    { aap::RealtimeScope rt; check(queue.tryPush(&value, 4), "blocked callback does not block producer"); }
+    { aap::RealtimeScope rt; check(queue.tryPush(&value, 4), "blocked callback does not block producer"); worker.notify(); }
     release = true;
     while (!drained) std::this_thread::yield();
     worker.stop();

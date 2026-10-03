@@ -34,7 +34,7 @@ inline void queueAAPXSMidi2Input(void* context, const void* data, size_t size) {
     auto& state = *static_cast<InstanceRealtimeState*>(context);
     AAPMidiBufferHeader header{};
     header.length = static_cast<uint32_t>(size);
-    state.aapxs_input.tryPush(data, size, &header, sizeof(header));
+    if (state.aapxs_input.tryPush(data, size, &header, sizeof(header))) state.worker.notify();
 }
 }
 #endif

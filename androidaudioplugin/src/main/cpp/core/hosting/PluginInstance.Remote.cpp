@@ -29,6 +29,13 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
     aapxs_session.setReplyHandler([&](aap_midi2_aapxs_parse_context* context) {
         handleAAPXSReply(context);
     });
+    internal::AAPXSMidi2SessionAccess::setDeadlineChangedHandler(aapxs_session, [this] {
+        realtime_state->worker.notify();
+    });
+}
+
+std::chrono::steady_clock::time_point aap::RemotePluginInstance::nextExtensionDeadline() {
+    return internal::AAPXSMidi2SessionAccess::nextDeadline(aapxs_session);
 }
 
 aap::RemotePluginInstance::~RemotePluginInstance() {
