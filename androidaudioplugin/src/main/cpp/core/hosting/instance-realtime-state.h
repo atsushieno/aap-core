@@ -8,6 +8,7 @@
 #include "aap/ext/midi.h"
 
 namespace aap::internal {
+class AsyncParameterLayout;
 struct HostNotification {
     char uri[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
     int32_t opcode;
@@ -23,6 +24,7 @@ struct InstanceRealtimeState {
     std::atomic<uint32_t> standard_notifications{0};
     std::atomic<bool> process_notification{false};
     std::atomic<bool> layout_refresh{false};
+    std::shared_ptr<AsyncParameterLayout> layout_scan; // extension worker only
     InstanceExtensionWorker worker;
     ProcessingQuiescence processing;
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes

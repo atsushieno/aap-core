@@ -119,6 +119,11 @@ struct TestLocal : LocalPluginInstance {
 };
 struct TestRemote : RemotePluginInstance {
     using RemotePluginInstance::RemotePluginInstance;
+    std::function<void()> beforeWorkerWait;
+    std::chrono::steady_clock::time_point nextExtensionDeadline() override {
+        if (beforeWorkerWait) beforeWorkerWait();
+        return RemotePluginInstance::nextExtensionDeadline();
+    }
     void setupTestBuffer() {
         delete shared_memory_store; shared_memory_store = new TestMemory(*this);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
@@ -136,6 +141,13 @@ struct FakePlugin {
     std::atomic<int> blocks{0};
     bool notifications{false};
     bool echo{false};
+    bool metadataReplies{false};
+    std::atomic<int> metadataRequests{0};
+    AAPXSSerializationContext* metadataShared{nullptr};
+    bool shortMetadataReply{false};
+    std::atomic<bool> shortReplyArmed{false};
+    std::atomic<bool> shortReplyReturned{false};
+    RealtimeByteQueue<64> legacyReplies{2048};
     xs::TypedAAPXS* typed{nullptr};
     std::atomic<bool>* released{nullptr};
     bool notifyOnRelease{false};
@@ -152,7 +164,54 @@ struct FakePlugin {
             check(RealtimeScope::isActive(), "DSP runs inside realtime guard");
             ++self.blocks;
             auto output = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 2));
-            if (self.echo) {
+            if (self.metadataReplies) {
+                output->length = 0;
+                while (self.legacyReplies.tryConsume([&](void* data, size_t size) {
+                    check(output->length + size <= 8192 - sizeof(*output), "legacy reply buffer never overflows");
+                    memcpy(reinterpret_cast<uint8_t*>(output + 1) + output->length, data, size);
+                    output->length += size;
+                    return true;
+                })) {}
+                auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
+                if (input->length) {
+                    uint8_t payload[1024]{}, conversion[2048]{};
+                    aap_midi2_aapxs_parse_context request{};
+                    aap_midi2_aapxs_parse_context_prepare(&request, payload, conversion, sizeof(conversion));
+                    check(aap_midi2_parse_aapxs_sysex8(&request, reinterpret_cast<uint8_t*>(input + 1), input->length), "legacy metadata request parses");
+                    ++self.metadataRequests;
+                    int32_t value{}, size = sizeof(value);
+                    aap_parameter_info_t parameter{};
+                    aap_parameter_enum_t enumeration{};
+                    const void* reply = &value;
+                    switch (request.opcode) {
+                        case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
+                            value = 80;
+                            if (self.shortReplyArmed) { size = 1; self.shortReplyReturned = true; }
+                            break;
+                        case OPCODE_PARAMETERS_GET_PARAMETER:
+                            check(request.dataSize == 4, "legacy parameter index width");
+                            memcpy(&value, payload, 4);
+                            parameter = {static_cast<int16_t>(value), "legacy-layout", "", 0, 100, 30, false};
+                            reply = &parameter; size = sizeof(parameter); break;
+                        case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT:
+                            check(request.dataSize == 4, "legacy enumeration ID width");
+                            value = 2; break;
+                        case OPCODE_PARAMETERS_GET_ENUMERATION:
+                            check(request.dataSize == 8, "legacy enumeration record width");
+                            memcpy(&value, payload + 4, 4);
+                            enumeration.value = value;
+                            strcpy(enumeration.name, "legacy-enum");
+                            reply = &enumeration; size = sizeof(enumeration); break;
+                        default: check(false, "unexpected metadata opcode");
+                    }
+                    output->length += aap_midi2_generate_aapxs_sysex8(reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(output + 1) + output->length),
+                        (8192 - sizeof(*output) - output->length) / 4, conversion, sizeof(conversion), 0,
+                        request.request_id, request.urid, request.uri, request.opcode,
+                        static_cast<const uint8_t*>(reply), size);
+                    check(output->length > 0, "legacy metadata reply encoded");
+                    input->length = 0;
+                }
+            } else if (self.echo) {
                 auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
                 memcpy(output, input, sizeof(*input) + input->length);
             } else {
@@ -324,6 +383,90 @@ void remoteProcessing() {
     check(fake.blocks == before + 1 && replies == 1, "processing continues during blocked callback");
     release.set_value(); instance.stopExtensionWorker(); fake.typed = nullptr;
 }
+void legacyActiveLayoutRefresh() {
+    FixtureInfo descriptor;
+    FakePlugin fake; fake.metadataReplies = true;
+    TestRemote instance(nullptr, xs::AAPXSDefinitionRegistry::getStandardExtensions(), &descriptor.info, &fake.factory, 8192);
+    std::vector<std::vector<uint8_t>> blocks;
+    check(instance.setupAAPXSInstances([&](const char*, AAPXSSerializationContext* serialization) {
+        blocks.emplace_back(serialization->data_capacity);
+        serialization->data = blocks.back().data(); return true;
+    }), "legacy remote setup");
+    instance.setInstanceId(5); instance.completeInstantiation(); instance.setupTestBuffer();
+    fake.metadataShared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
+    instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t size,
+            int32_t requestId, int32_t opcode, aapxs_completion_callback callback, void* callbackContext, aapxs_error_callback) {
+        auto& fake = *static_cast<FakePlugin*>(context);
+        check(!RealtimeScope::isActive(), "unsafe metadata stays off processing");
+        ++fake.metadataRequests;
+        auto shared = fake.metadataShared;
+        int32_t index{}; memcpy(&index, shared->data, sizeof(index));
+        aap_parameter_info_t parameter{};
+        aap_parameter_enum_t enumeration{};
+        int32_t value = 2;
+        const void* reply{}; size_t replySize{};
+        switch (opcode) {
+            case OPCODE_PARAMETERS_GET_PARAMETER:
+                check(size == 4, "Binder parameter index width");
+                parameter = {static_cast<int16_t>(index), "legacy-layout", "", 0, 100, 30, false};
+                reply = &parameter; replySize = sizeof(parameter); break;
+            case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT:
+                check(size == 4, "Binder enumeration ID width");
+                reply = &value; replySize = sizeof(value); break;
+            case OPCODE_PARAMETERS_GET_ENUMERATION:
+                check(size == 8, "Binder enumeration record width");
+                memcpy(&index, static_cast<uint8_t*>(shared->data) + 4, 4);
+                enumeration.value = index; strcpy(enumeration.name, "legacy-enum");
+                reply = &enumeration; replySize = sizeof(enumeration); break;
+            default: check(false, "safe count must use SysEx8 while active");
+        }
+        // Emulate the older service: Binder returns the POD in shared memory,
+        // but also queues a redundant SysEx8 reply to the same request ID.
+        memcpy(shared->data, reply, replySize); shared->data_size = replySize;
+        if (fake.shortMetadataReply && opcode == OPCODE_PARAMETERS_GET_PARAMETER && parameter.stable_id == 79) {
+            fake.shortReplyArmed = true;
+        }
+        uint32_t ump[512]{}; uint8_t conversion[2048]{};
+        auto length = aap_midi2_generate_aapxs_sysex8(ump, 512, conversion, sizeof(conversion),
+            0, requestId, 0, uri, opcode, static_cast<const uint8_t*>(reply), replySize);
+        check(length && fake.legacyReplies.tryPush(ump, length), "legacy reply queue stays bounded");
+        callback(callbackContext, &fake.api);
+        return true;
+    });
+    std::atomic<int> changes{0};
+    std::atomic<bool> failedScanSettled{false};
+    instance.beforeWorkerWait = [&] {
+        if (fake.shortReplyReturned && !instance.getRealtimeState().layout_scan) failedScanSettled = true;
+    };
+    instance.parametersChangedHandler = [&](auto& remote) {
+        check(remote.getNumParameters() == 80, "publish complete legacy layout");
+        ++changes;
+    };
+    internal::requestParameterLayoutRefresh(instance);
+    // No audio: the scan must remain asynchronous, without Binder reads or
+    // partial publication. Actual processing then drives one request per reply.
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    check(changes == 0 && instance.getNumParameters() == 1, "old layout retained without audio progress");
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+    while (changes == 0 && std::chrono::steady_clock::now() < deadline) {
+        instance.process(64, 0);
+        std::this_thread::yield();
+    }
+    check(changes == 1 && fake.metadataRequests == 641, "active scan completes metadata reads with a MIDI drain barrier between Binder reads");
+    auto* previous = instance.getParameter(0);
+    fake.shortMetadataReply = true;
+    internal::requestParameterLayoutRefresh(instance);
+    deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+    while (!failedScanSettled && std::chrono::steady_clock::now() < deadline) {
+        instance.process(64, 0);
+        std::this_thread::yield();
+    }
+    check(failedScanSettled, "late short metadata reply delivered after partial scan progress");
+    instance.stopExtensionWorker();
+    check(changes == 1 && instance.getNumParameters() == 80 && instance.getParameter(0) == previous,
+          "failed asynchronous scan retains complete previous layout without a changed callback");
+    check(!strcmp(instance.getParameter(79)->getName(), "legacy-layout"), "last parameter published");
+}
 void guardProbes() {
     rlimit noCore{0, 0};
     setrlimit(RLIMIT_CORE, &noCore);
@@ -444,7 +587,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); localProcessing(); layoutReadiness(); remoteProcessing();
+    guardProbes(); sharedObjectScope(); localProcessing(); layoutReadiness(); remoteProcessing(); legacyActiveLayoutRefresh();
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
 }

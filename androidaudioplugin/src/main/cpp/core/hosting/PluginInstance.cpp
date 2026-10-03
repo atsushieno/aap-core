@@ -3,6 +3,7 @@
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
 #include "parameter-layout-reader.h"
+#include "async-parameter-layout.h"
 #include "aapxs-transport.h"
 #include "instance-realtime-state.h"
 #include "parameter-value-cache.h"
@@ -67,10 +68,7 @@ void refresh_parameter_layout(aap::PluginInstance* instance) {
     if (!remote && !layout->ready.load(std::memory_order_acquire))
         return;
 
-    {
-        aap::internal::ScopedBinderOnlyAAPXS binderOnly;
-        instance->scanParametersAndBuildList();
-    }
+    instance->scanParametersAndBuildList();
 
     if (remote) {
         if (remote->parametersChangedHandler)
@@ -614,11 +612,49 @@ void aap::internal::requestParameterLayoutRefresh(aap::PluginInstance& instance)
 
 void aap::PluginInstance::pollParameterLayoutRefresh() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INITIAL || !plugin) return;
-    if (!realtime_state->layout_refresh.load(std::memory_order_acquire)) return;
+    if (!realtime_state->layout_refresh.load(std::memory_order_acquire) && !realtime_state->layout_scan) return;
     // Preserve early notifications until service extensions are ready. Readiness
     // explicitly wakes the worker; there is no periodic retry to rely on.
     if (dynamic_cast<LocalPluginInstance*>(this) &&
         !get_parameter_layout_state(this)->ready.load(std::memory_order_acquire)) return;
+    if (auto* remote = dynamic_cast<RemotePluginInstance*>(this)) {
+        auto& scan = realtime_state->layout_scan;
+        if (!scan && realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel)) {
+            auto* proxy = getStandardExtensions().asParametersExtension();
+            if (!proxy) return;
+            auto* transport = static_cast<xs::ParametersClientAAPXS*>(proxy->aapxs_context);
+            scan = std::make_shared<internal::AsyncParameterLayout>(*transport,
+                    [this] { realtime_state->worker.notify(); });
+            scan->start();
+        }
+        if (!scan || !scan->poll()) return;
+        auto result = scan->takeResult();
+        scan.reset();
+        if (realtime_state->layout_refresh.load(std::memory_order_acquire)) realtime_state->worker.notify();
+        if (!result.isOk()) {
+            if (result.error != "parameters extension unavailable")
+                aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: %s", result.error.c_str());
+            return;
+        }
+        {
+            const std::lock_guard<std::mutex> scanLock{realtime_state->parameter_scan_mutex};
+            auto* layout = get_parameter_layout_state(this);
+            const std::unique_lock<std::shared_mutex> listLock{layout->list_mutex};
+            if (cached_parameters) layout->retired_lists.emplace_back(std::move(cached_parameters));
+            cached_parameters = std::make_unique<std::vector<ParameterInformation>>(std::move(result.value));
+            published_parameters.store(cached_parameters.get(), std::memory_order_release);
+            publish_parameter_values(*this);
+        }
+        auto* layout = get_parameter_layout_state(this);
+        std::function<void()> listener;
+        {
+            const std::lock_guard<std::mutex> lock{layout->listener_mutex};
+            listener = layout->listener;
+        }
+        if (remote->parametersChangedHandler) remote->parametersChangedHandler(*remote);
+        if (listener) listener();
+        return;
+    }
     if (realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel))
         refresh_parameter_layout(this);
 }
