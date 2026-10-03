@@ -4,6 +4,8 @@
 #include "plugin-parameter-state.h"
 #include "parameter-layout-reader.h"
 #include "aapxs-transport.h"
+#include "instance-realtime-state.h"
+#include "midi2-port-buffer.h"
 #include "aap/ext/midi.h"
 #include <algorithm>
 #include <array>
@@ -220,6 +222,7 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
     else {
         event_midi2_buffer = calloc(1, event_midi2_buffer_size);
         event_midi2_merge_buffer = calloc(1, event_midi2_buffer_size);
+        realtime_state = std::make_unique<internal::InstanceRealtimeState>(event_midi2_buffer_size);
     }
 }
 
@@ -261,6 +264,7 @@ static void reindex_parameter_values_locked(aap::PluginInstance& instance, Plugi
 }
 
 aap::PluginInstance::~PluginInstance() {
+    stopExtensionWorker();
     internal::releaseAAPXSBinderChannels(this);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_TERMINATED;
     if (plugin != nullptr)
@@ -287,7 +291,7 @@ void aap::PluginInstance::completeInstantiation()
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_INITIAL) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to completeInstantiation() at state: %d (instanceId: %d)",
-                     instantiation_state, instance_id);
+                     instantiation_state.load(), instance_id);
         return;
     }
 
@@ -603,19 +607,48 @@ void aap::PluginInstance::deactivate() {
 }
 
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
-    const std::lock_guard<NanoSleepLock> lock{ump_sequence_merger_mutex};
-    if (event_midi2_buffer_offset + size > event_midi2_buffer_size) {
-        aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
-                     "Dropping %d-byte UMP input: pending queue overflow (%d + %d > %d)",
-                     size,
-                     event_midi2_buffer_offset,
-                     size,
-                     event_midi2_buffer_size);
+    (void) tryAddEventUmpInput(input, size);
+}
+
+bool aap::PluginInstance::tryAddEventUmpInput(const void* input, int32_t size) {
+    return size > 0 && realtime_state->ump_input.tryPush(input, static_cast<size_t>(size));
+}
+
+void aap::PluginInstance::startExtensionWorker() {
+    realtime_state->worker.start([this] { pollExtensionWorker(); });
+}
+void aap::PluginInstance::stopExtensionWorker() {
+    if (realtime_state) realtime_state->worker.stop();
+}
+bool aap::PluginInstance::isOnExtensionWorkerThread() const {
+    return realtime_state && realtime_state->worker.isCurrentThread();
+}
+
+void aap::PluginInstance::mergeQueuedUmp(aap_port_direction direction, bool output) {
+    auto buffer = getAudioPluginBuffer();
+    if (!buffer) return;
+    auto& queue = output ? realtime_state->ump_output : realtime_state->ump_input;
+    for (int i = 0; i < getNumPorts(); ++i) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 || port->getPortDirection() != direction) continue;
+        auto header = internal::getMidi2PortBuffer(buffer, i);
+        if (!header) return;
+        auto capacity = std::min(event_midi2_buffer_size,
+                std::max(0, buffer->get_buffer_size(buffer, i) - static_cast<int32_t>(sizeof(*header))));
+        size_t used = 0;
+        for (unsigned n = 0; n < 64; ++n) {
+            if (!queue.tryConsume([&](void* data, size_t size) {
+                if (size > static_cast<size_t>(capacity)) return true; // cannot ever fit this port
+                if (size + used + header->length > static_cast<size_t>(capacity)) return false;
+                memcpy(static_cast<uint8_t*>(event_midi2_buffer) + used, data, size);
+                used += size;
+                return true;
+            })) break;
+        }
+        merge_ump_sequences(direction, event_midi2_merge_buffer, event_midi2_buffer_size,
+                event_midi2_buffer, static_cast<int32_t>(used), buffer, this);
         return;
     }
-    memcpy((uint8_t *) event_midi2_buffer + event_midi2_buffer_offset,
-           input, size);
-    event_midi2_buffer_offset += size;
 }
 
 void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance) {
@@ -630,21 +663,12 @@ void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, 
                     portBufferSize - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) : 0;
             auto mergeCapacity = std::min(mergeBufSize, midiCapacity);
             if (mergeCapacity <= 0) {
-                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
-                             "Dropping merged MIDI input: destination port %d has no payload capacity.",
-                             i);
                 mbh->length = 0;
                 return;
             }
             size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeCapacity,
                                                         (cmidi2_ump*) sequence, (size_t) sequenceSize,
                                                         (cmidi2_ump*) (mbh + 1), (size_t) mbh->length);
-            if (newSize == static_cast<size_t>(mergeCapacity) &&
-                (sequenceSize > 0 || mbh->length > 0))
-                aap::a_log_f(AAP_LOG_LEVEL_WARN, LOG_TAG,
-                             "Merged MIDI input for port %d reached payload capacity (%d bytes). Input may be truncated.",
-                             i,
-                             mergeCapacity);
             mbh->length = newSize;
             if (newSize > 0)
                 memcpy(mbh + 1, mergeTmp, newSize);
@@ -720,9 +744,9 @@ uint32_t aap::PluginInstance::aapxsRequestIdSerial() {
 
 // AAPXS (v2 too)
 
-void aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2InitiatorSession* client, void* context, int32_t messageSize) {
+bool aap::PluginInstance::aapxsSessionAddEventUmpInput(aap::AAPXSMidi2InitiatorSession* client, void* context, int32_t messageSize) {
     auto instance = (aap::RemotePluginInstance *) context;
-    instance->addEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
+    return instance->tryAddEventUmpInput(client->aapxs_rt_midi_buffer, messageSize);
 }
 
 // ---- Plugin-initiated parameter layout changes (see plugin-parameter-state.h)

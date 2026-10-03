@@ -4,6 +4,7 @@
 #include "aapxs-transport.h"
 #include "aapxs-midi2-session-internal.h"
 #include "midi2-port-buffer.h"
+#include "instance-realtime-state.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
 #include "aap/core/aap_midi2_helper.h"
@@ -30,11 +31,27 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
     });
 }
 
+aap::RemotePluginInstance::~RemotePluginInstance() {
+    stopExtensionWorker();
+}
+
+void aap::RemotePluginInstance::pollExtensionWorker() {
+    for (unsigned n = 0; n < 64; ++n) {
+        if (!realtime_state->aapxs_input.tryConsume([this](void* data, size_t) {
+            aapxs_session.completeSession(data, plugin);
+            return true;
+        })) break;
+    }
+    // Timeouts must also progress while processing has stopped or no MIDI arrives.
+    AAPMidiBufferHeader empty{};
+    aapxs_session.completeSession(&empty, plugin);
+}
+
 void aap::RemotePluginInstance::configurePorts() {
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to configurePorts() at state: %d (instanceId: %d)",
-                     instantiation_state, instance_id);
+                     instantiation_state.load(), instance_id);
         return;
     }
 
@@ -68,7 +85,7 @@ void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate, int3
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to prepare() at state: %d (instanceId: %d)",
-                     instantiation_state, instance_id);
+                     instantiation_state.load(), instance_id);
         return;
     }
 
@@ -174,6 +191,7 @@ void aap::RemotePluginInstance::configureRemoteNativeView(
 }
 
 void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+    RealtimeScope realtime;
     const char* remote_trace_name = "AAP::RemotePluginInstance_process";
     struct timespec timeSpecBegin{}, timeSpecEnd{};
 #if ANDROID
@@ -191,13 +209,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
     }
 
     // merge input from AAPXS SysEx8 into the host's MIDI inputs
-    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
-        merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
-                            event_midi2_buffer, event_midi2_buffer_offset,
-                            getAudioPluginBuffer(), this);
-        memset(event_midi2_buffer, 0, event_midi2_buffer_offset);
-        event_midi2_buffer_offset = 0;
-    }
+    mergeQueuedUmp(AAP_PORT_DIRECTION_INPUT);
 
     // Keep the parameter value cache in sync with the changes that the host is sending now;
     // otherwise hosts that read values back from the cache (e.g. the compose-app host UI) see
@@ -221,9 +233,7 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
             port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
             continue;
         void* data = internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
-        // MIDI2 output buffer has to be processed by this `processReply()` in realtime manner.
-        aapxs_session.completeSession(data, plugin);
-        internal::sysex8::filterOutMessages(data);
+        internal::sysex8::filterOutMessages(data, realtime_state.get(), internal::queueAAPXSMidi2Input);
         internal::updateParameterValueCacheFromOutputBuffer(*this, data);
     }
 
@@ -308,6 +318,7 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
                                            staticGetNewRequestId))
         return false;
     standards->initialize(&aapxs_dispatcher);
+    startExtensionWorker();
     return true;
 }
 

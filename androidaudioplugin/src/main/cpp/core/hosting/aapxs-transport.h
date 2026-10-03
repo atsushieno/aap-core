@@ -75,6 +75,10 @@ namespace sysex8 {
     // they are consumed, so that the plugin or the host does not see them as MIDI (e.g. MIDI thru
     // would otherwise echo the host's requests back as if they were replies).
     void filterOutMessages(void* midi2Buffer);
+    // Copies each complete AAPXS wire message to a preallocated handoff before filtering.
+    // The sink must not allocate, lock, or invoke extension/user callbacks.
+    void filterOutMessages(void* midi2Buffer, void* sinkContext,
+                           void (*sink)(void*, const void*, size_t));
 }
 
 }

@@ -6,58 +6,27 @@
 #include "host-aapxs-request-queue.h"
 #include "aapxs-transport.h"
 #include "midi2-port-buffer.h"
+#include "instance-realtime-state.h"
 
 #define LOG_TAG "AAP.Local.Instance"
 
-namespace {
-struct GuiListenerMidiBuffer {
-    explicit GuiListenerMidiBuffer(int32_t capacityInBytes) :
-            capacity(capacityInBytes > 0 ? capacityInBytes : 0),
-            data(capacity > 0 ? static_cast<size_t>(capacity) : 0) {}
-
-    aap::NanoSleepLock mutex{};
-    int32_t capacity{0};
-    std::vector<uint8_t> data;
-    int32_t length{0};
-};
-
-std::mutex gui_listener_registry_mutex;
-std::unordered_map<aap::LocalPluginInstance*, std::unique_ptr<GuiListenerMidiBuffer>> gui_listener_registry;
-
-GuiListenerMidiBuffer* getGuiListenerMidiBuffer(aap::LocalPluginInstance* instance) {
-    const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
-    auto it = gui_listener_registry.find(instance);
-    return it != gui_listener_registry.end() ? it->second.get() : nullptr;
-}
-
-void appendGuiListenerMidiBuffer(aap::LocalPluginInstance* instance, const void* input, int32_t size) {
-    auto* buffer = getGuiListenerMidiBuffer(instance);
-    if (!buffer || !input || size <= 0)
-        return;
-    const std::lock_guard<aap::NanoSleepLock> lock{buffer->mutex};
-    if (buffer->length + size > buffer->capacity)
-        return;
-    memcpy(buffer->data.data() + buffer->length, input, size);
-    buffer->length += size;
-}
-}
-
 int32_t readLocalGuiListenerMidi2Output(aap::LocalPluginInstance* instance, void* output, int32_t size) {
-    auto* buffer = getGuiListenerMidiBuffer(instance);
-    if (!buffer || !output || size <= 0)
-        return 0;
-    if (std::unique_lock<aap::NanoSleepLock> tryLock(buffer->mutex, std::try_to_lock); tryLock.owns_lock()) {
-        auto readSize = std::min(buffer->length, size);
-        if (readSize <= 0)
-            return 0;
-        memcpy(output, buffer->data.data(), readSize);
-        auto remaining = buffer->length - readSize;
-        if (remaining > 0)
-            memmove(buffer->data.data(), buffer->data.data() + readSize, remaining);
-        buffer->length = remaining;
-        return readSize;
+    if (!instance || !output || size <= 0 || aap::RealtimeScope::isActive()) return 0;
+    auto& state = instance->getRealtimeState();
+    const std::lock_guard<std::mutex> consumers{state.gui_read_mutex};
+    size_t copied = 0;
+    for (unsigned n = 0; n < 64 && copied < static_cast<size_t>(size); ++n) {
+        if (!state.gui_output.tryConsume([&](void* data, size_t length) {
+            auto bytes = std::min(length - state.gui_read_offset, static_cast<size_t>(size) - copied);
+            memcpy(static_cast<uint8_t*>(output) + copied, static_cast<uint8_t*>(data) + state.gui_read_offset, bytes);
+            copied += bytes;
+            state.gui_read_offset += bytes;
+            if (state.gui_read_offset < length) return false;
+            state.gui_read_offset = 0;
+            return true;
+        })) break;
     }
-    return 0;
+    return static_cast<int32_t>(copied);
 }
 
 void aapxsProcessorAddEventUmpOutput(aap::AAPXSMidi2RecipientSession* processor, void* context, int32_t messageSize) {
@@ -82,10 +51,7 @@ aap::LocalPluginInstance::LocalPluginInstance(
     instance_id = instanceId;
     aapxs_out_midi2_buffer = calloc(1, event_midi2_buffer_size);
     aapxs_out_merge_buffer = calloc(1, event_midi2_buffer_size);
-    {
-        const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
-        gui_listener_registry[this] = std::make_unique<GuiListenerMidiBuffer>(event_midi2_buffer_size);
-    }
+
 
     aapxs_midi2_in_session.setExtensionCallback([&](aap_midi2_aapxs_parse_context* context) {
         handleAAPXSInput(context);
@@ -93,13 +59,13 @@ aap::LocalPluginInstance::LocalPluginInstance(
 }
 
 aap::LocalPluginInstance::~LocalPluginInstance() {
+    stopExtensionWorker();
     internal::HostAAPXSRequestQueue::getInstance().closeOwner(this);
     if (aapxs_out_midi2_buffer)
         free(aapxs_out_midi2_buffer);
     if (aapxs_out_merge_buffer)
         free(aapxs_out_merge_buffer);
-    const std::lock_guard<std::mutex> lock{gui_listener_registry_mutex};
-    gui_listener_registry.erase(this);
+
 }
 
 AndroidAudioPluginHost* aap::LocalPluginInstance::getHostFacadeForCompleteInstantiation() {
@@ -149,25 +115,46 @@ void aap::LocalPluginInstance::confirmPorts() {
 }
 
 void aap::LocalPluginInstance::requestProcessToHost() {
-    if (process_requested_to_host)
-        return;
-    process_requested_to_host = true;
-    ((PluginService*) host)->requestProcessToHost(instance_id);
+    if (!process_requested_to_host.exchange(true, std::memory_order_relaxed))
+        realtime_state->process_notification.store(true, std::memory_order_release);
 }
 
-void aap::LocalPluginInstance::addEventUmpOutput(void *input, int32_t size) {
-    // unlike client side, we are not multithreaded during the audio processing,
-    // but multiple async extension calls may race, so lock here too.
-    const std::lock_guard<NanoSleepLock> lock{aapxs_out_merger_mutex_out};
-    if (aapxs_out_midi2_buffer_offset + size > event_midi2_buffer_size)
-        return;
-    memcpy((uint8_t *) aapxs_out_midi2_buffer + aapxs_out_midi2_buffer_offset,
-           input, size);
-    aapxs_out_midi2_buffer_offset += size;
+void aap::LocalPluginInstance::addEventUmpOutput(void* input, int32_t size) {
+    if (size > 0) realtime_state->ump_output.tryPush(input, static_cast<size_t>(size));
+}
+
+void aap::LocalPluginInstance::pollExtensionWorker() {
+    if (realtime_state->process_notification.exchange(false, std::memory_order_acq_rel))
+        ((PluginService*) host)->requestProcessToHost(instance_id);
+    auto notifications = realtime_state->standard_notifications.exchange(0, std::memory_order_acq_rel);
+    auto send = [this](const char* uri, int32_t opcode, uint32_t requestId) {
+        if (opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI))
+            internal::requestParameterLayoutRefresh(*this);
+        if (ipc_send_extension_message_func)
+            ipc_send_extension_message_func(ipc_send_extension_message_context, uri, instance_id,
+                    opcode, static_cast<int32_t>(requestId), nullptr, nullptr, &plugin_host_facade, nullptr);
+    };
+    if (notifications & 1) send(AAP_PARAMETERS_EXTENSION_URI, OPCODE_NOTIFY_PARAMETERS_CHANGED, aapxsRequestIdSerial());
+    if (notifications & 2) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESET_LOADED, aapxsRequestIdSerial());
+    if (notifications & 4) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESETS_UPDATED, aapxsRequestIdSerial());
+    for (unsigned n = 0; n < 64; ++n) {
+        if (!realtime_state->host_notifications.tryConsume([&](void* data, size_t) {
+            auto& notification = *static_cast<internal::HostNotification*>(data);
+            send(notification.uri, notification.opcode, notification.request_id);
+            return true;
+        })) break;
+    }
+    for (unsigned n = 0; n < 64; ++n) {
+        if (!realtime_state->aapxs_input.tryConsume([this](void* data, size_t) {
+            aapxs_midi2_in_session.process(data);
+            return true;
+        })) break;
+    }
 }
 
 const char* local_trace_name = "AAP::LocalPluginInstance_process";
 void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+    RealtimeScope realtime;
     process_requested_to_host = false;
 
     struct timespec timeSpecBegin{}, timeSpecEnd{};
@@ -178,15 +165,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
     }
 #endif
 
-    if (std::unique_lock<NanoSleepLock> tryLock(ump_sequence_merger_mutex, std::try_to_lock); tryLock.owns_lock()) {
-        // merge input from native UI into the host's MIDI inputs
-        memset(event_midi2_merge_buffer, 0, event_midi2_buffer_size);
-        merge_ump_sequences(AAP_PORT_DIRECTION_INPUT, event_midi2_merge_buffer, event_midi2_buffer_size,
-                            event_midi2_buffer, event_midi2_buffer_offset,
-                            getAudioPluginBuffer(), this);
-        memset(event_midi2_buffer, 0, event_midi2_buffer_offset);
-        event_midi2_buffer_offset = 0;
-    }
+    mergeQueuedUmp(AAP_PORT_DIRECTION_INPUT);
 
     // retrieve AAPXS SysEx8 requests and start extension calls, if any.
     // (might be synchronously done)
@@ -197,8 +176,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
             continue;
         void *data = internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
-        aapxs_midi2_in_session.process(data);
-        internal::sysex8::filterOutMessages(data);
+        internal::sysex8::filterOutMessages(data, realtime_state.get(), internal::queueAAPXSMidi2Input);
         mbh = (AAPMidiBufferHeader*) data;
     }
 
@@ -219,12 +197,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 
     // before sending back to host, merge AAPXS SysEx8 UMPs from async extension calls
     // into the plugin's MIDI output buffer.
-    if (std::unique_lock<NanoSleepLock> tryLock(aapxs_out_merger_mutex_out, std::try_to_lock); tryLock.owns_lock()) {
-        merge_ump_sequences(AAP_PORT_DIRECTION_OUTPUT, aapxs_out_merge_buffer, event_midi2_buffer_size,
-                            aapxs_out_midi2_buffer, aapxs_out_midi2_buffer_offset,
-                            getAudioPluginBuffer(), this);
-        aapxs_out_midi2_buffer_offset = 0;
-    }
+    mergeQueuedUmp(AAP_PORT_DIRECTION_OUTPUT, true);
 
     auto aapBuffer = getAudioPluginBuffer();
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
@@ -235,7 +208,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
         auto* data = (AAPMidiBufferHeader*) aapBuffer->get_buffer(aapBuffer, i);
         internal::updateParameterValueCacheFromOutputBuffer(*this, data);
         if (data && data->length > 0)
-            appendGuiListenerMidiBuffer(this, data + 1, static_cast<int32_t>(data->length));
+            realtime_state->gui_output.tryPush(data + 1, data->length);
     }
 
 #if ANDROID
@@ -277,6 +250,7 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
                                     staticSendAAPXSRequest,
                                     staticGetNewRequestId);
     internal::HostAAPXSRequestQueue::getInstance().start();
+    startExtensionWorker();
 }
 
 namespace {
@@ -306,38 +280,39 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
-    // Host callbacks (service->host) are ALWAYS treated as RT-unsafe, so they always take the
-    // synchronous Binder route and never the AAPXS SysEx8 channel. (is_command_rt_safe is therefore
-    // only consulted for the plugin direction, in RemotePluginInstance::sendPluginAAPXSRequest.)
-    // The actual implementation is in AudioPluginInterfaceImpl, kicks `hostExtension()` on the callback proxy object.
-    // Our own parameter list has to follow the plugin's layout change too, not only the host's.
+    bool hasPayload = request->serialization && request->serialization->data_size > 0;
+    if (!request->callback && !request->error_callback && !hasPayload && request->uri) {
+        uint32_t bit = 0;
+        if (!strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI) && request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) bit = 1;
+        if (!strcmp(request->uri, AAP_PRESETS_EXTENSION_URI)) {
+            if (request->opcode == OPCODE_NOTIFY_PRESET_LOADED) bit = 2;
+            if (request->opcode == OPCODE_NOTIFY_PRESETS_UPDATED) bit = 4;
+        }
+        if (bit) realtime_state->standard_notifications.fetch_or(bit, std::memory_order_release);
+        else {
+            internal::HostNotification notification{};
+            auto length = strnlen(request->uri, sizeof(notification.uri));
+            if (length == sizeof(notification.uri)) return false;
+            memcpy(notification.uri, request->uri, length + 1);
+            notification.opcode = request->opcode;
+            notification.request_id = request->request_id;
+            realtime_state->host_notifications.tryPush(&notification, sizeof(notification));
+        }
+        return false; // notifications have no reply
+    }
+    // General host queries require a non-processing caller. Rejection retains the
+    // caller's context and does not invoke an arbitrary callback on this thread.
+    if (RealtimeScope::isActive()) return false;
     if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
         internal::requestParameterLayoutRefresh(*this);
-
-    // Plugins may call host extensions on the audio thread, so the IPC happens on the queue's worker.
     auto enqueue = [this](const AAPXSRequestContext& r) {
-        internal::HostAAPXSRequest queued{this,
-                                          ipc_send_extension_message_func,
-                                          ipc_send_extension_message_context,
-                                          r.uri,
-                                          getInstanceId(),
-                                          r.opcode,
-                                          static_cast<int32_t>(r.request_id),
-                                          r.callback,
-                                          r.callback_user_data,
-                                          &plugin_host_facade,
-                                          r.error_callback};
-        if (internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) == internal::HostAAPXSRequestQueue::EnqueueResult::Full)
-            queued.sendNow();
-        return true;
+        internal::HostAAPXSRequest queued{this, ipc_send_extension_message_func,
+                ipc_send_extension_message_context, r.uri, instance_id, r.opcode,
+                static_cast<int32_t>(r.request_id), r.callback, r.callback_user_data,
+                &plugin_host_facade, r.error_callback};
+        return internal::HostAAPXSRequestQueue::getInstance().enqueue(queued) ==
+                internal::HostAAPXSRequestQueue::EnqueueResult::Queued;
     };
-
-    // A notification without payload does not touch the shared memory, and stays RT-safe.
-    bool hasPayload = request->serialization && request->serialization->data_size > 0;
-    if (!request->callback && !hasPayload) {
-        enqueue(*request);
-        return false;
-    }
 
     auto& dispatcher = getAAPXSDispatcher();
     auto aapxsInstance = request->urid != 0 ? dispatcher.getHostAAPXSByUrid(request->urid) : dispatcher.getHostAAPXSByUri(request->uri);

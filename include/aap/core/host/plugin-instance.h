@@ -3,6 +3,8 @@
 //-------------------------------------------------------
 
 #include <mutex>
+#include <atomic>
+#include "../realtime.h"
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"
 #include "plugin-host.h"
@@ -20,6 +22,7 @@
 #endif
 
 namespace aap {
+    namespace internal { struct InstanceRealtimeState; }
 
     class PluginSharedMemoryStore;
     class PluginHost;
@@ -36,7 +39,6 @@ namespace aap {
     protected:
         int sample_rate{48000};
 
-        NanoSleepLock ump_sequence_merger_mutex{};
         void merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance);
 
         aap_host_plugin_info_extension_t host_plugin_info{};
@@ -44,7 +46,7 @@ namespace aap {
         get_plugin_info(aap_host_plugin_info_extension_t* ext, AndroidAudioPluginHost* host, const char *pluginId);
 
         int instance_id{-1};
-        PluginInstantiationState instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
+        std::atomic<PluginInstantiationState> instantiation_state{PLUGIN_INSTANTIATION_STATE_INITIAL};
         bool are_ports_configured{false};
         AndroidAudioPlugin *plugin;
         PluginSharedMemoryStore *shared_memory_store{nullptr};
@@ -58,6 +60,10 @@ namespace aap {
         int32_t event_midi2_buffer_size{0};
         int32_t event_midi2_buffer_offset{0};
         NanoSleepLock plugin_call_mutex{};
+        std::unique_ptr<internal::InstanceRealtimeState> realtime_state;
+        virtual void pollExtensionWorker() {}
+        void startExtensionWorker();
+        void mergeQueuedUmp(aap_port_direction direction, bool output = false);
 
         PluginInstance(const PluginInformation *pluginInformation,
                        AndroidAudioPluginFactory *loadedPluginFactory,
@@ -71,6 +77,9 @@ namespace aap {
 
     public:
         virtual ~PluginInstance();
+        internal::InstanceRealtimeState& getRealtimeState() { return *realtime_state; }
+        void stopExtensionWorker();
+        bool isOnExtensionWorkerThread() const;
 
         virtual int32_t getInstanceId() = 0;
 
@@ -148,6 +157,7 @@ namespace aap {
         // It is used by both local and remote plugin instance
         // (UI events for local, host UI interaction etc. for remote)
         void addEventUmpInput(void* input, int32_t size);
+        bool tryAddEventUmpInput(const void* input, int32_t size);
 
         // Returns a serial request Id for AAPXS SysEx8 that increases every time this function is called.
         static uint32_t aapxsRequestIdSerial();
@@ -158,7 +168,7 @@ namespace aap {
             return ((PluginInstance*) instance->host_context)->aapxsRequestIdSerial();
         }
 
-        static void
+        static bool
         aapxsSessionAddEventUmpInput(AAPXSMidi2InitiatorSession *client, void *context,
                                      int32_t messageSize);
     };
@@ -184,10 +194,9 @@ namespace aap {
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
-        bool process_requested_to_host{false};
+        std::atomic<bool> process_requested_to_host{false};
 
         AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
-        NanoSleepLock aapxs_out_merger_mutex_out{};
         void* aapxs_out_midi2_buffer{nullptr};
         void* aapxs_out_merge_buffer{nullptr};
         int32_t aapxs_out_midi2_buffer_offset{0};
@@ -206,6 +215,7 @@ namespace aap {
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
+        void pollExtensionWorker() override;
 
     public:
         LocalPluginInstance(PluginHost *host,
@@ -306,6 +316,7 @@ namespace aap {
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
+        void pollExtensionWorker() override;
 
     public:
         // The `instantiate()` member of the plugin factory is supposed to invoke `setupAAPXSInstances()`.
@@ -315,6 +326,7 @@ namespace aap {
                              const PluginInformation *pluginInformation,
                              AndroidAudioPluginFactory *loadedPluginFactory,
                              int32_t eventMidi2InputBufferSize);
+        ~RemotePluginInstance() override;
 
         int32_t getInstanceId() override {
             // Make sure that we never try to retrieve it before being initialized at completeInstantiation() (at client)

@@ -8,6 +8,7 @@
 #include "host-aapxs-request-queue.h"
 #include "plugin-parameter-state.h"
 #include "remote-instance-lifetime.h"
+#include <thread>
 
 #define LOG_TAG "AAP.PluginHost"
 
@@ -71,6 +72,7 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
         return;
     instances.erase(found);
     auto destroy = [instance] {
+        instance->stopExtensionWorker();
         // The plugin may hold pointers into these contexts until it is released (at `delete`).
         auto aapxsContexts = collectAAPXSInstanceContexts(instance);
         internal::closeParameterLayoutRefresh(*instance);
@@ -80,7 +82,13 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
         internal::HostAAPXSRequestQueue::getInstance().forgetOwner(instance);
         internal::forgetParameterLayoutRefresh(*instance);
     };
-    if (!internal::retireRemoteInstanceLifetime(instance, destroy))
+    if (instance->isOnExtensionWorkerThread()) {
+        // A completion may destroy its instance. Join after that callback has returned,
+        // before freeing the session, dispatcher or plugin used by the worker's current poll.
+        std::thread([instance, destroy = std::move(destroy)] {
+            if (!internal::retireRemoteInstanceLifetime(instance, destroy)) destroy();
+        }).detach();
+    } else if (!internal::retireRemoteInstanceLifetime(instance, destroy))
         destroy();
 }
 

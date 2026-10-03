@@ -18,7 +18,8 @@ namespace aap {
     class AAPXSMidi2InitiatorSession;
     const size_t MAX_PENDING_CALLBACKS = UINT8_MAX;
 
-    typedef void (*add_midi2_event_func) (AAPXSMidi2InitiatorSession* session, void* userData, int32_t messageSize);
+    // Returns false when the preallocated MIDI handoff is full. Native SDK consumers rebuild.
+    typedef bool (*add_midi2_event_func) (AAPXSMidi2InitiatorSession* session, void* userData, int32_t messageSize);
 
     class AAPXSMidi2InitiatorSession {
         friend struct internal::AAPXSMidi2SessionAccess;
@@ -39,7 +40,7 @@ namespace aap {
         CallbackUnit pending_callbacks[MAX_PENDING_CALLBACKS];
 
         // Fires "timeout" for any in-flight request whose deadline has passed. Called from
-        // completeSession() (i.e. once per process() cycle).
+        // completeSession() on the instance's extension worker, including idle polls.
         void sweepTimeouts(void* pluginOrHost);
 
     public:

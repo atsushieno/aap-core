@@ -123,7 +123,10 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
                     pending_callbacks[slot] = CallbackUnit{request->request_id, request->callback,
                             request->callback_user_data, request->error_callback,
                             std::chrono::steady_clock::now() + std::chrono::milliseconds(request_timeout_ms)};
-                addMidi2Event(this, addMidi2EventUserData, size);
+                if (!addMidi2Event(this, addMidi2EventUserData, size)) {
+                    if (request->callback) pending_callbacks[slot] = {};
+                    error = "AAPXS MIDI handoff full";
+                }
             }
         }
     }

@@ -24,21 +24,23 @@ struct Results {
 struct MidiBuffer {
     std::vector<uint32_t> words = std::vector<uint32_t>(4096);
     AAPMidiBufferHeader* header() { return reinterpret_cast<AAPMidiBufferHeader*>(words.data()); }
-    static void collect(AAPXSMidi2InitiatorSession* session, void* context, int32_t size) {
+    static bool collect(AAPXSMidi2InitiatorSession* session, void* context, int32_t size) {
         auto self = static_cast<MidiBuffer*>(context);
         auto h = self->header();
         check(size > 0 && sizeof(*h) + h->length + size <= self->words.size() * 4, "MIDI capture bounds");
         std::memcpy(reinterpret_cast<uint8_t*>(h + 1) + h->length, session->aapxs_rt_midi_buffer, size);
         h->length += size;
+        return true;
     }
 };
 struct BlockingEmission {
     std::promise<void> entered, release;
     std::shared_future<void> resume = release.get_future().share();
-    static void emit(AAPXSMidi2InitiatorSession*, void* context, int32_t) {
+    static bool emit(AAPXSMidi2InitiatorSession*, void* context, int32_t) {
         auto self = static_cast<BlockingEmission*>(context);
         self->entered.set_value();
         self->resume.wait();
+        return true;
     }
 };
 
@@ -136,6 +138,7 @@ void synchronousReplyFromSend() {
     check(AAPXSMidi2SessionAccess::sendRequest(session, [](auto* owner, void* context, int32_t size) {
         MidiBuffer::collect(owner, context, size);
         owner->completeSession(static_cast<MidiBuffer*>(context)->header(), nullptr);
+        return true;
     }, &midi, &request), "reentrant send contract");
     check(result.successes == 1 && result.errors == 0 && sysex8::findRequestBuffer(123) == nullptr,
           "send callback may deliver a reply reentrantly");

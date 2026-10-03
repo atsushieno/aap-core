@@ -496,6 +496,11 @@ AAPXSSerializationContext* findRequestBuffer(uint32_t requestId) {
 }
 
 void filterOutMessages(void* buffer) {
+    filterOutMessages(buffer, nullptr, nullptr);
+}
+
+void filterOutMessages(void* buffer, void* sinkContext, void (*sink)(void*, const void*, size_t)) {
+    if (!buffer) return;
     auto mbh = (AAPMidiBufferHeader*) buffer;
     auto* data = (uint8_t*) (mbh + 1);
     uint32_t outputOffset = 0;
@@ -513,6 +518,7 @@ void filterOutMessages(void* buffer) {
         if (messageSize <= 0)
             break;
         if (aap_midi2_parse_aapxs_sysex8(&parseContext, iter, remaining)) {
+            auto start = inputOffset;
             // skip the whole message, up to and including its END packet
             while (true) {
                 auto status = cmidi2_ump_get_status_code(ump);
@@ -524,6 +530,7 @@ void filterOutMessages(void* buffer) {
                     break;
                 messageSize = cmidi2_ump_get_message_size_bytes(ump);
             }
+            if (sink) sink(sinkContext, data + start, inputOffset - start);
             continue;
         }
 

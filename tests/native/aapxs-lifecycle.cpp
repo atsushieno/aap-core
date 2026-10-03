@@ -26,12 +26,13 @@ struct Results {
 struct MidiBuffer {
     std::vector<uint32_t> words = std::vector<uint32_t>(20000);
     AAPMidiBufferHeader* header() { return reinterpret_cast<AAPMidiBufferHeader*>(words.data()); }
-    static void collect(AAPXSMidi2InitiatorSession* session, void* context, int size) {
+    static bool collect(AAPXSMidi2InitiatorSession* session, void* context, int size) {
         auto self = static_cast<MidiBuffer*>(context);
         auto h = self->header();
         check(size > 0 && sizeof(*h) + h->length + size <= self->words.size() * 4, "encoded MIDI capacity");
         std::memcpy(reinterpret_cast<uint8_t*>(h + 1) + h->length, session->aapxs_rt_midi_buffer, size);
         h->length += size;
+        return true;
     }
 };
 AAPXSRequestContext makeRequest(AAPXSSerializationContext& data, uint32_t id, Results& result) {
