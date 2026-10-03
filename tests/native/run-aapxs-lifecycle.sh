@@ -16,7 +16,7 @@ inline int clock_nanosleep(clockid_t, int, const timespec* delay, timespec* rema
 HEADER
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size rt-handoffs rt-replies; do
+    for test in zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size rt-handoffs rt-replies rt-parameters; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then

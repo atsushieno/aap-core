@@ -22,7 +22,7 @@
 #endif
 
 namespace aap {
-    namespace internal { struct InstanceRealtimeState; }
+    namespace internal { struct InstanceRealtimeState; class ParameterValueCache; }
 
     class PluginSharedMemoryStore;
     class PluginHost;
@@ -53,6 +53,8 @@ namespace aap {
         const PluginInformation *pluginInfo;
         std::unique_ptr <std::vector<PortInformation>> configured_ports{nullptr};
         std::unique_ptr <std::vector<ParameterInformation>> cached_parameters{nullptr};
+        std::atomic<const std::vector<ParameterInformation>*> published_parameters{nullptr};
+        std::unique_ptr<internal::ParameterValueCache> parameter_values;
         // for client, it collects event inputs and AAPXS SysEx8 UMPs
         // for service, it collects AAPXS SysEx8 UMPs (can be put multiple async results)
         void* event_midi2_buffer{nullptr};
@@ -78,6 +80,8 @@ namespace aap {
     public:
         virtual ~PluginInstance();
         internal::InstanceRealtimeState& getRealtimeState() { return *realtime_state; }
+        internal::ParameterValueCache& getParameterValueCache() { return *parameter_values; }
+        void pollParameterLayoutRefresh(); // extension worker only
         void stopExtensionWorker();
         bool isOnExtensionWorkerThread() const;
 
@@ -98,15 +102,18 @@ namespace aap {
         void scanParametersAndBuildList();
 
         int32_t getNumParameters() {
-            return cached_parameters ? cached_parameters->size()
+            auto* parameters = published_parameters.load(std::memory_order_acquire);
+            return parameters ? parameters->size()
                                      : pluginInfo->getNumDeclaredParameters();
         }
 
         const ParameterInformation *getParameter(int32_t index) {
-            if (!cached_parameters)
+            if (index < 0) return nullptr;
+            auto* parameters = published_parameters.load(std::memory_order_acquire);
+            if (!parameters)
                 return pluginInfo->getDeclaredParameter(index);
-            if (cached_parameters->size() > index)
-                return &(*cached_parameters)[index];
+            if (parameters->size() > static_cast<size_t>(index))
+                return &(*parameters)[index];
             else {
                 AAP_ASSERT_FALSE;
                 return nullptr;
