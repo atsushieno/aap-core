@@ -13,9 +13,8 @@
 #define LOG_TAG "AAP.XS"
 
 namespace {
-// Requests are sent from any thread, and replies are handled on the audio thread. It guards the
-// encoding buffer and the pending callbacks of every session; callbacks are invoked outside it.
-aap::NanoSleepLock session_lock{};
+// This short registry lock protects sidecar lookup only. Each session's gate protects its
+// encoding/parsing buffers and pending callbacks, including calls into addMidi2Event().
 struct SessionStates {
     aap::NanoSleepLock lock{};
     std::map<const aap::AAPXSMidi2InitiatorSession*, std::shared_ptr<aap::internal::AAPXSMidi2SessionState>> items{};
@@ -76,7 +75,6 @@ void aap::AAPXSMidi2InitiatorSession::addSession(
     const std::lock_guard<std::recursive_mutex> delivery{state->gate};
     if (state->closed)
         return;
-    const std::lock_guard<NanoSleepLock> guard{session_lock};
     size_t size = aap_midi2_generate_aapxs_sysex8((uint32_t*) aapxs_rt_midi_buffer,
                                                   midi_buffer_size / sizeof(int32_t),
                                                   (uint8_t*) aapxs_rt_conversion_helper_buffer,
@@ -102,7 +100,6 @@ void aap::AAPXSMidi2InitiatorSession::addSession(add_midi2_event_func addMidi2Ev
     }
     const char* error = nullptr;
     {
-        const std::lock_guard<NanoSleepLock> guard{session_lock};
         size_t slot = MAX_PENDING_CALLBACKS;
         if (request->callback) {
             for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++)
@@ -140,7 +137,6 @@ void aap::AAPXSMidi2InitiatorSession::sweepTimeouts(void* pluginOrHost) {
     CallbackUnit expired[MAX_PENDING_CALLBACKS];
     size_t numExpired = 0;
     {
-        const std::lock_guard<NanoSleepLock> guard{session_lock};
         for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
             auto& unit = pending_callbacks[i];
             if (!unit.func)
@@ -172,7 +168,6 @@ void aap::AAPXSMidi2InitiatorSession::completeSession(void* buffer, void* plugin
             // replies have no slot and must not reach the extension reply handler.
             CallbackUnit unit{};
             {
-                const std::lock_guard<NanoSleepLock> guard{session_lock};
                 for (size_t i = 0; i < MAX_PENDING_CALLBACKS; i++) {
                     if (pending_callbacks[i].func && pending_callbacks[i].request_id == aapxs_parse_context.request_id) {
                         unit = pending_callbacks[i];
@@ -231,7 +226,6 @@ bool AAPXSMidi2SessionAccess::sendRequest(AAPXSMidi2InitiatorSession& session,
 void AAPXSMidi2SessionAccess::forgetRequest(AAPXSMidi2InitiatorSession& session, uint32_t requestId) {
     auto state = getAAPXSMidi2SessionState(&session);
     const std::lock_guard<std::recursive_mutex> delivery{state->gate};
-    const std::lock_guard<NanoSleepLock> guard{session_lock};
     for (auto& unit : session.pending_callbacks)
         if (unit.func && unit.request_id == requestId) {
             unit = {};
@@ -246,7 +240,6 @@ void AAPXSMidi2SessionAccess::cancelPending(AAPXSMidi2InitiatorSession& session,
     state->closed = true;
     AAPXSMidi2InitiatorSession::CallbackUnit pending[MAX_PENDING_CALLBACKS];
     {
-        const std::lock_guard<NanoSleepLock> guard{session_lock};
         std::copy(std::begin(session.pending_callbacks), std::end(session.pending_callbacks), pending);
         std::fill(std::begin(session.pending_callbacks), std::end(session.pending_callbacks),
                   AAPXSMidi2InitiatorSession::CallbackUnit{});
