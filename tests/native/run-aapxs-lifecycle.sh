@@ -22,7 +22,7 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in ${AAPXS_TESTS:-zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size event-worker rt-handoffs rt-replies rt-parameters rt-processing}; do
+    for test in ${AAPXS_TESTS:-zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size event-worker recipient-replies rt-handoffs rt-replies rt-parameters rt-processing}; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then
@@ -65,6 +65,7 @@ for configuration in debug release; do
             "$repo/androidaudioplugin/src/main/cpp/core/hosting/AAPXSMidi2InitiatorSession.cpp" \
             "$repo/androidaudioplugin/src/main/cpp/core/hosting/aap_midi2_helper.cpp" \
             "$repo/androidaudioplugin/src/main/cpp/core/hosting/aapxs-transport.cpp" \
+            "$repo/androidaudioplugin/src/main/cpp/core/hosting/recipient-aapxs.cpp" \
             "$repo/androidaudioplugin/src/main/cpp/core/aapxs/typed-aapxs.cpp" \
             "$repo/androidaudioplugin/src/main/cpp/core/hosting/realtime.cpp" \
             -o "$build_dir/$test-$configuration"

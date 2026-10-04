@@ -16,6 +16,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/audio-plugin-host.cpp"
 	"core/hosting/PluginHost.cpp"
 	"core/hosting/aapxs-transport.cpp"
+	"core/hosting/recipient-aapxs.cpp"
 	"core/hosting/PluginHost.Client.cpp"
 	"core/hosting/PluginHost.Service.cpp"
 	"core/hosting/plugin-client-system.cpp"

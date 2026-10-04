@@ -252,6 +252,17 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
                                     staticSendAAPXSReply,
                                     staticSendAAPXSRequest,
                                     staticGetNewRequestId);
+    realtime_state->recipient_requests.setSender([this](const AAPXSRequestContext& request) {
+        // Separate scratch storage from the recipient parser: deferred replies may
+        // publish concurrently with worker parsing and use the original route even
+        // when processing has since stopped. All encoding is off the DSP thread.
+        uint32_t wire[2 * AAP_MIDI2_AAPXS_DATA_MAX_SIZE / sizeof(uint32_t)];
+        uint8_t scratch[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
+        auto size = aap_midi2_generate_aapxs_sysex8(wire, std::size(wire), scratch, sizeof(scratch),
+                0, request.request_id, request.urid, request.uri, request.opcode,
+                static_cast<const uint8_t*>(request.serialization->data), request.serialization->data_size);
+        return size && realtime_state->ump_output.tryPush(wire, size);
+    });
     for (auto& definition : *getAAPXSRegistry()->items()) {
         if (!definition.uri || !definition.get_host_extension_proxy) continue;
         auto initiator = aapxs_dispatcher.getHostAAPXSByUri(definition.uri);
@@ -262,29 +273,10 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
     startExtensionWorker();
 }
 
-namespace {
-// Set while a SysEx8 request is handled; it is processed in its own buffer, as the shared memory may
-// be in use by a Binder request at the same time. Its reply also goes back via SysEx8, synchronously,
-// whereas Binder requests complete when extension() returns.
-thread_local AAPXSSerializationContext* sysex8_request_buffer{nullptr};
-}
-
 void
 aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
-    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE && sysex8_request_buffer) {
-        aapxs_midi2_in_session.addReply(aapxsProcessorAddEventUmpOutput,
-                                        this,
-                                        request->urid,
-                                        request->uri,
-                                       // should we support MIDI 2.0 group?
-                                       0,
-                                        request->request_id,
-                                        request->serialization->data,
-                                        request->serialization->data_size,
-                                        request->opcode);
-    } else {
-        // it is synchronously handled at Binder IPC, nothing to process here.
-    }
+    if (auto reply = xs::retainAAPXSReply(request)) reply->complete();
+    // Borrowed Binder requests complete synchronously when extension() returns.
 }
 
 bool
@@ -360,8 +352,7 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
-        auto serialization = sysex8_request_buffer ? sysex8_request_buffer : instance->serialization;
-        AAPXSRequestContext context{nullptr, nullptr, serialization, urid, uri.c_str(), requestId, opcode};
+        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
         // RT-safe does not imply safe concurrent access to plugin state. All control
         // handlers run between DSP blocks, including requests from older SysEx8 peers.
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
@@ -370,14 +361,17 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
 
 void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *context) {
     if (context->opcode >= 0) {
-        // plugin request
-        // Not the parse buffer: replies are encoded into it.
-        uint8_t requestData[AAP_MIDI2_AAPXS_DATA_MAX_SIZE];
-        memcpy(requestData, context->data, context->dataSize);
-        AAPXSSerializationContext requestBuffer{requestData, context->dataSize, sizeof(requestData)};
-        sysex8_request_buffer = &requestBuffer;
-        controlExtension(context->urid, context->uri, context->opcode, context->request_id);
-        sysex8_request_buffer = nullptr;
+        auto registry = feature_registry->items();
+        auto def = context->urid ? registry->getByUrid(context->urid) : registry->getByUri(context->uri);
+        auto instance = context->urid ? aapxs_dispatcher.getPluginAAPXSByUrid(context->urid) :
+                                      aapxs_dispatcher.getPluginAAPXSByUri(context->uri);
+        if (!def || !instance || !def->process_incoming_plugin_aapxs_request) return;
+        AAPXSSerializationContext buffer{context->data, context->dataSize, AAP_MIDI2_AAPXS_DATA_MAX_SIZE};
+        AAPXSRequestContext incoming{nullptr, nullptr, &buffer, context->urid, def->uri, context->request_id, context->opcode};
+        auto reply = realtime_state->recipient_requests.create(incoming, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
+        if (!reply) return; // bounded rejection leaves the initiator's timeout intact
+        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+        def->process_incoming_plugin_aapxs_request(def, instance, plugin, &reply->request());
     } else {
         // host reply
         auto& dispatcher = getAAPXSDispatcher();

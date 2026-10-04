@@ -4,6 +4,7 @@
 #include "realtime-byte-queue.h"
 #include "instance-extension-worker.h"
 #include "processing-quiescence.h"
+#include "recipient-aapxs.h"
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
 
@@ -26,6 +27,7 @@ struct InstanceRealtimeState {
     std::atomic<bool> layout_refresh{false};
     std::shared_ptr<AsyncParameterLayout> layout_scan; // extension worker only
     InstanceExtensionWorker worker;
+    RecipientRequestStore recipient_requests;
     ProcessingQuiescence processing;
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes
     size_t gui_read_offset{0};

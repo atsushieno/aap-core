@@ -467,7 +467,10 @@ void aap::PluginInstance::startExtensionWorker() {
     }, [this] { return nextExtensionDeadline(); });
 }
 void aap::PluginInstance::stopExtensionWorker() {
-    if (realtime_state) realtime_state->worker.stop();
+    if (realtime_state) {
+        realtime_state->recipient_requests.close();
+        realtime_state->worker.stop();
+    }
 }
 void aap::PluginInstance::requestExtensionWorkerStop() {
     if (realtime_state) realtime_state->worker.requestStop();

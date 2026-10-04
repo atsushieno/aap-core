@@ -539,6 +539,85 @@ struct ControlRequest {
         };
     }
 };
+void deferredRecipientReply() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    struct Requests {
+        std::promise<std::shared_ptr<xs::DeferredAAPXSReply>> incoming[2];
+        std::atomic<int> received{0};
+    } requests;
+    AAPXSDefinition definition{&requests, "urn:aap:deferred-reply-test", 4,
+        [](auto* def, auto*, auto*, auto* context) {
+            check(!RealtimeScope::isActive(), "deferred handler off processing");
+            auto reply = xs::retainAAPXSReply(context);
+            check(bool(reply), "actual recipient request retainable");
+            auto& requests = *static_cast<Requests*>(def->aapxs_context);
+            requests.incoming[requests.received++].set_value(reply);
+        }};
+    std::vector<AAPXSDefinition> definitions;
+    for (auto& def : *xs::AAPXSDefinitionRegistry::getStandardExtensions())
+        if (def.uri) definitions.push_back(def);
+    definitions.push_back(definition);
+    xs::AAPXSDefinitionRegistry registry(std::make_unique<xs::UridMapping>(), definitions);
+    OwningService host(&list, &callback, &registry);
+    FakePlugin fake;
+    auto* instance = new TestLocal(&host, &registry, 7, &descriptor.info, &fake.factory, 8192);
+    host.adopt(instance);
+    auto store = instance->getSharedMemoryStore();
+    for (auto& def : registry) {
+        if (!def.uri || !def.data_capacity) continue;
+        auto index = store->getExtensionBufferCount();
+        store->addExtensionFD(-1, def.data_capacity);
+        store->getExtensionUriToIndexMap()[def.uri] = index;
+    }
+    instance->setupAAPXSInstances(); instance->completeInstantiation(); instance->setupAAPXS(); instance->setupTestBuffer();
+    uint32_t message[512]{}; uint8_t conversion[2048]{}; uint32_t value = 123;
+    auto urid = registry.getUridMapping()->getUrid(definition.uri);
+    auto size = aap_midi2_generate_aapxs_sysex8(message, 512, conversion, sizeof(conversion),
+            0, 201, urid, definition.uri, 1, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+    auto buffer = instance->getAudioPluginBuffer();
+    auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
+    input->length = size; memcpy(input + 1, message, size);
+    instance->process(64, 0);
+    auto future = requests.incoming[0].get_future();
+    check(future.wait_for(std::chrono::seconds(2)) == std::future_status::ready, "actual delayed request received");
+    auto reply = future.get();
+    // The audio port and parser may be reused after dispatch. Complete from a
+    // different thread, with only the retained handle, then parse the actual wire.
+    memset(input + 1, 0x55, size); input->length = 0;
+    std::thread completion([reply] {
+        auto& request = reply->request();
+        check(*static_cast<uint32_t*>(request.serialization->data) == 123, "incoming payload owned after port reuse");
+        *static_cast<uint32_t*>(request.serialization->data) = 321;
+        request.serialization->data_size = 4;
+        check(reply->complete(), "deferred completion publishes to real instance queue");
+        check(!reply->complete(), "real deferred reply publishes once");
+    });
+    completion.join();
+    auto output = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 2));
+    output->length = 0;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!output->length && std::chrono::steady_clock::now() < deadline) instance->process(64, 0);
+    uint8_t payload[1024]{}, scratch[2048]{};
+    aap_midi2_aapxs_parse_context parsed{};
+    aap_midi2_aapxs_parse_context_prepare(&parsed, payload, scratch, sizeof(scratch));
+    check(output->length && aap_midi2_parse_aapxs_sysex8(&parsed, reinterpret_cast<uint8_t*>(output + 1), output->length), "deferred legacy SysEx8 reply parses");
+    check(parsed.request_id == 201 && parsed.urid == urid && parsed.opcode == 1 && parsed.dataSize == 4 &&
+            *reinterpret_cast<uint32_t*>(parsed.data) == 321, "deferred reply preserves wire ID/opcode/payload");
+    size = aap_midi2_generate_aapxs_sysex8(message, 512, conversion, sizeof(conversion),
+            0, 202, urid, definition.uri, 1, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+    input->length = size; memcpy(input + 1, message, size);
+    instance->process(64, 0);
+    auto next = requests.incoming[1].get_future();
+    check(next.wait_for(std::chrono::seconds(2)) == std::future_status::ready, "second deferred request received");
+    reply = next.get();
+    instance->stopExtensionWorker(); // detaches reply target before instance destruction
+    host.destroyInstance(instance);
+    check(*static_cast<uint32_t*>(reply->request().serialization->data) == 123, "retained data survives instance destruction");
+    std::thread late([reply] { check(!reply->complete(), "delayed reply after actual teardown safely refused"); });
+    late.join();
+}
 void incomingControlAndTeardown(bool destroy) {
     FixtureInfo descriptor;
     PluginListSnapshot list;
@@ -589,5 +668,6 @@ void incomingControlAndTeardown(bool destroy) {
 int main() {
     guardProbes(); sharedObjectScope(); localProcessing(); layoutReadiness(); remoteProcessing(); legacyActiveLayoutRefresh();
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
+    deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
 }
