@@ -127,7 +127,7 @@ namespace aap::xs {
             std::vector<uint8_t> buffer{};
             AAPXSSerializationContext serialization{};
             // error empty == success; the closure reads `serialization` only on success.
-            std::function<void(const std::string& error, void* pluginOrHost)> deliver{};
+            std::function<void(const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost)> deliver{};
         };
 
         // Completed requests retain their allocation in a bounded per-client pool.
@@ -206,13 +206,9 @@ namespace aap::xs {
             call->references.store(1);
             call->fired.store(false);
             call->detached.store(false);
-            auto raw = call.get();
             call->owner.store(this);
             call->request_id = aapxs_instance->get_new_request_id(aapxs_instance);
-            call->deliver = [raw, onResult = std::move(onResult)](const std::string& error, void* pluginOrHost) {
-                if (onResult)
-                    onResult(error, &raw->serialization, pluginOrHost);
-            };
+            call->deliver = std::move(onResult);
             auto capacity = std::max(payloadSize, std::min(replyCapacity, serialization->data_capacity));
             call->buffer.resize(capacity);
             if (payloadSize > 0)
@@ -230,7 +226,8 @@ namespace aap::xs {
             ++raw->references;
             struct Borrow { AsyncCall* call; ~Borrow() { releaseCall(call); } } borrow{raw};
             if (call->serialization.data_size > serialization->data_capacity) {
-                call->deliver("request payload exceeds the AAPXS shared memory capacity", nullptr);
+                if (call->deliver)
+                    call->deliver("request payload exceeds the AAPXS shared memory capacity", &call->serialization, nullptr);
                 return requestId;
             }
             {
@@ -264,7 +261,7 @@ namespace aap::xs {
                 in_flight.erase(it);
             }
             if (completing->deliver)
-                completing->deliver(error, pluginOrHost);
+                completing->deliver(error, &completing->serialization, pluginOrHost);
         }
 
         // Defined out of line to keep transport/session internals out of the public header.
@@ -288,7 +285,7 @@ namespace aap::xs {
             // then release ownership so the eventual callback can delete the detached context.
             for (auto& call : pending) {
                 if (call->deliver)
-                    call->deliver(error, nullptr);
+                    call->deliver(error, &call->serialization, nullptr);
                 call->detached.store(true);
                 (void) call.release();
             }

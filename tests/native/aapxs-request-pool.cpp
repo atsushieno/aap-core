@@ -1,9 +1,23 @@
 #include <cstdio>
+#include <cstdlib>
+#include <new>
 #include <memory>
 #include <set>
 #include <stdexcept>
 #include <vector>
 #include "aap/core/aapxs/typed-aapxs.h"
+// Count C++ allocations only during warmed sequential requests. No transport
+// fixture, collection bookkeeping, or throwing assertion contributes to it.
+static bool count_allocations = false;
+static size_t allocations = 0;
+void* operator new(size_t size) {
+    if (count_allocations) ++allocations;
+    if (auto result = std::malloc(size ? size : 1)) return result;
+    throw std::bad_alloc{};
+}
+void operator delete(void* ptr) noexcept { std::free(ptr); }
+void* operator new[](size_t size) { return ::operator new(size); }
+void operator delete[](void* ptr) noexcept { ::operator delete(ptr); }
 using namespace aap;
 void check(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 struct Client : xs::TypedAAPXS {
@@ -36,6 +50,25 @@ int main() {
         request.callback(request.callback_user_data, nullptr);
     }
     check(callbacks == 200 && calls.size() == 1 && buffers.size() == 1, "request object and 1 MiB buffer reused");
+    context.inlineReply = true;
+    auto warmSubmit = [&] {
+        client->callFunctionAsync(1, &value, sizeof(value), [&callbacks](const auto& error, auto* data, void*) {
+            check(error.empty() && *static_cast<uint32_t*>(data->data) == 42, "direct result delivery"); ++callbacks;
+        }, sizeof(value));
+    };
+    warmSubmit();
+    count_allocations = true;
+    for (int i = 0; i < 100; ++i) warmSubmit();
+    count_allocations = false;
+    check(allocations == 100, "one map-node allocation per warmed request; no callback wrapper allocation");
+    context.inlineReply = false;
+    // No handler is also valid for a locally refused oversized request.
+    client->callFunctionAsync(1, nullptr, 0, {}, 0);
+    auto noHandler = context.pending.back(); context.pending.clear();
+    noHandler.callback(noHandler.callback_user_data, nullptr);
+    std::vector<uint8_t> oversized(shared.size() + 1);
+    client->callFunctionAsync(1, oversized.data(), oversized.size(), {}, 0);
+    check(context.pending.empty(), "oversized payload without callback rejected locally");
     for (int i = 0; i < 12; ++i) submit();
     calls.clear();
     for (auto& request : context.pending) calls.insert(request.serialization->data);
@@ -55,5 +88,5 @@ int main() {
         check(error.empty(), "inline result"); client.reset();
     }, 4);
     check(!client, "inline self-destruction survives a false send return");
-    puts("PASS: bounded request/buffer reuse, concurrent ownership, detached delivery and inline destruction");
+    puts("PASS: bounded reuse, one allocation per warmed request, concurrent ownership, detached delivery and inline destruction");
 }
