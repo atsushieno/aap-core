@@ -147,7 +147,9 @@ public:
                 AAPXSRequestContext context{nullptr, nullptr, aapxsInstance->serialization, 0, uri.c_str(), static_cast<uint32_t>(requestId), opcode};
                 std::string error{};
                 try {
+                    dispatcher.receiveBinderRequest(context.serialization);
                     instance.processHostAAPXSRequest(&context);
+                    dispatcher.publishBinderReplySize(context.serialization);
                 } catch (const std::exception& ex) {
                     error = ex.what();
                 } catch (...) {

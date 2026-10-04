@@ -263,8 +263,9 @@ struct FixtureInfo {
     FixtureInfo() { info.addDeclaredPort(&audio); info.addDeclaredPort(&input); info.addDeclaredPort(&output); info.addDeclaredParameter(&parameter); }
 };
 std::atomic<int> notifications{0};
-void notification(void*, const char*, int32_t, int32_t, int32_t, aapxs_completion_callback, void*, void*, aapxs_error_callback) {
+void notification(void*, const char*, int32_t, int32_t, int32_t, aapxs_completion_callback completed, void* context, void* host, aapxs_error_callback) {
     check(!RealtimeScope::isActive(), "host notification IPC stays off processing"); ++notifications;
+    if (completed) completed(context, host);
 }
 void localProcessing() {
     FixtureInfo descriptor;
@@ -382,7 +383,7 @@ void sharedTransportNegotiation() {
     xs::AAPXSServiceDispatcher service(registry);
     service.setupInstances(nullptr, assign, nullptr, nullptr, nullptr);
     client.refreshTransport();
-    check(client.getTransportCapabilities() == (AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8), "new peer acknowledges transport");
+    check(client.getTransportCapabilities() == AAPXS_TRANSPORT_SUPPORTED, "new peer acknowledges transport");
     check(forward->data == service.getPluginAAPXSByUri(uri)->serialization->data, "forward mapping matches across peers");
     check(reverse->data == service.getHostAAPXSByUri(uri)->serialization->data, "reverse mapping matches across peers");
     check(forward->data != reverse->data && forward->data_capacity == registry->getByUri(uri)->data_capacity, "independent payloads with original logical capacity");
@@ -408,6 +409,44 @@ void sharedTransportNegotiation() {
     aThread.join(); bThread.join();
     check(replies == 2 && a == 111 && b == 222, "simultaneous directions cannot overwrite each other");
 
+    // Actual size metadata keeps a small reply from copying a whole 1 MiB block.
+    std::vector<uint8_t> replyBuffer(forward->data_capacity, 0x99);
+    AAPXSSerializationContext ownReply{replyBuffer.data(), 4, replyBuffer.size()};
+    uint32_t input = 42; memcpy(ownReply.data, &input, 4);
+    auto exact = std::make_shared<AAPXSBinderChannel>(forward, [&](const auto& request) {
+        client.publishBinderRequestSize(forward);
+        auto* incoming = service.getPluginAAPXSByUri(uri)->serialization;
+        service.receiveBinderRequest(incoming);
+        check(incoming->data_size == 4 && *static_cast<uint32_t*>(incoming->data) == 42, "actual request size conveyed without changing POD");
+        memset(incoming->data, 0x55, incoming->data_capacity);
+        uint32_t result = 123; memcpy(incoming->data, &result, 4); incoming->data_size = 4;
+        service.publishBinderReplySize(incoming);
+        request.callback(request.callback_user_data, nullptr); return true;
+    }, [&]() -> std::optional<size_t> { return client.getBinderReplySize(forward); });
+    AAPXSRequestContext exactRequest{completed, &replies, &ownReply, urid, uri, 103, 7};
+    check(exact->send(&exactRequest), "length-aware request accepted");
+    check(ownReply.data_size == 4 && *static_cast<uint32_t*>(ownReply.data) == 123 && replyBuffer[4] == 0x99 && replyBuffer.back() == 0x99,
+          "small reply leaves the rest of the request buffer untouched");
+    reverse->data_size = 0;
+    client.publishBinderRequestSize(reverse);
+    auto* reversePeer = service.getHostAAPXSByUri(uri)->serialization;
+    service.receiveBinderRequest(reversePeer);
+    check(reversePeer->data_size == 0, "empty reverse request length");
+    reversePeer->data_size = 0; service.publishBinderReplySize(reversePeer);
+    check(client.getBinderReplySize(reverse) == 0, "empty reverse reply length");
+    forward->data_size = forward->data_capacity + 1;
+    client.publishBinderRequestSize(forward);
+    bool rejected = false;
+    try { service.receiveBinderRequest(service.getPluginAAPXSByUri(uri)->serialization); }
+    catch (const std::runtime_error&) { rejected = true; }
+    check(rejected, "oversized request header rejected before handler access");
+    forward->data_size = 0;
+    client.publishBinderRequestSize(forward);
+    auto* forwardPeer = service.getPluginAAPXSByUri(uri)->serialization;
+    forwardPeer->data_size = forwardPeer->data_capacity + 1;
+    rejected = false;
+    try { service.publishBinderReplySize(forwardPeer); } catch (const std::runtime_error&) { rejected = true; }
+    check(rejected, "oversized reply length rejected before successful Binder completion");
     // A new service with an old host has only the original logical-sized block.
     xs::AAPXSServiceDispatcher oldHostService(registry);
     std::vector<uint8_t> oldBlock(registry->getByUri(uri)->data_capacity);

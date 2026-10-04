@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "aapxs-transport.h"
+#include "aapxs-shared-transport.h"
 #include "midi2-port-buffer.h"
 #include "instance-realtime-state.h"
 
@@ -114,11 +115,18 @@ void aap::LocalPluginInstance::pollExtensionWorker() {
         ((PluginService*) host)->requestProcessToHost(instance_id);
     auto notifications = realtime_state->standard_notifications.exchange(0, std::memory_order_acq_rel);
     auto send = [this](const char* uri, int32_t opcode, uint32_t requestId) {
-        if (opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI))
-            internal::requestParameterLayoutRefresh(*this);
-        if (ipc_send_extension_message_func)
-            ipc_send_extension_message_func(ipc_send_extension_message_context, uri, instance_id,
-                    opcode, static_cast<int32_t>(requestId), nullptr, nullptr, &plugin_host_facade, nullptr);
+        // Notifications share the reverse-direction channel with host queries.
+        // Their empty request and URI must outlive asynchronous Binder delivery.
+        struct Notification {
+            std::string uri;
+            AAPXSSerializationContext empty{};
+            static void completed(void* context, void*) { delete static_cast<Notification*>(context); }
+            static void failed(void* context, void* hostContext, const char*) { completed(context, hostContext); }
+        };
+        auto pending = new Notification{uri};
+        AAPXSRequestContext request{Notification::completed, pending, &pending->empty, 0,
+            pending->uri.c_str(), requestId, opcode, Notification::failed};
+        if (!sendHostAAPXSRequest(&request)) delete pending;
     };
     if (notifications & 1) send(AAP_PARAMETERS_EXTENSION_URI, OPCODE_NOTIFY_PARAMETERS_CHANGED, aapxsRequestIdSerial());
     if (notifications & 2) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESET_LOADED, aapxsRequestIdSerial());
@@ -319,11 +327,15 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
         return [this](const AAPXSRequestContext& routed) {
             if (!ipc_send_extension_message_func) return false;
+            getAAPXSDispatcher().publishBinderRequestSize(routed.serialization);
             ipc_send_extension_message_func(ipc_send_extension_message_context, routed.uri, instance_id,
                     routed.opcode, static_cast<int32_t>(routed.request_id), routed.callback,
                     routed.callback_user_data, &plugin_host_facade, routed.error_callback);
             return true;
         };
+    }, [this, block = aapxsInstance->serialization]() -> std::optional<size_t> {
+        if (!(getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_LENGTHS)) return std::nullopt;
+        return getAAPXSDispatcher().getBinderReplySize(block);
     });
     return channel->send(request);
 }
@@ -352,10 +364,12 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
+        dispatcher.receiveBinderRequest(instance->serialization);
         AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
         // RT-safe does not imply safe concurrent access to plugin state. All control
         // handlers run between DSP blocks, including requests from older SysEx8 peers.
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+        dispatcher.publishBinderReplySize(instance->serialization);
     }
 }
 

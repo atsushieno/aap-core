@@ -399,15 +399,16 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
     auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
         return [this](const AAPXSRequestContext& routed) {
             auto transmit = [this](const AAPXSRequestContext& outgoing) {
-            return ipc_send_extension_message_impl(plugin->plugin_specific,
-                                                   outgoing.uri,
-                                                   getInstanceId(),
-                                                   outgoing.serialization->data_size,
-                                                   outgoing.request_id,
-                                                   outgoing.opcode,
-                                                   outgoing.callback,
-                                                   outgoing.callback_user_data,
-                                                   outgoing.error_callback);
+                getAAPXSDispatcher().publishBinderRequestSize(outgoing.serialization);
+                return ipc_send_extension_message_impl(plugin->plugin_specific,
+                                                       outgoing.uri,
+                                                       getInstanceId(),
+                                                       outgoing.serialization->data_size,
+                                                       outgoing.request_id,
+                                                       outgoing.opcode,
+                                                       outgoing.callback,
+                                                       outgoing.callback_user_data,
+                                                       outgoing.error_callback);
             };
             if (getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8)
                 return transmit(routed);
@@ -418,6 +419,9 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
             realtime_state->worker.notify();
             return true;
         };
+    }, [this, block = aapxsInstance->serialization]() -> std::optional<size_t> {
+        if (!(getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_LENGTHS)) return std::nullopt;
+        return getAAPXSDispatcher().getBinderReplySize(block);
     });
     return channel->send(request);
 }

@@ -116,7 +116,10 @@ namespace aap::xs {
     protected:
         int32_t request_timeout_ms{AAPXS_REQUEST_TIMEOUT_DEFAULT_MS};
 
+        struct CallPool;
         struct AsyncCall {
+            std::shared_ptr<CallPool> pool;
+            std::atomic<unsigned> references{1};
             std::atomic<TypedAAPXS*> owner{nullptr};
             uint32_t request_id{0};
             std::atomic<bool> fired{false};
@@ -127,17 +130,50 @@ namespace aap::xs {
             std::function<void(const std::string& error, void* pluginOrHost)> deliver{};
         };
 
+        // Completed requests retain their allocation in a bounded per-client pool.
+        // Detached requests keep the pool alive until their transport callback;
+        // idle calls never reference the pool, avoiding an ownership cycle.
+        struct CallPool {
+            std::mutex mutex;
+            std::vector<std::unique_ptr<AsyncCall>> idle;
+            size_t idle_bytes{0};
+        };
+        static void releaseCall(AsyncCall* call) noexcept {
+            if (!call || call->references.fetch_sub(1) != 1) return;
+            auto pool = std::move(call->pool);
+            call->deliver = {};
+            if (pool && call->buffer.capacity() <= 1024 * 1024) {
+                try {
+                    std::lock_guard<std::mutex> lock(pool->mutex);
+                    if (pool->idle.size() < 8 && pool->idle_bytes + call->buffer.capacity() <= 2 * 1024 * 1024) {
+                        pool->idle.emplace_back(call);
+                        pool->idle_bytes += call->buffer.capacity();
+                        return;
+                    }
+                } catch (...) { /* reclamation still owns the request */ }
+            }
+            delete call;
+        }
+        struct CallDeleter {
+            void operator()(AsyncCall* call) const noexcept {
+                if (call) call->owner.store(nullptr);
+                releaseCall(call);
+            }
+        };
+        using CallPtr = std::unique_ptr<AsyncCall, CallDeleter>;
+        std::shared_ptr<CallPool> call_pool = std::make_shared<CallPool>();
+
         using ResultHandler = std::function<void(const std::string& error, AAPXSSerializationContext* ctx, void* pluginOrHost)>;
 
         std::mutex calls_mutex{};
-        std::map<uint32_t, std::unique_ptr<AsyncCall>> in_flight{};
+        std::map<uint32_t, CallPtr> in_flight{};
 
         static void onAsyncReply(void* ctx, void* pluginOrHost) {
             auto call = (AsyncCall*) ctx;
             auto owner = call->owner.load();
             if (!owner) {
                 if (call->detached.exchange(false))
-                    delete call;
+                    CallDeleter{}(call);
                 return;
             }
             owner->finish(call, "", pluginOrHost);
@@ -147,7 +183,7 @@ namespace aap::xs {
             auto owner = call->owner.load();
             if (!owner) {
                 if (call->detached.exchange(false))
-                    delete call;
+                    CallDeleter{}(call);
                 return;
             }
             owner->finish(call, error ? error : "error", pluginOrHost);
@@ -155,8 +191,21 @@ namespace aap::xs {
 
         // `replyCapacity` bounds the reply that is kept (and copied back from shared memory); it is
         // clamped to the extension's capacity.
-        std::unique_ptr<AsyncCall> makeCall(const void* payload, size_t payloadSize, size_t replyCapacity, ResultHandler onResult) {
-            auto call = std::make_unique<AsyncCall>();
+        CallPtr makeCall(const void* payload, size_t payloadSize, size_t replyCapacity, ResultHandler onResult) {
+            CallPtr call;
+            {
+                std::lock_guard<std::mutex> lock(call_pool->mutex);
+                if (!call_pool->idle.empty()) {
+                    call_pool->idle_bytes -= call_pool->idle.back()->buffer.capacity();
+                    call.reset(call_pool->idle.back().release());
+                    call_pool->idle.pop_back();
+                }
+            }
+            if (!call) call.reset(new AsyncCall());
+            call->pool = call_pool;
+            call->references.store(1);
+            call->fired.store(false);
+            call->detached.store(false);
             auto raw = call.get();
             call->owner.store(this);
             call->request_id = aapxs_instance->get_new_request_id(aapxs_instance);
@@ -172,9 +221,14 @@ namespace aap::xs {
             return call;
         }
 
-        int32_t send(int32_t opcode, std::unique_ptr<AsyncCall> call) {
+        int32_t send(int32_t opcode, CallPtr call) {
             uint32_t requestId = call->request_id;
             AsyncCall* raw = call.get();
+            // An inline completion may destroy this client or submit another
+            // request before send_aapxs_request returns. Keep this exact storage
+            // out of the pool until the sender has stopped borrowing it.
+            ++raw->references;
+            struct Borrow { AsyncCall* call; ~Borrow() { releaseCall(call); } } borrow{raw};
             if (call->serialization.data_size > serialization->data_capacity) {
                 call->deliver("request payload exceeds the AAPXS shared memory capacity", nullptr);
                 return requestId;
@@ -185,8 +239,8 @@ namespace aap::xs {
             }
             AAPXSRequestContext request{onAsyncReply, raw, &raw->serialization, aapxs_instance->urid,
                                         uri, requestId, opcode, onAsyncError};
-            if (!aapxs_instance->send_aapxs_request(aapxs_instance, &request))
-                finish(raw, "request could not be sent");
+            if (!aapxs_instance->send_aapxs_request(aapxs_instance, &request) && raw->owner.load() == this)
+                finishMatchingCall(raw, "request could not be sent", requestId, true);
             return requestId;
         }
 
@@ -195,7 +249,7 @@ namespace aap::xs {
         }
 
         void finishMatchingCall(AsyncCall* call, const std::string& error, uint32_t requestId, bool matchId, void* pluginOrHost = nullptr) {
-            std::unique_ptr<AsyncCall> completing;
+            CallPtr completing;
             {
                 std::lock_guard<std::mutex> lock(calls_mutex);
                 // Compare addresses before dereferencing: a failure snapshot may have been
@@ -218,7 +272,7 @@ namespace aap::xs {
 
         void detachAllPending(const std::string& error) {
             cancelPendingTransportRequests(error);
-            std::vector<std::unique_ptr<AsyncCall>> pending;
+            std::vector<CallPtr> pending;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
                 pending.reserve(in_flight.size());
@@ -294,20 +348,20 @@ namespace aap::xs {
             auto waiter = std::make_shared<Waiter>();
             auto future = waiter->promise.get_future();
             {
-            struct BlockingScope {
-                BlockingScope() { ++blocking_depth; }
-                ~BlockingScope() { --blocking_depth; }
-            } blockingScope;
-            send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
-                    const std::string& error, AAPXSSerializationContext* s, void*) {
-                int expected = PENDING;
-                if (!waiter->state.compare_exchange_strong(expected, DELIVERING))
-                    return;
-                if (!error.empty())
-                    waiter->promise.set_value(Result<R>{R{}, error});
-                else
-                    waiter->promise.set_value(Result<R>{deserialize(s), ""});
-            }));
+                struct BlockingScope {
+                    BlockingScope() { ++blocking_depth; }
+                    ~BlockingScope() { --blocking_depth; }
+                } blockingScope;
+                send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
+                        const std::string& error, AAPXSSerializationContext* s, void*) {
+                    int expected = PENDING;
+                    if (!waiter->state.compare_exchange_strong(expected, DELIVERING))
+                        return;
+                    if (!error.empty())
+                        waiter->promise.set_value(Result<R>{R{}, error});
+                    else
+                        waiter->promise.set_value(Result<R>{deserialize(s), ""});
+                }));
             }
             if (future.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready)
                 return future.get();

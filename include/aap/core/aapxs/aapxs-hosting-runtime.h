@@ -158,6 +158,10 @@ namespace aap::xs {
         // Setup/control only. Old peers retain the original shared payload view.
         void refreshTransport();
         uint32_t getTransportCapabilities() const;
+        void publishBinderRequestSize(AAPXSSerializationContext* context) const;
+        size_t getBinderReplySize(const AAPXSSerializationContext* context) const;
+        void receiveBinderRequest(AAPXSSerializationContext* context) const;
+        void publishBinderReplySize(AAPXSSerializationContext* context) const;
     };
 
     class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {

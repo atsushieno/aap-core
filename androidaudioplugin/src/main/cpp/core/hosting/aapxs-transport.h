@@ -6,6 +6,7 @@
 #include <deque>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <mutex>
 #include "aap/aapxs.h"
 
@@ -22,8 +23,9 @@ public:
     // Sends `request`, whose payload is already in the shared block. Returns false if it could not be sent.
     using Transmit = std::function<bool(const AAPXSRequestContext& request)>;
 
-    AAPXSBinderChannel(AAPXSSerializationContext* sharedBlock, Transmit transmit)
-            : shared_block(sharedBlock), transmit(std::move(transmit)) {}
+    using ReplySize = std::function<std::optional<size_t>()>;
+    AAPXSBinderChannel(AAPXSSerializationContext* sharedBlock, Transmit transmit, ReplySize replySize = {})
+            : shared_block(sharedBlock), transmit(std::move(transmit)), reply_size(std::move(replySize)) {}
 
     // The contract of send_aapxs_request(): returns true if the result arrives via request->callback.
     // A request without callback is completed synchronously.
@@ -37,6 +39,7 @@ private:
 
     AAPXSSerializationContext* shared_block;
     Transmit transmit;
+    ReplySize reply_size;
     std::mutex mutex{};
     std::condition_variable idle{};
     bool busy{false};
@@ -54,7 +57,8 @@ private:
 // Channels are per instance (`owner`) and per shared block; they are created on first use.
 std::shared_ptr<AAPXSBinderChannel> getAAPXSBinderChannel(const void* owner,
                                                           AAPXSSerializationContext* sharedBlock,
-                                                          const std::function<AAPXSBinderChannel::Transmit()>& createTransmit);
+                                                          const std::function<AAPXSBinderChannel::Transmit()>& createTransmit,
+                                                          AAPXSBinderChannel::ReplySize replySize = {});
 void abortAAPXSBinderChannels(const void* owner, const char* error, void* pluginOrHost);
 void releaseAAPXSBinderChannels(const void* owner);
 

@@ -140,9 +140,16 @@ void AAPXSBinderChannel::complete(Pending* pending, const char* error, void* plu
         pending->finished = true;
         auto target = pending->request.serialization;
         if (!error && target && target != shared_block) {
-            auto size = std::min(target->data_capacity, shared_block->data_capacity);
-            memcpy(target->data, shared_block->data, size);
-            target->data_size = size;
+            auto reportedSize = reply_size ? reply_size() : std::nullopt;
+            auto size = reportedSize.value_or(shared_block->data_capacity);
+            if (size > shared_block->data_capacity || (reportedSize.has_value() && size > target->data_capacity)) {
+                error = "AAPXS reply length exceeds buffer capacity";
+                target->data_size = 0;
+            } else {
+                size = std::min(size, target->data_capacity);
+                if (size) memcpy(target->data, shared_block->data, size);
+                target->data_size = size;
+            }
         }
     }
     {
@@ -279,12 +286,13 @@ Registry& registry() {
 
 std::shared_ptr<AAPXSBinderChannel> getAAPXSBinderChannel(const void* owner,
                                                           AAPXSSerializationContext* sharedBlock,
-                                                          const std::function<AAPXSBinderChannel::Transmit()>& createTransmit) {
+                                                          const std::function<AAPXSBinderChannel::Transmit()>& createTransmit,
+                                                          AAPXSBinderChannel::ReplySize replySize) {
     auto& r = registry();
     std::lock_guard<std::mutex> lock(r.mutex);
     auto& channel = r.channels[owner][sharedBlock];
     if (!channel)
-        channel = std::make_shared<AAPXSBinderChannel>(sharedBlock, createTransmit());
+        channel = std::make_shared<AAPXSBinderChannel>(sharedBlock, createTransmit(), std::move(replySize));
     return channel;
 }
 

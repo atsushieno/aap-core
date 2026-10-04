@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <stdexcept>
 #include "aap/aapxs.h"
 
 namespace aap::internal {
@@ -16,6 +17,8 @@ inline constexpr const char* AAPXS_TRANSPORT_URI = "urn:androidaudioplugin:aapxs
 inline constexpr uint32_t AAPXS_TRANSPORT_MAGIC = 0x41585431;
 inline constexpr uint32_t AAPXS_TRANSPORT_DIRECTIONAL = 1;
 inline constexpr uint32_t AAPXS_TRANSPORT_SYSEX8 = 2;
+inline constexpr uint32_t AAPXS_TRANSPORT_LENGTHS = 4;
+inline constexpr uint32_t AAPXS_TRANSPORT_SUPPORTED = AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8 | AAPXS_TRANSPORT_LENGTHS;
 inline constexpr size_t AAPXS_TRANSPORT_DESCRIPTOR_SIZE = 32;
 inline constexpr size_t AAPXS_TRANSPORT_BLOCK_PREFIX = 16;
 inline std::string aapxsHostDirectionUri(const char* uri) { return std::string(uri) + "#aapxs-plugin-to-host-v1"; }
@@ -60,6 +63,7 @@ class SharedAAPXSTransport {
                 block.plugin->data = static_cast<uint8_t*>(block.plugin_base) + AAPXS_TRANSPORT_BLOCK_PREFIX;
                 block.host->data = static_cast<uint8_t*>(block.host_base) + AAPXS_TRANSPORT_BLOCK_PREFIX;
             }
+        if (!(flags & AAPXS_TRANSPORT_DIRECTIONAL)) flags &= ~AAPXS_TRANSPORT_LENGTHS;
         capabilities.store(flags, std::memory_order_release);
         applied = true;
     }
@@ -68,7 +72,7 @@ public:
         descriptor = value;
         if (client && value.data && value.data_capacity >= AAPXS_TRANSPORT_DESCRIPTOR_SIZE) {
             uint32_t words[8]{AAPXS_TRANSPORT_MAGIC, 1,
-                    AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8, 0};
+                    AAPXS_TRANSPORT_SUPPORTED, 0};
             memcpy(value.data, words, sizeof(words));
         }
     }
@@ -87,8 +91,9 @@ public:
     void acceptService() {
         if (!descriptor.data || descriptor.data_capacity < AAPXS_TRANSPORT_DESCRIPTOR_SIZE ||
             word(0) != AAPXS_TRANSPORT_MAGIC || word(4) != 1) return;
-        uint32_t flags = word(8) & (AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8);
+        uint32_t flags = word(8) & AAPXS_TRANSPORT_SUPPORTED;
         for (auto& block : blocks) if (!block.usable) flags &= ~AAPXS_TRANSPORT_DIRECTIONAL;
+        if (!(flags & AAPXS_TRANSPORT_DIRECTIONAL)) flags &= ~AAPXS_TRANSPORT_LENGTHS;
         apply(flags);
         // Published before plugin construction can invoke a host extension.
         __atomic_store_n(reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(descriptor.data) + 12),
@@ -99,10 +104,41 @@ public:
         if (applied || !descriptor.data || descriptor.data_capacity < AAPXS_TRANSPORT_DESCRIPTOR_SIZE ||
             word(0) != AAPXS_TRANSPORT_MAGIC || word(4) != 1) return;
         auto flags = __atomic_load_n(reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(descriptor.data) + 12), __ATOMIC_ACQUIRE);
-        flags &= word(8) & (AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8);
+        flags &= word(8) & AAPXS_TRANSPORT_SUPPORTED;
         for (auto& block : blocks) if (!block.usable) flags &= ~AAPXS_TRANSPORT_DIRECTIONAL;
         // An old peer leaves the descriptor untouched. Keep its legacy views.
+        if (!(flags & AAPXS_TRANSPORT_DIRECTIONAL)) flags &= ~AAPXS_TRANSPORT_LENGTHS;
         if (flags) apply(flags);
+    }
+    bool usesLengths(const AAPXSSerializationContext* context) const {
+        if (!context || !context->data || !(getCapabilities() & AAPXS_TRANSPORT_LENGTHS)) return false;
+        return std::any_of(blocks.begin(), blocks.end(), [&](const auto& block) {
+            return context == block.plugin || context == block.host;
+        });
+    }
+    void publishRequestSize(AAPXSSerializationContext* context) const {
+        if (!usesLengths(context)) return;
+        auto* words = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(context->data) - AAPXS_TRANSPORT_BLOCK_PREFIX);
+        __atomic_store_n(words + 1, UINT32_MAX, __ATOMIC_RELAXED); // no successful reply yet
+        __atomic_store_n(words, static_cast<uint32_t>(context->data_size), __ATOMIC_RELEASE);
+    }
+    size_t replySize(const AAPXSSerializationContext* context) const {
+        if (!usesLengths(context)) return context->data_capacity;
+        auto* words = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(context->data) - AAPXS_TRANSPORT_BLOCK_PREFIX);
+        return __atomic_load_n(words + 1, __ATOMIC_ACQUIRE);
+    }
+    void receiveRequest(AAPXSSerializationContext* context) const {
+        if (!usesLengths(context)) return;
+        auto* words = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(context->data) - AAPXS_TRANSPORT_BLOCK_PREFIX);
+        auto size = __atomic_load_n(words, __ATOMIC_ACQUIRE);
+        if (size > context->data_capacity) throw std::runtime_error("AAPXS request length exceeds shared capacity");
+        context->data_size = size;
+    }
+    void publishReplySize(AAPXSSerializationContext* context) const {
+        if (!usesLengths(context)) return;
+        if (context->data_size > context->data_capacity) throw std::runtime_error("AAPXS reply length exceeds shared capacity");
+        auto* words = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(context->data) - AAPXS_TRANSPORT_BLOCK_PREFIX);
+        __atomic_store_n(words + 1, static_cast<uint32_t>(context->data_size), __ATOMIC_RELEASE);
     }
     uint32_t getCapabilities() const { return capabilities.load(std::memory_order_acquire); }
 };

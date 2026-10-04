@@ -7,6 +7,11 @@
 void aap::xs::AAPXSDispatcher::refreshTransport() { if (shared_transport) shared_transport->refreshClient(); }
 uint32_t aap::xs::AAPXSDispatcher::getTransportCapabilities() const { return shared_transport ? shared_transport->getCapabilities() : 0; }
 
+void aap::xs::AAPXSDispatcher::publishBinderRequestSize(AAPXSSerializationContext* context) const { if (shared_transport) shared_transport->publishRequestSize(context); }
+size_t aap::xs::AAPXSDispatcher::getBinderReplySize(const AAPXSSerializationContext* context) const { return shared_transport ? shared_transport->replySize(context) : context->data_capacity; }
+void aap::xs::AAPXSDispatcher::receiveBinderRequest(AAPXSSerializationContext* context) const { if (shared_transport) shared_transport->receiveRequest(context); }
+void aap::xs::AAPXSDispatcher::publishBinderReplySize(AAPXSSerializationContext* context) const { if (shared_transport) shared_transport->publishReplySize(context); }
+
 // Client setup
 
 aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionRegistry *registry)

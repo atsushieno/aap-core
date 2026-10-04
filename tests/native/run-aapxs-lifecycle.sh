@@ -22,7 +22,7 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in ${AAPXS_TESTS:-zero-id typed-completion lifecycle metadata connections session-isolation sync-waits binder-completion parameter-context state-size event-worker recipient-replies legacy-sender rt-handoffs rt-replies rt-parameters rt-processing}; do
+    for test in ${AAPXS_TESTS:-zero-id typed-completion request-pool lifecycle metadata connections session-isolation sync-waits binder-completion sized-replies parameter-context state-size event-worker recipient-replies legacy-sender rt-handoffs rt-replies rt-parameters rt-processing}; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then
