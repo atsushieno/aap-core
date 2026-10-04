@@ -42,6 +42,7 @@ namespace aap::xs {
     };
 
     class TypedAAPXS {
+        static thread_local unsigned blocking_depth;
         const char* uri;
     protected:
         AAPXSInitiatorInstance *aapxs_instance;
@@ -49,6 +50,8 @@ namespace aap::xs {
         std::shared_ptr<AsyncAbortRegistry> abort_registry{};
 
     public:
+        static bool isBlockingCall() { return blocking_depth != 0; }
+
         TypedAAPXS(const char* uri, AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
                 : uri(uri), aapxs_instance(initiatorInstance), serialization(serialization) {
             if (!uri) {
@@ -290,6 +293,11 @@ namespace aap::xs {
             const auto timeoutMs = request_timeout_ms;
             auto waiter = std::make_shared<Waiter>();
             auto future = waiter->promise.get_future();
+            {
+            struct BlockingScope {
+                BlockingScope() { ++blocking_depth; }
+                ~BlockingScope() { --blocking_depth; }
+            } blockingScope;
             send(opcode, makeCall(payload, payloadSize, replyCapacity, [waiter, deserialize = std::move(deserialize)](
                     const std::string& error, AAPXSSerializationContext* s, void*) {
                 int expected = PENDING;
@@ -300,6 +308,7 @@ namespace aap::xs {
                 else
                     waiter->promise.set_value(Result<R>{deserialize(s), ""});
             }));
+            }
             if (future.wait_for(std::chrono::milliseconds(timeoutMs)) == std::future_status::ready)
                 return future.get();
             int expected = PENDING;

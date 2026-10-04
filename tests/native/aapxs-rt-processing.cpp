@@ -16,6 +16,7 @@
 #include "aap/core/host/plugin-instance.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "instance-realtime-state.h"
+#include "aapxs-shared-transport.h"
 #include "plugin-parameter-state.h"
 #include "parameter-value-cache.h"
 
@@ -173,6 +174,7 @@ struct FakePlugin {
                     return true;
                 })) {}
                 auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
+                check(input->length == 0, "unacknowledged legacy parser receives no SysEx8 requests");
                 if (input->length) {
                     uint8_t payload[1024]{}, conversion[2048]{};
                     aap_midi2_aapxs_parse_context request{};
@@ -352,15 +354,89 @@ void layoutReadiness() {
         context->aapxs_context = nullptr;
     }
 }
+void sharedTransportNegotiation() {
+    auto* registry = xs::AAPXSDefinitionRegistry::getStandardExtensions();
+    const char* uri = AAP_PARAMETERS_EXTENSION_URI;
+    auto urid = registry->getUridMapping()->getUrid(uri);
+    std::map<std::string, std::vector<uint8_t>> mappings;
+    xs::AAPXSClientDispatcher client(registry);
+    check(client.setupInstances(nullptr, [&](const char* key, auto* context) {
+        auto& storage = mappings[key]; storage.resize(context->data_capacity);
+        context->data = storage.data(); return true;
+    }, nullptr, nullptr, nullptr), "negotiating host setup");
+    auto* forward = client.getPluginAAPXSByUri(uri)->serialization;
+    auto* reverse = client.getHostAAPXSByUri(uri)->serialization;
+    check(forward != reverse && forward->data == reverse->data, "old peer keeps offset-zero payload view");
+    check(client.getTransportCapabilities() == 0, "old plugin never acknowledges capabilities");
+    auto& negotiation = mappings[AAPXS_TRANSPORT_URI];
+    check(aapxsTransportMappedSize(negotiation.data(), negotiation.size(), forward->data_capacity,
+              mappings[uri].size()) == mappings[uri].size(), "opted-in service maps reserved physical prefix");
+    check(aapxsTransportMappedSize(nullptr, 0, forward->data_capacity, mappings[uri].size()) == forward->data_capacity,
+          "legacy service still maps advertised logical capacity");
+    check(aapxsTransportMappedSize(negotiation.data(), negotiation.size(), forward->data_capacity, forward->data_capacity) == forward->data_capacity,
+          "short physical mapping cannot supply reserved prefix");
+    auto assign = [&](const char* key, auto* context) {
+        auto it = mappings.find(key);
+        if (it != mappings.end()) { context->data = it->second.data(); context->data_capacity = it->second.size(); }
+    };
+    xs::AAPXSServiceDispatcher service(registry);
+    service.setupInstances(nullptr, assign, nullptr, nullptr, nullptr);
+    client.refreshTransport();
+    check(client.getTransportCapabilities() == (AAPXS_TRANSPORT_DIRECTIONAL | AAPXS_TRANSPORT_SYSEX8), "new peer acknowledges transport");
+    check(forward->data == service.getPluginAAPXSByUri(uri)->serialization->data, "forward mapping matches across peers");
+    check(reverse->data == service.getHostAAPXSByUri(uri)->serialization->data, "reverse mapping matches across peers");
+    check(forward->data != reverse->data && forward->data_capacity == registry->getByUri(uri)->data_capacity, "independent payloads with original logical capacity");
+    check(registry->getUridMapping()->getUrid(uri) == urid && registry->getUridMapping()->getUrid(AAPXS_TRANSPORT_URI) == 0, "optional FDs do not change wire URIDs");
+    std::promise<void> forwardWritten, reverseWritten;
+    auto forwardReady = forwardWritten.get_future().share(), reverseReady = reverseWritten.get_future().share();
+    auto makeChannel = [&](auto* block, std::promise<void>& written, auto otherReady) {
+        return std::make_shared<AAPXSBinderChannel>(block, [&written, otherReady](const auto& request) {
+            written.set_value(); otherReady.wait();
+            request.callback(request.callback_user_data, nullptr); return true;
+        });
+    };
+    auto forwardChannel = makeChannel(forward, forwardWritten, reverseReady);
+    auto reverseChannel = makeChannel(reverse, reverseWritten, forwardReady);
+    uint32_t a = 111, b = 222;
+    AAPXSSerializationContext aData{&a, 4, 4}, bData{&b, 4, 4};
+    std::atomic<int> replies{0};
+    auto completed = [](void* context, void*) { ++*static_cast<std::atomic<int>*>(context); };
+    AAPXSRequestContext aRequest{completed, &replies, &aData, urid, uri, 101, 7};
+    AAPXSRequestContext bRequest{completed, &replies, &bData, urid, uri, 102, -7};
+    std::thread aThread([&] { check(forwardChannel->send(&aRequest), "forward request accepted"); });
+    std::thread bThread([&] { check(reverseChannel->send(&bRequest), "reverse request accepted"); });
+    aThread.join(); bThread.join();
+    check(replies == 2 && a == 111 && b == 222, "simultaneous directions cannot overwrite each other");
+
+    // A new service with an old host has only the original logical-sized block.
+    xs::AAPXSServiceDispatcher oldHostService(registry);
+    std::vector<uint8_t> oldBlock(registry->getByUri(uri)->data_capacity);
+    oldHostService.setupInstances(nullptr, [&](const char* key, auto* context) {
+        if (!strcmp(key, uri)) { context->data = oldBlock.data(); context->data_capacity = oldBlock.size(); }
+    }, nullptr, nullptr, nullptr);
+    check(oldHostService.getTransportCapabilities() == 0 &&
+          oldHostService.getPluginAAPXSByUri(uri)->serialization->data == oldBlock.data() &&
+          oldHostService.getHostAAPXSByUri(uri)->serialization->data == oldBlock.data(), "old host retains unchanged layout");
+    // Missing reverse mapping disables directional negotiation at both ends.
+    mappings.erase(aapxsHostDirectionUri(uri));
+    xs::AAPXSServiceDispatcher incomplete(registry);
+    incomplete.setupInstances(nullptr, assign, nullptr, nullptr, nullptr);
+    check(!(incomplete.getTransportCapabilities() & AAPXS_TRANSPORT_DIRECTIONAL), "truncated transport cannot select out-of-bounds views");
+}
 void remoteProcessing() {
     FixtureInfo descriptor;
     FakePlugin fake; fake.echo = true;
     TestRemote instance(nullptr, xs::AAPXSDefinitionRegistry::getStandardExtensions(), &descriptor.info, &fake.factory, 8192);
     std::vector<std::vector<uint8_t>> blocks;
-    check(instance.setupAAPXSInstances([&](const char*, AAPXSSerializationContext* serialization) {
+    void* transportDescriptor = nullptr;
+    check(instance.setupAAPXSInstances([&](const char* uri, AAPXSSerializationContext* serialization) {
         blocks.emplace_back(serialization->data_capacity);
-        serialization->data = blocks.back().data(); return true;
+        serialization->data = blocks.back().data();
+        if (!strcmp(uri, AAPXS_TRANSPORT_URI)) transportDescriptor = serialization->data;
+        return true;
     }), "remote setup");
+    __atomic_store_n(static_cast<uint32_t*>(transportDescriptor) + 3, AAPXS_TRANSPORT_SYSEX8, __ATOMIC_RELEASE);
+    instance.getAAPXSDispatcher().refreshTransport();
     instance.setInstanceId(2); instance.completeInstantiation(); instance.setupTestBuffer();
     auto& dispatcher = instance.getAAPXSDispatcher();
     auto initiator = dispatcher.getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI);
@@ -395,17 +471,24 @@ void legacyActiveLayoutRefresh() {
     instance.setInstanceId(5); instance.completeInstantiation(); instance.setupTestBuffer();
     fake.metadataShared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
     instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t size,
-            int32_t requestId, int32_t opcode, aapxs_completion_callback callback, void* callbackContext, aapxs_error_callback) {
+            int32_t requestId, int32_t opcode, aapxs_completion_callback callback, void* callbackContext, aapxs_error_callback errorCallback) {
         auto& fake = *static_cast<FakePlugin*>(context);
         check(!RealtimeScope::isActive(), "unsafe metadata stays off processing");
         ++fake.metadataRequests;
         auto shared = fake.metadataShared;
-        int32_t index{}; memcpy(&index, shared->data, sizeof(index));
+        int32_t index{}; if (size) memcpy(&index, shared->data, sizeof(index));
         aap_parameter_info_t parameter{};
         aap_parameter_enum_t enumeration{};
         int32_t value = 2;
         const void* reply{}; size_t replySize{};
         switch (opcode) {
+            case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
+                if (fake.shortReplyArmed) {
+                    fake.shortReplyReturned = true;
+                    errorCallback(callbackContext, &fake.api, "short parameter reply");
+                    return true;
+                }
+                value = 80; reply = &value; replySize = sizeof(value); break;
             case OPCODE_PARAMETERS_GET_PARAMETER:
                 check(size == 4, "Binder parameter index width");
                 parameter = {static_cast<int16_t>(index), "legacy-layout", "", 0, 100, 30, false};
@@ -418,7 +501,7 @@ void legacyActiveLayoutRefresh() {
                 memcpy(&index, static_cast<uint8_t*>(shared->data) + 4, 4);
                 enumeration.value = index; strcpy(enumeration.name, "legacy-enum");
                 reply = &enumeration; replySize = sizeof(enumeration); break;
-            default: check(false, "safe count must use SysEx8 while active");
+            default: check(false, "unexpected legacy Binder opcode");
         }
         // Emulate the older service: Binder returns the POD in shared memory,
         // but also queues a redundant SysEx8 reply to the same request ID.
@@ -666,7 +749,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); localProcessing(); layoutReadiness(); remoteProcessing(); legacyActiveLayoutRefresh();
+    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); localProcessing(); layoutReadiness(); remoteProcessing(); legacyActiveLayoutRefresh();
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");

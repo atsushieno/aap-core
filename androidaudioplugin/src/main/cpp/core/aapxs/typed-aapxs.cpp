@@ -8,6 +8,7 @@
 // (via standard-extensions.h) — including it back here would be circular.
 
 namespace aap::xs {
+    thread_local unsigned TypedAAPXS::blocking_depth = 0;
 
     void TypedAAPXS::cancelPendingTransportRequests(const std::string& error) {
         std::vector<std::pair<uint32_t, void*>> pending;

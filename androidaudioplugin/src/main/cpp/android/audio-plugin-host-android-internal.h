@@ -137,6 +137,7 @@ public:
             auto status = withRemoteInstance(instanceId, [&](RemotePluginInstance& instance) {
                 found = true;
                 auto& dispatcher = instance.getAAPXSDispatcher();
+                dispatcher.refreshTransport();
                 auto aapxsInstance = dispatcher.getHostAAPXSByUri(uri.c_str());
                 if (!aapxsInstance) {
                     if (completion)

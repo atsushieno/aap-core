@@ -241,9 +241,9 @@ static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPX
 void aap::LocalPluginInstance::setupAAPXSInstances() {
     auto store = getSharedMemoryStore();
     auto func = [&](const char* uri, AAPXSSerializationContext* serialization) {
-        if (feature_registry->items()->getByUri(uri)->data_capacity == 0)
-            return; // no need to allocate serialization data
-        auto index = store->getExtensionUriToIndexMap()[uri];
+        auto found = store->getExtensionUriToIndexMap().find(uri);
+        if (found == store->getExtensionUriToIndexMap().end()) return;
+        auto index = found->second;
         serialization->data = store->getExtensionBuffer(index);
         serialization->data_capacity = store->getExtensionBufferCapacity(index);
     };

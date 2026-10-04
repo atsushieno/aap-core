@@ -300,14 +300,19 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
         // Set up shared memory FDs for plugin extension services.
         // We make use of plugin metadata that should list up required and optional extensions.
         if (!instance->setupAAPXSInstances([&](const char* uri, AAPXSSerializationContext *serialization) {
+            if (!serialization->data_capacity) return true;
             // create asharedmem and add as an extension FD, keep it until it is destroyed.
             auto fd = ASharedMemory_create(nullptr, serialization->data_capacity);
+            if (fd < 0) return false;
             auto shm = instance->getSharedMemoryStore();
             serialization->data = shm->addExtensionFD(fd, serialization->data_capacity);
+            if (!serialization->data || serialization->data == MAP_FAILED) return false;
 
             if (ctx->proxy_state != aap::PLUGIN_INSTANTIATION_STATE_ERROR) {
                 ndk::ScopedFileDescriptor sfd{dup(fd)};
-                auto stat = ctx->getProxy()->addExtension(ctx->instance_id, uri, sfd, serialization->data_capacity);
+                auto* definition = instance->getAAPXSDispatcher().getDefinitionByUri(uri);
+                auto declaredCapacity = definition && definition->uri ? definition->data_capacity : serialization->data_capacity;
+                auto stat = ctx->getProxy()->addExtension(ctx->instance_id, uri, sfd, declaredCapacity);
                 if (!stat.isOk()) {
                     aap_bcap_log_error_with_details("addExtension() failed", stat);
                     ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;
@@ -324,6 +329,7 @@ AndroidAudioPlugin* aap_client_as_plugin_new(
             if (!ctx->connection_data->isValid())
                 return nullptr;
             status = ctx->getProxy()->endCreate(ctx->instance_id);
+            if (status.isOk()) instance->getAAPXSDispatcher().refreshTransport();
             if (!status.isOk()) {
                 aap_bcap_log_error_with_details("endCreate() failed", status);
                 ctx->proxy_state = aap::PLUGIN_INSTANTIATION_STATE_ERROR;

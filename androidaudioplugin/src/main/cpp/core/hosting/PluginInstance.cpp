@@ -448,6 +448,7 @@ void aap::PluginInstance::deactivate() {
 
     plugin->deactivate(plugin);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+    realtime_state->worker.notify();
 }
 
 void aap::PluginInstance::addEventUmpInput(void *input, int32_t size) {
@@ -468,7 +469,9 @@ void aap::PluginInstance::startExtensionWorker() {
 }
 void aap::PluginInstance::stopExtensionWorker() {
     if (realtime_state) {
+        auto legacyGate = realtime_state->legacy_sender.cancel("AAPXS instance stopped", plugin, true);
         realtime_state->recipient_requests.close();
+        legacyGate.unlock();
         realtime_state->worker.stop();
     }
 }

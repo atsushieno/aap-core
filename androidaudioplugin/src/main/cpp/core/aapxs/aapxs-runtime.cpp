@@ -2,11 +2,16 @@
 #include "aap/aapxs.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
 #include "aap/unstable/utility.h"
+#include "../hosting/aapxs-shared-transport.h"
+
+void aap::xs::AAPXSDispatcher::refreshTransport() { if (shared_transport) shared_transport->refreshClient(); }
+uint32_t aap::xs::AAPXSDispatcher::getTransportCapabilities() const { return shared_transport ? shared_transport->getCapabilities() : 0; }
 
 // Client setup
 
 aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionRegistry *registry)
         : AAPXSDispatcher(registry->getUridMapping()), registry(registry) {
+    shared_transport = std::make_shared<internal::SharedAAPXSTransport>();
 }
 
 bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
@@ -19,20 +24,30 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
         return false;
     }
 
+    AAPXSSerializationContext descriptor{nullptr, 0, internal::AAPXS_TRANSPORT_DESCRIPTOR_SIZE};
+    if (!sharedMemoryAllocatingRequester(internal::AAPXS_TRANSPORT_URI, &descriptor)) return false;
+    shared_transport->setDescriptor(descriptor, true);
     if (!std::all_of(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)
             return true; // skip
         int32_t urid = registry->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
-        serialization->data_capacity = f.data_capacity;
+        serialization->data_capacity = f.data_capacity ? f.data_capacity + internal::AAPXS_TRANSPORT_BLOCK_PREFIX : 0;
         if (!sharedMemoryAllocatingRequester(f.uri, serialization.get()))
             return false;
+        auto hostSerialization = std::make_unique<AAPXSSerializationContext>();
+        hostSerialization->data_capacity = serialization->data_capacity;
+        auto hostUri = internal::aapxsHostDirectionUri(f.uri);
+        if (f.data_capacity && !sharedMemoryAllocatingRequester(hostUri.c_str(), hostSerialization.get())) return false;
+        shared_transport->add(serialization.get(), hostSerialization.get(), f.data_capacity,
+                serialization->data, serialization->data_capacity, hostSerialization->data, hostSerialization->data_capacity);
         // plugin extensions
         addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), urid, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // host extensions
-        addRecipient(populateAAPXSRecipientInstance(hostContext, serialization.get(), sendAAPXSReply), f.uri);
+        addRecipient(populateAAPXSRecipientInstance(hostContext, hostSerialization.get(), sendAAPXSReply), f.uri);
         serialization_store[urid] = std::move(serialization);
+        host_serialization_store[urid] = std::move(hostSerialization);
         return true;
     }))
         return false;
@@ -76,6 +91,7 @@ AAPXSSerializationContext *aap::xs::AAPXSClientDispatcher::getSerialization(cons
 
 aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionRegistry *registry)
         : AAPXSDispatcher(registry->getUridMapping()), registry(registry) {
+    shared_transport = std::make_shared<internal::SharedAAPXSTransport>();
 }
 
 void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
@@ -88,19 +104,29 @@ void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
         return;
     }
 
+    AAPXSSerializationContext descriptor{};
+    extensionBufferAssigner(internal::AAPXS_TRANSPORT_URI, &descriptor);
+    shared_transport->setDescriptor(descriptor, false);
     std::for_each(registry->begin(), registry->end(), [&](AAPXSDefinition& f) {
         if (!f.uri)
             return; // skip
         int32_t urid = registry->getUridMapping()->getUrid(f.uri);
         // allocate SerializationContext
         auto serialization = std::make_unique<AAPXSSerializationContext>();
+        auto hostSerialization = std::make_unique<AAPXSSerializationContext>();
+        extensionBufferAssigner(f.uri, serialization.get());
+        auto hostUri = internal::aapxsHostDirectionUri(f.uri);
+        extensionBufferAssigner(hostUri.c_str(), hostSerialization.get());
+        shared_transport->add(serialization.get(), hostSerialization.get(), f.data_capacity,
+                serialization->data, serialization->data_capacity, hostSerialization->data, hostSerialization->data_capacity);
         // host extensions
-        addInitiator(populateAAPXSInitiatorInstance(hostContext, serialization.get(), urid, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
+        addInitiator(populateAAPXSInitiatorInstance(hostContext, hostSerialization.get(), urid, sendAAPXSRequest, initiatorGetNewRequestId), f.uri);
         // plugin extensions
         addRecipient(populateAAPXSRecipientInstance(hostContext, serialization.get(), sendAapxsReply), f.uri);
-        extensionBufferAssigner(f.uri, serialization.get());
         serialization_store[urid] = std::move(serialization);
+        host_serialization_store[urid] = std::move(hostSerialization);
     });
+    shared_transport->acceptService();
     already_setup = true;
 }
 

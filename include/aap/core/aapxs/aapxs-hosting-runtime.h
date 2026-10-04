@@ -11,6 +11,8 @@
 #include "../../android-audio-plugin.h"
 #include "aap/unstable/utility.h"
 
+namespace aap::internal { class SharedAAPXSTransport; }
+
 namespace aap::xs {
     /**
      * Implements URI-to-int mappings for RT-safe URI indication, similar to LV2 URID.
@@ -143,6 +145,8 @@ namespace aap::xs {
         AAPXSUridMapping<AAPXSInitiatorInstance> initiators;
         AAPXSUridMapping<AAPXSRecipientInstance> recipients;
         std::map<uint8_t, std::unique_ptr<AAPXSSerializationContext>> serialization_store{};
+        std::map<uint8_t, std::unique_ptr<AAPXSSerializationContext>> host_serialization_store{};
+        std::shared_ptr<internal::SharedAAPXSTransport> shared_transport;
 
         AAPXSDispatcher(UridMapping* mapping)
                 : initiators(mapping), recipients(mapping) {
@@ -150,6 +154,10 @@ namespace aap::xs {
 
         inline void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
+    public:
+        // Setup/control only. Old peers retain the original shared payload view.
+        void refreshTransport();
+        uint32_t getTransportCapabilities() const;
     };
 
     class AAPXSDefinitionRegistry : public AAPXSUridMapping<AAPXSDefinition>  {

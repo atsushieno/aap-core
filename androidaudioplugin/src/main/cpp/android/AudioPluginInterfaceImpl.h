@@ -16,6 +16,7 @@
 #include "aap/core/host/audio-plugin-host.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../core/hosting/plugin-service-list.h"
+#include "../core/hosting/aapxs-shared-transport.h"
 
 #define AAP_AIDL_SVC_LOG_TAG "AAP.aidl.svc"
 
@@ -175,7 +176,16 @@ public:
             }
             auto fdRemote = in_sharedMemoryFD.get();
             auto dfd = fdRemote < 0 ? -1 : dup(fdRemote);
-            shmExt->addExtensionFD(dfd, in_size);
+            size_t mappedSize = in_size;
+            auto* definition = instance->getAAPXSRegistry()->items()->getByUri(in_uri.c_str());
+            auto descriptor = shmExt->getExtensionUriToIndexMap().find(internal::AAPXS_TRANSPORT_URI);
+            if (definition && definition->uri && definition->data_capacity == static_cast<size_t>(in_size) &&
+                descriptor != shmExt->getExtensionUriToIndexMap().end()) {
+                auto fdSize = ASharedMemory_getSize(dfd);
+                mappedSize = internal::aapxsTransportMappedSize(shmExt->getExtensionBuffer(descriptor->second),
+                    shmExt->getExtensionBufferCapacity(descriptor->second), in_size, fdSize);
+            }
+            shmExt->addExtensionFD(dfd, mappedSize);
             shmExt->getExtensionUriToIndexMap()[in_uri] = shmExt->getExtensionBufferCount() - 1;
         }
         return ndk::ScopedAStatus::ok();

@@ -2,6 +2,7 @@
 #include "aap/core/host/plugin-instance.h"
 #include "plugin-parameter-state.h"
 #include "aapxs-transport.h"
+#include "aapxs-shared-transport.h"
 #include "aapxs-midi2-session-internal.h"
 #include "midi2-port-buffer.h"
 #include "instance-realtime-state.h"
@@ -35,7 +36,8 @@ aap::RemotePluginInstance::RemotePluginInstance(PluginClient* client,
 }
 
 std::chrono::steady_clock::time_point aap::RemotePluginInstance::nextExtensionDeadline() {
-    return internal::AAPXSMidi2SessionAccess::nextDeadline(aapxs_session);
+    return std::min(internal::AAPXSMidi2SessionAccess::nextDeadline(aapxs_session),
+                    realtime_state->legacy_sender.nextDeadline());
 }
 
 aap::RemotePluginInstance::~RemotePluginInstance() {
@@ -48,6 +50,7 @@ void aap::RemotePluginInstance::pollExtensionWorker() {
     // A nested blocking call from a completion must not wait for this worker to
     // consume another SysEx8 reply. Binder delivery runs independently.
     internal::ScopedBinderOnlyAAPXS binderOnly;
+    realtime_state->legacy_sender.poll(instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE, plugin);
     for (unsigned n = 0; n < 64 && !realtime_state->worker.isStopping(); ++n) {
         if (!realtime_state->aapxs_input.tryConsume([this](void* data, size_t) {
             aapxs_session.completeSession(data, plugin);
@@ -249,6 +252,8 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
         internal::updateParameterValueCacheFromOutputBuffer(*this, data);
     }
 
+    if (realtime_state->legacy_sender.processingCompleted()) realtime_state->worker.notify();
+
 #if ANDROID
     if (ATrace_isEnabled()) {
         clock_gettime(CLOCK_REALTIME, &timeSpecEnd);
@@ -346,6 +351,7 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
 
 void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
     internal::AAPXSMidi2SessionAccess::cancelPending(aapxs_session, error.c_str(), plugin);
+    auto legacyGate = realtime_state->legacy_sender.cancel(error.c_str(), plugin);
     internal::abortAAPXSBinderChannels(this, error.c_str(), plugin);
     std::vector<xs::TypedAAPXS*> snapshot;
     {
@@ -374,6 +380,7 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
                        ? dispatcher.getDefinitionByUrid(request->urid)
                        : dispatcher.getDefinitionByUri(request->uri);
     bool useSysEx8 =
+            (dispatcher.getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8) &&
             !internal::ScopedBinderOnlyAAPXS::isActive() &&
             instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE &&
             definition && definition->is_command_rt_safe &&
@@ -391,15 +398,25 @@ aap::RemotePluginInstance::sendPluginAAPXSRequest(AAPXSRequestContext* request) 
         return false;
     auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
         return [this](const AAPXSRequestContext& routed) {
+            auto transmit = [this](const AAPXSRequestContext& outgoing) {
             return ipc_send_extension_message_impl(plugin->plugin_specific,
-                                                   routed.uri,
+                                                   outgoing.uri,
                                                    getInstanceId(),
-                                                   routed.serialization->data_size,
-                                                   routed.request_id,
-                                                   routed.opcode,
-                                                   routed.callback,
-                                                   routed.callback_user_data,
-                                                   routed.error_callback);
+                                                   outgoing.serialization->data_size,
+                                                   outgoing.request_id,
+                                                   outgoing.opcode,
+                                                   outgoing.callback,
+                                                   outgoing.callback_user_data,
+                                                   outgoing.error_callback);
+            };
+            if (getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8)
+                return transmit(routed);
+            // A blocking completion on this worker cannot wait for itself to
+            // dispatch a paced request. Refuse it before taking ownership.
+            if (realtime_state->worker.isCurrentThread() && xs::TypedAAPXS::isBlockingCall()) return false;
+            if (!realtime_state->legacy_sender.enqueue(routed, std::move(transmit))) return false;
+            realtime_state->worker.notify();
+            return true;
         };
     });
     return channel->send(request);
