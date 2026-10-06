@@ -23,6 +23,7 @@ class LegacyAAPXSSender {
     std::deque<Entry> queue;
     std::atomic<uint64_t> generation{0};
     std::atomic<bool> waiting{false};
+    std::atomic<bool> progress_waiter{false};
     uint64_t consumed{0}; // delivery gate
     bool closed{false}; // queue mutex
     std::atomic<bool> cancelling{false};
@@ -34,6 +35,7 @@ class LegacyAAPXSSender {
             entry.request.callback(entry.request.callback_user_data, target);
     }
 public:
+    static constexpr const char* audioProgressTimeout = "legacy AAPXS waiting for audio progress timed out";
     class Cancellation {
         LegacyAAPXSSender* sender;
         std::unique_lock<std::recursive_mutex> gate;
@@ -59,8 +61,16 @@ public:
         return true;
     }
     bool processingCompleted() noexcept {
-        generation.fetch_add(1, std::memory_order_release);
-        return waiting.load(std::memory_order_acquire);
+        generation.fetch_add(1, std::memory_order_seq_cst);
+        return waiting.load(std::memory_order_acquire) || progress_waiter.load(std::memory_order_seq_cst);
+    }
+    // Worker only. Arm before checking progress so a racing completed block
+    // either wakes the worker or is observed here. This never blocks processing.
+    bool deferUntilAudioProgress(bool active) {
+        progress_waiter.store(true, std::memory_order_seq_cst);
+        if (active && generation.load(std::memory_order_seq_cst) == consumed) return true;
+        progress_waiter.store(false, std::memory_order_seq_cst);
+        return false;
     }
     Clock::time_point nextDeadline() {
         std::lock_guard<std::mutex> lock(mutex);
@@ -81,7 +91,7 @@ public:
             // Once claimed, this is an in-flight transmission. Do not hold an
             // application gate across Binder: its callback may cancel this instance.
             gate.unlock();
-            if (expired) fail(entry, "legacy AAPXS waiting for audio progress timed out", target);
+            if (expired) fail(entry, audioProgressTimeout, target);
             else {
                 if (!entry.transmit(entry.request)) fail(entry, "request could not be sent", target);
                 // Read after IPC returns: a block concurrent with transmission may
@@ -101,6 +111,7 @@ public:
             if (close) closed = true;
             dropped.swap(queue);
             waiting.store(false, std::memory_order_release);
+            progress_waiter.store(false, std::memory_order_seq_cst);
         }
         for (auto& entry : dropped) fail(entry, error, target);
         return gate;

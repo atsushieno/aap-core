@@ -933,8 +933,11 @@ void activeLayoutRefresh(bool negotiated) {
     });
     std::atomic<int> changes{0};
     std::atomic<bool> failedScanSettled{false};
+    std::atomic<bool> pausedScanSettled{false};
     instance.beforeWorkerWait = [&] {
         if (fake.shortReplyReturned && !instance.getRealtimeState().layout_scan) failedScanSettled = true;
+        if (fake.metadataRequests > 0 && !instance.getRealtimeState().layout_scan &&
+            instance.getRealtimeState().layout_refresh.load()) pausedScanSettled = true;
     };
     instance.parametersChangedHandler = [&](auto& remote) {
         check(remote.getNumParameters() == 80, "publish complete legacy layout");
@@ -943,8 +946,9 @@ void activeLayoutRefresh(bool negotiated) {
     internal::requestParameterLayoutRefresh(instance);
     // No audio: the scan must remain asynchronous, without Binder reads or
     // partial publication. Actual processing then drives one request per reply.
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(negotiated ? 20 : 1100));
     check(changes == 0 && instance.getNumParameters() == 1, "old layout retained without audio progress");
+    check(fake.metadataRequests == 0, "startup emits no metadata requests without audio");
     if (negotiated) {
         // One audio exchange delivers the initial RT-safe count. Every remaining
         // read is Binder-only and must finish without further audio progress.
@@ -958,12 +962,24 @@ void activeLayoutRefresh(bool negotiated) {
         check(!strcmp(instance.getParameter(79)->getName(), "legacy-layout"), "complete negotiated layout published");
         return;
     }
+    // Start one read, then stop audio for longer than the pacing timeout. No
+    // second notification is sent: the original refresh must survive both the
+    // startup gap and a later pause, and complete once processing resumes.
+    instance.process(64, 0);
+    auto started = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (fake.metadataRequests == 0 && std::chrono::steady_clock::now() < started) std::this_thread::yield();
+    check(fake.metadataRequests == 1, "first progress admits one legacy Binder read");
+    auto paused = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!pausedScanSettled && std::chrono::steady_clock::now() < paused)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    check(pausedScanSettled && changes == 0 && fake.metadataRequests == 1,
+          "paused legacy scan is retained after timeout without retries or partial publication");
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
     while (changes == 0 && std::chrono::steady_clock::now() < deadline) {
         instance.process(64, 0);
         std::this_thread::yield();
     }
-    check(changes == 1 && fake.metadataRequests == 641, "active scan completes metadata reads with a MIDI drain barrier between Binder reads");
+    check(changes == 1 && fake.metadataRequests == 642, "retained scan restarts and completes with a MIDI drain barrier between Binder reads");
     auto* previous = instance.getParameter(0);
     fake.shortMetadataReply = true;
     internal::requestParameterLayoutRefresh(instance);

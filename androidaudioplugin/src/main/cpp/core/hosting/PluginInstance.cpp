@@ -629,6 +629,12 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
         !get_parameter_layout_state(this)->ready.load(std::memory_order_acquire)) return;
     if (auto* remote = dynamic_cast<RemotePluginInstance*>(this)) {
         auto& scan = realtime_state->layout_scan;
+        const bool legacy = !(remote->getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8);
+        const bool active = instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE;
+        // A legacy scan cannot advance without draining redundant MIDI replies.
+        // Retain early notifications without starting a timed request before
+        // audio begins. A completed block or deactivation wakes this worker.
+        if (!scan && legacy && realtime_state->legacy_sender.deferUntilAudioProgress(active)) return;
         if (scan && realtime_state->layout_refresh.load(std::memory_order_acquire) && !scan->canSupersede())
             return; // the current read's completion wakes this worker
         if (realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel)) {
@@ -639,7 +645,7 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
             if (!proxy) return;
             auto* transport = static_cast<xs::ParametersClientAAPXS*>(proxy->aapxs_context);
             scan = std::make_shared<internal::AsyncParameterLayout>(*transport,
-                    !(remote->getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8),
+                    legacy,
                     [this] { realtime_state->worker.notify(); });
             scan->start();
         }
@@ -654,6 +660,13 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
         scan.reset();
         if (realtime_state->layout_refresh.load(std::memory_order_acquire)) realtime_state->worker.notify();
         if (!result.isOk()) {
+            if (legacy && result.error == internal::LegacyAAPXSSender::audioProgressTimeout) {
+                // Audio can also stop between reads. Preserve the refresh and
+                // restart from count when it resumes; never publish a partial list.
+                realtime_state->layout_refresh.store(true, std::memory_order_release);
+                if (!realtime_state->legacy_sender.deferUntilAudioProgress(active)) realtime_state->worker.notify();
+                return;
+            }
             if (result.error != "parameters extension unavailable")
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Parameter scan aborted: %s", result.error.c_str());
             return;

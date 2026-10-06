@@ -7,6 +7,17 @@
 using namespace aap::internal;
 void check(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 int main() {
+    LegacyAAPXSSender deferred;
+    check(deferred.deferUntilAudioProgress(true), "scan waits without allocating a timed request");
+    deferred.poll(true, nullptr); // an empty transport queue must not disarm the scan wake
+    { aap::RealtimeScope rt; check(deferred.processingCompleted(), "deferred scan wakes on first audio block"); }
+    check(!deferred.deferUntilAudioProgress(true), "completed progress releases deferred scan");
+    LegacyAAPXSSender inactive;
+    check(inactive.deferUntilAudioProgress(true), "active scan is deferred");
+    check(!inactive.deferUntilAudioProgress(false), "deactivation releases deferred scan without audio");
+    check(inactive.deferUntilAudioProgress(true), "rearm before close");
+    { auto gate = inactive.cancel("closed", nullptr, true); }
+    check(!inactive.processingCompleted(), "close disarms progress wake");
     LegacyAAPXSSender sender;
     int errors = 0, sends = 0;
     AAPXSRequestContext request{};
