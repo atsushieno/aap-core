@@ -4,17 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.os.SystemClock
 import kotlinx.coroutines.runBlocking
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.json.JSONObject
+import org.json.JSONArray
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.LockSupport
 import kotlin.random.Random
 
 /**
@@ -37,7 +40,9 @@ class AapParameterStressReceiver : BroadcastReceiver() {
                     intent.getStringExtra(EXTRA_PLUGIN_ID),
                     intent.getIntExtra(EXTRA_ROUNDS, 4),
                     intent.getIntExtra(EXTRA_MAX_DELAY_MS, 50),
-                    intent.getIntExtra(EXTRA_POLLERS, 1))
+                    intent.getIntExtra(EXTRA_POLLERS, 1),
+                    intent.getLongExtra(EXTRA_PROCESS_PERIOD_US, 0),
+                    intent.getIntExtra(EXTRA_SETTLE_MS, SETTLE_MS.toInt()))
             } catch (t: Throwable) {
                 Log.e(TAG, "stress failed", t)
                 JSONObject().put("error", "${t.javaClass.name}: ${t.message.orEmpty()}")
@@ -48,36 +53,63 @@ class AapParameterStressReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun run(context: Context, packageName: String, pluginId: String?, rounds: Int, maxDelayMs: Int, pollerCount: Int): JSONObject {
+    private fun run(context: Context, packageName: String, pluginId: String?, rounds: Int, maxDelayMs: Int,
+                    pollerCount: Int, processPeriodUs: Long, settleMs: Int): JSONObject {
+        require(processPeriodUs in 0..1_000_000 && settleMs in 0..20_000)
         val plugin = AudioPluginHostHelper.queryAudioPluginServices(context, packageName)
             .flatMap { it.plugins }
             .firstOrNull { pluginId == null || it.pluginId == pluginId }
             ?: throw IllegalArgumentException("No plugin found in $packageName")
-        val start = System.currentTimeMillis()
-        fun step(name: String) = Log.i(TAG, "$name at ${System.currentTimeMillis() - start}ms")
+        val start = SystemClock.elapsedRealtime()
+        fun elapsedMs() = SystemClock.elapsedRealtime() - start
+        fun step(name: String) = Log.i(TAG, "$name at ${elapsedMs()}ms")
         val client = AudioPluginClientBase(context)
         runBlocking { client.connectToPluginService(plugin.packageName) }
         step("connected")
         val instance = client.instantiateNativePlugin(plugin)
         step("instantiated")
         val layoutChanges = AtomicInteger()
+        val layoutChangeTimesMs = mutableListOf<Long>()
         val invalidLayouts = mutableListOf<String>()
         val processCount = AtomicInteger()
         val stop = AtomicBoolean(false)
+        var maxProcessNs = 0L // processor only, read after join
+        var processOverruns = 0
         try {
             instance.prepare(FRAME_COUNT, SAMPLE_RATE, CONTROL_BYTES_PER_BLOCK)
             step("prepared")
             writeSilentAudioInputs(instance)
             instance.setParameterLayoutChangedListener {
                 layoutChanges.incrementAndGet()
+                synchronized(layoutChangeTimesMs) { layoutChangeTimesMs.add(elapsedMs()) }
+                step("layout published")
                 validateLayout(instance)?.let { synchronized(invalidLayouts) { invalidLayouts.add(it) } }
             }
             instance.activate()
             step("activated")
             val processor = Thread {
+                val periodNs = processPeriodUs * 1000
+                var nextBlock = System.nanoTime()
                 while (!stop.get()) {
+                    if (periodNs > 0) {
+                        var remaining = nextBlock - System.nanoTime()
+                        while (remaining > 0 && !stop.get()) {
+                            LockSupport.parkNanos(remaining)
+                            remaining = nextBlock - System.nanoTime()
+                        }
+                        if (stop.get()) break
+                    }
+                    val before = if (periodNs > 0) System.nanoTime() else 0L
                     instance.process(FRAME_COUNT, PROCESS_TIMEOUT_NANOSECONDS)
                     processCount.incrementAndGet()
+                    if (periodNs > 0) {
+                        val after = System.nanoTime()
+                        val duration = after - before
+                        maxProcessNs = maxOf(maxProcessNs, duration)
+                        if (duration > periodNs) processOverruns++
+                        // Do not turn a late block into a burst of catch-up calls.
+                        nextBlock = maxOf(nextBlock + periodNs, after)
+                    }
                 }
             }.apply { name = "AAP.StressProcess"; start() }
 
@@ -94,8 +126,8 @@ class AapParameterStressReceiver : BroadcastReceiver() {
             }.apply { isDaemon = true; start() }
 
             val presetCount = instance.getPresetCount()
-            // get_preset_count is RT-safe, so while active it goes over SysEx8 and completes on the audio
-            // thread, overlapping with the Binder requests for preset changes and rescans.
+            // get_preset_count is RT-safe, so active requests go over SysEx8. Processing
+            // drives replies; the extension worker completes them alongside Binder control work.
             val sysex8Requests = AtomicInteger()
             val badPresetCounts = AtomicInteger()
             val stopPolling = AtomicBoolean(false)
@@ -119,7 +151,9 @@ class AapParameterStressReceiver : BroadcastReceiver() {
                     Thread.sleep(random.nextLong(0, maxDelayMs + 1L))
                 }
             }
-            Thread.sleep(SETTLE_MS)
+            val switchesDoneMs = elapsedMs()
+            step("preset switches finished")
+            Thread.sleep(settleMs.toLong())
             // SysEx8 replies arrive only while processing, so stop polling first.
             stopPolling.set(true)
             pollers.forEach { it.join() }
@@ -132,9 +166,15 @@ class AapParameterStressReceiver : BroadcastReceiver() {
                 .put("presets", presetCount)
                 .put("rounds", rounds)
                 .put("processCalls", processCount.get())
+                .put("processPeriodUs", processPeriodUs)
+                .put("maxProcessUs", maxProcessNs / 1000)
+                .put("processOverruns", processOverruns)
                 .put("sysex8Requests", sysex8Requests.get())
                 .put("badPresetCounts", badPresetCounts.get())
                 .put("layoutChanges", layoutChanges.get())
+                .put("layoutChangeTimesMs", synchronized(layoutChangeTimesMs) { JSONArray(layoutChangeTimesMs) })
+                .put("switchesDoneMs", switchesDoneMs)
+                .put("elapsedMs", elapsedMs())
                 .put("parameters", instance.getParameterCount())
                 .put("invalidLayouts", synchronized(invalidLayouts) { invalidLayouts.toList() })
                 .put("state", instance.state.name)
@@ -181,6 +221,8 @@ class AapParameterStressReceiver : BroadcastReceiver() {
         const val EXTRA_ROUNDS = "rounds"
         const val EXTRA_MAX_DELAY_MS = "max_delay_ms"
         const val EXTRA_POLLERS = "pollers"
+        const val EXTRA_PROCESS_PERIOD_US = "process_period_us"
+        const val EXTRA_SETTLE_MS = "settle_ms"
         private const val SAMPLE_RATE = 48_000
         private const val FRAME_COUNT = 256
         private const val CONTROL_BYTES_PER_BLOCK = 0x10000

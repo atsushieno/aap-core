@@ -5,6 +5,7 @@
 #include "parameter-layout-reader.h"
 #include "async-parameter-layout.h"
 #include "aapxs-transport.h"
+#include "aapxs-shared-transport.h"
 #include "instance-realtime-state.h"
 #include "parameter-value-cache.h"
 #include "midi2-port-buffer.h"
@@ -630,6 +631,7 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
             if (!proxy) return;
             auto* transport = static_cast<xs::ParametersClientAAPXS*>(proxy->aapxs_context);
             scan = std::make_shared<internal::AsyncParameterLayout>(*transport,
+                    !(remote->getAAPXSDispatcher().getTransportCapabilities() & internal::AAPXS_TRANSPORT_SYSEX8),
                     [this] { realtime_state->worker.notify(); });
             scan->start();
         }

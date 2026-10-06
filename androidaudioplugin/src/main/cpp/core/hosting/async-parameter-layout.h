@@ -6,12 +6,13 @@
 namespace aap::internal {
 // Only one request is outstanding. Reply callbacks publish the next step; the
 // extension worker runs it after leaving its Binder-only completion scope.
-// RT-unsafe metadata reads retain their Binder route. Between reads, a safe
-// count request uses the active SysEx8 route as a drain barrier: legacy services
+// RT-unsafe metadata reads retain their Binder route. For legacy peers only, a
+// count request between reads serves as a drain barrier: legacy services
 // also queue MIDI replies to Binder reads, and must drain them before another
 // read. Inactive instances complete both requests through Binder without audio.
 class AsyncParameterLayout : public std::enable_shared_from_this<AsyncParameterLayout> {
     xs::TypedAAPXS& transport;
+    const bool legacy_drain;
     std::function<void()> wake;
     std::mutex mailbox_mutex;
     std::function<void(AsyncParameterLayout&)> next;
@@ -41,7 +42,7 @@ class AsyncParameterLayout : public std::enable_shared_from_this<AsyncParameterL
                     const std::lock_guard<std::mutex> lock{self->mailbox_mutex};
                     self->next = [opcode, consume, result = std::move(result)](auto& scan) {
                         if (!result.isOk()) scan.fail(result.error);
-                        else if (opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT) consume(scan, result.value);
+                        else if (!scan.legacy_drain || opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT) consume(scan, result.value);
                         else scan.template read<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT, nullptr, 0,
                             [consume, result](auto& scan, int32_t) { consume(scan, result.value); });
                     };
@@ -81,8 +82,8 @@ class AsyncParameterLayout : public std::enable_shared_from_this<AsyncParameterL
             });
     }
 public:
-    AsyncParameterLayout(xs::TypedAAPXS& transport, std::function<void()> wake)
-        : transport(transport), wake(std::move(wake)) {}
+    AsyncParameterLayout(xs::TypedAAPXS& transport, bool legacyDrain, std::function<void()> wake)
+        : transport(transport), legacy_drain(legacyDrain), wake(std::move(wake)) {}
     void start() {
         read<int32_t>(OPCODE_PARAMETERS_GET_PARAMETER_COUNT, nullptr, 0, [](auto& self, int32_t count) {
             if (count < 0) { self.fail("parameters extension unavailable"); return; }

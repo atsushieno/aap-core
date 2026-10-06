@@ -143,6 +143,7 @@ struct FakePlugin {
     bool notifications{false};
     bool echo{false};
     bool metadataReplies{false};
+    bool negotiatedMetadata{false};
     std::atomic<int> metadataRequests{0};
     AAPXSSerializationContext* metadataShared{nullptr};
     bool shortMetadataReply{false};
@@ -174,7 +175,7 @@ struct FakePlugin {
                     return true;
                 })) {}
                 auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
-                check(input->length == 0, "unacknowledged legacy parser receives no SysEx8 requests");
+                check(self.negotiatedMetadata || input->length == 0, "unacknowledged legacy parser receives no SysEx8 requests");
                 if (input->length) {
                     uint8_t payload[1024]{}, conversion[2048]{};
                     aap_midi2_aapxs_parse_context request{};
@@ -498,15 +499,23 @@ void remoteProcessing() {
     check(fake.blocks == before + 1 && replies == 1, "processing continues during blocked callback");
     release.set_value(); instance.stopExtensionWorker(); fake.typed = nullptr;
 }
-void legacyActiveLayoutRefresh() {
+void activeLayoutRefresh(bool negotiated) {
     FixtureInfo descriptor;
     FakePlugin fake; fake.metadataReplies = true;
+    fake.negotiatedMetadata = negotiated;
     TestRemote instance(nullptr, xs::AAPXSDefinitionRegistry::getStandardExtensions(), &descriptor.info, &fake.factory, 8192);
     std::vector<std::vector<uint8_t>> blocks;
-    check(instance.setupAAPXSInstances([&](const char*, AAPXSSerializationContext* serialization) {
+    void* transportDescriptor = nullptr;
+    check(instance.setupAAPXSInstances([&](const char* uri, AAPXSSerializationContext* serialization) {
         blocks.emplace_back(serialization->data_capacity);
-        serialization->data = blocks.back().data(); return true;
+        serialization->data = blocks.back().data();
+        if (!strcmp(uri, AAPXS_TRANSPORT_URI)) transportDescriptor = serialization->data;
+        return true;
     }), "legacy remote setup");
+    if (negotiated) {
+        __atomic_store_n(static_cast<uint32_t*>(transportDescriptor) + 3, AAPXS_TRANSPORT_SYSEX8, __ATOMIC_RELEASE);
+        instance.getAAPXSDispatcher().refreshTransport();
+    }
     instance.setInstanceId(5); instance.completeInstantiation(); instance.setupTestBuffer();
     fake.metadataShared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
     instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t size,
@@ -542,16 +551,17 @@ void legacyActiveLayoutRefresh() {
                 reply = &enumeration; replySize = sizeof(enumeration); break;
             default: check(false, "unexpected legacy Binder opcode");
         }
-        // Emulate the older service: Binder returns the POD in shared memory,
-        // but also queues a redundant SysEx8 reply to the same request ID.
+        // Only the older service mirrors Binder replies into its MIDI output.
         memcpy(shared->data, reply, replySize); shared->data_size = replySize;
         if (fake.shortMetadataReply && opcode == OPCODE_PARAMETERS_GET_PARAMETER && parameter.stable_id == 79) {
             fake.shortReplyArmed = true;
         }
-        uint32_t ump[512]{}; uint8_t conversion[2048]{};
-        auto length = aap_midi2_generate_aapxs_sysex8(ump, 512, conversion, sizeof(conversion),
-            0, requestId, 0, uri, opcode, static_cast<const uint8_t*>(reply), replySize);
-        check(length && fake.legacyReplies.tryPush(ump, length), "legacy reply queue stays bounded");
+        if (!fake.negotiatedMetadata) {
+            uint32_t ump[512]{}; uint8_t conversion[2048]{};
+            auto length = aap_midi2_generate_aapxs_sysex8(ump, 512, conversion, sizeof(conversion),
+                0, requestId, 0, uri, opcode, static_cast<const uint8_t*>(reply), replySize);
+            check(length && fake.legacyReplies.tryPush(ump, length), "legacy reply queue stays bounded");
+        }
         callback(callbackContext, &fake.api);
         return true;
     });
@@ -569,6 +579,19 @@ void legacyActiveLayoutRefresh() {
     // partial publication. Actual processing then drives one request per reply.
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     check(changes == 0 && instance.getNumParameters() == 1, "old layout retained without audio progress");
+    if (negotiated) {
+        // One audio exchange delivers the initial RT-safe count. Every remaining
+        // read is Binder-only and must finish without further audio progress.
+        instance.process(64, 0);
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+        while (changes == 0 && std::chrono::steady_clock::now() < deadline)
+            std::this_thread::yield();
+        instance.stopExtensionWorker();
+        check(changes == 1 && fake.metadataRequests == 321,
+              "negotiated active scan finishes without per-read MIDI drain barriers");
+        check(!strcmp(instance.getParameter(79)->getName(), "legacy-layout"), "complete negotiated layout published");
+        return;
+    }
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
     while (changes == 0 && std::chrono::steady_clock::now() < deadline) {
         instance.process(64, 0);
@@ -788,7 +811,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); localProcessing(); layoutReadiness(); remoteProcessing(); legacyActiveLayoutRefresh();
+    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); localProcessing(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
