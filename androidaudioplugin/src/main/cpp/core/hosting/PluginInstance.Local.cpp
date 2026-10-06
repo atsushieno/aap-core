@@ -118,6 +118,7 @@ void aap::LocalPluginInstance::prepare(int32_t maximumExpectedSamplesPerBlock, i
         AAP_ASSERT_FALSE;
         return;
     }
+    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
     // As for shared port-buffer allocation, prepare requires processing stopped.
     // Retention is allocated from actual mapped capacities, never lazily by DSP.
     auto buffer = getAudioPluginBuffer();
@@ -134,13 +135,58 @@ void aap::LocalPluginInstance::prepare(int32_t maximumExpectedSamplesPerBlock, i
     }
     sample_rate = sampleRate;
     plugin->prepare(plugin, sampleRate, buffer);
+    refreshPollReplies();
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+    realtime_state->worker.notify();
+}
+
+void aap::LocalPluginInstance::refreshPollReplies() {
+    auto parameters = static_cast<aap_parameters_extension_t*>(plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI));
+    auto presets = static_cast<aap_presets_extension_t*>(plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI));
+    realtime_state->parameter_count.store(parameters && parameters->get_parameter_count ?
+            parameters->get_parameter_count(parameters, plugin) : -1, std::memory_order_release);
+    realtime_state->preset_count.store(presets && presets->get_preset_count ?
+            presets->get_preset_count(presets, plugin) : 0, std::memory_order_release);
+    realtime_state->poll_replies_ready.store(true, std::memory_order_release);
+}
+
+bool aap::LocalPluginInstance::cachedPollReply(AAPXSDefinition* definition, AAPXSRequestContext& request) {
+    if (!realtime_state->poll_replies_ready.load(std::memory_order_acquire) || !definition || !definition->uri ||
+        !request.serialization || !request.serialization->data || request.serialization->data_capacity < sizeof(int32_t))
+        return false;
+    // Only the standard handlers have snapshot semantics. A custom handler
+    // using the same URI or an RT-safe flag does not grant concurrent access.
+    int32_t value;
+    if (!strcmp(definition->uri, AAP_PARAMETERS_EXTENSION_URI) && request.opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT) {
+        if (definition->process_incoming_plugin_aapxs_request != xs::AAPXSDefinition_Parameters{}.asPublic().process_incoming_plugin_aapxs_request)
+            return false;
+        value = realtime_state->parameter_count.load(std::memory_order_acquire);
+    } else if (!strcmp(definition->uri, AAP_PRESETS_EXTENSION_URI) && request.opcode == OPCODE_GET_PRESET_COUNT) {
+        if (definition->process_incoming_plugin_aapxs_request != xs::AAPXSDefinition_Presets{}.asPublic().process_incoming_plugin_aapxs_request)
+            return false;
+        value = realtime_state->preset_count.load(std::memory_order_acquire);
+    } else return false;
+    memcpy(request.serialization->data, &value, sizeof(value));
+    request.serialization->data_size = sizeof(value);
+    return true;
 }
 
 void aap::LocalPluginInstance::pollExtensionWorker() {
     if (realtime_state->process_notification.exchange(false, std::memory_order_acq_rel))
         ((PluginService*) host)->requestProcessToHost(instance_id);
     auto notifications = realtime_state->standard_notifications.exchange(0, std::memory_order_acq_rel);
+    if (notifications && !realtime_state->poll_replies_ready.load(std::memory_order_acquire)) {
+        // A factory can notify before its plugin pointer/extensions are ready.
+        // Preserve the bits; setup/prepare will wake the worker after publishing.
+        realtime_state->standard_notifications.fetch_or(notifications, std::memory_order_release);
+        notifications = 0;
+    }
+    if (notifications) {
+        // Publish fresh counts before forwarding a change notification or
+        // replying to queued polls. Refresh once per batch, not once per poll.
+        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+        refreshPollReplies();
+    }
     auto send = [this](const char* uri, int32_t opcode, uint32_t requestId) {
         // Notifications share the reverse-direction channel with host queries.
         // Their empty request and URI must outlive asynchronous Binder delivery.
@@ -285,7 +331,9 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 // ---- AAPXS v2
 
 void aap::LocalPluginInstance::setupAAPXS() {
+    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
     standards = std::make_unique<xs::ServiceStandardExtensions>(plugin);
+    refreshPollReplies();
     internal::setParameterLayoutRefreshReady(*this);
 }
 
@@ -367,6 +415,13 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     // General host queries require a non-processing caller. Rejection retains the
     // caller's context and does not invoke an arbitrary callback on this thread.
     if (RealtimeScope::isActive()) return false;
+    if (request->uri && !realtime_state->worker.isCurrentThread() &&
+        ((!strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI) && request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) ||
+         (!strcmp(request->uri, AAP_PRESETS_EXTENSION_URI) &&
+          (request->opcode == OPCODE_NOTIFY_PRESET_LOADED || request->opcode == OPCODE_NOTIFY_PRESETS_UPDATED)))) {
+        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+        refreshPollReplies();
+    }
     if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
         internal::requestParameterLayoutRefresh(*this);
 
@@ -392,6 +447,19 @@ aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
 
 void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId)  {
     if (RealtimeScope::isActive()) return; // control dispatch belongs to Binder/extension workers
+    auto registry = feature_registry->items();
+    auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
+    if (def) {
+        auto& dispatcher = getAAPXSDispatcher();
+        auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
+        if (instance && instance->serialization) {
+            AAPXSRequestContext request{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
+            if (cachedPollReply(def, request)) {
+                dispatcher.publishBinderReplySize(instance->serialization);
+                return;
+            }
+        }
+    }
     const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
     // special case URID mapping request: this hosting implementation also consumes it and
     // adds the URID mapping.
@@ -408,17 +476,16 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     } // ... and the mapping could also be used by the plugin, so go on as well.
 
 
-    auto registry = feature_registry.get()->items();
-    auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
-
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
         dispatcher.receiveBinderRequest(instance->serialization);
         AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
-        // RT-safe does not imply safe concurrent access to plugin state. All control
-        // handlers run between DSP blocks, including requests from older SysEx8 peers.
+        // RT-safe does not imply safe concurrent access to plugin state. Handlers
+        // accessing plugin state still run between DSP blocks; count snapshots
+        // were handled above without entering this control section.
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+        refreshPollReplies();
         dispatcher.publishBinderReplySize(instance->serialization);
     }
 }
@@ -434,8 +501,13 @@ void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *c
         AAPXSRequestContext incoming{nullptr, nullptr, &buffer, context->urid, def->uri, context->request_id, context->opcode};
         auto reply = realtime_state->recipient_requests.create(incoming, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
         if (!reply) return; // bounded rejection leaves the initiator's timeout intact
+        if (cachedPollReply(def, reply->request())) {
+            reply->complete();
+            return;
+        }
         const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &reply->request());
+        refreshPollReplies();
     } else {
         // host reply
         auto& dispatcher = getAAPXSDispatcher();

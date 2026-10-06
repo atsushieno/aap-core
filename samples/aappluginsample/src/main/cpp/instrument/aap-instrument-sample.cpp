@@ -12,8 +12,10 @@
 #include <aap/ext/gui.h>
 #include <assert.h>
 #include <atomic>
+#include <algorithm>
 #include <cstdlib>
 #include <sys/system_properties.h>
+#include <unistd.h>
 #include "cmidi2.h"
 
 extern "C" {
@@ -51,6 +53,9 @@ typedef struct AyumiHandle {
     std::atomic<bool> state_parameter_outputs_pending{false};
     // debug-only: see sample_plugin_prepare()
     uint32_t debug_bogus_midi2_out_length{0};
+#ifndef NDEBUG
+    uint32_t debug_control_delay_ms{0};
+#endif
 } AyumiHandle;
 
 typedef struct AyumiState {
@@ -254,6 +259,9 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_b
     char bogusLength[PROP_VALUE_MAX]{};
     if (__system_property_get("debug.aap.sample.midi2_out_length", bogusLength) > 0)
         context->debug_bogus_midi2_out_length = (uint32_t) strtoul(bogusLength, nullptr, 0);
+    char controlDelay[PROP_VALUE_MAX]{};
+    if (__system_property_get("debug.aap.sample.control_delay_ms", controlDelay) > 0)
+        context->debug_control_delay_ms = std::min(1000ul, strtoul(controlDelay, nullptr, 0));
 #endif
 }
 
@@ -515,6 +523,12 @@ aap_plugin_info_t sample_plugin_get_plugin_info(AndroidAudioPlugin *plugin) {
 // State extension
 
 size_t sample_plugin_get_state_size(aap_state_extension_t* ext, AndroidAudioPlugin* plugin) {
+#ifndef NDEBUG
+    // A finite delay in an explicitly unsafe debug control call makes MIDI
+    // delivery during quiescence reproducible. No delay or property lookup in DSP.
+    auto context = static_cast<AyumiHandle*>(plugin->plugin_specific);
+    if (context->debug_control_delay_ms) usleep(context->debug_control_delay_ms * 1000);
+#endif
     aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "get_state_size -> %zu", sizeof(AyumiState));
     return sizeof(AyumiState);
 }

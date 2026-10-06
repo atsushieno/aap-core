@@ -218,6 +218,8 @@ namespace aap {
         void* ipc_send_extension_message_context;
 
         void setupUrids();
+        void refreshPollReplies(); // caller holds control quiescence
+        bool cachedPollReply(AAPXSDefinition* definition, AAPXSRequestContext& request);
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;

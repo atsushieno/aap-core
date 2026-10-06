@@ -34,6 +34,8 @@ struct InstanceRealtimeState {
     ProcessingQuiescence processing;
     std::vector<std::unique_ptr<DeferredMidiInput>> deferred_midi; // indexed by port, DSP only
     std::atomic<bool> reset_deferred_midi{false}; // lifecycle requests, applied by DSP
+    std::atomic<int32_t> parameter_count{-1}, preset_count{0};
+    std::atomic<bool> poll_replies_ready{false};
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes
     size_t gui_read_offset{0};
     std::mutex parameter_scan_mutex; // control/worker scans of this instance only

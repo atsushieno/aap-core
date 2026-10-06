@@ -52,6 +52,8 @@ Negotiated directional blocks also carry request/reply lengths in their reserved
 
 Typed clients reuse completed request objects and payload buffers in a per-client pool, bounded by eight idle entries and 2 MiB of idle buffer capacity. Concurrent requests keep independent storage. Reentrant completion cannot recycle a buffer while its initiating send still borrows it. Detached pending requests retain the pool until their transport callback safely reclaims them. This reduces repeated buffer/object allocations; callback closures, waiter objects and transport bookkeeping can still allocate off processing. Payload-free host notifications use their existing channel too, so their length metadata cannot race a host query on the same direction.
 
+Standard parameter-count and preset-count AAPXS requests use published atomic snapshots on both Binder and SysEx8 routes. They do not acquire DSP quiescence or call mutable plugin getters per poll. Snapshots are initialized during setup/prepare, refreshed during control dispatch and coalesced change notifications, and updated after a successful local parameter scan. The worker refreshes counts before forwarding change notifications; factory-time notifications remain queued until initial snapshots are ready. Only canonical standard handlers use these snapshots. A custom handler, including an override at the same URI, retains its own dispatch and control exclusion. An RT-safe flag alone does not promise concurrent access to plugin state. Unsafe metadata/state/preset operations and cache refresh on actual changes can still suspend DSP. General synchronous APIs remain non-processing APIs.
+
 ## Validation
 
 Run `tests/native/run-aapxs-lifecycle.sh` and `python3 tests/native/check-aapxs-wire-compatibility.py 9e17764f`.

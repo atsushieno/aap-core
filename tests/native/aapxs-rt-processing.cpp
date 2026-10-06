@@ -161,13 +161,32 @@ struct FakePlugin {
     xs::TypedAAPXS* typed{nullptr};
     std::atomic<bool>* released{nullptr};
     bool notifyOnRelease{false};
+    bool notifyOnInstantiate{false};
     bool exposeParameters{false};
+    bool exposePresets{false};
+    std::atomic<int32_t> parameterCount{1}, presetCount{40};
+    std::atomic<int> countReads{0};
     aap_parameters_extension_t parameters{this,
-        [](auto*, auto*) { return 1; },
-        [](auto*, auto*, int32_t) { return aap_parameter_info_t{17, "deferred-layout", "", 0, 100, 30, false}; },
+        [](auto* ext, auto*) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            check(!RealtimeScope::isActive(), "count refresh stays off DSP");
+            ++self.countReads; return self.parameterCount.load();
+        },
+        [](auto*, auto*, int32_t index) { return aap_parameter_info_t{static_cast<int16_t>(17 + index), "deferred-layout", "", 0, 100, 30, false}; },
         [](auto*, auto*, int32_t, int32_t) { return 0.0; },
         [](auto*, auto*, int32_t) { return 0; },
         [](auto*, auto*, int32_t, int32_t) { return aap_parameter_enum_t{}; }};
+    aap_presets_extension_t presets{this,
+        [](auto* ext, auto*) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            check(!RealtimeScope::isActive(), "preset count refresh stays off DSP");
+            ++self.countReads; return self.presetCount.load();
+        },
+        [](auto*, auto*, int32_t, auto*, auto, void*) {},
+        [](auto* ext, auto*, int32_t) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            ++self.parameterCount; ++self.presetCount;
+        }};
     AndroidAudioPlugin api{this, [](auto*, auto, auto*) {}, [](auto*) {},
         [](auto* plugin, aap_buffer_t* buffer, int32_t, int64_t) {
             auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
@@ -260,11 +279,18 @@ struct FakePlugin {
             }
         }, [](auto*) {}, [](auto* plugin, const char* uri) -> void* {
             auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
-            return self.exposeParameters && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) ? &self.parameters : nullptr;
+            if (self.exposeParameters && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI)) return &self.parameters;
+            if (self.exposePresets && !strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return &self.presets;
+            return nullptr;
         }, nullptr};
     AndroidAudioPluginFactory factory{
         [](auto* factory, const char*, auto* host) -> AndroidAudioPlugin* {
-            auto* self = static_cast<FakePlugin*>(factory->factory_context); self->host = host; return &self->api;
+            auto* self = static_cast<FakePlugin*>(factory->factory_context); self->host = host;
+            if (self->notifyOnInstantiate) {
+                auto parameters = static_cast<aap_parameters_host_extension_t*>(host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI));
+                parameters->notify_parameters_changed(parameters, host);
+            }
+            return &self->api;
         }, [](auto* factory, auto*) {
             auto& self = *static_cast<FakePlugin*>(factory->factory_context);
             if (self.notifyOnRelease) {
@@ -433,12 +459,116 @@ void deferredMidiBuffers() {
               "overflow emits explicit MIDI1/MIDI2 note-offs on original groups/channels despite repeated overload");
     }
 }
+void countPolling() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list; Callback callback; PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeParameters = fake.exposePresets = true;
+    TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 9, &descriptor.info, &fake.factory, 8192);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& definition : *instance.getAAPXSRegistry()->items()) {
+        if (!definition.uri || definition.data_capacity == 0) continue;
+        auto index = store->getExtensionBufferCount();
+        auto backing = tmpfile(); check(backing, "extension backing file");
+        int fd = dup(fileno(backing)); fclose(backing);
+        check(fd > 0 && ftruncate(fd, definition.data_capacity) == 0, "extension backing size");
+        store->addExtensionFD(fd, definition.data_capacity);
+        store->getExtensionUriToIndexMap()[definition.uri] = index;
+    }
+    instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    auto& state = instance.getRealtimeState();
+    auto countReads = fake.countReads.load();
+    std::promise<void> entered, release;
+    auto resume = release.get_future().share();
+    std::thread controller([&] {
+        ProcessingQuiescence::Control suspension(state.processing);
+        entered.set_value(); resume.wait();
+    });
+    entered.get_future().wait();
+    auto binder = std::async(std::launch::async, [&] {
+        instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 100);
+        instance.controlExtension(0, AAP_PRESETS_EXTENSION_URI, OPCODE_GET_PRESET_COUNT, 101);
+    });
+    auto binderReady = binder.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+    std::atomic<int> replies{0};
+    std::array<int32_t, 2> values{};
+    state.recipient_requests.setSender([&](const AAPXSRequestContext& request) {
+        check(!RealtimeScope::isActive(), "cached reply encoding stays off DSP");
+        auto i = request.request_id == 102 ? 0 : 1;
+        memcpy(&values[i], request.serialization->data, 4);
+        ++replies; return true;
+    });
+    auto input = static_cast<AAPMidiBufferHeader*>(instance.getAudioPluginBuffer()->get_buffer(instance.getAudioPluginBuffer(), 1));
+    uint32_t wire[512]{}; uint8_t conversion[2048]{};
+    auto size = aap_midi2_generate_aapxs_sysex8(wire, 512, conversion, sizeof(conversion), 0, 102, 0,
+            AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, nullptr, 0);
+    size += aap_midi2_generate_aapxs_sysex8(wire + size / 4, 512 - size / 4, conversion, sizeof(conversion), 0, 103, 0,
+            AAP_PRESETS_EXTENSION_URI, OPCODE_GET_PRESET_COUNT, nullptr, 0);
+    input->length = size; memcpy(input + 1, wire, size);
+    instance.process(64, 0); // control is paused: handoff must still service polls
+    auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (replies < 2 && std::chrono::steady_clock::now() < limit) std::this_thread::yield();
+    bool midiReady = replies == 2;
+    release.set_value(); controller.join(); binder.get();
+    check(binderReady && midiReady && values[0] == 1 && values[1] == 40 && fake.countReads == countReads,
+          "Binder and SysEx8 count polls complete during unrelated control without plugin calls or control suspension");
+    std::atomic<int> refreshedNotifications{0};
+    std::pair<TestLocal*, std::atomic<int>*> notificationContext{&instance, &refreshedNotifications};
+    // The callback context is installed before the notification can wake the worker.
+    instance.setIpcExtensionMessageSender([](void* context, const char*, int32_t, int32_t, int32_t,
+            aapxs_completion_callback completed, void* callbackContext, void* hostContext, aapxs_error_callback) {
+        auto& pair = *static_cast<std::pair<TestLocal*, std::atomic<int>*>*>(context);
+        check(pair.first->getRealtimeState().parameter_count == 2 && pair.first->getRealtimeState().preset_count == 41,
+              "fresh counts precede notification delivery");
+        ++*pair.second; if (completed) completed(callbackContext, hostContext);
+    }, &notificationContext);
+    fake.parameterCount = 2; fake.presetCount = 41;
+    {
+        RealtimeScope realtime;
+        auto parameters = static_cast<aap_parameters_host_extension_t*>(fake.host->get_extension(fake.host, AAP_PARAMETERS_EXTENSION_URI));
+        auto presets = static_cast<aap_presets_host_extension_t*>(fake.host->get_extension(fake.host, AAP_PRESETS_EXTENSION_URI));
+        parameters->notify_parameters_changed(parameters, fake.host);
+        presets->notify_presets_updated(presets, fake.host);
+    }
+    limit = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (refreshedNotifications < 2 && std::chrono::steady_clock::now() < limit) std::this_thread::yield();
+    check(refreshedNotifications == 2, "both count snapshots refreshed after processing notifications");
+    instance.stopExtensionWorker();
+    countReads = fake.countReads;
+    instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 104);
+    auto shared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
+    int32_t count; memcpy(&count, shared->data, 4);
+    check(count == 2 && fake.countReads == countReads, "updated parameter poll reads snapshot without another plugin call");
+    auto preset = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI)->serialization;
+    int32_t index = 0; memcpy(preset->data, &index, 4);
+    instance.controlExtension(0, AAP_PRESETS_EXTENSION_URI, OPCODE_SET_PRESET_INDEX, 105);
+    instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 106);
+    memcpy(&count, shared->data, 4);
+    check(count == 3 && state.preset_count == 42, "unsafe control mutation refreshes counts even without a plugin notification");
+    auto definition = instance.getAAPXSRegistry()->items()->getByUri(AAP_PARAMETERS_EXTENSION_URI);
+    auto standardHandler = definition->process_incoming_plugin_aapxs_request;
+    definition->process_incoming_plugin_aapxs_request = [](AAPXSDefinition*, AAPXSRecipientInstance* recipient,
+            AndroidAudioPlugin*, AAPXSRequestContext* request) {
+        int32_t custom = 777; memcpy(request->serialization->data, &custom, 4);
+        request->serialization->data_size = 4;
+        recipient->send_aapxs_reply(recipient, request);
+    };
+    instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 107);
+    memcpy(&count, shared->data, 4);
+    definition->process_incoming_plugin_aapxs_request = standardHandler;
+    check(count == 777, "custom handler at the standard URI retains its own behavior instead of a cached reply");
+    for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI}) {
+        auto context = instance.getAAPXSDispatcher().getHostAAPXSByUri(uri);
+        instance.getAAPXSRegistry()->items()->getByUri(uri)->release_instance_context(
+                instance.getAAPXSRegistry()->items()->getByUri(uri), context->aapxs_context);
+        context->aapxs_context = nullptr;
+    }
+}
 void layoutReadiness() {
     FixtureInfo descriptor;
     PluginListSnapshot list;
     Callback callback;
     PluginService host(&list, &callback);
-    FakePlugin fake; fake.exposeParameters = true;
+    FakePlugin fake; fake.exposeParameters = true; fake.notifyOnInstantiate = true;
     TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 4, &descriptor.info, &fake.factory, 8192);
     auto store = instance.getSharedMemoryStore();
     for (auto& definition : *instance.getAAPXSRegistry()->items()) {
@@ -450,9 +580,10 @@ void layoutReadiness() {
     std::promise<void> attempted;
     bool signaled = false; // worker only; callback installed before start
     instance.beforeWorkerWait = [&] { if (!signaled) { signaled = true; attempted.set_value(); } };
+    instance.setIpcExtensionMessageSender(notification, nullptr);
+    instance.setupAAPXSInstances(); // cached host proxies must exist during factory callbacks
     instance.completeInstantiation();
     internal::requestParameterLayoutRefresh(instance);
-    instance.setupAAPXSInstances();
     check(attempted.get_future().wait_for(std::chrono::seconds(2)) == std::future_status::ready,
           "early layout request dispatched before extensions are ready");
     instance.setupAAPXS(); // readiness must wake the sleeping worker and preserve that request
@@ -923,7 +1054,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
+    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
