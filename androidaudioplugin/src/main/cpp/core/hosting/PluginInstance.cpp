@@ -630,7 +630,12 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
         !get_parameter_layout_state(this)->ready.load(std::memory_order_acquire)) return;
     if (auto* remote = dynamic_cast<RemotePluginInstance*>(this)) {
         auto& scan = realtime_state->layout_scan;
-        if (!scan && realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel)) {
+        if (scan && realtime_state->layout_refresh.load(std::memory_order_acquire) && !scan->canSupersede())
+            return; // the current read's completion wakes this worker
+        if (realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel)) {
+            // A newer preset/layout notification invalidates this scan. Do not
+            // finish hundreds of obsolete reads before scanning the new layout.
+            scan.reset();
             auto* proxy = getStandardExtensions().asParametersExtension();
             if (!proxy) return;
             auto* transport = static_cast<xs::ParametersClientAAPXS*>(proxy->aapxs_context);
@@ -639,7 +644,13 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
                     [this] { realtime_state->worker.notify(); });
             scan->start();
         }
-        if (!scan || !scan->poll()) return;
+        if (!scan) return;
+        const auto complete = scan->poll(&realtime_state->layout_refresh);
+        if (realtime_state->layout_refresh.load(std::memory_order_acquire)) {
+            if (scan->canSupersede()) realtime_state->worker.notify();
+            return;
+        }
+        if (!complete) return;
         auto result = scan->takeResult();
         scan.reset();
         if (realtime_state->layout_refresh.load(std::memory_order_acquire)) realtime_state->worker.notify();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "parameter-layout-reader.h"
+#include <atomic>
 #include <mutex>
 
 namespace aap::internal {
@@ -91,10 +92,18 @@ public:
             self.count = count; self.layout.reserve(count); self.readParameter();
         });
     }
-    bool poll() {
+    // Supersede at a reply boundary. A request already handed to the transport
+    // retains its buffer/callback until delivery, rather than queuing abandoned
+    // scans behind it when notifications arrive repeatedly.
+    bool canSupersede() {
+        const std::lock_guard<std::mutex> lock{mailbox_mutex};
+        return done || static_cast<bool>(next);
+    }
+    bool poll(const std::atomic<bool>* superseded = nullptr) {
         // Binder replies may be immediate. Bound work per dispatch and let the
         // eventfd notification schedule remaining steps without recursion.
         for (unsigned i = 0; i < 64 && !done; ++i) {
+            if (superseded && superseded->load(std::memory_order_acquire)) break;
             std::function<void(AsyncParameterLayout&)> step;
             {
                 const std::lock_guard<std::mutex> lock{mailbox_mutex};

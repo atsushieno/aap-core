@@ -153,6 +153,7 @@ struct FakePlugin {
     std::array<uint32_t, 4096> otherMidi{};
     size_t otherWords{0};
     std::atomic<int> metadataRequests{0};
+    std::function<bool(int32_t, int32_t, int32_t, aapxs_completion_callback, void*, aapxs_error_callback)> metadataHandler;
     AAPXSSerializationContext* metadataShared{nullptr};
     bool shortMetadataReply{false};
     std::atomic<bool> shortReplyArmed{false};
@@ -855,6 +856,110 @@ void activeLayoutRefresh(bool negotiated) {
           "failed asynchronous scan retains complete previous layout without a changed callback");
     check(!strcmp(instance.getParameter(79)->getName(), "legacy-layout"), "last parameter published");
 }
+void supersededLayoutRefresh(bool negotiated, bool failedOldReply) {
+    FixtureInfo descriptor;
+    FakePlugin fake; fake.metadataReplies = true; fake.negotiatedMetadata = negotiated;
+    TestRemote instance(nullptr, xs::AAPXSDefinitionRegistry::getStandardExtensions(), &descriptor.info, &fake.factory, 8192);
+    std::vector<std::vector<uint8_t>> blocks;
+    void* descriptorData = nullptr;
+    check(instance.setupAAPXSInstances([&](const char* uri, auto* serialization) {
+        blocks.emplace_back(serialization->data_capacity);
+        serialization->data = blocks.back().data();
+        if (!strcmp(uri, AAPXS_TRANSPORT_URI)) descriptorData = serialization->data;
+        return true;
+    }), "superseded scan setup");
+    if (negotiated) {
+        __atomic_store_n(static_cast<uint32_t*>(descriptorData) + 3, AAPXS_TRANSPORT_SYSEX8, __ATOMIC_RELEASE);
+        instance.getAAPXSDispatcher().refreshTransport();
+    }
+    instance.setInstanceId(5); instance.completeInstantiation(); instance.setupTestBuffer();
+    fake.metadataShared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
+    std::promise<void> held;
+    aapxs_completion_callback oldCompletion = nullptr;
+    aapxs_error_callback oldError = nullptr;
+    void* oldContext = nullptr;
+    std::atomic<bool> newer{false}, boundaryObserved{false};
+    std::atomic<int> changes{0};
+    fake.metadataHandler = [&](int32_t size, int32_t requestId, int32_t opcode, aapxs_completion_callback callback,
+                              void* context, aapxs_error_callback errorCallback) {
+        check(!RealtimeScope::isActive(), "superseded metadata stays off DSP");
+        ++fake.metadataRequests;
+        auto shared = fake.metadataShared;
+        int32_t index{}; if (size) memcpy(&index, shared->data, sizeof(index));
+        aap_parameter_info_t parameter{};
+        aap_parameter_enum_t enumeration{};
+        int32_t count = 2;
+        const void* reply = &count;
+        size_t replySize = sizeof(count);
+        auto publishReply = [&] {
+            memcpy(shared->data, reply, replySize); shared->data_size = replySize;
+            if (!negotiated) {
+                uint32_t ump[512]{}; uint8_t conversion[2048]{};
+                auto length = aap_midi2_generate_aapxs_sysex8(ump, 512, conversion, sizeof(conversion),
+                    0, requestId, 0, AAP_PARAMETERS_EXTENSION_URI, opcode,
+                    static_cast<const uint8_t*>(reply), replySize);
+                check(length && fake.legacyReplies.tryPush(ump, length), "superseded legacy replies stay bounded");
+            }
+        };
+        switch (opcode) {
+            case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
+                count = 80; break;
+            case OPCODE_PARAMETERS_GET_PARAMETER:
+                parameter = {static_cast<int16_t>(index), "current-layout", "", 0, 100, 30, false};
+                reply = &parameter; replySize = sizeof(parameter);
+                if (!newer && index == 0) {
+                    strcpy(parameter.display_name, "obsolete-layout");
+                    publishReply();
+                    oldCompletion = callback; oldError = errorCallback; oldContext = context;
+                    held.set_value();
+                    return true; // retain the actual transport request until released
+                }
+                break;
+            case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT: break;
+            case OPCODE_PARAMETERS_GET_ENUMERATION:
+                memcpy(&index, static_cast<uint8_t*>(shared->data) + 4, 4);
+                enumeration.value = index; strcpy(enumeration.name, "current-enum");
+                reply = &enumeration; replySize = sizeof(enumeration); break;
+            default: check(false, "unexpected superseded scan opcode");
+        }
+        publishReply();
+        callback(context, &fake.api);
+        return true;
+    };
+    instance.setIpcExtensionMessageSender([](void* context, const char*, int32_t, int32_t size,
+            int32_t requestId, int32_t opcode, aapxs_completion_callback callback, void* callbackContext, aapxs_error_callback errorCallback) {
+        return static_cast<FakePlugin*>(context)->metadataHandler(size, requestId, opcode, callback, callbackContext, errorCallback);
+    });
+    instance.parametersChangedHandler = [&](auto& remote) {
+        check(remote.getNumParameters() == 80 && !strcmp(remote.getParameter(0)->getName(), "current-layout"),
+              "obsolete partial layout is never published");
+        ++changes;
+    };
+    instance.beforeWorkerWait = [&] {
+        if (newer && instance.getRealtimeState().layout_refresh.load()) boundaryObserved = true;
+    };
+    auto driveUntil = [&](auto predicate) {
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+        while (!predicate() && std::chrono::steady_clock::now() < deadline) {
+            instance.process(64, 0); std::this_thread::yield();
+        }
+        check(predicate(), "superseded scan makes progress");
+    };
+    internal::requestParameterLayoutRefresh(instance);
+    auto heldResult = held.get_future();
+    driveUntil([&] { return heldResult.wait_for(std::chrono::seconds(0)) == std::future_status::ready; });
+    newer = true;
+    // A burst must not queue abandoned replacement requests behind the held read.
+    for (int n = 0; n < 20; ++n) internal::requestParameterLayoutRefresh(instance);
+    driveUntil([&] { return boundaryObserved.load(); });
+    check(fake.metadataRequests == 2 && changes == 0, "supersession waits only for the outstanding read");
+    if (failedOldReply) oldError(oldContext, &fake.api, "obsolete reply failed");
+    else oldCompletion(oldContext, &fake.api);
+    driveUntil([&] { return changes.load() != 0; });
+    instance.stopExtensionWorker();
+    check(changes == 1 && fake.metadataRequests == (negotiated ? 323 : 643),
+          "skip the obsolete scan tail and publish only one complete replacement");
+}
 void guardProbes() {
     rlimit noCore{0, 0};
     setrlimit(RLIMIT_CORE, &noCore);
@@ -1055,6 +1160,8 @@ void incomingControlAndTeardown(bool destroy) {
 }
 int main() {
     guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
+    supersededLayoutRefresh(true, false); supersededLayoutRefresh(true, true);
+    supersededLayoutRefresh(false, false); supersededLayoutRefresh(false, true);
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");
