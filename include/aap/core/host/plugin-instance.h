@@ -197,7 +197,6 @@ namespace aap {
  */
     class LocalPluginInstance : public PluginInstance {
         PluginHost *host;
-        xs::UridMapping urid_mapping{};
         AAPXSMidi2InitiatorSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
@@ -218,8 +217,6 @@ namespace aap {
         void* ipc_send_extension_message_context;
 
         void setupUrids();
-        void refreshPollReplies(); // caller holds control quiescence
-        bool cachedPollReply(AAPXSDefinition* definition, AAPXSRequestContext& request);
 
     protected:
         AndroidAudioPluginHost *getHostFacadeForCompleteInstantiation() override;
@@ -243,6 +240,7 @@ namespace aap {
         std::unique_ptr<aap::xs::ServiceStandardExtensions> standards{nullptr};
         xs::ServiceStandardExtensions &getStandardExtensions() override { return *standards; }
         void setupAAPXS() override;
+        void refreshExtensionState(); // control lifecycle; extension-owned snapshots
 
         // It is invoked by AudioPluginInterfaceImpl and AAPXSMidi2Processor callback,
         // and supposed to dispatch request to extension service

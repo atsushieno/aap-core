@@ -99,6 +99,24 @@ aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionRegistry 
     shared_transport = std::make_shared<internal::SharedAAPXSTransport>();
 }
 
+aap::xs::AAPXSServiceDispatcher::~AAPXSServiceDispatcher() {
+    if (!already_setup) return;
+    for (auto& definition : *registry) {
+        if (!definition.uri) continue;
+        auto* recipient = getPluginAAPXSByUri(definition.uri);
+        auto release = definition.release_plugin_instance_context ? definition.release_plugin_instance_context : definition.release_instance_context;
+        if (recipient && recipient->aapxs_context && release) {
+            release(&definition, recipient->aapxs_context);
+            recipient->aapxs_context = nullptr;
+        }
+        auto* initiator = getHostAAPXSByUri(definition.uri);
+        if (initiator && initiator->aapxs_context && definition.release_instance_context) {
+            definition.release_instance_context(&definition, initiator->aapxs_context);
+            initiator->aapxs_context = nullptr;
+        }
+    }
+}
+
 void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
                                                      std::function<void(const char*,AAPXSSerializationContext*)> extensionBufferAssigner,
                                                      aapxs_recipient_send_func sendAapxsReply,

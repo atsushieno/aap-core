@@ -460,6 +460,12 @@ void deferredMidiBuffers() {
               "overflow emits explicit MIDI1/MIDI2 note-offs on original groups/channels despite repeated overload");
     }
 }
+int32_t readCachedCount(TestLocal& instance, const char* uri, int32_t opcode) {
+    instance.controlExtension(0, uri, opcode, 900);
+    int32_t result{};
+    memcpy(&result, instance.getAAPXSDispatcher().getPluginAAPXSByUri(uri)->serialization->data, sizeof(result));
+    return result;
+}
 void countPolling() {
     FixtureInfo descriptor;
     PluginListSnapshot list; Callback callback; PluginService host(&list, &callback);
@@ -478,6 +484,44 @@ void countPolling() {
     instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
     auto& state = instance.getRealtimeState();
     auto countReads = fake.countReads.load();
+    {
+        auto shared = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI)->serialization;
+        const auto metadataCountReads = fake.countReads.load();
+        // A metadata scan must not call unrelated count getters after every read.
+        // In JUCE those getters can synchronously wait on a visible editor's thread.
+        std::atomic<int> metadataReplies{0};
+        state.recipient_requests.setSender([&](const AAPXSRequestContext& request) {
+            check(!RealtimeScope::isActive(), "metadata completion stays off DSP");
+            if (!strcmp(request.uri, AAP_PARAMETERS_EXTENSION_URI) && request.opcode == OPCODE_PARAMETERS_GET_PARAMETER) {
+                aap_parameter_info_t info{}; memcpy(&info, request.serialization->data, sizeof(info));
+                check(info.stable_id == 17 && !strcmp(info.display_name, "deferred-layout"), "metadata getter still returns plugin information");
+            }
+            ++metadataReplies; return true;
+        });
+        for (const auto opcode : {OPCODE_PARAMETERS_GET_PARAMETER, OPCODE_PARAMETERS_GET_PROPERTY,
+                                 OPCODE_PARAMETERS_GET_ENUMERATION_COUNT, OPCODE_PARAMETERS_GET_ENUMERATION}) {
+            int32_t payload[]{opcode == OPCODE_PARAMETERS_GET_PARAMETER ? 0 : 17, 0};
+            const auto bytes = opcode == OPCODE_PARAMETERS_GET_PROPERTY || opcode == OPCODE_PARAMETERS_GET_ENUMERATION ? 8u : 4u;
+            memcpy(shared->data, payload, bytes); shared->data_size = bytes;
+            instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, opcode, 200 + opcode);
+            aap_midi2_aapxs_parse_context request{};
+            strcpy(request.uri, AAP_PARAMETERS_EXTENSION_URI); request.opcode = opcode;
+            request.request_id = 300 + opcode; request.data = reinterpret_cast<uint8_t*>(payload); request.dataSize = bytes;
+            instance.handleAAPXSInput(&request);
+        }
+        check(metadataReplies == 4 && fake.countReads == metadataCountReads,
+              "Binder and SysEx8 metadata reads do not marshal parameter/preset count getters");
+        auto preset = instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI)->serialization;
+        int32_t presetPayload[]{0, 1}; memcpy(preset->data, presetPayload, sizeof(presetPayload));
+        preset->data_size = sizeof(presetPayload);
+        instance.controlExtension(0, AAP_PRESETS_EXTENSION_URI, OPCODE_GET_PRESET_DATA, 210);
+        aap_midi2_aapxs_parse_context presetRequest{};
+        strcpy(presetRequest.uri, AAP_PRESETS_EXTENSION_URI); presetRequest.opcode = OPCODE_GET_PRESET_DATA;
+        presetRequest.request_id = 310; presetRequest.data = reinterpret_cast<uint8_t*>(presetPayload);
+        presetRequest.dataSize = sizeof(presetPayload); instance.handleAAPXSInput(&presetRequest);
+        check(metadataReplies == 5 && fake.countReads == metadataCountReads, "preset-name reads also avoid unrelated count refreshes");
+        state.recipient_requests.setSender({});
+    }
     std::promise<void> entered, release;
     auto resume = release.get_future().share();
     std::thread controller([&] {
@@ -518,7 +562,8 @@ void countPolling() {
     instance.setIpcExtensionMessageSender([](void* context, const char*, int32_t, int32_t, int32_t,
             aapxs_completion_callback completed, void* callbackContext, void* hostContext, aapxs_error_callback) {
         auto& pair = *static_cast<std::pair<TestLocal*, std::atomic<int>*>*>(context);
-        check(pair.first->getRealtimeState().parameter_count == 2 && pair.first->getRealtimeState().preset_count == 41,
+        check(readCachedCount(*pair.first, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT) == 2 &&
+              readCachedCount(*pair.first, AAP_PRESETS_EXTENSION_URI, OPCODE_GET_PRESET_COUNT) == 41,
               "fresh counts precede notification delivery");
         ++*pair.second; if (completed) completed(callbackContext, hostContext);
     }, &notificationContext);
@@ -544,7 +589,7 @@ void countPolling() {
     instance.controlExtension(0, AAP_PRESETS_EXTENSION_URI, OPCODE_SET_PRESET_INDEX, 105);
     instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER_COUNT, 106);
     memcpy(&count, shared->data, 4);
-    check(count == 3 && state.preset_count == 42, "unsafe control mutation refreshes counts even without a plugin notification");
+    check(count == 3 && readCachedCount(instance, AAP_PRESETS_EXTENSION_URI, OPCODE_GET_PRESET_COUNT) == 42, "unsafe control mutation refreshes counts even without a plugin notification");
     auto definition = instance.getAAPXSRegistry()->items()->getByUri(AAP_PARAMETERS_EXTENSION_URI);
     auto standardHandler = definition->process_incoming_plugin_aapxs_request;
     definition->process_incoming_plugin_aapxs_request = [](AAPXSDefinition*, AAPXSRecipientInstance* recipient,
@@ -557,12 +602,89 @@ void countPolling() {
     memcpy(&count, shared->data, 4);
     definition->process_incoming_plugin_aapxs_request = standardHandler;
     check(count == 777, "custom handler at the standard URI retains its own behavior instead of a cached reply");
+    definition->process_incoming_plugin_aapxs_request = [](AAPXSDefinition*, AAPXSRecipientInstance* recipient,
+            AndroidAudioPlugin*, AAPXSRequestContext* request) {
+        request->serialization->data_size = 0;
+        recipient->send_aapxs_reply(recipient, request);
+    };
+    countReads = fake.countReads;
+    instance.controlExtension(0, AAP_PARAMETERS_EXTENSION_URI, OPCODE_PARAMETERS_GET_PARAMETER, 108);
+    definition->process_incoming_plugin_aapxs_request = standardHandler;
+    check(fake.countReads > countReads, "custom metadata opcode retains conservative count refresh");
     for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI}) {
         auto context = instance.getAAPXSDispatcher().getHostAAPXSByUri(uri);
         instance.getAAPXSRegistry()->items()->getByUri(uri)->release_instance_context(
                 instance.getAAPXSRegistry()->items()->getByUri(uri), context->aapxs_context);
         context->aapxs_context = nullptr;
     }
+}
+void extensionNeutralDispatch() {
+    struct Example {
+        std::atomic<int32_t> live{23}, snapshot{0};
+        std::atomic<int> refreshes{0}, notifications{0};
+    } example;
+    constexpr auto uri = "urn:test:unrelated-extension";
+    AAPXSDefinition definition{&example, uri, 4,
+        [](auto* definition, auto* recipient, auto*, auto* request) {
+            auto& state = *static_cast<Example*>(definition->aapxs_context);
+            int32_t result;
+            if (request->opcode == 37) result = state.snapshot.load();
+            else if (request->opcode == 38) result = state.live.load();
+            else result = ++state.live;
+            memcpy(request->serialization->data, &result, 4); request->serialization->data_size = 4;
+            recipient->send_aapxs_reply(recipient, request);
+        }};
+    definition.get_request_flags = [](auto*, bool host, int32_t opcode) -> uint32_t {
+        if (host) return opcode == -7 ? AAPXS_REQUEST_COALESCE | AAPXS_REQUEST_STATE_CHANGED : 0;
+        if (opcode == 37) return AAPXS_REQUEST_READ_ONLY | AAPXS_REQUEST_CONCURRENT;
+        return opcode == 38 ? AAPXS_REQUEST_READ_ONLY : 0;
+    };
+    definition.on_plugin_state_changed = [](auto* definition, auto*, auto*) {
+        auto& state = *static_cast<Example*>(definition->aapxs_context);
+        state.snapshot = state.live.load(); ++state.refreshes;
+    };
+    std::vector<AAPXSDefinition> definitions;
+    for (auto& d : *xs::AAPXSDefinitionRegistry::getStandardExtensions()) if (d.uri) definitions.push_back(d);
+    definitions.push_back(definition);
+    xs::AAPXSDefinitionRegistry registry(std::make_unique<xs::UridMapping>(), definitions);
+    FixtureInfo descriptor; PluginListSnapshot list; Callback callback; PluginService host(&list, &callback, &registry);
+    FakePlugin fake;
+    TestLocal instance(&host, &registry, 4, &descriptor.info, &fake.factory, 8192);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& d : registry) {
+        if (!d.uri || !d.data_capacity) continue;
+        auto index = store->getExtensionBufferCount(); auto backing = tmpfile();
+        int fd = dup(fileno(backing)); fclose(backing); check(ftruncate(fd, d.data_capacity) == 0, "generic extension backing");
+        store->addExtensionFD(fd, d.data_capacity); store->getExtensionUriToIndexMap()[d.uri] = index;
+    }
+    instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    auto refreshes = example.refreshes.load();
+    std::promise<void> entered, release; auto resume = release.get_future().share();
+    std::thread controller([&] { ProcessingQuiescence::Control gate(instance.getRealtimeState().processing); entered.set_value(); resume.wait(); });
+    entered.get_future().wait();
+    auto cached = std::async(std::launch::async, [&] { return readCachedCount(instance, uri, 37); });
+    const auto ready = cached.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+    release.set_value(); controller.join();
+    check(ready && cached.get() == 23 && example.refreshes == refreshes, "foreign cached opcode follows declared concurrency/read-only policy");
+    example.live = 99;
+    check(readCachedCount(instance, uri, 38) == 99 && example.snapshot == 23 && example.refreshes == refreshes,
+          "foreign read-only opcode does not invalidate snapshots");
+    readCachedCount(instance, uri, 39);
+    check(example.snapshot == 100 && example.refreshes > refreshes, "unannotated mutation refreshes extension-owned state");
+    instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t opcode, int32_t,
+            aapxs_completion_callback completed, void* completionContext, void* hostContext, aapxs_error_callback) {
+        auto& state = *static_cast<Example*>(context);
+        check(!strcmp(uri, "urn:test:unrelated-extension") && opcode == -7 && state.snapshot == 101,
+              "foreign coalesced notification observes fresh extension-owned snapshot");
+        ++state.notifications; if (completed) completed(completionContext, hostContext);
+    }, &example);
+    example.live = 101;
+    AAPXSSerializationContext empty{}; AAPXSRequestContext notification{nullptr, nullptr, &empty, 0, uri, 1, -7};
+    { RealtimeScope scope; for (unsigned n = 0; n < 1000; ++n) instance.sendHostAAPXSRequest(&notification); }
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (example.notifications == 0 && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+    check(example.notifications > 0, "generic coalescer supports a nonstandard URI/opcode without DSP allocation/locks");
+    instance.stopExtensionWorker();
 }
 void layoutReadiness() {
     FixtureInfo descriptor;
@@ -1159,7 +1281,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
+    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); extensionNeutralDispatch(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     supersededLayoutRefresh(true, false); supersededLayoutRefresh(true, true);
     supersededLayoutRefresh(false, false); supersededLayoutRefresh(false, true);
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);

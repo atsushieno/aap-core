@@ -77,6 +77,15 @@ typedef struct AAPXSRecipientInstance {
 struct AAPXSExtensionClientProxy;
 struct AAPXSExtensionServiceProxy;
 
+// In-process service dispatch policy; these flags are never serialized.
+// Unannotated plugin requests retain exclusive, potentially-mutating dispatch.
+enum AAPXSRequestFlags : uint32_t {
+    AAPXS_REQUEST_READ_ONLY = 1,
+    AAPXS_REQUEST_CONCURRENT = 2, // handler only reads extension-owned immutable/atomic state
+    AAPXS_REQUEST_COALESCE = 4,  // payload-free host notification, opcode -1..-32
+    AAPXS_REQUEST_STATE_CHANGED = 8 // host notification invalidates extension snapshots
+};
+
 /**
  * The "untyped" AAPXS definition (in the public API surface).
  * Each AAPXS needs to provide an instance of this type so that host framework (reference
@@ -182,6 +191,19 @@ typedef struct AAPXSDefinition {
     void (*release_instance_context) (
             struct AAPXSDefinition* definition,
             void* aapxsContext);
+
+    // Extension-owned policy. Must not allocate or lock: notification producers
+    // can query it from processing. nullptr uses the conservative default.
+    uint32_t (*get_request_flags)(AAPXSDefinition*, bool isHostExtension, int32_t opcode);
+
+    // Called under control exclusion after setup/prepare, state changes and
+    // potentially-mutating requests. Each extension owns its recipient context
+    // and any snapshots; the runtime does not know their contents or opcodes.
+    void (*on_plugin_state_changed)(AAPXSDefinition*, AAPXSRecipientInstance*, AndroidAudioPlugin*);
+    void (*release_plugin_instance_context)(AAPXSDefinition*, void*);
+    // Invoked for the actual outgoing request, after any notification handoff.
+    // Extension-specific local effects belong here, not in the dispatcher.
+    void (*on_outgoing_host_request)(AAPXSDefinition*, AAPXSInitiatorInstance*, AAPXSRequestContext*);
 } AAPXSDefinition;
 
 typedef struct AAPXSExtensionClientProxy {

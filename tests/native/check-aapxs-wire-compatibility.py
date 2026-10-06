@@ -6,14 +6,25 @@ import subprocess
 import sys
 repo = Path(__file__).resolve().parents[2]
 baseline = sys.argv[1] if len(sys.argv) > 1 else '5eb17d37'
-paths = ['include/aap/aapxs.h', 'include/aap/android-audio-plugin.h',
+paths = ['include/aap/android-audio-plugin.h',
          'include/aap/ext/state.h', 'include/aap/ext/parameters.h']
 paths += subprocess.check_output(['git', 'ls-files', '*.aidl'], cwd=repo, text=True).splitlines()
 for path in paths:
     old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo)
     if old != (repo / path).read_bytes():
         raise SystemExit('FAIL: peer-facing declaration changed: ' + path)
-for name in ['state', 'parameters']:
+# Definition policy/lifecycle hooks are in-process ABI, never peer payloads.
+# Preserve every request/serialization/proxy record independently of those hooks.
+path = 'include/aap/aapxs.h'
+old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True)
+new = (repo / path).read_text()
+for name in ['AAPXSSerializationContext', 'AAPXSRequestContext', 'AAPXSInitiatorInstance',
+             'AAPXSRecipientInstance', 'AAPXSExtensionClientProxy', 'AAPXSExtensionServiceProxy',
+             'AAPXSExtensionHostReceiver']:
+    pattern = r'typedef struct ' + name + r' \{.*?\} ' + name + ';'
+    if re.search(pattern, old, re.S).group() != re.search(pattern, new, re.S).group():
+        raise SystemExit('FAIL: AAPXS request/serialization record changed: ' + name)
+for name in ['state', 'parameters', 'presets']:
     path = 'include/aap/core/aapxs/' + name + '-aapxs.h'
     old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True)
     new = (repo / path).read_text()
@@ -36,6 +47,12 @@ for name in ['state', 'parameters']:
                     level += (text[end] == '{') - (text[end] == '}')
                     end += 1
                 return text[start:end]
-            if body(old) != body(new):
+            previous, current = body(old), body(new)
+            if name in ['parameters', 'presets'] and side == 'plugin' and direction == 'request':
+                # A new early cached-count reply is covered by executable wire fixtures;
+                # the legacy opcode/POD switch and fallback reply remain byte-identical.
+                previous = previous[previous.index('    auto ext ='):]
+                current = current[current.index('    auto ext ='):]
+            if previous != current:
                 raise SystemExit('FAIL: counterpart handler changed: ' + marker)
-print('PASS: C extension/AAPXS declarations, AIDL, opcodes, capacities and recipient/reply handlers match ' + baseline)
+print('PASS: C extension/request records, AIDL, opcodes, capacities and legacy recipient/reply handlers match ' + baseline)

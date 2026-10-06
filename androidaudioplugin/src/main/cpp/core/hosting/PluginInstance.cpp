@@ -274,8 +274,7 @@ void aap::PluginInstance::scanParametersAndBuildList() {
         return;
     }
     auto scannedParameters = std::make_unique<std::vector<ParameterInformation>>(std::move(result.value));
-    if (dynamic_cast<LocalPluginInstance*>(this))
-        realtime_state->parameter_count.store(static_cast<int32_t>(scannedParameters->size()), std::memory_order_release);
+    if (auto* local = dynamic_cast<LocalPluginInstance*>(this)) local->refreshExtensionState();
 
     // Publish immutable metadata and value-index snapshots. Processing holds neither lock.
     // The old list is retired, not freed, so that getParameter() pointers stay valid.

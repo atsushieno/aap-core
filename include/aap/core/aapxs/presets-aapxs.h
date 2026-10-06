@@ -109,6 +109,9 @@ namespace aap::xs {
                 AAPXSInitiatorInstance *aapxsInstance,
                 AAPXSSerializationContext *serialization);
 
+        static uint32_t aapxs_presets_request_flags(AAPXSDefinition*, bool, int32_t);
+        static void aapxs_presets_state_changed(AAPXSDefinition*, AAPXSRecipientInstance*, AndroidAudioPlugin*);
+        static void aapxs_presets_release_plugin_context(AAPXSDefinition*, void*);
         static void aapxs_presets_release_instance_context(struct AAPXSDefinition* feature, void* aapxsContext);
         static AAPXSExtensionHostReceiver aapxs_presets_get_host_receiver(
                 struct AAPXSDefinition *feature,
@@ -147,7 +150,8 @@ namespace aap::xs {
                                       aapxs_presets_get_host_proxy,
                                       aapxs_presets_is_command_rt_safe,
                                       aapxs_presets_get_host_receiver,
-                                      aapxs_presets_release_instance_context
+                                      aapxs_presets_release_instance_context,
+                                      aapxs_presets_request_flags, aapxs_presets_state_changed, aapxs_presets_release_plugin_context
         };
 
     public:

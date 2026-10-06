@@ -135,58 +135,23 @@ void aap::LocalPluginInstance::prepare(int32_t maximumExpectedSamplesPerBlock, i
     }
     sample_rate = sampleRate;
     plugin->prepare(plugin, sampleRate, buffer);
-    refreshPollReplies();
+    refreshExtensionState();
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
     realtime_state->worker.notify();
 }
 
-void aap::LocalPluginInstance::refreshPollReplies() {
-    auto parameters = static_cast<aap_parameters_extension_t*>(plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI));
-    auto presets = static_cast<aap_presets_extension_t*>(plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI));
-    realtime_state->parameter_count.store(parameters && parameters->get_parameter_count ?
-            parameters->get_parameter_count(parameters, plugin) : -1, std::memory_order_release);
-    realtime_state->preset_count.store(presets && presets->get_preset_count ?
-            presets->get_preset_count(presets, plugin) : 0, std::memory_order_release);
-    realtime_state->poll_replies_ready.store(true, std::memory_order_release);
-}
-
-bool aap::LocalPluginInstance::cachedPollReply(AAPXSDefinition* definition, AAPXSRequestContext& request) {
-    if (!realtime_state->poll_replies_ready.load(std::memory_order_acquire) || !definition || !definition->uri ||
-        !request.serialization || !request.serialization->data || request.serialization->data_capacity < sizeof(int32_t))
-        return false;
-    // Only the standard handlers have snapshot semantics. A custom handler
-    // using the same URI or an RT-safe flag does not grant concurrent access.
-    int32_t value;
-    if (!strcmp(definition->uri, AAP_PARAMETERS_EXTENSION_URI) && request.opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT) {
-        if (definition->process_incoming_plugin_aapxs_request != xs::AAPXSDefinition_Parameters{}.asPublic().process_incoming_plugin_aapxs_request)
-            return false;
-        value = realtime_state->parameter_count.load(std::memory_order_acquire);
-    } else if (!strcmp(definition->uri, AAP_PRESETS_EXTENSION_URI) && request.opcode == OPCODE_GET_PRESET_COUNT) {
-        if (definition->process_incoming_plugin_aapxs_request != xs::AAPXSDefinition_Presets{}.asPublic().process_incoming_plugin_aapxs_request)
-            return false;
-        value = realtime_state->preset_count.load(std::memory_order_acquire);
-    } else return false;
-    memcpy(request.serialization->data, &value, sizeof(value));
-    request.serialization->data_size = sizeof(value);
-    return true;
+void aap::LocalPluginInstance::refreshExtensionState() {
+    if (!plugin || !aapxs_dispatcher.hasInstances()) return;
+    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+    for (auto& definition : *getAAPXSRegistry()->items())
+        if (definition.uri && definition.on_plugin_state_changed)
+            definition.on_plugin_state_changed(&definition, aapxs_dispatcher.getPluginAAPXSByUri(definition.uri), plugin);
+    realtime_state->extension_state_ready.store(true, std::memory_order_release);
 }
 
 void aap::LocalPluginInstance::pollExtensionWorker() {
     if (realtime_state->process_notification.exchange(false, std::memory_order_acq_rel))
         ((PluginService*) host)->requestProcessToHost(instance_id);
-    auto notifications = realtime_state->standard_notifications.exchange(0, std::memory_order_acq_rel);
-    if (notifications && !realtime_state->poll_replies_ready.load(std::memory_order_acquire)) {
-        // A factory can notify before its plugin pointer/extensions are ready.
-        // Preserve the bits; setup/prepare will wake the worker after publishing.
-        realtime_state->standard_notifications.fetch_or(notifications, std::memory_order_release);
-        notifications = 0;
-    }
-    if (notifications) {
-        // Publish fresh counts before forwarding a change notification or
-        // replying to queued polls. Refresh once per batch, not once per poll.
-        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
-        refreshPollReplies();
-    }
     auto send = [this](const char* uri, int32_t opcode, uint32_t requestId) {
         // Notifications share the reverse-direction channel with host queries.
         // Their empty request and URI must outlive asynchronous Binder delivery.
@@ -201,12 +166,34 @@ void aap::LocalPluginInstance::pollExtensionWorker() {
             pending->uri.c_str(), requestId, opcode, Notification::failed};
         if (!sendHostAAPXSRequest(&request)) delete pending;
     };
-    if (notifications & 1) send(AAP_PARAMETERS_EXTENSION_URI, OPCODE_NOTIFY_PARAMETERS_CHANGED, aapxsRequestIdSerial());
-    if (notifications & 2) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESET_LOADED, aapxsRequestIdSerial());
-    if (notifications & 4) send(AAP_PRESETS_EXTENSION_URI, OPCODE_NOTIFY_PRESETS_UPDATED, aapxsRequestIdSerial());
+    if (realtime_state->extension_state_ready.load(std::memory_order_acquire)) {
+        std::array<uint32_t, 256> notifications{};
+        bool changed = false;
+        for (unsigned urid = 1; urid < notifications.size(); ++urid) {
+            notifications[urid] = realtime_state->coalesced_notifications[urid].exchange(0, std::memory_order_acq_rel);
+            if (!notifications[urid]) continue;
+            auto* definition = aapxs_dispatcher.getDefinitionByUrid(urid);
+            if (!definition || !definition->get_request_flags) continue;
+            for (unsigned bit = 0; bit < 32; ++bit)
+                if (notifications[urid] & (1u << bit))
+                    changed |= (definition->get_request_flags(definition, true, -1 - static_cast<int32_t>(bit)) & AAPXS_REQUEST_STATE_CHANGED) != 0;
+        }
+        if (changed) refreshExtensionState();
+        for (unsigned urid = 1; urid < notifications.size(); ++urid) {
+            if (!notifications[urid]) continue;
+            auto* definition = aapxs_dispatcher.getDefinitionByUrid(urid);
+            if (!definition) continue;
+            for (unsigned bit = 0; bit < 32; ++bit)
+                if (notifications[urid] & (1u << bit)) send(definition->uri, -1 - static_cast<int32_t>(bit), aapxsRequestIdSerial());
+        }
+    }
     for (unsigned n = 0; n < 64 && !realtime_state->worker.isStopping(); ++n) {
+        if (!realtime_state->extension_state_ready.load(std::memory_order_acquire)) break;
         if (!realtime_state->host_notifications.tryConsume([&](void* data, size_t) {
             auto& notification = *static_cast<internal::HostNotification*>(data);
+            auto* definition = aapxs_dispatcher.getDefinitionByUri(notification.uri);
+            if (definition && definition->get_request_flags &&
+                (definition->get_request_flags(definition, true, notification.opcode) & AAPXS_REQUEST_STATE_CHANGED)) refreshExtensionState();
             send(notification.uri, notification.opcode, notification.request_id);
             return true;
         })) break;
@@ -333,7 +320,7 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
 void aap::LocalPluginInstance::setupAAPXS() {
     const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
     standards = std::make_unique<xs::ServiceStandardExtensions>(plugin);
-    refreshPollReplies();
+    refreshExtensionState();
     internal::setParameterLayoutRefreshReady(*this);
 }
 
@@ -388,47 +375,36 @@ aap::LocalPluginInstance::sendPluginAAPXSReply(AAPXSRequestContext* request) {
 bool
 aap::LocalPluginInstance::sendHostAAPXSRequest(AAPXSRequestContext* request) {
     if (realtime_state->worker.isStopping()) return false;
+    auto* definition = request->urid ? aapxs_dispatcher.getDefinitionByUrid(request->urid) :
+            (request->uri ? aapxs_dispatcher.getDefinitionByUri(request->uri) : nullptr);
+    const auto flags = definition && definition->get_request_flags ?
+            definition->get_request_flags(definition, true, request->opcode) : 0u;
     bool hasPayload = request->serialization && request->serialization->data_size > 0;
     if (!request->callback && !request->error_callback && !hasPayload && request->uri) {
-        uint32_t bit = 0;
-        if (!strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI) && request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) bit = 1;
-        if (!strcmp(request->uri, AAP_PRESETS_EXTENSION_URI)) {
-            if (request->opcode == OPCODE_NOTIFY_PRESET_LOADED) bit = 2;
-            if (request->opcode == OPCODE_NOTIFY_PRESETS_UPDATED) bit = 4;
-        }
-        if (bit) {
-            realtime_state->standard_notifications.fetch_or(bit, std::memory_order_release);
+        auto urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(request->uri);
+        if ((flags & AAPXS_REQUEST_COALESCE) && urid && request->opcode >= -32 && request->opcode <= -1) {
+            realtime_state->coalesced_notifications[urid].fetch_or(1u << (-1 - request->opcode), std::memory_order_release);
             realtime_state->worker.notify();
-        }
-        else {
+        } else {
             internal::HostNotification notification{};
             auto length = strnlen(request->uri, sizeof(notification.uri));
             if (length == sizeof(notification.uri)) return false;
             memcpy(notification.uri, request->uri, length + 1);
             notification.opcode = request->opcode;
             notification.request_id = request->request_id;
-            if (realtime_state->host_notifications.tryPush(&notification, sizeof(notification)))
-                realtime_state->worker.notify();
+            if (realtime_state->host_notifications.tryPush(&notification, sizeof(notification))) realtime_state->worker.notify();
         }
-        return false; // notifications have no reply
+        return false;
     }
-    // General host queries require a non-processing caller. Rejection retains the
-    // caller's context and does not invoke an arbitrary callback on this thread.
     if (RealtimeScope::isActive()) return false;
-    if (request->uri && !realtime_state->worker.isCurrentThread() &&
-        ((!strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI) && request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) ||
-         (!strcmp(request->uri, AAP_PRESETS_EXTENSION_URI) &&
-          (request->opcode == OPCODE_NOTIFY_PRESET_LOADED || request->opcode == OPCODE_NOTIFY_PRESETS_UPDATED)))) {
-        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
-        refreshPollReplies();
-    }
-    if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && request->uri && !strcmp(request->uri, AAP_PARAMETERS_EXTENSION_URI))
-        internal::requestParameterLayoutRefresh(*this);
+    if ((flags & AAPXS_REQUEST_STATE_CHANGED) && !realtime_state->worker.isCurrentThread()) refreshExtensionState();
 
     auto& dispatcher = getAAPXSDispatcher();
     auto aapxsInstance = request->urid != 0 ? dispatcher.getHostAAPXSByUrid(request->urid) : dispatcher.getHostAAPXSByUri(request->uri);
     if (!aapxsInstance || !aapxsInstance->serialization)
         return false;
+    if (definition && definition->on_outgoing_host_request)
+        definition->on_outgoing_host_request(definition, aapxsInstance, request);
     auto channel = internal::getAAPXSBinderChannel(this, aapxsInstance->serialization, [this] {
         return [this](const AAPXSRequestContext& routed) {
             if (!ipc_send_extension_message_func) return false;
@@ -449,43 +425,18 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     if (RealtimeScope::isActive()) return; // control dispatch belongs to Binder/extension workers
     auto registry = feature_registry->items();
     auto def = urid != 0 ? registry->getByUrid(urid) : registry->getByUri(uri.c_str());
-    if (def) {
-        auto& dispatcher = getAAPXSDispatcher();
-        auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
-        if (instance && instance->serialization) {
-            AAPXSRequestContext request{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
-            if (cachedPollReply(def, request)) {
-                dispatcher.publishBinderReplySize(instance->serialization);
-                return;
-            }
-        }
-    }
-    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
-    // special case URID mapping request: this hosting implementation also consumes it and
-    // adds the URID mapping.
-    // Note that it is handled only at UNPREPARED state and thus no realtime special casing happens.
-    if (urid == 0 && uri == AAP_URID_EXTENSION_URI) {
-        auto instance = getAAPXSDispatcher().getPluginAAPXSByUri(uri.c_str());
-        auto parsedUrid = *(uint8_t*) instance->serialization->data;
-        auto len = *(int32_t*) (uint8_t*) instance->serialization->data + 1;
-        auto s = (char*) calloc(len + 1, 1);
-        strncpy(s, (char*) instance->serialization->data + 1 + sizeof(int32_t), len);
-        s[len] = 0;
-        urid_mapping.forceAdd(parsedUrid, s);
-        free(s);
-    } // ... and the mapping could also be used by the plugin, so go on as well.
-
-
+    const auto flags = def && def->get_request_flags ? def->get_request_flags(def, false, opcode) : 0u;
+    std::optional<internal::ProcessingQuiescence::Control> suspension;
+    if (!(flags & AAPXS_REQUEST_CONCURRENT) || !realtime_state->extension_state_ready.load(std::memory_order_acquire))
+        suspension.emplace(realtime_state->processing);
     if (def) { // ignore undefined extensions here
         auto& dispatcher = getAAPXSDispatcher();
         auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
         dispatcher.receiveBinderRequest(instance->serialization);
         AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
-        // RT-safe does not imply safe concurrent access to plugin state. Handlers
-        // accessing plugin state still run between DSP blocks; count snapshots
-        // were handled above without entering this control section.
+        // Only the extension can declare its handler independent of plugin state.
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
-        refreshPollReplies();
+        if (!(flags & AAPXS_REQUEST_READ_ONLY)) refreshExtensionState();
         dispatcher.publishBinderReplySize(instance->serialization);
     }
 }
@@ -501,13 +452,12 @@ void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *c
         AAPXSRequestContext incoming{nullptr, nullptr, &buffer, context->urid, def->uri, context->request_id, context->opcode};
         auto reply = realtime_state->recipient_requests.create(incoming, AAP_MIDI2_AAPXS_DATA_MAX_SIZE);
         if (!reply) return; // bounded rejection leaves the initiator's timeout intact
-        if (cachedPollReply(def, reply->request())) {
-            reply->complete();
-            return;
-        }
-        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+        const auto flags = def->get_request_flags ? def->get_request_flags(def, false, context->opcode) : 0u;
+        std::optional<internal::ProcessingQuiescence::Control> suspension;
+        if (!(flags & AAPXS_REQUEST_CONCURRENT) || !realtime_state->extension_state_ready.load(std::memory_order_acquire))
+            suspension.emplace(realtime_state->processing);
         def->process_incoming_plugin_aapxs_request(def, instance, plugin, &reply->request());
-        refreshPollReplies();
+        if (!(flags & AAPXS_REQUEST_READ_ONLY)) refreshExtensionState();
     } else {
         // host reply
         auto& dispatcher = getAAPXSDispatcher();

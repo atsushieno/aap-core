@@ -3,7 +3,9 @@
 #include "../core/AAPJniFacade.h"
 #include "ALooperMessage.h"
 #include "aap/core/host/audio-plugin-host.h"
+#include <mutex>
 #include <string>
+#include <vector>
 #include "../core/hosting/plugin-parameter-state.h"
 
 namespace aap {
@@ -706,12 +708,36 @@ namespace aap {
 // --------------------------------------------------
 
     jobject audio_plugin_service_connector{nullptr};
-    std::map<std::string, std::function<void(std::string &)> > inProgressCallbacks{};
+
+    // Every requester waiting for a service package to get bound. Each callback must be
+    // invoked exactly once - hosts free their completion context in it - so a callback
+    // leaves this map before it is invoked, whichever of success or failure comes first.
+    std::mutex inProgressCallbacksMutex{};
+    std::map<std::string, std::vector<std::function<void(std::string &)>>> inProgressCallbacks{};
+
+    static std::vector<std::function<void(std::string &)>> takeInProgressCallbacks(const std::string& servicePackageName) {
+        std::lock_guard<std::mutex> lock(inProgressCallbacksMutex);
+        auto entry = inProgressCallbacks.find(servicePackageName);
+        if (entry == inProgressCallbacks.end())
+            return {};
+        auto callbacks = std::move(entry->second);
+        inProgressCallbacks.erase(entry);
+        return callbacks;
+    }
 
     void AAPJniFacade::ensureServiceConnectedFromJni(jint connectorInstanceId,
                                                      std::string servicePackageName,
                                                      std::function<void(std::string &)> callback) {
-        inProgressCallbacks[servicePackageName] = callback;
+        {
+            std::lock_guard<std::mutex> lock(inProgressCallbacksMutex);
+            auto& waiting = inProgressCallbacks[servicePackageName];
+            const bool bindInProgress = !waiting.empty();
+            waiting.push_back(std::move(callback));
+            // Another request is already binding this service; it completes every waiter.
+            // Calling ensureBinderConnected() again would only fail with "already being bound".
+            if (bindInProgress)
+                return;
+        }
 
         usingJNIEnv<void *>([&](JNIEnv *env) {
             if (audio_plugin_service_connector == nullptr) {
@@ -750,27 +776,33 @@ namespace aap {
                                       j_method_ensure_instance_created,
                                       env->NewStringUTF(servicePackageName.c_str()),
                                       audio_plugin_service_connector);
-            if (env->ExceptionOccurred()) {
+            if (env->ExceptionCheck()) {
                 env->ExceptionDescribe();
-                auto throwable = env->ExceptionOccurred();
                 env->ExceptionClear();
+                // The waiters must not stay registered: the bindService() request may still
+                // complete later, and handleServiceConnectedCallback() would then report
+                // success to callers that were already told about this failure.
                 std::string error{"ensureBinderConnected threw Java exception"};
-                if (throwable)
-                    callback(error);
+                for (auto& waiter : takeInProgressCallbacks(servicePackageName))
+                    waiter(error);
+            } else {
+                // ensureBinderConnected() returns only once the service is bound. Waiters
+                // are normally completed by handleServiceConnectedCallback() before that,
+                // but it returns early without the callback when the connection already
+                // existed, so complete whoever is still waiting here.
+                std::string empty{};
+                for (auto& waiter : takeInProgressCallbacks(servicePackageName))
+                    waiter(empty);
             }
             return nullptr;
         });
     }
 
     void AAPJniFacade::handleServiceConnectedCallback(std::string servicePackageName) {
-        auto entry = inProgressCallbacks.find(servicePackageName);
-        if (entry != inProgressCallbacks.end()) {
-            // FIXME: what kind of error propagation could be achieved here?
-            std::string empty{};
-            auto callback = entry->second;
-            inProgressCallbacks.erase(entry);
-            callback(empty);
-        }
+        // FIXME: what kind of error propagation could be achieved here?
+        std::string empty{};
+        for (auto& waiter : takeInProgressCallbacks(servicePackageName))
+            waiter(empty);
     }
 
     // JNI helper (that they are not really call into Java but moved here.

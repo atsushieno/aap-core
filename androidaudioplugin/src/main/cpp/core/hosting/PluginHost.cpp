@@ -29,19 +29,25 @@ namespace {
 struct AAPXSInstanceContext {
     AAPXSDefinition* definition;
     void* context;
+    void (*release)(AAPXSDefinition*, void*);
 };
 
 template <typename Dispatcher, typename GetInitiator, typename GetRecipient>
 void collectAAPXSInstanceContexts(aap::xs::AAPXSDefinitionRegistry* registry, Dispatcher& dispatcher,
                                   GetInitiator getInitiator, GetRecipient getRecipient,
-                                  std::vector<AAPXSInstanceContext>& result) {
+                                  std::vector<AAPXSInstanceContext>& result, bool pluginRecipient) {
     for (auto& definition : *registry) {
-        if (!definition.uri || !definition.release_instance_context)
-            continue;
-        if (auto initiator = getInitiator(dispatcher, definition.uri); initiator && initiator->aapxs_context)
-            result.push_back({&definition, initiator->aapxs_context});
-        if (auto recipient = getRecipient(dispatcher, definition.uri); recipient && recipient->aapxs_context)
-            result.push_back({&definition, recipient->aapxs_context});
+        if (!definition.uri) continue;
+        if (auto initiator = getInitiator(dispatcher, definition.uri); initiator && initiator->aapxs_context && definition.release_instance_context) {
+            result.push_back({&definition, initiator->aapxs_context, definition.release_instance_context});
+            initiator->aapxs_context = nullptr;
+        }
+        auto release = pluginRecipient && definition.release_plugin_instance_context ?
+                definition.release_plugin_instance_context : definition.release_instance_context;
+        if (auto recipient = getRecipient(dispatcher, definition.uri); recipient && recipient->aapxs_context && release) {
+            result.push_back({&definition, recipient->aapxs_context, release});
+            recipient->aapxs_context = nullptr;
+        }
     }
 }
 
@@ -53,12 +59,12 @@ std::vector<AAPXSInstanceContext> collectAAPXSInstanceContexts(aap::PluginInstan
         collectAAPXSInstanceContexts(local->getAAPXSRegistry()->items(), local->getAAPXSDispatcher(),
                                      [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
                                      [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
-                                     result);
+                                     result, true);
     else if (auto remote = dynamic_cast<aap::RemotePluginInstance*>(instance))
         collectAAPXSInstanceContexts(remote->getAAPXSRegistry()->items(), remote->getAAPXSDispatcher(),
                                      [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
                                      [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
-                                     result);
+                                     result, false);
     return result;
 }
 
@@ -77,7 +83,7 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
         internal::closeParameterLayoutRefresh(*instance);
         delete instance;
         for (auto& c : aapxsContexts)
-            c.definition->release_instance_context(c.definition, c.context);
+            c.release(c.definition, c.context);
         internal::forgetParameterLayoutRefresh(*instance);
     };
     if (instance->isOnExtensionWorkerThread()) {

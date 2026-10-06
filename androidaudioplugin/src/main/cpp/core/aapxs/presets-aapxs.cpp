@@ -1,6 +1,14 @@
+#include <atomic>
 #include <mutex>
 #include "aap/core/aapxs/presets-aapxs.h"
 #include "aap/core/host/plugin-instance.h"
+
+namespace {
+struct PresetsCountSnapshot {
+    std::atomic<int32_t> value;
+    explicit PresetsCountSnapshot(int32_t count) : value(count) {}
+};
+}
 
 namespace {
 void notify_preset_loaded(aap_presets_host_extension_t* ext, AndroidAudioPluginHost* host) {
@@ -16,9 +24,38 @@ void notify_presets_updated(aap_presets_host_extension_t* ext, AndroidAudioPlugi
 aap_presets_host_extension_t presets_host_receiver{nullptr, notify_preset_loaded, notify_presets_updated};
 }
 
+uint32_t aap::xs::AAPXSDefinition_Presets::aapxs_presets_request_flags(AAPXSDefinition* definition, bool host, int32_t opcode) {
+    if (host) return (opcode == OPCODE_NOTIFY_PRESET_LOADED || opcode == OPCODE_NOTIFY_PRESETS_UPDATED) ? AAPXS_REQUEST_STATE_CHANGED | AAPXS_REQUEST_COALESCE : 0u;
+    // This declaration describes this implementation; a replaced handler owns
+    // its own policy, even when it reuses this definition's URI.
+    if (definition->process_incoming_plugin_aapxs_request != aapxs_presets_process_incoming_plugin_aapxs_request) return 0;
+    switch (opcode) {
+        case OPCODE_GET_PRESET_COUNT: return AAPXS_REQUEST_READ_ONLY | AAPXS_REQUEST_CONCURRENT;
+        case OPCODE_GET_PRESET_DATA:
+            return AAPXS_REQUEST_READ_ONLY;
+        default: return 0;
+    }
+}
+void aap::xs::AAPXSDefinition_Presets::aapxs_presets_state_changed(AAPXSDefinition*, AAPXSRecipientInstance* instance, AndroidAudioPlugin* plugin) {
+    auto* extension = static_cast<aap_presets_extension_t*>(plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI));
+    auto count = extension && extension->get_preset_count ? extension->get_preset_count(extension, plugin) : 0;
+    if (!instance->aapxs_context) instance->aapxs_context = new PresetsCountSnapshot(count);
+    else static_cast<PresetsCountSnapshot*>(instance->aapxs_context)->value.store(count, std::memory_order_release);
+}
+void aap::xs::AAPXSDefinition_Presets::aapxs_presets_release_plugin_context(AAPXSDefinition*, void* context) {
+    delete static_cast<PresetsCountSnapshot*>(context);
+}
+
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
+    if (request->opcode == OPCODE_GET_PRESET_COUNT && aapxsInstance->aapxs_context) {
+        const auto count = static_cast<PresetsCountSnapshot*>(aapxsInstance->aapxs_context)->value.load(std::memory_order_acquire);
+        memcpy(request->serialization->data, &count, sizeof(count));
+        request->serialization->data_size = sizeof(count);
+        aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+        return;
+    }
     auto ext = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
     switch(request->opcode) {
         case OPCODE_GET_PRESET_COUNT:

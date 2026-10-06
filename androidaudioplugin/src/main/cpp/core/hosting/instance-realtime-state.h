@@ -24,7 +24,7 @@ struct InstanceRealtimeState {
     RealtimeByteQueue<64> aapxs_input{2 * AAP_MIDI2_AAPXS_DATA_MAX_SIZE + sizeof(AAPMidiBufferHeader)};
     RealtimeByteQueue<64> ump_input, ump_output, gui_output;
     RealtimeByteQueue<64> host_notifications{sizeof(HostNotification)};
-    std::atomic<uint32_t> standard_notifications{0};
+    std::array<std::atomic<uint32_t>, 256> coalesced_notifications{};
     std::atomic<bool> process_notification{false};
     std::atomic<bool> layout_refresh{false};
     std::shared_ptr<AsyncParameterLayout> layout_scan; // extension worker only
@@ -34,8 +34,7 @@ struct InstanceRealtimeState {
     ProcessingQuiescence processing;
     std::vector<std::unique_ptr<DeferredMidiInput>> deferred_midi; // indexed by port, DSP only
     std::atomic<bool> reset_deferred_midi{false}; // lifecycle requests, applied by DSP
-    std::atomic<int32_t> parameter_count{-1}, preset_count{0};
-    std::atomic<bool> poll_replies_ready{false};
+    std::atomic<bool> extension_state_ready{false};
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes
     size_t gui_read_offset{0};
     std::mutex parameter_scan_mutex; // control/worker scans of this instance only

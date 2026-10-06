@@ -7,6 +7,7 @@
 #include <vector>
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aapxs-transport.h"
+namespace aap { class PluginInstance; namespace internal { void requestParameterLayoutRefresh(PluginInstance&) {} } }
 using aap::xs::ParametersClientAAPXS;
 static void require(bool value, const char* message) {
     if (!value) throw std::runtime_error(message);
@@ -239,8 +240,8 @@ static void legacyRequestsToCurrentRecipient() {
     alignas(aap_parameter_info_t) unsigned char bytes[PARAMETERS_SHARED_MEMORY_SIZE]{};
     AAPXSSerializationContext serialization{bytes, 4, sizeof(bytes)};
     int replies = 0;
-    AAPXSRecipientInstance recipient{&replies, nullptr, &serialization,
-        [](auto* self, auto*) { ++*static_cast<int*>(self->aapxs_context); }};
+    AAPXSRecipientInstance recipient{nullptr, &replies, &serialization,
+        [](auto* self, auto*) { ++*static_cast<int*>(self->host_context); }};
     int32_t payload[]{7, 2};
     memcpy(bytes, payload, 4);
     AAPXSRequestContext oldRequest{nullptr, nullptr, &serialization, 1,
@@ -254,6 +255,24 @@ static void legacyRequestsToCurrentRecipient() {
     aap_parameter_enum_t enumeration{}; memcpy(&enumeration, bytes, sizeof(enumeration));
     require(enumeration.value == 2.5 && serialization.data_size == sizeof(enumeration) && replies == 2,
             "new recipient returns the legacy enumeration POD record");
+    int32_t count = 7;
+    extension.aapxs_context = &count;
+    extension.get_parameter_count = [](auto* extension, auto*) { return *static_cast<int32_t*>(extension->aapxs_context); };
+    oldRequest.opcode = 1; serialization.data_size = 0;
+    handler.process_incoming_plugin_aapxs_request(&handler, &recipient, &plugin, &oldRequest);
+    int32_t wireCount{}; memcpy(&wireCount, bytes, 4);
+    require(wireCount == 7 && serialization.data_size == 4, "old count request retains its four-byte reply before snapshot setup");
+    handler.on_plugin_state_changed(&handler, &recipient, &plugin);
+    count = 13;
+    handler.process_incoming_plugin_aapxs_request(&handler, &recipient, &plugin, &oldRequest);
+    memcpy(&wireCount, bytes, 4);
+    require(wireCount == 7 && serialization.data_size == 4, "extension-owned count snapshot preserves old wire reply");
+    handler.on_plugin_state_changed(&handler, &recipient, &plugin);
+    handler.process_incoming_plugin_aapxs_request(&handler, &recipient, &plugin, &oldRequest);
+    memcpy(&wireCount, bytes, 4);
+    require(wireCount == 13 && serialization.data_size == 4, "snapshot refresh uses the same old count record");
+    handler.release_plugin_instance_context(&handler, recipient.aapxs_context);
+    recipient.aapxs_context = nullptr;
 }
 int main() try {
     successAndErrors(); nestedReplyAndFailure(); destructionAndImmediateReply(); parallelContexts(); cancellationIdentity(); shortRepliesAndValidDefaults(); legacyRequestsToCurrentRecipient();

@@ -228,6 +228,8 @@ namespace aap::xs {
 
     public:
         AAPXSServiceDispatcher(AAPXSDefinitionRegistry* registry);
+        ~AAPXSServiceDispatcher();
+        bool hasInstances() const { return already_setup; }
 
         AAPXSRecipientInstance* getPluginAAPXSByUri(const char* uri) { if (already_setup) return recipients.getByUri(uri);  AAP_ASSERT_FALSE; return nullptr; }
         AAPXSRecipientInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return recipients.getByUrid(urid);  AAP_ASSERT_FALSE; return nullptr; }

@@ -1,9 +1,18 @@
+#include <atomic>
+#include "../hosting/plugin-parameter-state.h"
 
 #include <mutex>
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
 #include "aap/core/host/plugin-instance.h"
 #include "aap/unstable/utility.h"
+
+namespace {
+struct ParametersCountSnapshot {
+    std::atomic<int32_t> value;
+    explicit ParametersCountSnapshot(int32_t count) : value(count) {}
+};
+}
 
 namespace {
 void notify_parameters_changed(aap_parameters_host_extension_t* ext,
@@ -17,9 +26,45 @@ aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_paramet
 
 // AAPXSDefinition_Parameters
 
+void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_outgoing_host_request(AAPXSDefinition*, AAPXSInitiatorInstance* instance, AAPXSRequestContext* request) {
+    if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && instance->host_context)
+        internal::requestParameterLayoutRefresh(*static_cast<PluginInstance*>(instance->host_context));
+}
+uint32_t aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_request_flags(AAPXSDefinition* definition, bool host, int32_t opcode) {
+    if (host) return (opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) ? AAPXS_REQUEST_STATE_CHANGED | AAPXS_REQUEST_COALESCE : 0u;
+    // This declaration describes this implementation; a replaced handler owns
+    // its own policy, even when it reuses this definition's URI.
+    if (definition->process_incoming_plugin_aapxs_request != aapxs_parameters_process_incoming_plugin_aapxs_request) return 0;
+    switch (opcode) {
+        case OPCODE_PARAMETERS_GET_PARAMETER_COUNT: return AAPXS_REQUEST_READ_ONLY | AAPXS_REQUEST_CONCURRENT;
+        case OPCODE_PARAMETERS_GET_PARAMETER:
+        case OPCODE_PARAMETERS_GET_PROPERTY:
+        case OPCODE_PARAMETERS_GET_ENUMERATION_COUNT:
+        case OPCODE_PARAMETERS_GET_ENUMERATION:
+            return AAPXS_REQUEST_READ_ONLY;
+        default: return 0;
+    }
+}
+void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_state_changed(AAPXSDefinition*, AAPXSRecipientInstance* instance, AndroidAudioPlugin* plugin) {
+    auto* extension = static_cast<aap_parameters_extension_t*>(plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI));
+    auto count = extension && extension->get_parameter_count ? extension->get_parameter_count(extension, plugin) : -1;
+    if (!instance->aapxs_context) instance->aapxs_context = new ParametersCountSnapshot(count);
+    else static_cast<ParametersCountSnapshot*>(instance->aapxs_context)->value.store(count, std::memory_order_release);
+}
+void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_release_plugin_context(AAPXSDefinition*, void* context) {
+    delete static_cast<ParametersCountSnapshot*>(context);
+}
+
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_plugin_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPlugin *plugin, AAPXSRequestContext *request) {
+    if (request->opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT && aapxsInstance->aapxs_context) {
+        const auto count = static_cast<ParametersCountSnapshot*>(aapxsInstance->aapxs_context)->value.load(std::memory_order_acquire);
+        memcpy(request->serialization->data, &count, sizeof(count));
+        request->serialization->data_size = sizeof(count);
+        aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+        return;
+    }
     auto ext = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
     switch (request->opcode) {
         case OPCODE_PARAMETERS_GET_PARAMETER_COUNT:
