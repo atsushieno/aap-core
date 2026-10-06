@@ -95,7 +95,9 @@ int32_t aap::ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<i
     throw std::runtime_error("unexpected Android buffer setup");
 }
 struct TestMemory : PluginSharedMemoryStore {
-    explicit TestMemory(PluginInstance& instance) {
+    std::unique_ptr<PluginSharedMemoryStore> extensionOwner;
+    explicit TestMemory(PluginInstance& instance, PluginSharedMemoryStore* previous = nullptr)
+        : extensionOwner(previous) {
         port_buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
         port_buffer->initialize(instance.getNumPorts(), 64);
         for (int i = 0; i < instance.getNumPorts(); ++i) {
@@ -114,7 +116,8 @@ struct TestLocal : LocalPluginInstance {
         return std::chrono::steady_clock::time_point::max();
     }
     void setupTestBuffer() {
-        delete shared_memory_store; shared_memory_store = new TestMemory(*this);
+        shared_memory_store = new TestMemory(*this, shared_memory_store);
+        prepare(64, 48000);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
     }
 };
@@ -126,7 +129,7 @@ struct TestRemote : RemotePluginInstance {
         return RemotePluginInstance::nextExtensionDeadline();
     }
     void setupTestBuffer() {
-        delete shared_memory_store; shared_memory_store = new TestMemory(*this);
+        shared_memory_store = new TestMemory(*this, shared_memory_store);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
     }
 };
@@ -144,6 +147,11 @@ struct FakePlugin {
     bool echo{false};
     bool metadataReplies{false};
     bool negotiatedMetadata{false};
+    bool captureMidi{false};
+    std::array<uint32_t, 4096> receivedMidi{};
+    size_t receivedWords{0};
+    std::array<uint32_t, 4096> otherMidi{};
+    size_t otherWords{0};
     std::atomic<int> metadataRequests{0};
     AAPXSSerializationContext* metadataShared{nullptr};
     bool shortMetadataReply{false};
@@ -165,6 +173,18 @@ struct FakePlugin {
             auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
             check(RealtimeScope::isActive(), "DSP runs inside realtime guard");
             ++self.blocks;
+            if (self.captureMidi) {
+                auto input = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 1));
+                check(self.receivedWords + input->length / 4 <= self.receivedMidi.size(), "fixture MIDI capture capacity");
+                memcpy(self.receivedMidi.data() + self.receivedWords, input + 1, input->length);
+                self.receivedWords += input->length / 4;
+                if (buffer->num_ports(buffer) > 3) {
+                    auto other = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 3));
+                    check(self.otherWords + other->length / 4 <= self.otherMidi.size(), "fixture second-port capture capacity");
+                    memcpy(self.otherMidi.data() + self.otherWords, other + 1, other->length);
+                    self.otherWords += other->length / 4;
+                }
+            }
             auto output = static_cast<AAPMidiBufferHeader*>(buffer->get_buffer(buffer, 2));
             if (self.metadataReplies) {
                 output->length = 0;
@@ -270,6 +290,8 @@ void notification(void*, const char*, int32_t, int32_t, int32_t, aapxs_completio
 }
 void localProcessing() {
     FixtureInfo descriptor;
+    PortInformation otherInput{3, "other", AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_INPUT};
+    descriptor.info.addDeclaredPort(&otherInput);
     PluginListSnapshot list;
     Callback callback;
     PluginService host(&list, &callback);
@@ -304,14 +326,46 @@ void localProcessing() {
     check(readLocalGuiListenerMidi2Output(&instance, read, 4) == 4, "partial GUI queue read");
     check(readLocalGuiListenerMidi2Output(&instance, read + 1, 4) == 4 && read[0] == 0x40B01100, "GUI remainder retained");
     auto before = fake.blocks.load();
+    fake.captureMidi = true;
+    auto midi = static_cast<AAPMidiBufferHeader*>(instance.getAudioPluginBuffer()->get_buffer(instance.getAudioPluginBuffer(), 1));
+    auto other = static_cast<AAPMidiBufferHeader*>(instance.getAudioPluginBuffer()->get_buffer(instance.getAudioPluginBuffer(), 3));
+    uint32_t queued[]{0x20804600};
+    instance.addEventUmpInput(queued, sizeof(queued));
     {
         ProcessingQuiescence::Control suspension(instance.getRealtimeState().processing);
+        uint32_t events[]{0x00200040, 0x20803C00}; // late timestamp and note-off
+        midi->length = sizeof(events); memcpy(midi + 1, events, sizeof(events));
+        other->length = 4; *reinterpret_cast<uint32_t*>(other + 1) = 0x21823D00;
         instance.process(64, 0);
         auto audio = static_cast<float*>(instance.getAudioPluginBuffer()->get_buffer(instance.getAudioPluginBuffer(), 0));
         check(audio[0] == 0 && fake.blocks == before, "suspended block is silent and skips DSP");
+        uint32_t second[]{0x40914000, 0x80000000};
+        midi->length = sizeof(second); memcpy(midi + 1, second, sizeof(second));
+        other->length = 4; *reinterpret_cast<uint32_t*>(other + 1) = 0x2192417F;
+        instance.process(64, 0);
+        check(midi->length == 0 && other->length == 0 && fake.receivedWords == 0,
+              "skipped blocks consume shared inputs without prematurely delivering MIDI");
     }
+    uint32_t fresh[]{0x00200020, 0x2090457F};
+    midi->length = sizeof(fresh); memcpy(midi + 1, fresh, sizeof(fresh));
     instance.process(64, 0);
     check(fake.blocks > before, "DSP resumes after control work");
+    uint32_t expected[]{0x20804600, 0x20803C00, 0x40914000, 0x80000000, 0x00200020, 0x2090457F};
+    check(fake.receivedWords == std::size(expected) && !memcmp(fake.receivedMidi.data(), expected, sizeof(expected)),
+          "late note-off and MIDI2 note replay in order before fresh timestamped input");
+    check(fake.otherWords == 2 && fake.otherMidi[0] == 0x21823D00 && fake.otherMidi[1] == 0x2192417F,
+          "retained MIDI keeps its original port and order");
+    check(midi->length == 0 && other->length == 0, "all input ports reset after DSP consumes them");
+    instance.process(64, 0);
+    check(fake.receivedWords == std::size(expected) && fake.otherWords == 2, "retained events delivered once");
+    {
+        ProcessingQuiescence::Control suspension(instance.getRealtimeState().processing);
+        midi->length = 4; *reinterpret_cast<uint32_t*>(midi + 1) = 0x20904A7F;
+        instance.process(64, 0);
+    }
+    instance.deactivate(); instance.activate();
+    instance.process(64, 0);
+    check(fake.receivedWords == std::size(expected), "deactivation discards stale retained notes before reactivation");
     instance.stopExtensionWorker();
     // Context release follows the same order as PluginHost::destroyInstance.
     for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI}) {
@@ -319,6 +373,64 @@ void localProcessing() {
         instance.getAAPXSRegistry()->items()->getByUri(uri)->release_instance_context(
                 instance.getAAPXSRegistry()->items()->getByUri(uri), context->aapxs_context);
         context->aapxs_context = nullptr;
+    }
+}
+void deferredMidiBuffers() {
+    struct Buffer { AAPMidiBufferHeader header{}; std::array<uint32_t, 64> data{}; } buffer;
+    DeferredMidiInput input(32);
+    DeferredMidiInput recovery(16);
+    {
+        RealtimeScope realtime;
+        buffer.data[0] = 0x00200010; buffer.data[1] = 0x20803C00; buffer.header.length = 8;
+        input.capture(buffer.header);
+        buffer.data[0] = 0x40813D00; buffer.data[1] = 0; buffer.header.length = 8;
+        input.capture(buffer.header);
+        buffer.data[0] = 0x00200030; buffer.data[1] = 0x2090407F; buffer.header.length = 8;
+        input.capture(buffer.header, false);
+        input.drain(buffer.header, 12);
+        check(buffer.header.length == 12 && buffer.data[0] == 0x20803C00 && buffer.data[1] == 0x40813D00,
+              "drain stops at a complete packet and retains newer input");
+        input.age();
+        buffer.data[0] = 0x00200040; buffer.data[1] = 0x2090417F; buffer.header.length = 8;
+        input.capture(buffer.header, false); input.drain(buffer.header, 32);
+        check(buffer.header.length == 12 && buffer.data[0] == 0x2090407F && buffer.data[1] == 0x00200040 && buffer.data[2] == 0x2090417F,
+              "carried live input loses stale timing; new live timing remains intact");
+        input.reset();
+        for (unsigned i = 0; i < 16; ++i) {
+            buffer.data[i * 2] = 0x40803C00; buffer.data[i * 2 + 1] = i;
+        }
+        buffer.header.length = 128; input.capture(buffer.header);
+        for (unsigned i = 0; i < 16; ++i) {
+            buffer.header.length = 0; input.drain(buffer.header, 8);
+            check(buffer.header.length == 8 && buffer.data[1] == i, "FIFO packet order survives ring wrap");
+            if (i < 4) {
+                buffer.data[0] = 0x40803C00; buffer.data[1] = 16 + i; buffer.header.length = 8;
+                input.capture(buffer.header);
+            }
+        }
+        for (unsigned i = 16; i < 20; ++i) {
+            buffer.header.length = 0; input.drain(buffer.header, 8);
+            check(buffer.header.length == 8 && buffer.data[1] == i, "wrapped append retains full MIDI2 packets");
+        }
+        check(!input.pending(), "FIFO drains completely");
+        buffer.data[0] = 0x20903C7F; buffer.data[1] = 0x43954800; buffer.data[2] = 0x80000000;
+        buffer.header.length = 12; recovery.observe(buffer.header);
+        bool midi1Off = false, midi2Off = false;
+        for (unsigned block = 0; block < 16; ++block) {
+            // Repeated overload must not restart recovery and starve later channels.
+            for (unsigned i = 0; i < 20; ++i) buffer.data[i] = 0x20904A7F;
+            buffer.header.length = 80; recovery.capture(buffer.header);
+            recovery.drain(buffer.header, 8);
+            for (unsigned offset = 0; offset < buffer.header.length / 4;) {
+                auto word = buffer.data[offset];
+                midi1Off |= word == 0x20803C00;
+                midi2Off |= word == 0x43854800;
+                offset += cmidi2_ump_get_num_bytes(word) / 4;
+            }
+            if (!recovery.pending()) break;
+        }
+        check(recovery.overflowCount() > 1 && midi1Off && midi2Off && !recovery.pending(),
+              "overflow emits explicit MIDI1/MIDI2 note-offs on original groups/channels despite repeated overload");
     }
 }
 void layoutReadiness() {
@@ -811,7 +923,7 @@ void incomingControlAndTeardown(bool destroy) {
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
 int main() {
-    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); localProcessing(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
+    guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     incomingControlAndTeardown(false); incomingControlAndTeardown(true);
     deferredRecipientReply();
     puts("PASS: actual local/remote processing, cached proxies, notifications and suspension without locks or C++ allocation");

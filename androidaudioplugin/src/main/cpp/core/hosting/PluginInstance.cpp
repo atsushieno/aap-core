@@ -449,6 +449,8 @@ void aap::PluginInstance::deactivate() {
 
     plugin->deactivate(plugin);
     instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+    if (dynamic_cast<LocalPluginInstance*>(this))
+        realtime_state->reset_deferred_midi.store(true, std::memory_order_release);
     realtime_state->worker.notify();
 }
 

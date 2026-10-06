@@ -246,17 +246,7 @@ namespace aap {
         // and supposed to dispatch request to extension service
         void controlExtension(uint8_t urid, const std::string &uri, int32_t opcode, uint32_t requestId);
 
-        void prepare(int32_t maximumExpectedSamplesPerBlock, int32_t sampleRate) override {
-            if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
-                   instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
-                AAP_ASSERT_FALSE;
-                return;
-            }
-
-            sample_rate = sampleRate;
-            plugin->prepare(plugin, sampleRate, getAudioPluginBuffer());
-            instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
-        }
+        void prepare(int32_t maximumExpectedSamplesPerBlock, int32_t sampleRate) override;
 
         void addEventUmpOutput(void* input, int32_t size);
         void process(int32_t frameCount, int32_t timeoutInNanoseconds) override;

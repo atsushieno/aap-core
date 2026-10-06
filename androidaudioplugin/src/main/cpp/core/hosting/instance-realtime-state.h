@@ -8,6 +8,7 @@
 #include "legacy-aapxs-sender.h"
 #include "aap/core/aap_midi2_helper.h"
 #include "aap/ext/midi.h"
+#include "deferred-midi-input.h"
 
 namespace aap::internal {
 class AsyncParameterLayout;
@@ -31,6 +32,8 @@ struct InstanceRealtimeState {
     RecipientRequestStore recipient_requests;
     LegacyAAPXSSender legacy_sender;
     ProcessingQuiescence processing;
+    std::vector<std::unique_ptr<DeferredMidiInput>> deferred_midi; // indexed by port, DSP only
+    std::atomic<bool> reset_deferred_midi{false}; // lifecycle requests, applied by DSP
     std::mutex gui_read_mutex; // GUI consumers only; processing only publishes
     size_t gui_read_offset{0};
     std::mutex parameter_scan_mutex; // control/worker scans of this instance only

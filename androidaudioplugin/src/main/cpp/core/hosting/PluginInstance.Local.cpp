@@ -110,6 +110,33 @@ void aap::LocalPluginInstance::addEventUmpOutput(void* input, int32_t size) {
         realtime_state->ump_output.tryPush(input, static_cast<size_t>(size));
 }
 
+void aap::LocalPluginInstance::prepare(int32_t maximumExpectedSamplesPerBlock, int32_t sampleRate) {
+    (void) maximumExpectedSamplesPerBlock;
+    if (RealtimeScope::isActive()) return;
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
+        instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE) {
+        AAP_ASSERT_FALSE;
+        return;
+    }
+    // As for shared port-buffer allocation, prepare requires processing stopped.
+    // Retention is allocated from actual mapped capacities, never lazily by DSP.
+    auto buffer = getAudioPluginBuffer();
+    auto& deferred = realtime_state->deferred_midi;
+    deferred.clear();
+    deferred.resize(getNumPorts());
+    for (int i = 0; i < getNumPorts(); ++i) {
+        auto port = getPort(i);
+        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 || port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
+            continue;
+        auto size = buffer->get_buffer_size(buffer, i);
+        auto capacity = size > static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) ? size - sizeof(AAPMidiBufferHeader) : 0;
+        deferred[i] = std::make_unique<internal::DeferredMidiInput>(capacity);
+    }
+    sample_rate = sampleRate;
+    plugin->prepare(plugin, sampleRate, buffer);
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_INACTIVE;
+}
+
 void aap::LocalPluginInstance::pollExtensionWorker() {
     if (realtime_state->process_notification.exchange(false, std::memory_order_acq_rel))
         ((PluginService*) host)->requestProcessToHost(instance_id);
@@ -150,17 +177,26 @@ const char* local_trace_name = "AAP::LocalPluginInstance_process";
 void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
     RealtimeScope realtime;
     internal::ProcessingQuiescence::Process activity(realtime_state->processing);
+    if (realtime_state->reset_deferred_midi.exchange(false, std::memory_order_acq_rel))
+        for (auto& input : realtime_state->deferred_midi) if (input) input->reset();
     if (!activity || instantiation_state != PLUGIN_INSTANTIATION_STATE_ACTIVE) {
-        // Unsafe control work runs between blocks. Handoff extension requests, discard
-        // this block's MIDI input, and emit silence rather than waiting on the control thread.
+        // Unsafe control work runs between blocks. Handoff extension requests,
+        // retain ordinary MIDI per port, and emit silence without waiting.
+        if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) mergeQueuedUmp(AAP_PORT_DIRECTION_INPUT);
         auto buffer = getAudioPluginBuffer();
         for (int i = 0; i < getNumPorts(); ++i) {
             auto port = getPort(i);
             if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2) {
                 auto header = internal::getMidi2PortBuffer(buffer, i);
                 if (!header) continue;
-                if (port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                if (port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
                     internal::sysex8::filterOutMessages(header, realtime_state.get(), internal::queueAAPXSMidi2Input);
+                    if (i < static_cast<int>(realtime_state->deferred_midi.size()) && realtime_state->deferred_midi[i]) {
+                        auto& input = *realtime_state->deferred_midi[i];
+                        if (instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE) input.capture(*header);
+                        else input.reset();
+                    }
+                }
                 header->length = 0;
             } else if (port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT) {
                 auto data = buffer->get_buffer(buffer, i);
@@ -183,7 +219,6 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
     mergeQueuedUmp(AAP_PORT_DIRECTION_INPUT);
 
     // Copy AAPXS SysEx8 requests for extension-worker dispatch.
-    AAPMidiBufferHeader* mbh{nullptr};
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
         auto port = getPort(i);
         if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 ||
@@ -191,13 +226,28 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
             continue;
         void *data = internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
         internal::sysex8::filterOutMessages(data, realtime_state.get(), internal::queueAAPXSMidi2Input);
-        mbh = (AAPMidiBufferHeader*) data;
+        auto* header = static_cast<AAPMidiBufferHeader*>(data);
+        if (header && i < static_cast<int>(realtime_state->deferred_midi.size()) && realtime_state->deferred_midi[i]) {
+            auto& input = *realtime_state->deferred_midi[i];
+            if (input.pending()) {
+                input.age();
+                input.capture(*header, false);
+                auto size = getAudioPluginBuffer()->get_buffer_size(getAudioPluginBuffer(), i);
+                input.drain(*header, size > static_cast<int32_t>(sizeof(*header)) ? size - sizeof(*header) : 0);
+            }
+            input.observe(*header);
+        }
     }
 
     plugin->process(plugin, getAudioPluginBuffer(), frameCount, timeoutInNanoseconds);
 
-    if (mbh) // make sure to reset incoming length here
-        mbh->length = 0;
+    for (int i = 0; i < getNumPorts(); ++i) {
+        auto port = getPort(i);
+        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == AAP_PORT_DIRECTION_INPUT) {
+            auto* header = internal::getMidi2PortBuffer(getAudioPluginBuffer(), i);
+            if (header) header->length = 0;
+        }
+    }
 
     // The plugin may have written a broken output length.
     for (auto i = 0, n = getNumPorts(); i < n; i++) {
