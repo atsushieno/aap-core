@@ -1,10 +1,13 @@
 package org.androidaudioplugin.hosting
 
 import android.os.RemoteException
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
+import java.util.concurrent.Executor
 
 
 enum class InstanceState {
@@ -20,7 +23,27 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
                                  val client: Long) {
 
     // error handling
-    var state = InstanceState.UNPREPARED
+    @Volatile var state = InstanceState.UNPREPARED
+        set(value) {
+            field = value
+            if (value == InstanceState.DESTROYED || value == InstanceState.ERROR) metadata.invalidate()
+        }
+    private val metadata = NativeParameterMetadata.get(client, instanceId)
+
+    /** Latest complete metadata cache, independent of the discovery catalog. */
+    val parameterMetadata: ParameterMetadataSnapshot?
+        get() = metadata.publisher.latest
+
+    /**
+     * Observe complete metadata publications. Delivery defaults to Main and may coalesce.
+     * Closing the registration suppresses queued/future deliveries; an executing callback may finish.
+     * A custom executor must dispatch asynchronously to avoid holding up the native worker.
+     */
+    fun addParameterMetadataChangedListener(
+        executor: Executor = mainExecutor,
+        replayCurrent: Boolean = true,
+        listener: ParameterMetadataChangedListener
+    ): AutoCloseable = metadata.publisher.add(executor, replayCurrent, listener)
     private var proxyError: Exception? = null
 
     private fun runCatchingRemoteException(func: () -> Unit) {
@@ -62,9 +85,14 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         deactivate(client, instanceId)
         state = InstanceState.INACTIVE
     }
-    fun destroy() = runCatchingRemoteException {
-        destroy(client, instanceId)
-        state = InstanceState.DESTROYED
+    fun destroy() {
+        if (state == InstanceState.DESTROYED) return
+        metadata.invalidate()
+        try {
+            runCatchingRemoteException { destroy(client, instanceId) }
+        } finally {
+            state = InstanceState.DESTROYED
+        }
     }
 
     // standard extensions
@@ -157,6 +185,18 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     }
 
     companion object {
+        private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+        val mainExecutor: Executor by lazy { Executor { mainHandler.post(it) } }
+
+        internal fun readParameterMetadataSnapshot(nativeClient: Long, instanceId: Int) =
+            getParameterMetadataSnapshotNative(nativeClient, instanceId)
+        internal fun connectMetadataPublisher(nativeClient: Long, instanceId: Int, publisher: Any) =
+            connectParameterMetadataPublisherNative(nativeClient, instanceId, publisher)
+        @JvmStatic
+        private external fun getParameterMetadataSnapshotNative(nativeClient: Long, instanceId: Int): ParameterMetadataSnapshot?
+        @JvmStatic
+        private external fun connectParameterMetadataPublisherNative(nativeClient: Long, instanceId: Int, publisher: Any)
+
         fun create(pluginId: String, nativeClient: Long): NativeRemotePluginInstance {
             val instanceId = createRemotePluginInstance(pluginId, nativeClient)
             if (instanceId < 0)

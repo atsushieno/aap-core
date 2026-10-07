@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <vector>
+#include "aap/core/plugin-information.h"
 
 namespace aap {
 
@@ -34,6 +36,13 @@ void requestParameterLayoutRefresh(PluginInstance& instance);
 void setParameterLayoutRefreshReady(PluginInstance& instance);
 // Client side: invoked on the worker thread after each refresh, after parametersChangedHandler.
 void setParameterLayoutChangedListener(RemotePluginInstance& instance, std::function<void()> listener);
+// Separate snapshot publisher hook; legacy Java and public C++ listeners coexist with it.
+void setParameterMetadataChangedListener(RemotePluginInstance& instance, std::function<void()> listener);
+struct ParameterMetadataSnapshot {
+    uint64_t revision;
+    std::vector<ParameterInformation> parameters;
+};
+ParameterMetadataSnapshot getParameterMetadataSnapshot(PluginInstance& instance);
 // PluginHost::destroyInstance() calls them before and after `delete`.
 void closeParameterLayoutRefresh(PluginInstance& instance);
 void forgetParameterLayoutRefresh(PluginInstance& instance);

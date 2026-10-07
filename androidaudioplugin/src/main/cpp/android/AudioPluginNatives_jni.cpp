@@ -344,6 +344,143 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setParameterLayou
     });
 }
 
+namespace {
+// Cache classes in the initiating Java class loader; a native worker has no Java caller frame.
+struct JavaParameterMetadataSnapshotBuilder {
+    jclass parameter_class;
+    jclass snapshot_class;
+    jmethodID constructor;
+    jmethodID add_enum;
+    jmethodID from_native;
+
+    explicit JavaParameterMetadataSnapshotBuilder(JNIEnv* env) {
+        auto parameter = env->FindClass("org/androidaudioplugin/ParameterInformation");
+        auto snapshot = env->FindClass("org/androidaudioplugin/hosting/ParameterMetadataSnapshot");
+        parameter_class = static_cast<jclass>(env->NewGlobalRef(parameter));
+        snapshot_class = static_cast<jclass>(env->NewGlobalRef(snapshot));
+        constructor = env->GetMethodID(parameter_class, "<init>", "(ILjava/lang/String;DDD)V");
+        add_enum = env->GetMethodID(parameter_class, "addEnum", "(IDLjava/lang/String;)V");
+        from_native = env->GetStaticMethodID(snapshot_class, "fromNative",
+                "(J[Lorg/androidaudioplugin/ParameterInformation;)Lorg/androidaudioplugin/hosting/ParameterMetadataSnapshot;");
+        env->DeleteLocalRef(parameter);
+        env->DeleteLocalRef(snapshot);
+    }
+    ~JavaParameterMetadataSnapshotBuilder() {
+        JavaParameterLayoutListener::withJNIEnv([&](JNIEnv* env) {
+            env->DeleteGlobalRef(parameter_class);
+            env->DeleteGlobalRef(snapshot_class);
+        });
+    }
+    jobject create(JNIEnv* env, const aap::internal::ParameterMetadataSnapshot& snapshot) {
+        auto parameters = env->NewObjectArray(snapshot.parameters.size(), parameter_class, nullptr);
+        if (!parameters) return nullptr;
+        for (size_t index = 0; index < snapshot.parameters.size(); ++index) {
+            auto& parameter = snapshot.parameters[index];
+            auto name = env->NewStringUTF(parameter.getName());
+            auto object = env->NewObject(parameter_class, constructor, parameter.getId(), name,
+                    parameter.getMinimumValue(), parameter.getMaximumValue(), parameter.getDefaultValue());
+            const bool constructionFailed = env->ExceptionCheck();
+            env->DeleteLocalRef(name);
+            if (constructionFailed || !object) {
+                env->DeleteLocalRef(object);
+                env->DeleteLocalRef(parameters);
+                return nullptr;
+            }
+            for (int32_t enumIndex = 0; enumIndex < parameter.getEnumCount(); ++enumIndex) {
+                auto enumeration = parameter.getEnumeration(enumIndex);
+                auto enumName = env->NewStringUTF(enumeration.getName().c_str());
+                env->CallVoidMethod(object, add_enum, enumeration.getIndex(), enumeration.getValue(), enumName);
+                const bool enumFailed = env->ExceptionCheck();
+                env->DeleteLocalRef(enumName);
+                if (enumFailed) {
+                    env->DeleteLocalRef(object);
+                    env->DeleteLocalRef(parameters);
+                    return nullptr;
+                }
+            }
+            env->SetObjectArrayElement(parameters, index, object);
+            env->DeleteLocalRef(object);
+        }
+        auto result = env->CallStaticObjectMethod(snapshot_class, from_native,
+                static_cast<jlong>(snapshot.revision), parameters);
+        const bool conversionFailed = env->ExceptionCheck();
+        env->DeleteLocalRef(parameters);
+        return conversionFailed ? nullptr : result;
+    }
+};
+
+// Separate from the compatibility Runnable; its lifetime follows the native instance.
+struct JavaParameterMetadataPublisher {
+    jobject publisher;
+    jmethodID changed;
+    jmethodID destroyed;
+    JavaParameterMetadataSnapshotBuilder builder;
+
+    JavaParameterMetadataPublisher(JNIEnv* env, jobject object) : publisher(env->NewGlobalRef(object)), builder(env) {
+        auto klass = env->GetObjectClass(object);
+        changed = env->GetMethodID(klass, "onNativeMetadataChanged",
+                "(Lorg/androidaudioplugin/hosting/ParameterMetadataSnapshot;)V");
+        destroyed = env->GetMethodID(klass, "onNativeDestroyed", "()V");
+        env->DeleteLocalRef(klass);
+    }
+    void publish(const aap::internal::ParameterMetadataSnapshot& snapshot) {
+        JavaParameterLayoutListener::withJNIEnv([&](JNIEnv* env) {
+            auto value = builder.create(env, snapshot);
+            if (!env->ExceptionCheck()) env->CallVoidMethod(publisher, changed, value);
+            env->DeleteLocalRef(value);
+            if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
+        });
+    }
+    ~JavaParameterMetadataPublisher() {
+        JavaParameterLayoutListener::withJNIEnv([&](JNIEnv* env) {
+            env->CallVoidMethod(publisher, destroyed);
+            if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
+            env->DeleteGlobalRef(publisher);
+        });
+    }
+};
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_connectParameterMetadataPublisherNative(
+        JNIEnv* env, jclass, jlong clientHandle, jint instanceId, jobject publisher) {
+    auto* client = reinterpret_cast<aap::PluginClient*>(clientHandle);
+    auto* instance = client ? dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId)) : nullptr;
+    if (!instance) {
+        auto klass = env->FindClass("java/lang/IllegalStateException");
+        env->ThrowNew(klass, "Plugin instance no longer exists");
+        env->DeleteLocalRef(klass);
+        return;
+    }
+    auto klass = env->GetObjectClass(publisher);
+    auto identityMethod = env->GetMethodID(klass, "onServiceIdentity", "(ILjava/lang/String;Ljava/lang/String;)V");
+    auto packageName = env->NewStringUTF(instance->getPluginInformation()->getPluginPackageName().c_str());
+    auto className = env->NewStringUTF(instance->getPluginInformation()->getPluginLocalName().c_str());
+    auto connectionId = aap::AAPJniFacade::getInstance()->getConnectorInstanceId(client->getConnections());
+    env->CallVoidMethod(publisher, identityMethod, connectionId, packageName, className);
+    const bool identityFailed = env->ExceptionCheck();
+    env->DeleteLocalRef(klass);
+    env->DeleteLocalRef(packageName);
+    env->DeleteLocalRef(className);
+    if (identityFailed) return;
+    auto holder = std::make_shared<JavaParameterMetadataPublisher>(env, publisher);
+    // The worker owns instance lifetime until its dispatch returns. Do not look the instance
+    // up through the client's mutable instance vector while another thread removes it.
+    aap::internal::setParameterMetadataChangedListener(*instance, [holder, instance] {
+        holder->publish(aap::internal::getParameterMetadataSnapshot(*instance));
+    });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getParameterMetadataSnapshotNative(
+        JNIEnv* env, jclass, jlong clientHandle, jint instanceId) {
+    auto* client = reinterpret_cast<aap::PluginClient*>(clientHandle);
+    auto* instance = client ? client->getInstanceById(instanceId) : nullptr;
+    if (!instance) return nullptr;
+    JavaParameterMetadataSnapshotBuilder builder(env);
+    return builder.create(env, aap::internal::getParameterMetadataSnapshot(*instance));
+}
+
 // State extensions
 
 extern "C"

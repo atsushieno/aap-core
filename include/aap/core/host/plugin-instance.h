@@ -415,9 +415,8 @@ namespace aap {
         // Host developers can override this function to return their own extensions.
         std::function<void*(RemotePluginInstance *instance, uint8_t urid, const char *uri)> getHostExtension;
 
-        // Invoked when the plugin reports parameter metadata may have changed. The host no longer
-        // rebuilds parameter metadata automatically from this callback; hosts that need dynamic
-        // metadata refresh must schedule it explicitly from a safe context.
+        // Invoked on the extension worker after a complete refreshed metadata cache is published.
+        // Hosts can update their own models from that cache; no additional scan is required.
         std::function<void(RemotePluginInstance& instance)> parametersChangedHandler;
 
         void setupStandardExtensions();

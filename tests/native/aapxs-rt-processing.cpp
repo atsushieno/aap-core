@@ -1068,6 +1068,16 @@ void supersededLayoutRefresh(bool negotiated, bool failedOldReply) {
             int32_t requestId, int32_t opcode, aapxs_completion_callback callback, void* callbackContext, aapxs_error_callback errorCallback) {
         return static_cast<FakePlugin*>(context)->metadataHandler(size, requestId, opcode, callback, callbackContext, errorCallback);
     });
+    auto initialSnapshot = internal::getParameterMetadataSnapshot(instance);
+    std::atomic<int> legacyNotifications{0}, metadataNotifications{0};
+    internal::setParameterLayoutChangedListener(instance, [&] { ++legacyNotifications; });
+    internal::setParameterMetadataChangedListener(instance, [&] {
+        auto snapshot = internal::getParameterMetadataSnapshot(instance);
+        check(snapshot.revision > initialSnapshot.revision && snapshot.parameters.size() == 80 &&
+              !strcmp(snapshot.parameters.front().getName(), "current-layout"),
+              "bulk metadata snapshot pairs a new revision with a complete current layout");
+        ++metadataNotifications;
+    });
     instance.parametersChangedHandler = [&](auto& remote) {
         check(remote.getNumParameters() == 80 && !strcmp(remote.getParameter(0)->getName(), "current-layout"),
               "obsolete partial layout is never published");
@@ -1095,6 +1105,8 @@ void supersededLayoutRefresh(bool negotiated, bool failedOldReply) {
     else oldCompletion(oldContext, &fake.api);
     driveUntil([&] { return changes.load() != 0; });
     instance.stopExtensionWorker();
+    check(legacyNotifications == 1 && metadataNotifications == 1,
+          "public C++ handler, legacy Kotlin listener and snapshot publisher coexist");
     check(changes == 1 && fake.metadataRequests == (negotiated ? 323 : 643),
           "skip the obsolete scan tail and publish only one complete replacement");
 }

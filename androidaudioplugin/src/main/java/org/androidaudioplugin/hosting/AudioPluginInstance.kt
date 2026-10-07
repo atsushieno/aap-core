@@ -4,6 +4,7 @@ import android.os.RemoteException
 import android.util.Log
 import org.androidaudioplugin.*
 import java.nio.ByteBuffer
+import java.util.concurrent.Executor
 
 
 /*
@@ -103,6 +104,15 @@ class AudioPluginInstance internal constructor(
             state = InstanceState.DESTROYED
         }
     }
+
+    val parameterMetadata: ParameterMetadataSnapshot?
+        get() = native.parameterMetadata
+
+    fun addParameterMetadataChangedListener(
+        executor: Executor = NativeRemotePluginInstance.mainExecutor,
+        replayCurrent: Boolean = true,
+        listener: ParameterMetadataChangedListener
+    ): AutoCloseable = native.addParameterMetadataChangedListener(executor, replayCurrent, listener)
 
     // parameter/port/buffer manipulation
     fun getParameterCount() = native.getParameterCount()

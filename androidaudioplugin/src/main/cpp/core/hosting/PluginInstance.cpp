@@ -39,6 +39,8 @@ struct ParameterLayoutState {
     std::atomic<bool> ready{false};
     std::mutex listener_mutex{};
     std::function<void()> listener{};
+    std::function<void()> metadata_listener{};
+    uint64_t revision{0};
 };
 
 std::mutex parameter_layout_state_registry_mutex;
@@ -75,12 +77,16 @@ void refresh_parameter_layout(aap::PluginInstance* instance) {
         if (remote->parametersChangedHandler)
             remote->parametersChangedHandler(*remote);
         std::function<void()> listener;
+        std::function<void()> metadataListener;
         {
             const std::lock_guard<std::mutex> lock{layout->listener_mutex};
             listener = layout->listener;
+            metadataListener = layout->metadata_listener;
         }
         if (listener)
             listener();
+        if (metadataListener)
+            metadataListener();
     }
 }
 
@@ -140,9 +146,15 @@ aap::PluginInstance::~PluginInstance() {
     if (event_midi2_merge_buffer)
         free(event_midi2_merge_buffer);
 
+    // Release listener holders outside the registry lock: JNI teardown may reenter Kotlin.
+    std::unique_ptr<ParameterLayoutState> retiredLayout;
     {
         const std::lock_guard<std::mutex> lock{parameter_layout_state_registry_mutex};
-        parameter_layout_state_registry.erase(this);
+        auto it = parameter_layout_state_registry.find(this);
+        if (it != parameter_layout_state_registry.end()) {
+            retiredLayout = std::move(it->second);
+            parameter_layout_state_registry.erase(it);
+        }
     }
 }
 
@@ -284,6 +296,7 @@ void aap::PluginInstance::scanParametersAndBuildList() {
         layout->retired_lists.emplace_back(std::move(cached_parameters));
     cached_parameters = std::move(scannedParameters);
     published_parameters.store(cached_parameters.get(), std::memory_order_release);
+    ++layout->revision;
     publish_parameter_values(*this);
 }
 
@@ -678,16 +691,20 @@ void aap::PluginInstance::pollParameterLayoutRefresh() {
             if (cached_parameters) layout->retired_lists.emplace_back(std::move(cached_parameters));
             cached_parameters = std::make_unique<std::vector<ParameterInformation>>(std::move(result.value));
             published_parameters.store(cached_parameters.get(), std::memory_order_release);
+            ++layout->revision;
             publish_parameter_values(*this);
         }
         auto* layout = get_parameter_layout_state(this);
         std::function<void()> listener;
+        std::function<void()> metadataListener;
         {
             const std::lock_guard<std::mutex> lock{layout->listener_mutex};
             listener = layout->listener;
+            metadataListener = layout->metadata_listener;
         }
         if (remote->parametersChangedHandler) remote->parametersChangedHandler(*remote);
         if (listener) listener();
+        if (metadataListener) metadataListener();
         return;
     }
     if (realtime_state->layout_refresh.exchange(false, std::memory_order_acq_rel))
@@ -703,6 +720,25 @@ void aap::internal::setParameterLayoutChangedListener(aap::RemotePluginInstance&
     auto* layout = get_parameter_layout_state(&instance);
     const std::lock_guard<std::mutex> lock{layout->listener_mutex};
     layout->listener = std::move(listener);
+}
+
+void aap::internal::setParameterMetadataChangedListener(aap::RemotePluginInstance& instance, std::function<void()> listener) {
+    auto* layout = get_parameter_layout_state(&instance);
+    const std::lock_guard<std::mutex> lock{layout->listener_mutex};
+    layout->metadata_listener = std::move(listener);
+}
+
+aap::internal::ParameterMetadataSnapshot aap::internal::getParameterMetadataSnapshot(aap::PluginInstance& instance) {
+    auto* layout = get_parameter_layout_state(&instance);
+    const std::shared_lock<std::shared_mutex> lock{layout->list_mutex};
+    ParameterMetadataSnapshot snapshot{layout->revision, {}};
+    auto count = instance.getNumParameters();
+    snapshot.parameters.reserve(count);
+    for (int32_t index = 0; index < count; ++index) {
+        auto* parameter = instance.getParameter(index);
+        if (parameter) snapshot.parameters.push_back(*parameter);
+    }
+    return snapshot;
 }
 
 void aap::internal::closeParameterLayoutRefresh(aap::PluginInstance& instance) {

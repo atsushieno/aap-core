@@ -6,7 +6,10 @@ package org.androidaudioplugin.hosting
 class NativePluginClient(val native: Long) {
 
     // depending on how the native instance is created, it may or may not be invoked from Kotlin code.
-    fun dispose() = destroyInstance(native)
+    fun dispose() {
+        NativeParameterMetadata.invalidateClient(native)
+        destroyInstance(native)
+    }
 
     fun createInstanceFromExistingConnection(pluginId: String) : NativeRemotePluginInstance {
         return NativeRemotePluginInstance.create(pluginId, native)

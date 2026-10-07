@@ -293,6 +293,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                 (expectedConnection != null && found.platformServiceConnection !== expectedConnection))
                 return null
             connectedServices.remove(found)
+            NativeParameterMetadata.invalidateConnection(serviceConnectionId, found.serviceInfo.packageName, found.serviceInfo.className)
             AudioPluginNatives.removeBinderForClient(
                 serviceConnectionId, found.serviceInfo.packageName, found.serviceInfo.className
             )

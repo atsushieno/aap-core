@@ -82,7 +82,6 @@ class AudioPluginViewService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private lateinit var messenger: Messenger
-    lateinit var host: SurfaceControlViewHost
 
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     override val savedStateRegistry: SavedStateRegistry
