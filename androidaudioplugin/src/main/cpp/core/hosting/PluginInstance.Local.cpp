@@ -331,7 +331,7 @@ static inline bool staticSendAAPXSRequest(AAPXSInitiatorInstance* instance, AAPX
     return ((aap::LocalPluginInstance*) instance->host_context)->sendHostAAPXSRequest(context);
 }
 
-void aap::LocalPluginInstance::setupAAPXSInstances() {
+bool aap::LocalPluginInstance::setupAAPXSInstances() {
     auto store = getSharedMemoryStore();
     auto func = [&](const char* uri, AAPXSSerializationContext* serialization) {
         auto found = store->getExtensionUriToIndexMap().find(uri);
@@ -340,11 +340,18 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
         serialization->data = store->getExtensionBuffer(index);
         serialization->data_capacity = store->getExtensionBufferCapacity(index);
     };
-    aapxs_dispatcher.setupInstances(this,
+    if (!aapxs_dispatcher.setupInstances(this,
                                     func,
                                     staticSendAAPXSReply,
                                     staticSendAAPXSRequest,
-                                    staticGetNewRequestId);
+                                    staticGetNewRequestId,
+                                    [this](auto& initiator) {
+                                        initiator.plugin_id = pluginInfo->getPluginID().c_str();
+                                        initiator.request_metadata_refresh = [](auto* instance) {
+                                            internal::requestParameterLayoutRefresh(*static_cast<LocalPluginInstance*>(instance->host_context));
+                                        };
+                                    },
+                                    [this](auto& recipient) { recipient.plugin_id = pluginInfo->getPluginID().c_str(); })) return false;
     realtime_state->recipient_requests.setSender([this](const AAPXSRequestContext& request) {
         // Separate scratch storage from the recipient parser: deferred replies may
         // publish concurrently with worker parsing and use the original route even
@@ -364,6 +371,7 @@ void aap::LocalPluginInstance::setupAAPXSInstances() {
         host_extension_proxies[urid] = proxy.as_host_extension ? proxy.as_host_extension(&proxy) : nullptr;
     }
     startExtensionWorker();
+    return true;
 }
 
 void

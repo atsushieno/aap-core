@@ -20,6 +20,7 @@ const int32_t OPCODE_DESTROY_GUI = 5;
 const int32_t GUI_SHARED_MEMORY_SIZE = AAP_MAX_PLUGIN_ID_SIZE + sizeof(int32_t) + sizeof(void*);
 
 namespace aap::xs {
+    class GuiClientAAPXS;
     class AAPXSDefinition_Gui : public AAPXSDefinitionWrapper {
 
         static void aapxs_gui_process_incoming_plugin_aapxs_request(
@@ -43,18 +44,27 @@ namespace aap::xs {
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* request);
 
-        AAPXSDefinition aapxs_gui{this,
-                                  AAP_GUI_EXTENSION_URI,
-                                  GUI_SHARED_MEMORY_SIZE,
-                                  aapxs_gui_process_incoming_plugin_aapxs_request,
-                                  aapxs_gui_process_incoming_host_aapxs_request,
-                                  aapxs_gui_process_incoming_plugin_aapxs_reply,
-                                  aapxs_gui_process_incoming_host_aapxs_reply,
-                                  nullptr, // not sure if it is of any use
-                                  nullptr, // not sure if it is of any use
-                                  // All GUI commands are RT_UNSAFE (must not be invoked from the audio
-                                  // thread), so is_command_rt_safe is left null -> always Binder.
-                                  nullptr
+        AAPXSDefinition aapxs_gui{
+            this,
+            AAP_GUI_EXTENSION_URI,
+            GUI_SHARED_MEMORY_SIZE,
+            aapxs_gui_process_incoming_plugin_aapxs_request,
+            aapxs_gui_process_incoming_host_aapxs_request,
+            aapxs_gui_process_incoming_plugin_aapxs_reply,
+            aapxs_gui_process_incoming_host_aapxs_reply,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            initializeTypedAAPXSInitiator<GuiClientAAPXS>,
+            nullptr,
+            releaseTypedAAPXSInitiator,
+            nullptr
         };
 
     public:

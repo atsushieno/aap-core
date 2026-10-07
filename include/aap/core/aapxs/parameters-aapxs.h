@@ -125,6 +125,8 @@ namespace aap::xs {
         static uint32_t aapxs_parameters_request_flags(AAPXSDefinition*, bool, int32_t);
         static void aapxs_parameters_state_changed(AAPXSDefinition*, AAPXSRecipientInstance*, AndroidAudioPlugin*);
         static void aapxs_parameters_release_plugin_context(AAPXSDefinition*, void*);
+        static bool aapxs_parameters_initialize_recipient(AAPXSDefinition*, AAPXSRecipientInstance*, bool host);
+        static void aapxs_parameters_release_recipient(AAPXSDefinition*, AAPXSRecipientInstance*, bool host);
         static void aapxs_parameters_release_instance_context(struct AAPXSDefinition* feature, void* aapxsContext);
         static AAPXSExtensionHostReceiver aapxs_parameters_get_host_receiver(
                 struct AAPXSDefinition *feature,
@@ -132,7 +134,7 @@ namespace aap::xs {
                 AndroidAudioPluginHost *host);
 
         static void* aapxs_parameters_as_plugin_extension(AAPXSExtensionClientProxy* proxy) {
-            return proxy->aapxs_context;
+            return static_cast<ParametersClientAAPXS*>(proxy->aapxs_context)->asPluginExtension();
         }
 
         static void* aapxs_parameters_as_host_extension(AAPXSExtensionServiceProxy* proxy) {
@@ -153,20 +155,27 @@ namespace aap::xs {
             return opcode == OPCODE_PARAMETERS_GET_PARAMETER_COUNT;
         }
 
-        AAPXSDefinition aapxs_parameters{this,
-                                         AAP_PARAMETERS_EXTENSION_URI,
-                                         PARAMETERS_SHARED_MEMORY_SIZE,
-                                         aapxs_parameters_process_incoming_plugin_aapxs_request,
-                                         aapxs_parameters_process_incoming_host_aapxs_request,
-                                         aapxs_parameters_process_incoming_plugin_aapxs_reply,
-                                         aapxs_parameters_process_incoming_host_aapxs_reply,
-                                         aapxs_parameters_get_plugin_proxy,
-                                         aapxs_parameters_get_host_proxy,
-                                         aapxs_parameters_is_command_rt_safe,
-                                         aapxs_parameters_get_host_receiver,
-                                         aapxs_parameters_release_instance_context,
-                                         aapxs_parameters_request_flags, aapxs_parameters_state_changed, aapxs_parameters_release_plugin_context,
-                                         aapxs_parameters_outgoing_host_request
+        AAPXSDefinition aapxs_parameters{
+            this,
+            AAP_PARAMETERS_EXTENSION_URI,
+            PARAMETERS_SHARED_MEMORY_SIZE,
+            aapxs_parameters_process_incoming_plugin_aapxs_request,
+            aapxs_parameters_process_incoming_host_aapxs_request,
+            aapxs_parameters_process_incoming_plugin_aapxs_reply,
+            aapxs_parameters_process_incoming_host_aapxs_reply,
+            aapxs_parameters_get_plugin_proxy,
+            aapxs_parameters_get_host_proxy,
+            aapxs_parameters_is_command_rt_safe,
+            aapxs_parameters_get_host_receiver,
+            aapxs_parameters_release_instance_context,
+            aapxs_parameters_request_flags,
+            aapxs_parameters_state_changed,
+            aapxs_parameters_release_plugin_context,
+            aapxs_parameters_outgoing_host_request,
+            initializeTypedAAPXSInitiator<ParametersClientAAPXS , ParametersServiceAAPXS>,
+            aapxs_parameters_initialize_recipient,
+            releaseTypedAAPXSInitiator,
+            aapxs_parameters_release_recipient
         };
 
     public:

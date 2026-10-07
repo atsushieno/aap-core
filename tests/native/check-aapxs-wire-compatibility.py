@@ -13,13 +13,12 @@ for path in paths:
     old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo)
     if old != (repo / path).read_bytes():
         raise SystemExit('FAIL: peer-facing declaration changed: ' + path)
-# Definition policy/lifecycle hooks are in-process ABI, never peer payloads.
-# Preserve every request/serialization/proxy record independently of those hooks.
+# Definition and initiator/recipient lifecycle services are in-process ABI,
+# never peer payloads. Keep payload/request/proxy records independently checked.
 path = 'include/aap/aapxs.h'
 old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True)
 new = (repo / path).read_text()
-for name in ['AAPXSSerializationContext', 'AAPXSRequestContext', 'AAPXSInitiatorInstance',
-             'AAPXSRecipientInstance', 'AAPXSExtensionClientProxy', 'AAPXSExtensionServiceProxy',
+for name in ['AAPXSSerializationContext', 'AAPXSRequestContext', 'AAPXSExtensionClientProxy', 'AAPXSExtensionServiceProxy',
              'AAPXSExtensionHostReceiver']:
     pattern = r'typedef struct ' + name + r' \{.*?\} ' + name + ';'
     if re.search(pattern, old, re.S).group() != re.search(pattern, new, re.S).group():

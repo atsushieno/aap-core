@@ -1,5 +1,4 @@
 #include <atomic>
-#include <mutex>
 #include "aap/core/aapxs/presets-aapxs.h"
 #include "aap/core/host/plugin-instance.h"
 
@@ -35,6 +34,13 @@ uint32_t aap::xs::AAPXSDefinition_Presets::aapxs_presets_request_flags(AAPXSDefi
             return AAPXS_REQUEST_READ_ONLY;
         default: return 0;
     }
+}
+bool aap::xs::AAPXSDefinition_Presets::aapxs_presets_initialize_recipient(AAPXSDefinition*, AAPXSRecipientInstance* instance, bool host) {
+    if (!host) instance->aapxs_context = new PresetsCountSnapshot(-1);
+    return true;
+}
+void aap::xs::AAPXSDefinition_Presets::aapxs_presets_release_recipient(AAPXSDefinition* definition, AAPXSRecipientInstance* instance, bool host) {
+    if (!host) aapxs_presets_release_plugin_context(definition, instance->aapxs_context);
 }
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_state_changed(AAPXSDefinition*, AAPXSRecipientInstance* instance, AndroidAudioPlugin* plugin) {
     auto* extension = static_cast<aap_presets_extension_t*>(plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI));
@@ -144,13 +150,9 @@ AAPXSExtensionClientProxy
 aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_plugin_proxy(struct AAPXSDefinition *feature,
                                                                  AAPXSInitiatorInstance *aapxsInstance,
                                                                  AAPXSSerializationContext *serialization) {
+    (void) feature;
     (void) serialization;
-    auto client = (AAPXSDefinition_Presets*) feature->aapxs_context;
-    auto* instance = (aap::PluginInstance*) aapxsInstance->host_context;
-    client->client_proxy = AAPXSExtensionClientProxy{
-            instance ? instance->getStandardExtensions().asPresetsExtension() : nullptr,
-            aapxs_presets_as_plugin_extension};
-    return client->client_proxy;
+    return AAPXSExtensionClientProxy{aapxsInstance->aapxs_context, aapxs_presets_as_plugin_extension};
 }
 
 AAPXSExtensionServiceProxy
@@ -158,20 +160,14 @@ aap::xs::AAPXSDefinition_Presets::aapxs_presets_get_host_proxy(struct AAPXSDefin
                                                                AAPXSInitiatorInstance *aapxsInstance,
                                                                AAPXSSerializationContext *serialization) {
     (void) feature;
-    // One sender per plugin instance, owned through the instance's aapxs_context.
-    static std::mutex creation_mutex;
-    {
-        const std::lock_guard<std::mutex> lock{creation_mutex};
-        if (!aapxsInstance->aapxs_context)
-            aapxsInstance->aapxs_context = new PresetsServiceAAPXS(aapxsInstance, serialization);
-    }
+    (void) serialization;
     return AAPXSExtensionServiceProxy{aapxsInstance->aapxs_context, aapxs_presets_as_host_extension};
 }
 
 void aap::xs::AAPXSDefinition_Presets::aapxs_presets_release_instance_context(
         struct AAPXSDefinition* feature, void* aapxsContext) {
     (void) feature;
-    delete (PresetsServiceAAPXS*) aapxsContext;
+    delete static_cast<TypedAAPXS*>(aapxsContext);
 }
 
 AAPXSExtensionHostReceiver

@@ -11,6 +11,7 @@
 #include <atomic>
 #include <algorithm>
 #include <chrono>
+#include <type_traits>
 #include <cstdint>
 #include <string>
 #include <cstring>
@@ -31,23 +32,15 @@ namespace aap { class PluginInstance; }
 namespace aap::xs {
     class TypedAAPXS;
 
-    // Shared-owned registry of a plugin instance's async-capable AAPXS clients. Held by *both* the
-    // owning PluginInstance and every TypedAAPXS (via shared_ptr), so abort iteration and teardown
-    // are independent of member-destruction order. (An earlier version stored the mutex directly on
-    // the instance; a TypedAAPXS owned by a later-declared member outlived the mutex and crashed in
-    // pthread_mutex_lock during teardown.)
-    struct AsyncAbortRegistry {
-        std::mutex mutex;
-        std::vector<TypedAAPXS*> abortables;
-    };
-
     class TypedAAPXS {
         static thread_local unsigned blocking_depth;
         const char* uri;
     protected:
         AAPXSInitiatorInstance *aapxs_instance;
         AAPXSSerializationContext *serialization;
-        std::shared_ptr<AsyncAbortRegistry> abort_registry{};
+        void* abort_registration{};
+        void (*unregister_abort)(void*){};
+        std::shared_ptr<std::atomic<TypedAAPXS*>> lifetime{std::make_shared<std::atomic<TypedAAPXS*>>(this)};
 
     public:
         static bool isBlockingCall() { return blocking_depth != 0; }
@@ -291,10 +284,7 @@ namespace aap::xs {
             }
         }
 
-        // Registers/unregisters this instance with the owning plugin instance's abort registry,
-        // so a transport-level failure can fail its in-flight requests. Reaches the instance
-        // generically via `aapxs_instance->host_context` (the PluginInstance). Defined in the .cpp
-        // to keep this header free of a plugin-instance.h include (which would be circular).
+        // Uses only the public initiator lifecycle service; host_context is opaque.
         void registerForAbort();
         void unregisterForAbort();
 
@@ -305,7 +295,9 @@ namespace aap::xs {
         // service death). Cancel SysEx8 registrations and wait for any ongoing delivery before
         // releasing their request buffers; audio replies/timeouts may race the death handler.
         void failAllPending(const std::string& error) {
+            auto alive = lifetime;
             cancelPendingTransportRequests(error);
+            if (alive->load() != this) return;
             std::vector<std::pair<uint32_t, AsyncCall*>> pending;
             {
                 std::unique_lock<std::mutex> lock(calls_mutex);
@@ -313,8 +305,10 @@ namespace aap::xs {
                 for (auto& kv : in_flight)
                     pending.emplace_back(kv.first, kv.second.get());
             }
-            for (auto& entry : pending)
+            for (auto& entry : pending) {
+                if (alive->load() != this) break;
                 finishMatchingCall(entry.second, error, entry.first, true);
+            }
         }
 
         // Low-level async primitive. `payload` is copied, so it need not outlive this call.
@@ -370,14 +364,24 @@ namespace aap::xs {
         }
     };
 
+    template<class Client, class Service = void>
+    bool initializeTypedAAPXSInitiator(AAPXSDefinition*, AAPXSInitiatorInstance* instance, bool host) {
+        TypedAAPXS* client = nullptr;
+        if (!host) client = new Client(instance, instance->serialization);
+        else if constexpr (!std::is_void_v<Service>) client = new Service(instance, instance->serialization);
+        instance->aapxs_context = client;
+        instance->typed_client = client;
+        return true;
+    }
+    inline void releaseTypedAAPXSInitiator(AAPXSDefinition*, AAPXSInitiatorInstance* instance, bool) {
+        delete static_cast<TypedAAPXS*>(instance->typed_client);
+        instance->typed_client = nullptr;
+    }
+
     class AAPXSDefinitionWrapper {
     protected:
         AAPXSDefinitionWrapper() {}
 
-        std::unique_ptr<TypedAAPXS> typed_client{nullptr};
-        std::unique_ptr<TypedAAPXS> typed_service{nullptr};
-        AAPXSExtensionClientProxy client_proxy;
-        AAPXSExtensionServiceProxy service_proxy;
     public:
         virtual AAPXSDefinition& asPublic() = 0;
     };

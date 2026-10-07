@@ -24,52 +24,6 @@ aap::PluginHost::PluginHost(PluginListSnapshot* contextPluginList,
     aapxs_definition_registry = aapxsDefinitionRegistry ? aapxsDefinitionRegistry : xs::AAPXSDefinitionRegistry::getStandardExtensions();
 }
 
-namespace {
-
-struct AAPXSInstanceContext {
-    AAPXSDefinition* definition;
-    void* context;
-    void (*release)(AAPXSDefinition*, void*);
-};
-
-template <typename Dispatcher, typename GetInitiator, typename GetRecipient>
-void collectAAPXSInstanceContexts(aap::xs::AAPXSDefinitionRegistry* registry, Dispatcher& dispatcher,
-                                  GetInitiator getInitiator, GetRecipient getRecipient,
-                                  std::vector<AAPXSInstanceContext>& result, bool pluginRecipient) {
-    for (auto& definition : *registry) {
-        if (!definition.uri) continue;
-        if (auto initiator = getInitiator(dispatcher, definition.uri); initiator && initiator->aapxs_context && definition.release_instance_context) {
-            result.push_back({&definition, initiator->aapxs_context, definition.release_instance_context});
-            initiator->aapxs_context = nullptr;
-        }
-        auto release = pluginRecipient && definition.release_plugin_instance_context ?
-                definition.release_plugin_instance_context : definition.release_instance_context;
-        if (auto recipient = getRecipient(dispatcher, definition.uri); recipient && recipient->aapxs_context && release) {
-            result.push_back({&definition, recipient->aapxs_context, release});
-            recipient->aapxs_context = nullptr;
-        }
-    }
-}
-
-// Empty dispatchers return null. Collect initialized contexts even if creation failed
-// partway through, so a rejected factory result does not leak extension-owned contexts.
-std::vector<AAPXSInstanceContext> collectAAPXSInstanceContexts(aap::PluginInstance* instance) {
-    std::vector<AAPXSInstanceContext> result;
-    if (auto local = dynamic_cast<aap::LocalPluginInstance*>(instance))
-        collectAAPXSInstanceContexts(local->getAAPXSRegistry()->items(), local->getAAPXSDispatcher(),
-                                     [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
-                                     [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
-                                     result, true);
-    else if (auto remote = dynamic_cast<aap::RemotePluginInstance*>(instance))
-        collectAAPXSInstanceContexts(remote->getAAPXSRegistry()->items(), remote->getAAPXSDispatcher(),
-                                     [](auto& d, const char* uri) { return d.getPluginAAPXSByUri(uri); },
-                                     [](auto& d, const char* uri) { return d.getHostAAPXSByUri(uri); },
-                                     result, false);
-    return result;
-}
-
-}
-
 void aap::PluginHost::destroyInstance(PluginInstance* instance)
 {
     auto found = std::find(instances.begin(), instances.end(), instance);
@@ -78,12 +32,8 @@ void aap::PluginHost::destroyInstance(PluginInstance* instance)
     instances.erase(found);
     auto destroy = [instance] {
         instance->stopExtensionWorker();
-        // The plugin may hold pointers into these contexts until it is released (at `delete`).
-        auto aapxsContexts = collectAAPXSInstanceContexts(instance);
         internal::closeParameterLayoutRefresh(*instance);
         delete instance;
-        for (auto& c : aapxsContexts)
-            c.release(c.definition, c.context);
         internal::forgetParameterLayoutRefresh(*instance);
     };
     if (instance->isOnExtensionWorkerThread()) {

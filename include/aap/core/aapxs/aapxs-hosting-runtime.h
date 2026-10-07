@@ -140,6 +140,7 @@ namespace aap::xs {
     typedef bool (*aapxs_initiator_send_func) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
     typedef void (*aapxs_recipient_send_func) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
 
+    class AAPXSDefinitionRegistry;
     class AAPXSDispatcher {
     protected:
         AAPXSUridMapping<AAPXSInitiatorInstance> initiators;
@@ -152,6 +153,10 @@ namespace aap::xs {
                 : initiators(mapping), recipients(mapping) {
         }
 
+        bool initializeContexts(AAPXSDefinitionRegistry* registry, bool hostInitiator,
+                                const std::function<void(AAPXSInitiatorInstance&)>& configure,
+                                const std::function<void(AAPXSRecipientInstance&)>& configureRecipient);
+        void releaseContexts(AAPXSDefinitionRegistry* registry, bool hostInitiator);
         inline void addInitiator(AAPXSInitiatorInstance initiator, const char* uri) { initiators.add(initiator, uri); }
         inline void addRecipient(AAPXSRecipientInstance recipient, const char* uri) { recipients.add(recipient, uri); }
     public:
@@ -191,6 +196,7 @@ namespace aap::xs {
 
     public:
         AAPXSClientDispatcher(AAPXSDefinitionRegistry* registry);
+        ~AAPXSClientDispatcher();
 
         inline AAPXSInitiatorInstance* getPluginAAPXSByUri(const char* uri) { if (already_setup) return initiators.getByUri(uri); AAP_ASSERT_FALSE; return nullptr; }
         inline AAPXSInitiatorInstance* getPluginAAPXSByUrid(uint8_t urid) { if (already_setup) return initiators.getByUrid(urid); AAP_ASSERT_FALSE; return nullptr; }
@@ -204,7 +210,9 @@ namespace aap::xs {
                        std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester,
                        aapxs_initiator_send_func sendAAPXSRequest,
                        aapxs_recipient_send_func sendAAPXSReplyFunc,
-                       initiator_get_new_request_id_func initiatorGetNewRequestId);
+                       initiator_get_new_request_id_func initiatorGetNewRequestId,
+                       std::function<void(AAPXSInitiatorInstance&)> configureInitiator = {},
+                       std::function<void(AAPXSRecipientInstance&)> configureRecipient = {});
 
         AAPXSSerializationContext *getSerialization(const char *uri);
     };
@@ -238,12 +246,14 @@ namespace aap::xs {
         AAPXSDefinition* getDefinitionByUri(const char* uri) { return registry->getByUri(uri); }
         AAPXSDefinition* getDefinitionByUrid(uint8_t urid) { return registry->getByUrid(urid); }
 
-        void
+        bool
         setupInstances(void* hostContext,
                        std::function<void(const char*,AAPXSSerializationContext*)> extensionBufferAssigner,
                        aapxs_recipient_send_func sendAapxsReply,
                        aapxs_initiator_send_func sendAAPXSRequest,
-                       initiator_get_new_request_id_func initiatorGetNewRequestId);
+                       initiator_get_new_request_id_func initiatorGetNewRequestId,
+                       std::function<void(AAPXSInitiatorInstance&)> configureInitiator = {},
+                       std::function<void(AAPXSRecipientInstance&)> configureRecipient = {});
     };
 
     class AAPXSDefinitionClientRegistry {

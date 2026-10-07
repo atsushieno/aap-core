@@ -1,10 +1,9 @@
 #include <atomic>
-#include "../hosting/plugin-parameter-state.h"
 
-#include <mutex>
+
 #include "aap/core/aapxs/parameters-aapxs.h"
 #include "aap/android-audio-plugin.h"
-#include "aap/core/host/plugin-instance.h"
+
 #include "aap/unstable/utility.h"
 
 namespace {
@@ -27,8 +26,8 @@ aap_parameters_host_extension_t parameters_host_receiver{nullptr, notify_paramet
 // AAPXSDefinition_Parameters
 
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_outgoing_host_request(AAPXSDefinition*, AAPXSInitiatorInstance* instance, AAPXSRequestContext* request) {
-    if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && instance->host_context)
-        internal::requestParameterLayoutRefresh(*static_cast<PluginInstance*>(instance->host_context));
+    if (request->opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED && instance->request_metadata_refresh)
+        instance->request_metadata_refresh(instance);
 }
 uint32_t aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_request_flags(AAPXSDefinition* definition, bool host, int32_t opcode) {
     if (host) return (opcode == OPCODE_NOTIFY_PARAMETERS_CHANGED) ? AAPXS_REQUEST_STATE_CHANGED | AAPXS_REQUEST_COALESCE : 0u;
@@ -44,6 +43,13 @@ uint32_t aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_request_flags(AAP
             return AAPXS_REQUEST_READ_ONLY;
         default: return 0;
     }
+}
+bool aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_initialize_recipient(AAPXSDefinition*, AAPXSRecipientInstance* instance, bool host) {
+    if (!host) instance->aapxs_context = new ParametersCountSnapshot(-1);
+    return true;
+}
+void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_release_recipient(AAPXSDefinition* definition, AAPXSRecipientInstance* instance, bool host) {
+    if (!host) aapxs_parameters_release_plugin_context(definition, instance->aapxs_context);
 }
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_state_changed(AAPXSDefinition*, AAPXSRecipientInstance* instance, AndroidAudioPlugin* plugin) {
     auto* extension = static_cast<aap_parameters_extension_t*>(plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI));
@@ -154,33 +160,23 @@ void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_process_incoming_host
 AAPXSExtensionClientProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_plugin_proxy(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AAPXSSerializationContext *serialization) {
+    (void) feature;
     (void) serialization;
-    auto client = (AAPXSDefinition_Parameters*) feature->aapxs_context;
-    auto* instance = (aap::PluginInstance*) aapxsInstance->host_context;
-    client->client_proxy = AAPXSExtensionClientProxy{
-            instance ? instance->getStandardExtensions().asParametersExtension() : nullptr,
-            aapxs_parameters_as_plugin_extension};
-    return client->client_proxy;
+    return AAPXSExtensionClientProxy{aapxsInstance->aapxs_context, aapxs_parameters_as_plugin_extension};
 }
 
 AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_get_host_proxy(
         struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
         AAPXSSerializationContext *serialization) {
     (void) feature;
-    // One sender per plugin instance, owned through the instance's aapxs_context.
-    static std::mutex creation_mutex;
-    {
-        const std::lock_guard<std::mutex> lock{creation_mutex};
-        if (!aapxsInstance->aapxs_context)
-            aapxsInstance->aapxs_context = new ParametersServiceAAPXS(aapxsInstance, serialization);
-    }
+    (void) serialization;
     return AAPXSExtensionServiceProxy{aapxsInstance->aapxs_context, aapxs_parameters_as_host_extension};
 }
 
 void aap::xs::AAPXSDefinition_Parameters::aapxs_parameters_release_instance_context(
         struct AAPXSDefinition* feature, void* aapxsContext) {
     (void) feature;
-    delete (ParametersServiceAAPXS*) aapxsContext;
+    delete static_cast<TypedAAPXS*>(aapxsContext);
 }
 
 AAPXSExtensionHostReceiver

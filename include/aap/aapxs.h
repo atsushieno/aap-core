@@ -59,6 +59,24 @@ typedef struct AAPXSInitiatorInstance {
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer
     bool (*send_aapxs_request) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
+
+    // Optional, framework-owned cancellation service. Control threads only.
+    // A registration owns the lifetime needed by unregister_abort_handler, which
+    // must remain callable even after this initiator/framework instance is gone.
+    // Unregister excludes future delivery and waits for concurrent delivery;
+    // unregistering from the handler itself is supported.
+    void* lifecycle_context;
+    void* (*register_abort_handler)(AAPXSInitiatorInstance*, void* client_context,
+                                   void (*handler)(void*, const char* error));
+    void (*unregister_abort_handler)(void* registration);
+    // Optional C++ helper pointer (aap::xs::TypedAAPXS*), owned by the extension
+    // alongside aapxs_context. Consumers borrow it; they must not create a second
+    // standard client or release this helper. Null for implementations without it.
+    void* typed_client;
+    // Optional framework metadata/services. Borrowed plugin ID lives until
+    // teardown; request_metadata_refresh schedules control-thread refresh work.
+    const char* plugin_id;
+    void (*request_metadata_refresh)(AAPXSInitiatorInstance*);
 } AAPXSInitiatorInstance;
 
 // service instance for plugin extension API, and client instance for host extension API
@@ -72,6 +90,8 @@ typedef struct AAPXSRecipientInstance {
     // assigned by: framework reference implementation
     // invoked by: AAPXS developer
     void (*send_aapxs_reply) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
+    // Optional immutable framework metadata; host_context remains opaque.
+    const char* plugin_id;
 } AAPXSRecipientInstance;
 
 struct AAPXSExtensionClientProxy;
@@ -178,6 +198,10 @@ typedef struct AAPXSDefinition {
             bool isHostExtension,
             int32_t opcode);
 
+    /** Native host-extension fallback. The framework's built-in host extensions
+     * and the host's own implementation take precedence. This does not create
+     * an outgoing-request proxy. Borrowed receiver pointers live until teardown.
+     */
     struct AAPXSExtensionHostReceiver (*get_host_extension_receiver) (
             struct AAPXSDefinition* definition,
             AAPXSRecipientInstance *aapxsInstance,
@@ -204,6 +228,23 @@ typedef struct AAPXSDefinition {
     // Invoked for the actual outgoing request, after any notification handoff.
     // Extension-specific local effects belong here, not in the dispatcher.
     void (*on_outgoing_host_request)(AAPXSDefinition*, AAPXSInitiatorInstance*, AAPXSRequestContext*);
+
+    /** Control/setup lifecycle, never processing. is_host_extension describes
+     * the request target: false for client->plugin, true for plugin->host.
+     * The dispatcher initializes stable instance structs after mapping buffers
+     * and installing framework services, before publishing proxies or processing.
+     * Implementations own aapxs_context; definitions must not own instance state.
+     * Returning false rejects setup; contexts created so far are released.
+     */
+    bool (*initialize_initiator_instance)(AAPXSDefinition*, AAPXSInitiatorInstance*, bool is_host_extension);
+    bool (*initialize_recipient_instance)(AAPXSDefinition*, AAPXSRecipientInstance*, bool is_host_extension);
+    /** Called once for each non-null context, after plugin release and before
+     * instance structs/buffers are destroyed. Do not access host_context or send
+     * requests here. The dispatcher clears aapxs_context after return.
+     * These callbacks supersede the legacy release callbacks for that role.
+     */
+    void (*release_initiator_instance)(AAPXSDefinition*, AAPXSInitiatorInstance*, bool is_host_extension);
+    void (*release_recipient_instance)(AAPXSDefinition*, AAPXSRecipientInstance*, bool is_host_extension);
 } AAPXSDefinition;
 
 typedef struct AAPXSExtensionClientProxy {

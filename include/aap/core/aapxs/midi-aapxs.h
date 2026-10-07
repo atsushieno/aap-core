@@ -75,18 +75,27 @@ namespace aap::xs {
             return ((MidiClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
 
-        AAPXSDefinition aapxs_midi{this,
-                                   AAP_MIDI_EXTENSION_URI,
-                                   MIDI_SHARED_MEMORY_SIZE,
-                                   aapxs_midi_process_incoming_plugin_aapxs_request,
-                                   aapxs_midi_process_incoming_host_aapxs_request,
-                                   aapxs_midi_process_incoming_plugin_aapxs_reply,
-                                   aapxs_midi_process_incoming_host_aapxs_reply,
-                                   aapxs_midi_get_plugin_proxy,
-                                   nullptr, // no host extension
-                                   // get_mapping_policy is RT_UNSAFE (called once around configure()), so
-                                   // is_command_rt_safe is left null -> always Binder.
-                                   nullptr
+        AAPXSDefinition aapxs_midi{
+            this,
+            AAP_MIDI_EXTENSION_URI,
+            MIDI_SHARED_MEMORY_SIZE,
+            aapxs_midi_process_incoming_plugin_aapxs_request,
+            aapxs_midi_process_incoming_host_aapxs_request,
+            aapxs_midi_process_incoming_plugin_aapxs_reply,
+            aapxs_midi_process_incoming_host_aapxs_reply,
+            aapxs_midi_get_plugin_proxy,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            initializeTypedAAPXSInitiator<MidiClientAAPXS>,
+            nullptr,
+            releaseTypedAAPXSInitiator,
+            nullptr
         };
 
     public:

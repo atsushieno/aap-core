@@ -15,6 +15,7 @@
 #include "aap/core/AAPXSMidi2RecipientSession.h"
 #include "aap/core/AAPXSMidi2InitiatorSession.h"
 #include "aap/aapxs.h"
+#include "aap/core/aapxs/aapxs-lifecycle.h"
 #include "aap/core/aapxs/aapxs-hosting-runtime.h"
 
 #define AAP_CORE_REMOTE_NATIVE_UI_PREFERRED_SIZE 1
@@ -257,7 +258,7 @@ namespace aap {
         // AAPXS v2
         xs::AAPXSDefinitionServiceRegistry* getAAPXSRegistry() { return feature_registry.get(); }
         xs::AAPXSServiceDispatcher& getAAPXSDispatcher() { return aapxs_dispatcher; }
-        void setupAAPXSInstances();
+        bool setupAAPXSInstances();
         void sendPluginAAPXSReply(AAPXSRequestContext* request);
         // returns true if it is asynchronously invoked without waiting for result,
         // or false if it is synchronously completed.

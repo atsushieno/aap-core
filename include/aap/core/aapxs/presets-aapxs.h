@@ -112,6 +112,8 @@ namespace aap::xs {
         static uint32_t aapxs_presets_request_flags(AAPXSDefinition*, bool, int32_t);
         static void aapxs_presets_state_changed(AAPXSDefinition*, AAPXSRecipientInstance*, AndroidAudioPlugin*);
         static void aapxs_presets_release_plugin_context(AAPXSDefinition*, void*);
+        static bool aapxs_presets_initialize_recipient(AAPXSDefinition*, AAPXSRecipientInstance*, bool host);
+        static void aapxs_presets_release_recipient(AAPXSDefinition*, AAPXSRecipientInstance*, bool host);
         static void aapxs_presets_release_instance_context(struct AAPXSDefinition* feature, void* aapxsContext);
         static AAPXSExtensionHostReceiver aapxs_presets_get_host_receiver(
                 struct AAPXSDefinition *feature,
@@ -139,19 +141,27 @@ namespace aap::xs {
             return opcode == OPCODE_GET_PRESET_COUNT;
         }
 
-        AAPXSDefinition aapxs_presets{this,
-                                      AAP_PRESETS_EXTENSION_URI,
-                                      PRESETS_SHARED_MEMORY_SIZE,
-                                      aapxs_presets_process_incoming_plugin_aapxs_request,
-                                      aapxs_presets_process_incoming_host_aapxs_request,
-                                      aapxs_presets_process_incoming_plugin_aapxs_reply,
-                                      aapxs_presets_process_incoming_host_aapxs_reply,
-                                      aapxs_presets_get_plugin_proxy,
-                                      aapxs_presets_get_host_proxy,
-                                      aapxs_presets_is_command_rt_safe,
-                                      aapxs_presets_get_host_receiver,
-                                      aapxs_presets_release_instance_context,
-                                      aapxs_presets_request_flags, aapxs_presets_state_changed, aapxs_presets_release_plugin_context
+        AAPXSDefinition aapxs_presets{
+            this,
+            AAP_PRESETS_EXTENSION_URI,
+            PRESETS_SHARED_MEMORY_SIZE,
+            aapxs_presets_process_incoming_plugin_aapxs_request,
+            aapxs_presets_process_incoming_host_aapxs_request,
+            aapxs_presets_process_incoming_plugin_aapxs_reply,
+            aapxs_presets_process_incoming_host_aapxs_reply,
+            aapxs_presets_get_plugin_proxy,
+            aapxs_presets_get_host_proxy,
+            aapxs_presets_is_command_rt_safe,
+            aapxs_presets_get_host_receiver,
+            aapxs_presets_release_instance_context,
+            aapxs_presets_request_flags,
+            aapxs_presets_state_changed,
+            aapxs_presets_release_plugin_context,
+            nullptr,
+            initializeTypedAAPXSInitiator<PresetsClientAAPXS , PresetsServiceAAPXS>,
+            aapxs_presets_initialize_recipient,
+            releaseTypedAAPXSInitiator,
+            aapxs_presets_release_recipient
         };
 
     public:

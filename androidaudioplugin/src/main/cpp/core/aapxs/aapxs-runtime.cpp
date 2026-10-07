@@ -12,6 +12,57 @@ size_t aap::xs::AAPXSDispatcher::getBinderReplySize(const AAPXSSerializationCont
 void aap::xs::AAPXSDispatcher::receiveBinderRequest(AAPXSSerializationContext* context) const { if (shared_transport) shared_transport->receiveRequest(context); }
 void aap::xs::AAPXSDispatcher::publishBinderReplySize(AAPXSSerializationContext* context) const { if (shared_transport) shared_transport->publishReplySize(context); }
 
+bool aap::xs::AAPXSDispatcher::initializeContexts(AAPXSDefinitionRegistry* registry, bool hostInitiator,
+        const std::function<void(AAPXSInitiatorInstance&)>& configure,
+        const std::function<void(AAPXSRecipientInstance&)>& configureRecipient) {
+    try {
+        for (auto& definition : *registry) {
+            if (!definition.uri) continue;
+            auto* initiator = initiators.getByUri(definition.uri);
+            auto* recipient = recipients.getByUri(definition.uri);
+            if (configure) configure(*initiator);
+            if (configureRecipient) configureRecipient(*recipient);
+            if (definition.initialize_initiator_instance &&
+                !definition.initialize_initiator_instance(&definition, initiator, hostInitiator)) {
+                releaseContexts(registry, hostInitiator); return false;
+            }
+            if (definition.initialize_recipient_instance &&
+                !definition.initialize_recipient_instance(&definition, recipient, !hostInitiator)) {
+                releaseContexts(registry, hostInitiator); return false;
+            }
+        }
+    } catch (...) {
+        releaseContexts(registry, hostInitiator);
+        return false;
+    }
+    return true;
+}
+
+void aap::xs::AAPXSDispatcher::releaseContexts(AAPXSDefinitionRegistry* registry, bool hostInitiator) {
+    for (auto& definition : *registry) {
+        if (!definition.uri) continue;
+        auto* initiator = initiators.getByUri(definition.uri);
+        auto* recipient = recipients.getByUri(definition.uri);
+        if (initiator->aapxs_context) {
+            if (definition.release_initiator_instance)
+                definition.release_initiator_instance(&definition, initiator, hostInitiator);
+            else if (definition.release_instance_context)
+                definition.release_instance_context(&definition, initiator->aapxs_context);
+            initiator->aapxs_context = nullptr;
+            initiator->typed_client = nullptr;
+        }
+        if (recipient->aapxs_context) {
+            if (definition.release_recipient_instance)
+                definition.release_recipient_instance(&definition, recipient, !hostInitiator);
+            else if (hostInitiator && definition.release_plugin_instance_context)
+                definition.release_plugin_instance_context(&definition, recipient->aapxs_context);
+            else if (definition.release_instance_context)
+                definition.release_instance_context(&definition, recipient->aapxs_context);
+            recipient->aapxs_context = nullptr;
+        }
+    }
+}
+
 // Client setup
 
 aap::xs::AAPXSClientDispatcher::AAPXSClientDispatcher(AAPXSDefinitionRegistry *registry)
@@ -23,7 +74,9 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
                                                     std::function<bool(const char*, AAPXSSerializationContext*)> sharedMemoryAllocatingRequester,
                                                     aapxs_initiator_send_func sendAAPXSRequest,
                                                     aapxs_recipient_send_func sendAAPXSReply,
-                                                    initiator_get_new_request_id_func initiatorGetNewRequestId) {
+                                                    initiator_get_new_request_id_func initiatorGetNewRequestId,
+                                                    std::function<void(AAPXSInitiatorInstance&)> configureInitiator,
+                                                    std::function<void(AAPXSRecipientInstance&)> configureRecipient) {
     if (already_setup) {
         AAP_ASSERT_FALSE; // should not reach here
         return false;
@@ -57,7 +110,7 @@ bool aap::xs::AAPXSClientDispatcher::setupInstances(void* hostContext,
     }))
         return false;
     already_setup = true;
-    return true;
+    return initializeContexts(registry, false, configureInitiator, configureRecipient);
 }
 
 AAPXSInitiatorInstance aap::xs::AAPXSClientDispatcher::populateAAPXSInitiatorInstance(
@@ -99,32 +152,24 @@ aap::xs::AAPXSServiceDispatcher::AAPXSServiceDispatcher(AAPXSDefinitionRegistry 
     shared_transport = std::make_shared<internal::SharedAAPXSTransport>();
 }
 
-aap::xs::AAPXSServiceDispatcher::~AAPXSServiceDispatcher() {
-    if (!already_setup) return;
-    for (auto& definition : *registry) {
-        if (!definition.uri) continue;
-        auto* recipient = getPluginAAPXSByUri(definition.uri);
-        auto release = definition.release_plugin_instance_context ? definition.release_plugin_instance_context : definition.release_instance_context;
-        if (recipient && recipient->aapxs_context && release) {
-            release(&definition, recipient->aapxs_context);
-            recipient->aapxs_context = nullptr;
-        }
-        auto* initiator = getHostAAPXSByUri(definition.uri);
-        if (initiator && initiator->aapxs_context && definition.release_instance_context) {
-            definition.release_instance_context(&definition, initiator->aapxs_context);
-            initiator->aapxs_context = nullptr;
-        }
-    }
+aap::xs::AAPXSClientDispatcher::~AAPXSClientDispatcher() {
+    releaseContexts(registry, false);
 }
 
-void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
+aap::xs::AAPXSServiceDispatcher::~AAPXSServiceDispatcher() {
+    releaseContexts(registry, true);
+}
+
+bool aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
                                                      std::function<void(const char*,AAPXSSerializationContext*)> extensionBufferAssigner,
                                                      aapxs_recipient_send_func sendAapxsReply,
                                                      aapxs_initiator_send_func sendAAPXSRequest,
-                                                     initiator_get_new_request_id_func initiatorGetNewRequestId) {
+                                                     initiator_get_new_request_id_func initiatorGetNewRequestId,
+                                                     std::function<void(AAPXSInitiatorInstance&)> configureInitiator,
+                                                    std::function<void(AAPXSRecipientInstance&)> configureRecipient) {
     if (already_setup) {
         AAP_ASSERT_FALSE; // should not reach here
-        return;
+        return false;
     }
 
     AAPXSSerializationContext descriptor{};
@@ -151,6 +196,7 @@ void aap::xs::AAPXSServiceDispatcher::setupInstances(void* hostContext,
     });
     shared_transport->acceptService();
     already_setup = true;
+    return initializeContexts(registry, true, configureInitiator, configureRecipient);
 }
 
 AAPXSRecipientInstance

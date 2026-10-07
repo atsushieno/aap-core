@@ -197,7 +197,9 @@ public:
 
         // we kinda need to call setupAAPXSInstances() *before* completeInstantiation() because otherwise plugin constructors have no access to host extension.
         // We need to call completeInstantiation() *before* setupAAPXS() because service standard extensions require AndroidAudioPlugin*.
-        instance->setupAAPXSInstances();
+        if (!instance->setupAAPXSInstances())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_CREATE_INSTANCE_FAILED, "AAPXS instance context initialization failed.");
         instance->completeInstantiation();
         if (instance->getInstanceState() != PLUGIN_INSTANTIATION_STATE_UNPREPARED)
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(

@@ -1,7 +1,7 @@
 
 #include "aap/core/aapxs/midi-aapxs.h"
 #include "../AAPJniFacade.h"
-#include "aap/core/host/plugin-instance.h"
+
 #include "midi-policy-payload.h"
 #include <array>
 
@@ -21,9 +21,7 @@ void aap::xs::AAPXSDefinition_Midi::aapxs_midi_process_incoming_plugin_aapxs_req
                 aapxsInstance->send_aapxs_reply(aapxsInstance, request);
                 break;
             }
-            auto* instance = static_cast<aap::PluginInstance*>(aapxsInstance->host_context);
-            auto* info = instance ? instance->getPluginInformation() : nullptr;
-            auto pluginId = internal::readMidiPolicyPluginId(*data, info ? info->getPluginID() : std::string{});
+            auto pluginId = internal::readMidiPolicyPluginId(*data, aapxsInstance->plugin_id ? aapxsInstance->plugin_id : "");
             int32_t midiSettings = pluginId.empty() ? AAP_PARAMETERS_MAPPING_POLICY_NONE : getMidiSettingsFromLocalConfig2(pluginId);
             memcpy(data->data, &midiSettings, sizeof(midiSettings));
             data->data_size = sizeof(midiSettings);
@@ -57,18 +55,16 @@ AAPXSExtensionClientProxy
 aap::xs::AAPXSDefinition_Midi::aapxs_midi_get_plugin_proxy(struct AAPXSDefinition *feature,
                                                            AAPXSInitiatorInstance *aapxsInstance,
                                                            AAPXSSerializationContext *serialization) {
-    auto client = (AAPXSDefinition_Midi*) feature->aapxs_context;
-    client->typed_client = std::make_unique<MidiClientAAPXS>(aapxsInstance, serialization);
-    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_midi_as_plugin_extension};
-    return client->client_proxy;
+    (void) feature;
+    (void) serialization;
+    return AAPXSExtensionClientProxy{aapxsInstance->aapxs_context, aapxs_midi_as_plugin_extension};
 }
 
 enum aap_midi_mapping_policy aap::xs::MidiClientAAPXS::getMidiMappingPolicy() {
     if (aap::RealtimeScope::isActive()) return AAP_PARAMETERS_MAPPING_POLICY_NONE;
-    auto* instance = static_cast<aap::PluginInstance*>(aapxs_instance->host_context);
-    auto* info = instance ? instance->getPluginInformation() : nullptr;
+
     std::array<char, MIDI_SHARED_MEMORY_SIZE> payload{};
-    auto size = internal::writeMidiPolicyPluginId(payload.data(), payload.size(), info ? info->getPluginID() : std::string{});
+    auto size = internal::writeMidiPolicyPluginId(payload.data(), payload.size(), aapxs_instance->plugin_id ? aapxs_instance->plugin_id : "");
     if (!size)
         return AAP_PARAMETERS_MAPPING_POLICY_NONE;
     auto result = callAndWait<int32_t>(OPCODE_GET_MAPPING_POLICY, payload.data(), size,

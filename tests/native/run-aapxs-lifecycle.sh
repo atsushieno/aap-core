@@ -22,7 +22,7 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 for configuration in debug release; do
     if [ "$configuration" = release ]; then define=-DNDEBUG; else define=-UNDEBUG; fi
-    for test in ${AAPXS_TESTS:-zero-id typed-completion request-pool lifecycle metadata connections session-isolation sync-waits binder-completion sized-replies parameter-context state-size event-worker recipient-replies legacy-sender rt-handoffs rt-replies rt-parameters rt-processing}; do
+    for test in ${AAPXS_TESTS:-zero-id typed-completion request-pool lifecycle metadata connections session-isolation sync-waits binder-completion sized-replies parameter-context instance-contexts state-size event-worker recipient-replies legacy-sender rt-handoffs rt-replies rt-parameters rt-processing}; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then
@@ -33,6 +33,17 @@ for configuration in debug release; do
         fi
         if [ "$test" = parameter-context ]; then
             set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/aapxs/parameters-aapxs.cpp"
+        fi
+        if [ "$test" = instance-contexts ]; then
+            set -- "$@" -include "$script_dir/midi-jni-stub.h" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/aapxs-runtime.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/standard-extensions.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/parameters-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/presets-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/state-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/midi-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/urid-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/gui-aapxs.cpp"
         fi
         if [ "$test" = rt-processing ]; then
             if [ "$(uname -s)" = Darwin ]; then set -- "$@" -Wl,-export_dynamic; fi

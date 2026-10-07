@@ -75,18 +75,27 @@ namespace aap::xs {
             return ((UridClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
 
-        AAPXSDefinition aapxs_urid{this,
-                                   AAP_URID_EXTENSION_URI,
-                                   URID_SHARED_MEMORY_SIZE,
-                                   aapxs_urid_process_incoming_plugin_aapxs_request,
-                                   aapxs_urid_process_incoming_host_aapxs_request,
-                                   aapxs_urid_process_incoming_plugin_aapxs_reply,
-                                   aapxs_urid_process_incoming_host_aapxs_reply,
-                                   aapxs_urid_get_plugin_proxy,
-                                   nullptr, // no host extension
-                                   // urid map is RT_UNSAFE (consumed once around configure() at
-                                   // UNPREPARED state), so is_command_rt_safe is left null -> always Binder.
-                                   nullptr
+        AAPXSDefinition aapxs_urid{
+            this,
+            AAP_URID_EXTENSION_URI,
+            URID_SHARED_MEMORY_SIZE,
+            aapxs_urid_process_incoming_plugin_aapxs_request,
+            aapxs_urid_process_incoming_host_aapxs_request,
+            aapxs_urid_process_incoming_plugin_aapxs_reply,
+            aapxs_urid_process_incoming_host_aapxs_reply,
+            aapxs_urid_get_plugin_proxy,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            initializeTypedAAPXSInitiator<UridClientAAPXS>,
+            nullptr,
+            releaseTypedAAPXSInitiator,
+            nullptr
         };
 
     public:

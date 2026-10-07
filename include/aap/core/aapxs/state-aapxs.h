@@ -99,15 +99,27 @@ namespace aap::xs {
             return ((StateClientAAPXS*) proxy->aapxs_context)->asPluginExtension();
         }
 
-        AAPXSDefinition aapxs_state{     this,
-                                         AAP_STATE_EXTENSION_URI,
-                                         STATE_SHARED_MEMORY_SIZE,
-                                         aapxs_state_process_incoming_plugin_aapxs_request,
-                                         aapxs_state_process_incoming_host_aapxs_request,
-                                         aapxs_state_process_incoming_plugin_aapxs_reply,
-                                         aapxs_state_process_incoming_host_aapxs_reply,
-                                         aapxs_state_get_plugin_proxy,
-                                         nullptr // no host extension
+        AAPXSDefinition aapxs_state{
+            this,
+            AAP_STATE_EXTENSION_URI,
+            STATE_SHARED_MEMORY_SIZE,
+            aapxs_state_process_incoming_plugin_aapxs_request,
+            aapxs_state_process_incoming_host_aapxs_request,
+            aapxs_state_process_incoming_plugin_aapxs_reply,
+            aapxs_state_process_incoming_host_aapxs_reply,
+            aapxs_state_get_plugin_proxy,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            initializeTypedAAPXSInitiator<StateClientAAPXS>,
+            nullptr,
+            releaseTypedAAPXSInitiator,
+            nullptr
         };
 
     public:

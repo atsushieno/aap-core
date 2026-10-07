@@ -71,15 +71,15 @@ namespace aap::xs {
 
     class ClientStandardExtensions : public StandardExtensions {
         bool initialized{false};
-        std::unique_ptr<MidiClientAAPXS> midi{nullptr};
-        std::unique_ptr<ParametersClientAAPXS> parameters{nullptr};
-        std::unique_ptr<PresetsClientAAPXS> presets{nullptr};
-        std::unique_ptr<StateClientAAPXS> state{nullptr};
-        std::unique_ptr<GuiClientAAPXS> gui{nullptr};
-        std::unique_ptr<UridClientAAPXS> urid{nullptr};
+        MidiClientAAPXS* midi{nullptr};
+        ParametersClientAAPXS* parameters{nullptr};
+        PresetsClientAAPXS* presets{nullptr};
+        StateClientAAPXS* state{nullptr};
+        GuiClientAAPXS* gui{nullptr};
+        UridClientAAPXS* urid{nullptr};
 
     public:
-        // These proxies are owned by this instance and constructed before processing.
+        // These clients are owned by their AAPXS instance contexts. Hosting only borrows them.
         void* asNativePluginExtension(const char* uri) {
             if (!uri) return nullptr;
             if (!strcmp(uri, AAP_MIDI_EXTENSION_URI)) return midi ? midi->asPluginExtension() : nullptr;
@@ -92,59 +92,73 @@ namespace aap::xs {
         void initialize(AAPXSClientDispatcher* dispatcher) {
             if (initialized)
                 return;
-            midi = std::make_unique<MidiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_MIDI_EXTENSION_URI), dispatcher->getSerialization(AAP_MIDI_EXTENSION_URI));
-            parameters = std::make_unique<ParametersClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI), dispatcher->getSerialization(AAP_PARAMETERS_EXTENSION_URI));
-            presets = std::make_unique<PresetsClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_PRESETS_EXTENSION_URI), dispatcher->getSerialization(AAP_PRESETS_EXTENSION_URI));
-            state = std::make_unique<StateClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_STATE_EXTENSION_URI), dispatcher->getSerialization(AAP_STATE_EXTENSION_URI));
-            gui = std::make_unique<GuiClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_GUI_EXTENSION_URI), dispatcher->getSerialization(AAP_GUI_EXTENSION_URI));
-            urid = std::make_unique<UridClientAAPXS>(dispatcher->getPluginAAPXSByUri(AAP_URID_EXTENSION_URI), dispatcher->getSerialization(AAP_URID_EXTENSION_URI));
+            auto borrow = [dispatcher](const char* uri) -> TypedAAPXS* {
+                auto* instance = dispatcher->getPluginAAPXSByUri(uri);
+                return instance ? static_cast<TypedAAPXS*>(instance->typed_client) : nullptr;
+            };
+            midi = dynamic_cast<MidiClientAAPXS*>(borrow(AAP_MIDI_EXTENSION_URI));
+            parameters = dynamic_cast<ParametersClientAAPXS*>(borrow(AAP_PARAMETERS_EXTENSION_URI));
+            presets = dynamic_cast<PresetsClientAAPXS*>(borrow(AAP_PRESETS_EXTENSION_URI));
+            state = dynamic_cast<StateClientAAPXS*>(borrow(AAP_STATE_EXTENSION_URI));
+            gui = dynamic_cast<GuiClientAAPXS*>(borrow(AAP_GUI_EXTENSION_URI));
+            urid = dynamic_cast<UridClientAAPXS*>(borrow(AAP_URID_EXTENSION_URI));
             initialized = true;
         }
 
         // URID
-        void map(uint8_t uridValue, const char* uri) { return urid->map(uridValue, uri); }
+        void map(uint8_t uridValue, const char* uri) { if (urid) urid->map(uridValue, uri); }
 
         // MIDI
-        int32_t getMidiMappingPolicy() override { return midi->getMidiMappingPolicy(); }
+        int32_t getMidiMappingPolicy() override { return midi ? midi->getMidiMappingPolicy() : AAP_PARAMETERS_MAPPING_POLICY_NONE; }
 
         // Parameters
-        int32_t getParameterCount() override { return parameters->getParameterCount(); }
-        aap_parameter_info_t getParameter(int32_t index) override { return parameters->getParameter(index); }
-        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters->getProperty(index, propertyId); }
-        int32_t getEnumerationCount(int32_t index) override { return parameters->getEnumerationCount(index); }
-        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters->getEnumeration(index, enumIndex); }
+        int32_t getParameterCount() override { return parameters ? parameters->getParameterCount() : -1; }
+        aap_parameter_info_t getParameter(int32_t index) override { return parameters ? parameters->getParameter(index) : aap_parameter_info_t{}; }
+        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters ? parameters->getProperty(index, propertyId) : 0.0; }
+        int32_t getEnumerationCount(int32_t index) override { return parameters ? parameters->getEnumerationCount(index) : 0; }
+        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters ? parameters->getEnumeration(index, enumIndex) : aap_parameter_enum_t{}; }
         aap_parameters_extension_t* asParametersExtension() override { return parameters ? parameters->asPluginExtension() : nullptr; }
 
         // Presets
-        int32_t getPresetCount() override { return presets->getPresetCount(); }
+        int32_t getPresetCount() override { return presets ? presets->getPresetCount() : 0; }
         // OBSOLETE: use getPresetAsync() instead.
         Result<bool> getPreset(int32_t index, aap_preset_t& preset) override {
+            if (aap::RealtimeScope::isActive()) return {false, "RT caller"};
+            if (!presets) return {false, "presets extension unavailable"};
             auto error = presets->getPreset(index, preset);
             return Result<bool>{error.empty(), error};
         }
         std::string getPresetName(int32_t index) override {
+            if (!presets) return "";
             aap_preset_t preset{};
             presets->getPreset(index, preset);
             return preset.name;
         }
         // OBSOLETE: use setPresetIndexAsync() instead.
         Result<bool> setCurrentPresetIndex(int32_t index) override {
+            if (aap::RealtimeScope::isActive()) return {false, "RT caller"};
+            if (!presets) return {false, "presets extension unavailable"};
             auto error = presets->setPresetIndex(index);
             return Result<bool>{error.empty(), error};
         }
         int32_t getPresetAsync(int32_t index, std::function<void(Result<aap_preset_t>)> callback) override {
+            if (aap::RealtimeScope::isActive()) return -1;
+            if (!presets) { if (callback) callback({{}, "presets extension unavailable"}); return -1; }
             return presets->getPresetAsync(index, std::move(callback));
         }
         int32_t setPresetIndexAsync(int32_t index, std::function<void(Result<bool>)> callback) override {
+            if (aap::RealtimeScope::isActive()) return -1;
+            if (!presets) { if (callback) callback({{}, "presets extension unavailable"}); return -1; }
             return presets->setPresetIndexAsync(index, std::move(callback));
         }
         aap_presets_extension_t* asPresetsExtension() override { return presets ? presets->asPluginExtension() : nullptr; }
 
         // State
-        Result<size_t> getStateSize() override { return state->getStateSize(); }
+        Result<size_t> getStateSize() override { if (aap::RealtimeScope::isActive()) return {0, "RT caller"}; return state ? state->getStateSize() : Result<size_t>{0, "state extension unavailable"}; }
         // OBSOLETE: use requestStateAsync() instead.
         Result<aap_state_t> getState() override {
             if (aap::RealtimeScope::isActive()) return {{nullptr, 0}, "RT caller"};
+            if (!state) return {{nullptr, 0}, "state extension unavailable"};
             if (tmp_state_capacity < static_cast<size_t>(STATE_SHARED_MEMORY_SIZE)) {
                 if (tmp_state.data)
                     free(tmp_state.data);
@@ -157,22 +171,28 @@ namespace aap::xs {
         }
         // OBSOLETE: use setStateAsync() instead.
         Result<bool> setState(aap_state_t& stateToLoad) override {
+            if (aap::RealtimeScope::isActive()) return {false, "RT caller"};
+            if (!state) return {false, "state extension unavailable"};
             auto error = state->setState(stateToLoad);
             return Result<bool>{error.empty(), error};
         }
         int32_t requestStateAsync(std::function<void(Result<aap_state_t>)> callback) override {
+            if (aap::RealtimeScope::isActive()) return -1;
+            if (!state) { if (callback) callback({{}, "state extension unavailable"}); return -1; }
             return state->requestStateAsync(std::move(callback));
         }
         int32_t setStateAsync(aap_state_t& stateToLoad, std::function<void(Result<bool>)> callback) override {
+            if (aap::RealtimeScope::isActive()) return -1;
+            if (!state) { if (callback) callback({{}, "state extension unavailable"}); return -1; }
             return state->setStateAsync(stateToLoad, std::move(callback));
         }
 
         // Gui
-        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui->createGui(pluginId, instanceId, audioPluginView); }
-        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui->showGui(guiInstanceId); }
-        int32_t hideGui(aap_gui_instance_id guiInstanceId) override { return gui->hideGui(guiInstanceId); }
-        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui->resizeGui(guiInstanceId, width, height); }
-        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { return gui->destroyGui(guiInstanceId); }
+        aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->createGui(pluginId, instanceId, audioPluginView) : -1; }
+        int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->showGui(guiInstanceId) : -1; }
+        int32_t hideGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->hideGui(guiInstanceId) : -1; }
+        int32_t resizeGui(aap_gui_instance_id guiInstanceId, int32_t width, int32_t height) override { return gui ? gui->resizeGui(guiInstanceId, width, height) : -1; }
+        int32_t destroyGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->destroyGui(guiInstanceId) : -1; }
     };
 
     class ServiceStandardExtensions : public StandardExtensions {

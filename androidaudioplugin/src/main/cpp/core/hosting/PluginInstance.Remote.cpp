@@ -331,7 +331,12 @@ bool aap::RemotePluginInstance::setupAAPXSInstances(std::function<bool(const cha
                                            sharedMemoryAllocatingRequester,
                                            staticSendAAPXSRequest,
                                            staticSendAAPXSReply,
-                                           staticGetNewRequestId))
+                                           staticGetNewRequestId,
+                                           [this](auto& initiator) {
+                                               async_abort_registry->attach(initiator);
+                                               initiator.plugin_id = pluginInfo->getPluginID().c_str();
+                                           },
+                                           [this](auto& recipient) { recipient.plugin_id = pluginInfo->getPluginID().c_str(); }))
         return false;
     standards->initialize(&aapxs_dispatcher);
     for (auto& definition : *getAAPXSRegistry()->items()) {
@@ -353,13 +358,7 @@ void aap::RemotePluginInstance::abortAllPendingAAPXS(const std::string& error) {
     internal::AAPXSMidi2SessionAccess::cancelPending(aapxs_session, error.c_str(), plugin);
     auto legacyGate = realtime_state->legacy_sender.cancel(error.c_str(), plugin);
     internal::abortAAPXSBinderChannels(this, error.c_str(), plugin);
-    std::vector<xs::TypedAAPXS*> snapshot;
-    {
-        std::lock_guard<std::mutex> lock(async_abort_registry->mutex);
-        snapshot = async_abort_registry->abortables;
-    }
-    for (auto* abortable : snapshot)
-        abortable->failAllPending(error);
+    async_abort_registry->abort(error.c_str());
 }
 
 bool

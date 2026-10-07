@@ -48,10 +48,9 @@ AAPXSExtensionClientProxy
 aap::xs::AAPXSDefinition_Urid::aapxs_urid_get_plugin_proxy(struct AAPXSDefinition *feature,
                                                            AAPXSInitiatorInstance *aapxsInstance,
                                                            AAPXSSerializationContext *serialization) {
-    auto client = (AAPXSDefinition_Urid*) feature->aapxs_context;
-    client->typed_client = std::make_unique<UridClientAAPXS>(aapxsInstance, serialization);
-    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_urid_as_plugin_extension};
-    return client->client_proxy;
+    (void) feature;
+    (void) serialization;
+    return AAPXSExtensionClientProxy{aapxsInstance->aapxs_context, aapxs_urid_as_plugin_extension};
 }
 
 void aap::xs::UridClientAAPXS::map(uint8_t urid, const char *uri) {

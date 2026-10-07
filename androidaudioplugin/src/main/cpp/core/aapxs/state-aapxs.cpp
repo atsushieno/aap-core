@@ -70,10 +70,9 @@ AAPXSExtensionClientProxy
 aap::xs::AAPXSDefinition_State::aapxs_state_get_plugin_proxy(struct AAPXSDefinition *feature,
                                                              AAPXSInitiatorInstance *aapxsInstance,
                                                              AAPXSSerializationContext *serialization) {
-    auto client = (AAPXSDefinition_State*) feature->aapxs_context;
-    client->typed_client = std::make_unique<StateClientAAPXS>(aapxsInstance, serialization);
-    client->client_proxy = AAPXSExtensionClientProxy{client->typed_client.get(), aapxs_parameters_as_plugin_extension};
-    return client->client_proxy;
+    (void) feature;
+    (void) serialization;
+    return AAPXSExtensionClientProxy{aapxsInstance->aapxs_context, aapxs_parameters_as_plugin_extension};
 }
 
 namespace {
