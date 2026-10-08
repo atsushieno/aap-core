@@ -210,16 +210,15 @@ namespace aap::midi {
 
             data->instance_id = instanceId;
 
+            auto audioOut = instance->getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 0);
+            for (int ch = 0, n = audioOut ? audioOut->getChannelCount() : 0; ch < n; ch++)
+                data->getAudioOutPorts()->emplace_back(audioOut->getPortIndex(ch));
+            data->midi2_in_port = instance->getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT);
+            // MIDI 1.0 ports are not part of the bus model; they only exist in legacy metadata.
             for (int i = 0; i < numPorts; i++) {
                 auto port = instance->getPort(i);
-                if (port->getContentType() == AAP_CONTENT_TYPE_AUDIO &&
-                    port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT)
-                    data->getAudioOutPorts()->emplace_back(i);
-                else if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 &&
-                         port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
-                    data->midi2_in_port = i;
-                else if (port->getContentType() == AAP_CONTENT_TYPE_MIDI &&
-                         port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
+                if (port->getContentType() == AAP_CONTENT_TYPE_MIDI &&
+                    port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
                     data->midi1_in_port = i;
             }
 

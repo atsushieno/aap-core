@@ -119,6 +119,9 @@ class AudioPluginInstance internal constructor(
     fun getParameter(index: Int) = native.getParameter(index)
     fun getPortCount() = native.getPortCount()
     fun getPort(index: Int) = native.getPort(index)
+    /** `kind` is one of `BusInformation.BUS_KIND_*`, and `direction` is one of `PortInformation.PORT_DIRECTION_*`. */
+    fun getBusCount(kind: Int, direction: Int) = native.getBusCount(kind, direction)
+    fun getBus(kind: Int, direction: Int, index: Int) = native.getBus(kind, direction, index)
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.getPortBuffer(portIndex, buffer, size)
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = native.setPortBuffer(portIndex, buffer, size)
     fun getMidiMappingPolicy() = native.getMidiMappingPolicy()

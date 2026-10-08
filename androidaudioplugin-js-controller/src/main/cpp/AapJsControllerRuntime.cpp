@@ -24,6 +24,17 @@ namespace aap::js {
 
 namespace {
 
+// Port indices of every audio channel of the given direction, in bus order.
+std::vector<int32_t> audioPortIndices(aap::PluginInstance* instance, aap_port_direction direction) {
+    std::vector<int32_t> ret;
+    for (int32_t b = 0, nb = instance->getNumBuses(AAP_BUS_KIND_AUDIO, direction); b < nb; ++b) {
+        auto bus = instance->getBus(AAP_BUS_KIND_AUDIO, direction, b);
+        for (int32_t ch = 0, nc = bus->getChannelCount(); ch < nc; ++ch)
+            ret.push_back(bus->getPortIndex(ch));
+    }
+    return ret;
+}
+
 // Minimal RFC 4648 base64, used to ferry opaque plugin state to/from JavaScript as strings.
 const char* kBase64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -268,11 +279,7 @@ void AapJsControllerRuntime::registerBindings() {
         if (!buffer)
             return {};
         auto frames = buffer->num_frames(buffer);
-        for (int32_t p = 0, n = instance->getNumPorts(); p < n; ++p) {
-            auto* port = instance->getPort(p);
-            if (!port || port->getContentType() != AAP_CONTENT_TYPE_AUDIO ||
-                port->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
-                continue;
+        for (auto p : audioPortIndices(instance, AAP_PORT_DIRECTION_INPUT)) {
             auto* data = static_cast<float*>(buffer->get_buffer(buffer, p));
             if (!data)
                 continue;
@@ -287,7 +294,7 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     // Offline test-graph edge: copy every audio output of source into the corresponding audio
-    // input of destination. Ports are paired by their audio-port order, rather than absolute port
+    // input of destination. Channels are paired in bus order, rather than by absolute port
     // number, because MIDI and parameter ports may be interleaved with audio ports.
     ctx.registerFunction("__aap_instance_copy_audio_outputs_to_inputs", [this](choc::javascript::ArgumentList args) -> Value {
         auto source = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
@@ -297,20 +304,8 @@ void AapJsControllerRuntime::registerBindings() {
         if (!sourceBuffer || !destinationBuffer)
             return {};
 
-        std::vector<int32_t> sourcePorts;
-        std::vector<int32_t> destinationPorts;
-        for (int32_t p = 0, n = source->getNumPorts(); p < n; ++p) {
-            auto* port = source->getPort(p);
-            if (port && port->getContentType() == AAP_CONTENT_TYPE_AUDIO &&
-                port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT)
-                sourcePorts.push_back(p);
-        }
-        for (int32_t p = 0, n = destination->getNumPorts(); p < n; ++p) {
-            auto* port = destination->getPort(p);
-            if (port && port->getContentType() == AAP_CONTENT_TYPE_AUDIO &&
-                port->getPortDirection() == AAP_PORT_DIRECTION_INPUT)
-                destinationPorts.push_back(p);
-        }
+        auto sourcePorts = audioPortIndices(source, AAP_PORT_DIRECTION_OUTPUT);
+        auto destinationPorts = audioPortIndices(destination, AAP_PORT_DIRECTION_INPUT);
 
         const auto portCount = std::min(sourcePorts.size(), destinationPorts.size());
         for (size_t i = 0; i < portCount; ++i) {
@@ -335,11 +330,7 @@ void AapJsControllerRuntime::registerBindings() {
         auto arr = createEmptyArray();
         if (!buffer)
             return arr;
-        for (int32_t p = 0, n = instance->getNumPorts(); p < n; ++p) {
-            auto* port = instance->getPort(p);
-            if (!port || port->getContentType() != AAP_CONTENT_TYPE_AUDIO ||
-                port->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
-                continue;
+        for (auto p : audioPortIndices(instance, AAP_PORT_DIRECTION_OUTPUT)) {
             auto* data = static_cast<float*>(buffer->get_buffer(buffer, p));
             auto samples = data ? std::min<int32_t>(buffer->num_frames(buffer), buffer->get_buffer_size(buffer, p) / sizeof(float)) : 0;
             double sum = 0.0, sumAbs = 0.0, sumSq = 0.0, maxAbs = 0.0;

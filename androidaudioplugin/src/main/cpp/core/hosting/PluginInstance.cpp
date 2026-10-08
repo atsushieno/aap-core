@@ -121,6 +121,7 @@ aap::PluginInstance::PluginInstance(const PluginInformation* pluginInformation,
                 parameter->getMaximumValue(), parameter->getDefaultValue()});
     }
     parameter_values->publish(descriptions);
+    rebuildBusesFromPorts();
 }
 
 static void publish_parameter_values(aap::PluginInstance& instance) {
@@ -254,6 +255,40 @@ void aap::PluginInstance::setupPortsViaMetadata() {
                                  AAP_CONTENT_TYPE_MIDI2, AAP_PORT_DIRECTION_OUTPUT};
         configured_ports->emplace_back(midi_out);
     }
+}
+
+// Derives buses from the current port list: all audio ports of the same direction form the main
+// audio bus, and the first MIDI2 port of each direction is the main event bus.
+// Bus IDs are fixed for each of those roles.
+void aap::PluginInstance::rebuildBusesFromPorts() {
+    for (auto& list : configured_buses)
+        list.clear();
+    std::array<std::vector<int32_t>, 2> audioPorts{};
+    std::array<int32_t, 2> eventPorts{-1, -1};
+    for (int32_t i = 0, n = getNumPorts(); i < n; i++) {
+        auto port = getPort(i);
+        if (!port)
+            continue;
+        auto d = port->getPortDirection() == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0;
+        if (port->getContentType() == AAP_CONTENT_TYPE_AUDIO)
+            audioPorts[d].emplace_back(i);
+        else if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && eventPorts[d] < 0)
+            eventPorts[d] = i;
+    }
+    for (int d = 0; d < 2; d++) {
+        auto direction = d == 0 ? AAP_PORT_DIRECTION_INPUT : AAP_PORT_DIRECTION_OUTPUT;
+        if (!audioPorts[d].empty()) {
+            auto layout = BusInformation::getDefaultLayoutForChannelCount((int32_t) audioPorts[d].size());
+            configured_buses[busListIndex(AAP_BUS_KIND_AUDIO, direction)].emplace_back(
+                    (uint32_t) d, AAP_BUS_KIND_AUDIO, direction, AAP_BUS_ROLE_MAIN,
+                    d == 0 ? "Audio In" : "Audio Out", layout, audioPorts[d]);
+        }
+        if (eventPorts[d] >= 0)
+            configured_buses[busListIndex(AAP_BUS_KIND_EVENT, direction)].emplace_back(
+                    (uint32_t) (2 + d), AAP_BUS_KIND_EVENT, direction, AAP_BUS_ROLE_MAIN,
+                    d == 0 ? "Event In" : "Event Out", "", std::vector<int32_t>{eventPorts[d]});
+    }
+    main_event_port_indices = eventPorts;
 }
 
 void aap::PluginInstance::startPortConfiguration() {
@@ -503,53 +538,47 @@ void aap::PluginInstance::mergeQueuedUmp(aap_port_direction direction, bool outp
     auto buffer = getAudioPluginBuffer();
     if (!buffer) return;
     auto& queue = output ? realtime_state->ump_output : realtime_state->ump_input;
-    for (int i = 0; i < getNumPorts(); ++i) {
-        auto port = getPort(i);
-        if (port->getContentType() != AAP_CONTENT_TYPE_MIDI2 || port->getPortDirection() != direction) continue;
-        auto header = internal::getMidi2PortBuffer(buffer, i);
-        if (!header) return;
-        auto capacity = std::min(event_midi2_buffer_size,
-                std::max(0, buffer->get_buffer_size(buffer, i) - static_cast<int32_t>(sizeof(*header))));
-        size_t used = 0;
-        for (unsigned n = 0; n < 64; ++n) {
-            if (!queue.tryConsume([&](void* data, size_t size) {
-                if (size > static_cast<size_t>(capacity)) return true; // cannot ever fit this port
-                if (size + used + header->length > static_cast<size_t>(capacity)) return false;
-                memcpy(static_cast<uint8_t*>(event_midi2_buffer) + used, data, size);
-                used += size;
-                return true;
-            })) break;
-        }
-        merge_ump_sequences(direction, event_midi2_merge_buffer, event_midi2_buffer_size,
-                event_midi2_buffer, static_cast<int32_t>(used), buffer, this);
-        return;
+    auto i = getMainEventPortIndex(direction);
+    if (i < 0) return;
+    auto header = internal::getMidi2PortBuffer(buffer, i);
+    if (!header) return;
+    auto capacity = std::min(event_midi2_buffer_size,
+            std::max(0, buffer->get_buffer_size(buffer, i) - static_cast<int32_t>(sizeof(*header))));
+    size_t used = 0;
+    for (unsigned n = 0; n < 64; ++n) {
+        if (!queue.tryConsume([&](void* data, size_t size) {
+            if (size > static_cast<size_t>(capacity)) return true; // cannot ever fit this port
+            if (size + used + header->length > static_cast<size_t>(capacity)) return false;
+            memcpy(static_cast<uint8_t*>(event_midi2_buffer) + used, data, size);
+            used += size;
+            return true;
+        })) break;
     }
+    merge_ump_sequences(direction, event_midi2_merge_buffer, event_midi2_buffer_size,
+            event_midi2_buffer, static_cast<int32_t>(used), buffer, this);
 }
 
 void aap::PluginInstance::merge_ump_sequences(aap_port_direction portDirection, void *mergeTmp, int32_t mergeBufSize, void* sequence, int32_t sequenceSize, aap_buffer_t *buffer, PluginInstance* instance) {
     if (sequenceSize == 0)
         return;
-    for (int i = 0; i < instance->getNumPorts(); i++) {
-        auto port = instance->getPort(i);
-        if (port->getContentType() == AAP_CONTENT_TYPE_MIDI2 && port->getPortDirection() == portDirection) {
-            auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, i);
-            auto portBufferSize = buffer->get_buffer_size(buffer, i);
-            auto midiCapacity = portBufferSize > static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) ?
-                    portBufferSize - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) : 0;
-            auto mergeCapacity = std::min(mergeBufSize, midiCapacity);
-            if (mergeCapacity <= 0) {
-                mbh->length = 0;
-                return;
-            }
-            size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeCapacity,
-                                                        (cmidi2_ump*) sequence, (size_t) sequenceSize,
-                                                        (cmidi2_ump*) (mbh + 1), (size_t) mbh->length);
-            mbh->length = newSize;
-            if (newSize > 0)
-                memcpy(mbh + 1, mergeTmp, newSize);
-            return;
-        }
+    auto i = instance->getMainEventPortIndex(portDirection);
+    if (i < 0)
+        return;
+    auto mbh = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, i);
+    auto portBufferSize = buffer->get_buffer_size(buffer, i);
+    auto midiCapacity = portBufferSize > static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) ?
+            portBufferSize - static_cast<int32_t>(sizeof(AAPMidiBufferHeader)) : 0;
+    auto mergeCapacity = std::min(mergeBufSize, midiCapacity);
+    if (mergeCapacity <= 0) {
+        mbh->length = 0;
+        return;
     }
+    size_t newSize = cmidi2_ump_merge_sequences((cmidi2_ump*) mergeTmp, mergeCapacity,
+                                                (cmidi2_ump*) sequence, (size_t) sequenceSize,
+                                                (cmidi2_ump*) (mbh + 1), (size_t) mbh->length);
+    mbh->length = newSize;
+    if (newSize > 0)
+        memcpy(mbh + 1, mergeTmp, newSize);
 }
 
 // plugin-info host extension implementation.

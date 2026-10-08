@@ -55,6 +55,10 @@ namespace aap {
         PluginSharedMemoryStore *shared_memory_store{nullptr};
         const PluginInformation *pluginInfo;
         std::unique_ptr <std::vector<PortInformation>> configured_ports{nullptr};
+        // indexed by busListIndex(); derived from the port list by rebuildBusesFromPorts().
+        std::array<std::vector<BusInformation>, 4> configured_buses{};
+        // port index of the main event bus for each direction, or -1. Read on the processing thread.
+        std::array<int32_t, 2> main_event_port_indices{-1, -1};
         std::unique_ptr <std::vector<ParameterInformation>> cached_parameters{nullptr};
         std::atomic<const std::vector<ParameterInformation>*> published_parameters{nullptr};
         std::unique_ptr<internal::ParameterValueCache> parameter_values;
@@ -80,6 +84,11 @@ namespace aap {
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
+        // Must be called whenever the port list is finalized (non-RT).
+        void rebuildBusesFromPorts();
+        static size_t busListIndex(aap_bus_kind kind, aap_port_direction direction) {
+            return (kind == AAP_BUS_KIND_EVENT ? 2 : 0) + (direction == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0);
+        }
 
     public:
         virtual ~PluginInstance();
@@ -136,6 +145,20 @@ namespace aap {
                 AAP_ASSERT_FALSE;
                 return nullptr;
             }
+        }
+
+        int32_t getNumBuses(aap_bus_kind kind, aap_port_direction direction) {
+            return (int32_t) configured_buses[busListIndex(kind, direction)].size();
+        }
+
+        const BusInformation *getBus(aap_bus_kind kind, aap_port_direction direction, int32_t index) {
+            auto& list = configured_buses[busListIndex(kind, direction)];
+            return 0 <= index && (size_t) index < list.size() ? &list[(size_t) index] : nullptr;
+        }
+
+        // Returns the port index of the main event bus buffer, or -1. It is RT-safe.
+        int32_t getMainEventPortIndex(aap_port_direction direction) {
+            return main_event_port_indices[direction == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0];
         }
 
         virtual void prepare(int maximumExpectedSamplesPerBlock, int32_t sampleRate) = 0;

@@ -849,6 +849,46 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *e
 }
 
 extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getBusCount(JNIEnv *,
+                                                                           jclass ,
+                                                                           jlong nativeClient,
+                                                                           jint instanceId,
+                                                                           jint kind,
+                                                                           jint direction) {
+    auto host = (aap::PluginHost*) (void*) nativeClient;
+    auto instance = host->getInstanceById(instanceId);
+    return instance ? instance->getNumBuses((aap_bus_kind) kind, (aap_port_direction) direction) : 0;
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getBus(JNIEnv *env, jclass ,
+                                                                      jlong nativeClient,
+                                                                      jint instanceId,
+                                                                      jint kind,
+                                                                      jint direction,
+                                                                      jint index) {
+    auto host = (aap::PluginHost*) (void*) nativeClient;
+    auto instance = host->getInstanceById(instanceId);
+    auto bus = instance ? instance->getBus((aap_bus_kind) kind, (aap_port_direction) direction, index) : nullptr;
+    if (!bus)
+        return nullptr;
+    auto klass = env->FindClass("org/androidaudioplugin/BusInformation");
+    auto ctor = env->GetMethodID(klass, "<init>", "(IIIILjava/lang/String;Ljava/lang/String;[I)V");
+    auto numIndices = bus->getKind() == AAP_BUS_KIND_AUDIO ? bus->getChannelCount() : 1;
+    auto portIndices = env->NewIntArray(numIndices);
+    for (jint i = 0; i < numIndices; i++) {
+        jint portIndex = bus->getPortIndex(i);
+        env->SetIntArrayRegion(portIndices, i, 1, &portIndex);
+    }
+    return env->NewObject(klass, ctor, (jint) bus->getId(), (jint) bus->getKind(),
+                          (jint) bus->getDirection(), (jint) bus->getRole(),
+                          env->NewStringUTF(bus->getName()), env->NewStringUTF(bus->getLayout()),
+                          portIndices);
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPortBuffer(JNIEnv *env,
 		jclass clazz,

@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import org.androidaudioplugin.ParameterInformation
+import org.androidaudioplugin.BusInformation
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
@@ -173,6 +174,20 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
             markError(ex)
             PortInformation(index, "Unavailable", PortInformation.PORT_DIRECTION_INPUT, PortInformation.PORT_CONTENT_TYPE_GENERAL)
         }
+    fun getBusCount(kind: Int, direction: Int) = runCatchingRemoteException(0) {
+        getBusCount(client, instanceId, kind, direction)
+    }
+    fun getBus(kind: Int, direction: Int, index: Int): BusInformation? = runCatchingRemoteException(null) {
+        getBus(client, instanceId, kind, direction, index)
+    }
+    /** Port indices of every audio channel of the given direction, in bus order. */
+    fun getAudioPortIndices(direction: Int): List<Int> =
+        (0 until getBusCount(BusInformation.BUS_KIND_AUDIO, direction)).flatMap { index ->
+            getBus(BusInformation.BUS_KIND_AUDIO, direction, index)?.portIndices?.toList() ?: listOf()
+        }
+    /** The port index of the main event bus of the given direction, or -1. */
+    fun getMainEventPortIndex(direction: Int): Int =
+        getBus(BusInformation.BUS_KIND_EVENT, direction, 0)?.getPortIndex() ?: -1
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
         getPortBuffer(client, instanceId, portIndex, buffer, size)
     }
@@ -243,6 +258,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
         @JvmStatic
         external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
+        @JvmStatic
+        external fun getBusCount(nativeClient: Long, instanceId: Int, kind: Int, direction: Int) : Int
+
+        @JvmStatic
+        external fun getBus(nativeClient: Long, instanceId: Int, kind: Int, direction: Int, index: Int) : BusInformation?
+
         @JvmStatic
         external fun getPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
 

@@ -157,11 +157,8 @@ class AapStateReloadReceiver : BroadcastReceiver() {
     // The length the plugin wrote into its MIDI2 output header, which the host must not trust.
     private fun outputMidiLength(instance: NativeRemotePluginInstance): Int {
         var max = 0
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_MIDI2 ||
-                port.direction != PortInformation.PORT_DIRECTION_OUTPUT)
-                continue
+        val index = instance.getMainEventPortIndex(PortInformation.PORT_DIRECTION_OUTPUT)
+        if (index >= 0) {
             val buffer = ByteBuffer.allocateDirect(MIDI_HEADER_BYTES).order(ByteOrder.nativeOrder())
             instance.getPortBuffer(index, buffer, MIDI_HEADER_BYTES)
             max = maxOf(max, buffer.getInt(MIDI_HEADER_LENGTH_OFFSET))
@@ -171,11 +168,7 @@ class AapStateReloadReceiver : BroadcastReceiver() {
 
     private fun hasNonFiniteOutput(instance: NativeRemotePluginInstance): Boolean {
         val byteCount = PROCESS_FRAMES * Float.SIZE_BYTES
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO ||
-                port.direction != PortInformation.PORT_DIRECTION_OUTPUT)
-                continue
+        for (index in instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_OUTPUT)) {
             val buffer = ByteBuffer.allocateDirect(byteCount).order(ByteOrder.nativeOrder())
             instance.getPortBuffer(index, buffer, byteCount)
             val samples = buffer.asFloatBuffer()
@@ -188,11 +181,7 @@ class AapStateReloadReceiver : BroadcastReceiver() {
 
     private fun writeSilentAudioInputs(instance: NativeRemotePluginInstance) {
         val byteCount = PREPARE_FRAMES * Float.SIZE_BYTES
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO ||
-                port.direction != PortInformation.PORT_DIRECTION_INPUT)
-                continue
+        for (index in instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_INPUT)) {
             instance.setPortBuffer(index, ByteBuffer.allocateDirect(byteCount).order(ByteOrder.nativeOrder()), byteCount)
         }
     }

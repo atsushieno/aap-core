@@ -206,11 +206,7 @@ class AapParameterStressReceiver : BroadcastReceiver() {
 
     private fun writeSilentAudioInputs(instance: NativeRemotePluginInstance) {
         val byteCount = FRAME_COUNT * Float.SIZE_BYTES
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO ||
-                port.direction != PortInformation.PORT_DIRECTION_INPUT)
-                continue
+        for (index in instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_INPUT)) {
             instance.setPortBuffer(index, ByteBuffer.allocateDirect(byteCount).order(ByteOrder.nativeOrder()), byteCount)
         }
     }

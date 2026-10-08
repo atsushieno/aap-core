@@ -334,6 +334,15 @@ void localProcessing() {
         store->getExtensionUriToIndexMap()[definition.uri] = index;
     }
     instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    // Buses are derived from the ports; only the first MIDI2 port of each direction is the main event bus.
+    check(instance.getNumBuses(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT) == 0, "no audio input bus");
+    auto audioOut = instance.getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 0);
+    check(audioOut && audioOut->getRole() == AAP_BUS_ROLE_MAIN && audioOut->getChannelCount() == 1 &&
+          audioOut->getPortIndex(0) == 0 && std::string{audioOut->getLayout()} == AAP_BUS_LAYOUT_MONO, "main audio output bus");
+    check(instance.getNumBuses(AAP_BUS_KIND_EVENT, AAP_PORT_DIRECTION_INPUT) == 1 &&
+          instance.getBus(AAP_BUS_KIND_EVENT, AAP_PORT_DIRECTION_INPUT, 0)->getPortIndex() == 1 &&
+          instance.getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT) == 1, "main event input bus");
+    check(instance.getMainEventPortIndex(AAP_PORT_DIRECTION_OUTPUT) == 2, "main event output bus");
     uint32_t raw[]{0x20903C7F};
     instance.addEventUmpInput(raw, sizeof(raw));
     instance.process(64, 0);

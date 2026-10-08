@@ -83,6 +83,7 @@ void aap::RemotePluginInstance::configurePorts() {
         setupPortConfigDefaults();
     else
         setupPortsViaMetadata();
+    rebuildBusesFromPorts();
 }
 
 

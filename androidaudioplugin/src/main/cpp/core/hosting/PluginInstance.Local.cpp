@@ -96,6 +96,7 @@ void aap::LocalPluginInstance::confirmPorts() {
         setupPortConfigDefaults();
     else
         setupPortsViaMetadata();
+    rebuildBusesFromPorts();
 }
 
 void aap::LocalPluginInstance::requestProcessToHost() {

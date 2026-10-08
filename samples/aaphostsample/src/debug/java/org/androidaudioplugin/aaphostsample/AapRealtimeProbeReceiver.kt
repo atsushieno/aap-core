@@ -180,14 +180,9 @@ class AapRealtimeProbeReceiver : BroadcastReceiver() {
         var saturatedBlocks = 0
         try {
             instance.prepare(FRAMES, RATE, PORT_BYTES)
-            val outputs = (0 until instance.getPortCount()).filter {
-                val port = instance.getPort(it)
-                port.content == PortInformation.PORT_CONTENT_TYPE_AUDIO && port.direction == PortInformation.PORT_DIRECTION_OUTPUT
-            }
-            val midi = (0 until instance.getPortCount()).first {
-                val port = instance.getPort(it)
-                port.content == PortInformation.PORT_CONTENT_TYPE_MIDI2 && port.direction == PortInformation.PORT_DIRECTION_INPUT
-            }
+            val outputs = instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_OUTPUT)
+            val midi = instance.getMainEventPortIndex(PortInformation.PORT_DIRECTION_INPUT)
+            check(midi >= 0) { "The plugin has no main event input bus" }
             val audio = outputs.map { ByteBuffer.allocateDirect(FRAMES * 4).order(ByteOrder.nativeOrder()) }
             val noteOn = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).putInt(0, 0x20903C7F)
             val event = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).putInt(0,

@@ -68,6 +68,57 @@ public:
     aap_port_direction getPortDirection() const { return direction; }
 };
 
+// Audio bus layout tags. They are strings from a fixed vocabulary, so that it can grow later.
+#define AAP_BUS_LAYOUT_MONO "mono"
+#define AAP_BUS_LAYOUT_STEREO "stereo"
+#define AAP_BUS_LAYOUT_DISCRETE_PREFIX "discrete"
+
+/**
+ * Describes a bus of a configured plugin instance.
+ *
+ * Each channel of an audio bus (and the single buffer of an event bus) is still backed by
+ * a "port" buffer in `aap_buffer_t`, which is resolved by `getPortIndex()`.
+ */
+class BusInformation {
+    uint32_t id{0};
+    aap_bus_kind kind;
+    aap_port_direction direction;
+    aap_bus_role role;
+    std::string name{};
+    std::string layout{};
+    std::vector<int32_t> port_indices{};
+
+public:
+    BusInformation(uint32_t busId, aap_bus_kind busKind, aap_port_direction busDirection, aap_bus_role busRole,
+                   std::string busName, std::string busLayout, std::vector<int32_t> portIndices)
+            : id(busId), kind(busKind), direction(busDirection), role(busRole),
+              name(std::move(busName)), layout(std::move(busLayout)), port_indices(std::move(portIndices))
+    {
+    }
+
+    uint32_t getId() const { return id; }
+    aap_bus_kind getKind() const { return kind; }
+    aap_port_direction getDirection() const { return direction; }
+    aap_bus_role getRole() const { return role; }
+    const char* getName() const { return name.c_str(); }
+    // Empty for event buses.
+    const char* getLayout() const { return layout.c_str(); }
+    // 0 for event buses.
+    int32_t getChannelCount() const { return kind == AAP_BUS_KIND_AUDIO ? (int32_t) port_indices.size() : 0; }
+    // For an audio bus, the port index of the channel. For an event bus, `channel` must be 0.
+    int32_t getPortIndex(int32_t channel = 0) const {
+        return 0 <= channel && (size_t) channel < port_indices.size() ? port_indices[(size_t) channel] : -1;
+    }
+
+    static std::string getDefaultLayoutForChannelCount(int32_t channelCount) {
+        switch (channelCount) {
+            case 1: return AAP_BUS_LAYOUT_MONO;
+            case 2: return AAP_BUS_LAYOUT_STEREO;
+            default: return std::string{AAP_BUS_LAYOUT_DISCRETE_PREFIX} + "(" + std::to_string(channelCount) + ")";
+        }
+    }
+};
+
 class ParameterInformation : public PropertyContainer {
 public:
     class Enumeration {

@@ -20,53 +20,34 @@ void aap::AudioPluginNode::processAudio(AudioBuffer *audioData, int32_t numFrame
 
     auto aapBuffer = plugin->getAudioPluginBuffer();
 
-    int32_t currentChannelInAudioData = 0;
-    for (int32_t i = 0, n = aapBuffer->num_ports(aapBuffer); i < n; i++) {
-        if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_INPUT)
-            continue;
-        switch (plugin->getPort(i)->getContentType()) {
-            case AAP_CONTENT_TYPE_AUDIO:
-                memcpy(aapBuffer->get_buffer(aapBuffer, i),
-                       audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,
-                       numFrames * sizeof(float));
-                currentChannelInAudioData++;
-                break;
-            case AAP_CONTENT_TYPE_MIDI2: {
-                auto mbh = (AAPMidiBufferHeader*) audioData->midi_in;
-                size_t midiSize = std::min((int32_t) (sizeof(AAPMidiBufferHeader) + mbh->length),
-                                           std::min(aapBuffer->get_buffer_size(aapBuffer, i), audioData->midi_capacity));
-                memcpy(aapBuffer->get_buffer(aapBuffer, i), (const void *) audioData->midi_in, midiSize);
-                break;
-            }
-            default:
-                break;
-        }
+    // So far the graph routes only the main buses.
+    auto audioIn = plugin->getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT, 0);
+    for (int32_t ch = 0, n = audioIn ? audioIn->getChannelCount() : 0; ch < n; ch++)
+        memcpy(aapBuffer->get_buffer(aapBuffer, audioIn->getPortIndex(ch)),
+               audioData->audio.getView().getChannel(ch).data.data,
+               numFrames * sizeof(float));
+    auto midiIn = plugin->getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT);
+    if (midiIn >= 0) {
+        auto mbh = (AAPMidiBufferHeader*) audioData->midi_in;
+        size_t midiSize = std::min((int32_t) (sizeof(AAPMidiBufferHeader) + mbh->length),
+                                   std::min(aapBuffer->get_buffer_size(aapBuffer, midiIn), audioData->midi_capacity));
+        memcpy(aapBuffer->get_buffer(aapBuffer, midiIn), (const void *) audioData->midi_in, midiSize);
     }
 
     plugin->process(numFrames, 0); // FIXME: timeout?
 
-    currentChannelInAudioData = 0;
-    for (int32_t i = 0, n = aapBuffer->num_ports(aapBuffer); i < n; i++) {
-        if (plugin->getPort(i)->getPortDirection() != AAP_PORT_DIRECTION_OUTPUT)
-            continue;
-        switch (plugin->getPort(i)->getContentType()) {
-            case AAP_CONTENT_TYPE_AUDIO:
-                memcpy(audioData->audio.getView().getChannel(currentChannelInAudioData).data.data,
-                       aapBuffer->get_buffer(aapBuffer, i),
-                       numFrames * sizeof(float));
-                currentChannelInAudioData++;
-                break;
-            case AAP_CONTENT_TYPE_MIDI2: {
-                size_t midiSize = std::min(aapBuffer->get_buffer_size(aapBuffer, i),
-                                           audioData->midi_capacity);
-                auto* midiBuffer = aapBuffer->get_buffer(aapBuffer, i);
-                memcpy(audioData->midi_out, midiBuffer, midiSize);
-                ((AAPMidiBufferHeader*) midiBuffer)->length = 0;
-                break;
-            }
-            default:
-                break;
-        }
+    auto audioOut = plugin->getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 0);
+    for (int32_t ch = 0, n = audioOut ? audioOut->getChannelCount() : 0; ch < n; ch++)
+        memcpy(audioData->audio.getView().getChannel(ch).data.data,
+               aapBuffer->get_buffer(aapBuffer, audioOut->getPortIndex(ch)),
+               numFrames * sizeof(float));
+    auto midiOut = plugin->getMainEventPortIndex(AAP_PORT_DIRECTION_OUTPUT);
+    if (midiOut >= 0) {
+        size_t midiSize = std::min(aapBuffer->get_buffer_size(aapBuffer, midiOut),
+                                   audioData->midi_capacity);
+        auto* midiBuffer = aapBuffer->get_buffer(aapBuffer, midiOut);
+        memcpy(audioData->midi_out, midiBuffer, midiSize);
+        ((AAPMidiBufferHeader*) midiBuffer)->length = 0;
     }
 }
 

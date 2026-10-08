@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import org.androidaudioplugin.BusInformation
 import org.androidaudioplugin.PluginInformation
 import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginMidiSettings
@@ -141,6 +142,12 @@ fun PluginDetailsInstantiated(scope: PluginDetailsScope) {
         // have to be passed to the composable, along with onXxxChanged handlers...
         Column(Modifier.verticalScroll(rememberScrollState())) {
             PluginMetadata(pluginInfo)
+            val buses = listOf(BusInformation.BUS_KIND_AUDIO, BusInformation.BUS_KIND_EVENT).flatMap { kind ->
+                listOf(PortInformation.PORT_DIRECTION_INPUT, PortInformation.PORT_DIRECTION_OUTPUT).flatMap { direction ->
+                    (0 until instance.getBusCount(kind, direction)).mapNotNull { instance.getBus(kind, direction, it) }
+                }
+            }
+            PluginBusList(buses)
             val ports = (0 until instance.getPortCount()).map { instance.getPort(it) }
             PluginPortList(ports)
 
@@ -364,6 +371,46 @@ fun MidiSettings(midiSettingsFlags: Int, midiSeetingsFlagsChanged: (Int) -> Unit
                         midiSeetingsFlagsChanged(v)
                     })
                 Text("Consumes SysEx8 by its own")
+            }
+        }
+    }
+}
+
+@Composable
+fun PluginBusList(buses: List<BusInformation>, modifier: Modifier = Modifier) {
+    var busListExpanded by remember { mutableStateOf(false) }
+
+    Text(text = (if (busListExpanded) "[-]" else "[+]") + " Buses", fontSize = 20.sp, modifier = Modifier
+        .padding(vertical = 12.dp)
+        .clickable {
+            busListExpanded = !busListExpanded
+        })
+
+    if (!busListExpanded)
+        return
+
+    Column {
+        for (bus in buses) {
+            Row(modifier = Modifier.border(1.dp, Color.LightGray)) {
+                Column {
+                    Text(
+                        fontSize = 14.sp,
+                        text = when (bus.direction) {
+                            PortInformation.PORT_DIRECTION_INPUT -> "In"
+                            else -> "Out"
+                        } + if (bus.role == BusInformation.BUS_ROLE_MAIN) "" else " (aux)",
+                        modifier = Modifier.width(80.dp)
+                    )
+                    Text(
+                        fontSize = 14.sp,
+                        text = when (bus.kind) {
+                            BusInformation.BUS_KIND_AUDIO -> "Audio ${bus.layout}"
+                            else -> "Event"
+                        },
+                        modifier = Modifier.width(80.dp)
+                    )
+                }
+                ColumnHeader(bus.name + " (ports: " + bus.portIndices.joinToString(", ") + ")")
             }
         }
     }

@@ -235,11 +235,7 @@ private class AapValidator(private val context: Context) {
 
     private fun writeSilentAudioInputs(instance: NativeRemotePluginInstance, frameCount: Int) {
         val byteCount = frameCount * Float.SIZE_BYTES
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO ||
-                port.direction != PortInformation.PORT_DIRECTION_INPUT)
-                continue
+        for (index in instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_INPUT)) {
             instance.setPortBuffer(index, directFloatBuffer(byteCount), byteCount)
         }
     }
@@ -247,11 +243,7 @@ private class AapValidator(private val context: Context) {
     private fun validateFiniteAudioOutputs(pluginId: String, instance: NativeRemotePluginInstance, frameCount: Int, report: AapValidationReport) {
         val byteCount = frameCount * Float.SIZE_BYTES
         var outputCount = 0
-        for (index in 0 until instance.getPortCount()) {
-            val port = instance.getPort(index)
-            if (port.content != PortInformation.PORT_CONTENT_TYPE_AUDIO ||
-                port.direction != PortInformation.PORT_DIRECTION_OUTPUT)
-                continue
+        for (index in instance.getAudioPortIndices(PortInformation.PORT_DIRECTION_OUTPUT)) {
             outputCount++
             val buffer = directFloatBuffer(byteCount)
             instance.getPortBuffer(index, buffer, byteCount)
