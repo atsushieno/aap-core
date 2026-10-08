@@ -75,6 +75,9 @@ aap::LocalPluginInstance::getHostExtension(uint8_t urid, const char *uri) {
     if (strcmp(uri, AAP_PLUGIN_INFO_EXTENSION_URI) == 0) {
         return &host_plugin_info;
     }
+    if (strcmp(uri, AAP_BUSES_EXTENSION_URI) == 0) {
+        return &host_buses;
+    }
     if (!urid) urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(uri);
     return host_extension_proxies[urid];
 }

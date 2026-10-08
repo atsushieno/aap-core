@@ -249,6 +249,9 @@ namespace aap {
             bool commitBufferLayout(const aap_buffer_layout_t& layout) override;
         };
         BusesService buses_service{this};
+        // Its existence tells the plugin that aap_buffer_t has the bus accessors.
+        // (Notifications are not delivered to the host yet.)
+        aap_buses_host_extension_t host_buses{nullptr, [](aap_buses_host_extension_t*, AndroidAudioPluginHost*, uint32_t) {}};
 
         AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
 

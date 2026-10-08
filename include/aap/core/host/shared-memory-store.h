@@ -22,6 +22,21 @@ namespace aap {
         static inline int32_t aap_buffer_get_buffer_size(aap_buffer_t* self, int32_t index) {
             return ((AbstractPluginBuffer*) self->impl)->getBufferSize(index);
         }
+        static inline int32_t aap_buffer_get_bus_count(aap_buffer_t* self, aap_bus_kind kind, aap_port_direction direction) {
+            return ((AbstractPluginBuffer*) self->impl)->getBusCount(kind, direction);
+        }
+        static inline int32_t aap_buffer_get_audio_channel_count(aap_buffer_t* self, aap_port_direction direction, int32_t busIndex) {
+            return ((AbstractPluginBuffer*) self->impl)->getAudioChannelCount(direction, busIndex);
+        }
+        static inline float** aap_buffer_get_audio_channels(aap_buffer_t* self, aap_port_direction direction, int32_t busIndex) {
+            return ((AbstractPluginBuffer*) self->impl)->getAudioChannels(direction, busIndex);
+        }
+        static inline void* aap_buffer_get_event_buffer(aap_buffer_t* self, aap_port_direction direction, int32_t busIndex) {
+            return ((AbstractPluginBuffer*) self->impl)->getEventBuffer(direction, busIndex);
+        }
+        static inline int32_t aap_buffer_get_event_buffer_capacity(aap_buffer_t* self, aap_port_direction direction, int32_t busIndex) {
+            return ((AbstractPluginBuffer*) self->impl)->getEventBufferCapacity(direction, busIndex);
+        }
 
     protected:
         int32_t num_ports{0};
@@ -40,6 +55,13 @@ namespace aap {
         virtual int32_t getPortContentType(int32_t portIndex) = 0;
         virtual int32_t getPortDirection(int32_t portIndex) = 0;
 
+        // bus views (see aap_buffer_t). They must be RT-safe.
+        virtual int32_t getBusCount(aap_bus_kind kind, aap_port_direction direction) { return 0; }
+        virtual int32_t getAudioChannelCount(aap_port_direction direction, int32_t busIndex) { return 0; }
+        virtual float** getAudioChannels(aap_port_direction direction, int32_t busIndex) { return nullptr; }
+        virtual void* getEventBuffer(aap_port_direction direction, int32_t busIndex) { return nullptr; }
+        virtual int32_t getEventBufferCapacity(aap_port_direction direction, int32_t busIndex) { return 0; }
+
         bool initialize(int32_t numPorts, int32_t numFrames);
 
         aap_buffer_t* toPublicApi() {
@@ -48,6 +70,11 @@ namespace aap {
             pub.num_frames = aap_buffer_num_frames;
             pub.get_buffer = aap_buffer_get_buffer;
             pub.get_buffer_size = aap_buffer_get_buffer_size;
+            pub.get_bus_count = aap_buffer_get_bus_count;
+            pub.get_audio_channel_count = aap_buffer_get_audio_channel_count;
+            pub.get_audio_channels = aap_buffer_get_audio_channels;
+            pub.get_event_buffer = aap_buffer_get_event_buffer;
+            pub.get_event_buffer_capacity = aap_buffer_get_event_buffer_capacity;
             return &pub;
         }
 
@@ -77,11 +104,65 @@ namespace aap {
         PluginInstance* instance;
         // false if the buffers point into a pool that is mapped (and unmapped) by its owner.
         bool owns_mappings{true};
+
+        // Per bus, for each (kind, direction), built by rebuildBusViews().
+        struct BusView {
+            std::vector<float*> channels{};
+            int32_t event_port{-1};
+        };
+        std::array<std::vector<BusView>, 4> bus_views{};
+        static size_t viewListIndex(aap_bus_kind kind, aap_port_direction direction) {
+            return (kind == AAP_BUS_KIND_EVENT ? 2 : 0) + (direction == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0);
+        }
+        BusView* getBusView(aap_bus_kind kind, aap_port_direction direction, int32_t busIndex) {
+            auto& list = bus_views[viewListIndex(kind, direction)];
+            return 0 <= busIndex && (size_t) busIndex < list.size() ? &list[(size_t) busIndex] : nullptr;
+        }
+
     public:
         SharedMemoryPluginBuffer(PluginInstance* instance) : instance(instance) {}
 
         int32_t getPortContentType(int32_t portIndex) override { return instance->getPort(portIndex)->getContentType(); }
         int32_t getPortDirection(int32_t portIndex) override { return instance->getPort(portIndex)->getPortDirection(); }
+
+        // Must be called after the buffers are assigned (non-RT).
+        void rebuildBusViews() {
+            for (auto kind : {AAP_BUS_KIND_AUDIO, AAP_BUS_KIND_EVENT})
+                for (auto direction : {AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT}) {
+                    auto& list = bus_views[viewListIndex(kind, direction)];
+                    list.clear();
+                    for (int32_t b = 0, n = instance->getNumBuses(kind, direction); b < n; b++) {
+                        auto bus = instance->getBus(kind, direction, b);
+                        BusView view{};
+                        if (kind == AAP_BUS_KIND_AUDIO) {
+                            for (int32_t ch = 0, nc = bus->getChannelCount(); ch < nc; ch++)
+                                view.channels.emplace_back((float*) getBuffer(bus->getPortIndex(ch)));
+                        } else
+                            view.event_port = bus->getPortIndex();
+                        list.emplace_back(std::move(view));
+                    }
+                }
+        }
+
+        int32_t getBusCount(aap_bus_kind kind, aap_port_direction direction) override {
+            return (int32_t) bus_views[viewListIndex(kind, direction)].size();
+        }
+        int32_t getAudioChannelCount(aap_port_direction direction, int32_t busIndex) override {
+            auto view = getBusView(AAP_BUS_KIND_AUDIO, direction, busIndex);
+            return view ? (int32_t) view->channels.size() : 0;
+        }
+        float** getAudioChannels(aap_port_direction direction, int32_t busIndex) override {
+            auto view = getBusView(AAP_BUS_KIND_AUDIO, direction, busIndex);
+            return view && !view->channels.empty() ? view->channels.data() : nullptr;
+        }
+        void* getEventBuffer(aap_port_direction direction, int32_t busIndex) override {
+            auto view = getBusView(AAP_BUS_KIND_EVENT, direction, busIndex);
+            return view ? getBuffer(view->event_port) : nullptr;
+        }
+        int32_t getEventBufferCapacity(aap_port_direction direction, int32_t busIndex) override {
+            auto view = getBusView(AAP_BUS_KIND_EVENT, direction, busIndex);
+            return view ? getBufferSize(view->event_port) : 0;
+        }
 
         inline void setBuffer(size_t index, void* buffer) { buffers[index] = buffer; }
         inline void setBufferSize(size_t index, int32_t size) { buffer_sizes[index] = size; }
@@ -159,6 +240,7 @@ namespace aap {
                 buffer->setBuffer(i, (uint8_t*) mapping + layout.entries[i].offset);
                 buffer->setBufferSize(i, (int32_t) layout.entries[i].size);
             }
+            buffer->rebuildBusViews();
             return buffer;
         }
 

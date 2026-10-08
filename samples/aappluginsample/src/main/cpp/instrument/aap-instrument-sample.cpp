@@ -10,6 +10,7 @@
 #include <aap/ext/plugin-info.h>
 #include <aap/ext/parameters.h>
 #include <aap/ext/gui.h>
+#include <aap/ext/buses.h>
 #include <assert.h>
 #include <atomic>
 #include <algorithm>
@@ -46,10 +47,6 @@ typedef struct AyumiHandle {
     int32_t midi_protocol;
     AndroidAudioPluginHost host;
     std::string plugin_id;
-    int32_t midi2_in_port{-1};
-    int32_t midi2_out_port{-1};
-    int32_t audio_out_l_port{-1};
-    int32_t audio_out_r_port{-1};
     std::atomic<bool> state_parameter_outputs_pending{false};
     // debug-only: see sample_plugin_prepare()
     uint32_t debug_bogus_midi2_out_length{0};
@@ -111,13 +108,11 @@ static double ayumi_parameter_max(uint16_t index) {
 }
 
 static void flush_parameter_outputs(AyumiHandle* context, aap_buffer_t* buffer) {
-    if (context->midi2_out_port < 0)
-        return;
-    auto outHeader = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_out_port);
+    auto outHeader = (AAPMidiBufferHeader*) buffer->get_event_buffer(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
     if (!outHeader)
         return;
     outHeader->length = 0;
-    auto outputCapacity = buffer->get_buffer_size(buffer, context->midi2_out_port);
+    auto outputCapacity = buffer->get_event_buffer_capacity(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
     if (outputCapacity <= static_cast<int32_t>(sizeof(AAPMidiBufferHeader)))
         return;
     auto outputBytes = (uint8_t*) outHeader + sizeof(AAPMidiBufferHeader);
@@ -203,6 +198,11 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_b
     auto context = (AyumiHandle*) plugin->plugin_specific;
     auto host = context->host;
     auto handle = (AyumiHandle*) plugin->plugin_specific;
+    // The bus accessors on aap_buffer_t are available only with the buses host extension.
+    // (This plugin is always built with an aap-core that provides it.)
+    auto buses = host.get_extension(&host, AAP_BUSES_EXTENSION_URI);
+    assert(buses);
+    (void) buses;
 
     /* clock_rate / (sample_rate * 8 * 8) must be < 1.0 */
     ayumi_configure(handle->impl, 1, 2000000, (int) sampleRate);
@@ -228,19 +228,6 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_b
         aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "plugin-info test: displayName: %s", info.display_name(&info));
         for (uint32_t i = 0; i < info.get_port_count(&info); i++) {
             auto port = info.get_port(&info, i);
-            if (port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2) {
-                if (port.direction(&port) == AAP_PORT_DIRECTION_INPUT)
-                    context->midi2_in_port = i;
-                else
-                    context->midi2_out_port = i;
-            } else if (port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO) {
-                if (port.direction(&port) != AAP_PORT_DIRECTION_OUTPUT)
-                    continue;
-                if (context->audio_out_l_port < 0)
-                    context->audio_out_l_port = i;
-                else if (context->audio_out_r_port < 0)
-                    context->audio_out_r_port = i;
-            }
             aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "  plugin-info test: port %d: %s %s %s",
                          port.index(&port),
                          port.content_type(&port) == AAP_CONTENT_TYPE_AUDIO ? "AUDIO" : port.content_type(&port) == AAP_CONTENT_TYPE_MIDI2 ? "MIDI2" : "Other",
@@ -253,9 +240,10 @@ void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_b
     // Host robustness tests (aap-core#226, #227): report the MIDI2 buffer sizes we got, and if
     // `adb shell setprop debug.aap.sample.midi2_out_length <N>` is set, report a bogus MIDI2
     // output length N after every process().
-    for (int32_t i = 0; i < buffer->num_ports(buffer); i++)
-        if (i == context->midi2_in_port || i == context->midi2_out_port)
-            aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "MIDI2 port %d buffer size: %d", i, buffer->get_buffer_size(buffer, i));
+    for (auto direction : {AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT})
+        aap::a_log_f(AAP_LOG_LEVEL_INFO, AAP_APP_LOG_TAG, "MIDI2 %s buffer size: %d",
+                     direction == AAP_PORT_DIRECTION_INPUT ? "input" : "output",
+                     buffer->get_event_buffer_capacity(buffer, direction, 0));
     char bogusLength[PROP_VALUE_MAX]{};
     if (__system_property_get("debug.aap.sample.midi2_out_length", bogusLength) > 0)
         context->debug_bogus_midi2_out_length = (uint32_t) strtoul(bogusLength, nullptr, 0);
@@ -381,12 +369,17 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
 
     flush_parameter_outputs(context, buffer);
 
-    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_in_port);
+    volatile auto aapmb = (AAPMidiBufferHeader*) buffer->get_event_buffer(buffer, AAP_PORT_DIRECTION_INPUT, 0);
 
     uint32_t currentTicks = 0;
 
-    auto outL = (float*) buffer->get_buffer(buffer, context->audio_out_l_port);
-    auto outR = (float*) buffer->get_buffer(buffer, context->audio_out_r_port);
+    // The main output bus; mono if the host gives only one channel.
+    auto numOuts = buffer->get_audio_channel_count(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
+    if (!aapmb || numOuts == 0)
+        return;
+    auto outs = buffer->get_audio_channels(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
+    auto outL = outs[0];
+    auto outR = numOuts > 1 ? outs[1] : outs[0];
 
     auto midi2ptr = ((uint32_t*) (void*) aapmb) + 8;
     CMIDI2_UMP_SEQUENCE_FOREACH(midi2ptr, aapmb->length, ev) {
@@ -502,8 +495,9 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
     }
 
 #ifndef NDEBUG
-    if (context->debug_bogus_midi2_out_length > 0 && context->midi2_out_port >= 0)
-        ((AAPMidiBufferHeader*) buffer->get_buffer(buffer, context->midi2_out_port))->length = context->debug_bogus_midi2_out_length;
+    auto midi2Out = (AAPMidiBufferHeader*) buffer->get_event_buffer(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
+    if (context->debug_bogus_midi2_out_length > 0 && midi2Out)
+        midi2Out->length = context->debug_bogus_midi2_out_length;
 #endif
 }
 

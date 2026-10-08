@@ -1,6 +1,5 @@
 
 #include <aap/android-audio-plugin.h>
-#include <aap/ext/plugin-info.h>
 #include <aap/ext/state.h>
 #include <aap/ext/midi.h>
 #include <aap/ext/parameters.h>
@@ -14,7 +13,6 @@ extern "C" {
 
 #define AAP_APP_LOG_TAG "AAPBarebonePluginSample"
 
-#define PLUGIN_URI "urn:org.androidaudioplugin/samples/aappluginsample/EffectSample"
 
 #define PARAM_ID_VOLUME_L 0
 #define PARAM_ID_VOLUME_R 1
@@ -29,12 +27,6 @@ typedef struct SamplePluginSpecific {
     float modR_pn[128];
     uint32_t delayL{0};
     uint32_t delayR{0};
-    int32_t midiInPort{-1};
-    int32_t midiOutPort{-1};
-    int32_t audioInPortL{-1};
-    int32_t audioInPortR{-1};
-    int32_t audioOutPortL{-1};
-    int32_t audioOutPortR{-1};
 
     SamplePluginSpecific(AndroidAudioPluginHost *host) {
         this->host = *host;
@@ -64,44 +56,11 @@ void sample_plugin_delete(
 
 void sample_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate, aap_buffer_t *buffer) {
     auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
-    auto ext = (aap_host_plugin_info_extension_t*) ctx->host.get_extension(&ctx->host, AAP_PLUGIN_INFO_EXTENSION_URI);
-    assert(ext);
-    auto pluginInfo = ext->get(ext, &ctx->host, PLUGIN_URI);
-    auto numPorts = pluginInfo.get_port_count(&pluginInfo);
-    assert(buffer->num_ports(buffer) >= numPorts);
-    for (int32_t i = 0, n = numPorts; i < n; i++) {
-        auto port = pluginInfo.get_port(&pluginInfo, i);
-        switch (port.content_type(&port)) {
-            case AAP_CONTENT_TYPE_MIDI2:
-                switch (port.direction(&port)) {
-                    case AAP_PORT_DIRECTION_INPUT:
-                        ctx->midiInPort = i;
-                        break;
-                    case AAP_PORT_DIRECTION_OUTPUT:
-                        ctx->midiOutPort = i;
-                        break;
-                }
-                break;
-            case AAP_CONTENT_TYPE_AUDIO:
-                switch (port.direction(&port)) {
-                    case AAP_PORT_DIRECTION_INPUT:
-                        if (ctx->audioInPortL < 0)
-                            ctx->audioInPortL = i;
-                        else if (ctx->audioInPortR < 0)
-                            ctx->audioInPortR = i;
-                        break;
-                    case AAP_PORT_DIRECTION_OUTPUT:
-                        if (ctx->audioOutPortL < 0)
-                            ctx->audioOutPortL = i;
-                        else if (ctx->audioOutPortR < 0)
-                            ctx->audioOutPortR = i;
-                        break;
-                }
-                break;
-            default:
-                break;
-        }
-    }
+    // The bus accessors on aap_buffer_t are available only with the buses host extension.
+    // (This plugin is always built with an aap-core that provides it.)
+    auto buses = ctx->host.get_extension(&ctx->host, AAP_BUSES_EXTENSION_URI);
+    assert(buses);
+    (void) buses;
 }
 
 void sample_plugin_activate(AndroidAudioPlugin *plugin) {}
@@ -157,13 +116,20 @@ void sample_plugin_process(AndroidAudioPlugin *plugin,
         size = frameCount;
     }
 
-    auto fIL = (float *) buffer->get_buffer(buffer, ctx->audioInPortL);
-    auto fIR = (float *) buffer->get_buffer(buffer, ctx->audioInPortR);
-    auto fOL = (float *) buffer->get_buffer(buffer, ctx->audioOutPortL);
-    auto fOR = (float *) buffer->get_buffer(buffer, ctx->audioOutPortR);
+    // The main buses. A host may give us mono buses (e.g. an older host that assumed defaults).
+    auto numIns = buffer->get_audio_channel_count(buffer, AAP_PORT_DIRECTION_INPUT, 0);
+    auto numOuts = buffer->get_audio_channel_count(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
+    if (numIns == 0 || numOuts == 0)
+        return;
+    auto ins = buffer->get_audio_channels(buffer, AAP_PORT_DIRECTION_INPUT, 0);
+    auto outs = buffer->get_audio_channels(buffer, AAP_PORT_DIRECTION_OUTPUT, 0);
+    auto fIL = ins[0];
+    auto fIR = numIns > 1 ? ins[1] : ins[0];
+    auto fOL = outs[0];
+    auto fOR = numOuts > 1 ? outs[1] : outs[0];
 
     // update parameters via MIDI2 messages
-    auto midiSeq = (AAPMidiBufferHeader*) buffer->get_buffer(buffer, ctx->midiInPort);
+    auto midiSeq = (AAPMidiBufferHeader*) buffer->get_event_buffer(buffer, AAP_PORT_DIRECTION_INPUT, 0);
     auto midiSeqData = midiSeq + 1;
     if (midiSeq->length > 0) {
         CMIDI2_UMP_SEQUENCE_FOREACH(midiSeqData, midiSeq->length, iter) {

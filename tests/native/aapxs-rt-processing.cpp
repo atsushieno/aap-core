@@ -113,6 +113,7 @@ struct TestMemory : PluginSharedMemoryStore {
             check(data != MAP_FAILED, "fixture buffer allocation");
             port_buffer->setBuffer(i, data); port_buffer->setBufferSize(i, size);
         }
+        port_buffer->rebuildBusViews();
     }
 };
 struct TestLocal : LocalPluginInstance {
@@ -373,6 +374,18 @@ void localProcessing() {
           instance.getBus(AAP_BUS_KIND_EVENT, AAP_PORT_DIRECTION_INPUT, 0)->getPortIndex() == 1 &&
           instance.getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT) == 1, "main event input bus");
     check(instance.getMainEventPortIndex(AAP_PORT_DIRECTION_OUTPUT) == 2, "main event output bus");
+    // Plugins see the buses through aap_buffer_t, once they find the buses host extension.
+    check(fake.host && fake.host->get_extension(fake.host, AAP_BUSES_EXTENSION_URI), "buses host extension");
+    auto busBuffer = instance.getAudioPluginBuffer();
+    check(busBuffer->get_bus_count(busBuffer, AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT) == 0 &&
+          busBuffer->get_bus_count(busBuffer, AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT) == 1 &&
+          busBuffer->get_bus_count(busBuffer, AAP_BUS_KIND_EVENT, AAP_PORT_DIRECTION_INPUT) == 1, "bus counts");
+    check(busBuffer->get_audio_channel_count(busBuffer, AAP_PORT_DIRECTION_OUTPUT, 0) == 1 &&
+          busBuffer->get_audio_channels(busBuffer, AAP_PORT_DIRECTION_OUTPUT, 0)[0] == busBuffer->get_buffer(busBuffer, 0) &&
+          busBuffer->get_audio_channels(busBuffer, AAP_PORT_DIRECTION_OUTPUT, 1) == nullptr, "audio bus channels");
+    check(busBuffer->get_event_buffer(busBuffer, AAP_PORT_DIRECTION_INPUT, 0) == busBuffer->get_buffer(busBuffer, 1) &&
+          busBuffer->get_event_buffer_capacity(busBuffer, AAP_PORT_DIRECTION_INPUT, 0) == 8192 &&
+          busBuffer->get_event_buffer(busBuffer, AAP_PORT_DIRECTION_OUTPUT, 0) == busBuffer->get_buffer(busBuffer, 2), "event bus buffers");
     uint32_t raw[]{0x20903C7F};
     instance.addEventUmpInput(raw, sizeof(raw));
     instance.process(64, 0);

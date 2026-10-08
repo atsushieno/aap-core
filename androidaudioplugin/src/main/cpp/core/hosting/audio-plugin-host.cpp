@@ -78,6 +78,7 @@ int32_t ClientPluginSharedMemoryStore::allocateClientBuffer(size_t numPorts, siz
 		port_buffer->setBuffer(i, mapped);
 		port_buffer->setBufferSize(i, memSize);
 	}
+	port_buffer->rebuildBusViews();
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
 }
@@ -114,6 +115,7 @@ int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_
         port_buffer->setBuffer(i, mapped);
         port_buffer->setBufferSize(i, memSize);
 	}
+	port_buffer->rebuildBusViews();
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
 }
