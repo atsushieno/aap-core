@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "../core/hosting/plugin-parameter-state.h"
+#include "../core/hosting/plugin-information-registry.h"
 
 namespace aap {
     const char *java_plugin_information_class_name = "org/androidaudioplugin/PluginInformation",
@@ -35,6 +36,7 @@ namespace aap {
             j_method_get_ui_view_factory,
             j_method_get_ui_activity,
             j_method_get_ui_web,
+            j_method_get_package_last_update_time,
             j_method_get_extension_count,
             j_method_get_extension,
             j_method_extension_get_required,
@@ -119,6 +121,8 @@ namespace aap {
         j_method_get_ui_web = env->GetMethodID(java_plugin_information_class,
                                                "getUiWeb",
                                                "()Ljava/lang/String;");
+        j_method_get_package_last_update_time = env->GetMethodID(java_plugin_information_class,
+                                                                 "getPackageLastUpdateTime", "()J");
         j_method_get_extension_count = env->GetMethodID(java_plugin_information_class,
                                                         "getExtensionCount", "()I");
         j_method_get_extension = env->GetMethodID(java_plugin_information_class, "getExtension",
@@ -223,7 +227,7 @@ namespace aap {
         return jni_facade_instance.get();
     }
 
-    const char *keepPointer(std::vector<const char *> freeList, const char *ptr) {
+    const char *keepPointer(std::vector<const char *>& freeList, const char *ptr) {
         freeList.emplace_back(ptr);
         return ptr;
     }
@@ -231,7 +235,7 @@ namespace aap {
     const char *strdup_fromJava(JNIEnv *env, jstring s) {
         jboolean isCopy;
         if (!s)
-            return "";
+            return strdup("");
         const char *u8 = env->GetStringUTFChars(s, &isCopy);
         auto ret = strdup(u8);
         env->ReleaseStringUTFChars(s, u8);
@@ -241,7 +245,8 @@ namespace aap {
     aap::PluginInformation *
     AAPJniFacade::pluginInformation_fromJava(JNIEnv *env, jobject pluginInformation) {
         std::vector<const char *> freeList{};
-        auto aapPI = new aap::PluginInformation(
+        internal::OwnedPluginInformation owned{};
+        owned.info = std::make_unique<aap::PluginInformation>(
                 env->CallBooleanMethod(pluginInformation, j_method_is_out_process),
                 keepPointer(freeList,
                             strdup_fromJava(env, (jstring) env->CallObjectMethod(pluginInformation,
@@ -283,6 +288,7 @@ namespace aap {
         );
         for (auto p: freeList)
             free((void *) p);
+        auto aapPI = owned.info.get();
 
         int nExtensions = env->CallIntMethod(pluginInformation, j_method_get_extension_count);
         for (int i = 0; i < nExtensions; i++) {
@@ -307,7 +313,8 @@ namespace aap {
             auto min = env->CallDoubleMethod(para, j_method_parameter_get_minimum_value);
             auto max = env->CallDoubleMethod(para, j_method_parameter_get_maximum_value);
 
-            auto nativePara = new aap::ParameterInformation(id, name, min, max, def);
+            auto nativePara = owned.parameters.emplace_back(
+                    std::make_unique<aap::ParameterInformation>(id, name, min, max, def)).get();
 
             int32_t nEnums = env->CallIntMethod(para, j_method_parameter_get_enumeration_count);
             for (int e = 0; e < nEnums; e++) {
@@ -317,6 +324,7 @@ namespace aap {
                                                                                  j_method_enumeration_get_name));
                 ParameterInformation::Enumeration nativeEnum{e, eValue, eName};
                 nativePara->addEnumeration(nativeEnum);
+                free((void *) eName);
             }
 
             aapPI->addDeclaredParameter(nativePara);
@@ -333,7 +341,8 @@ namespace aap {
                                                                        j_method_port_get_content);
             auto direction = (aap_port_direction) (int) env->CallIntMethod(port,
                                                                            j_method_port_get_direction);
-            auto nativePort = new aap::PortInformation(index, name, content, direction);
+            auto nativePort = owned.ports.emplace_back(
+                    std::make_unique<aap::PortInformation>(index, name, content, direction)).get();
             auto minSize = env->CallIntMethod(port, j_method_port_get_minimum_size_in_bytes);
             if (minSize != 0)
                 nativePort->setPropertyValueString(AAP_PORT_MINIMUM_SIZE, std::to_string(minSize));
@@ -341,7 +350,9 @@ namespace aap {
             free((void *) name);
         }
 
-        return aapPI;
+        auto packageLastUpdateTime = (int64_t) env->CallLongMethod(pluginInformation,
+                                                                   j_method_get_package_last_update_time);
+        return internal::PluginInformationRegistry::getInstance().intern(std::move(owned), packageLastUpdateTime);
     }
 
 

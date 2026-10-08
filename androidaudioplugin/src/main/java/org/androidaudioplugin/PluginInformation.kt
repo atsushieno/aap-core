@@ -37,6 +37,12 @@ class PluginInformation(
         const val PRIMARY_CATEGORY_INSTRUMENT = "Instrument"
     }
 
+    /**
+     * `PackageInfo.lastUpdateTime` of the plugin package, or 0 if unknown. It changes whenever the
+     * package is installed or updated, which tells the native side whether the plugin metadata may have changed.
+     */
+    var packageLastUpdateTime: Long = 0
+
     var extensions = mutableListOf<ExtensionInformation>()
 
     var parameters = mutableListOf<ParameterInformation>()

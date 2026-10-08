@@ -211,6 +211,12 @@ object AudioPluginHostHelper {
                 plugin.icon = serviceInfo.loadIcon(context.packageManager)
             if (plugin.icon == null && serviceInfo.applicationInfo.icon != 0)
                 plugin.icon = serviceInfo.applicationInfo.loadIcon(context.packageManager)
+            val packageLastUpdateTime = try {
+                context.packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+            } catch (_: PackageManager.NameNotFoundException) {
+                0L // removed while being queried
+            }
+            plugin.plugins.forEach { it.packageLastUpdateTime = packageLastUpdateTime }
             val extensions = serviceInfo.metaData.getString(AAP_METADATA_NAME_EXTENSIONS)
             if (extensions != null)
                 plugin.extensions = extensions.toString().split(',').toMutableList()

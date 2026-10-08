@@ -15,7 +15,11 @@ std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
     jsize infoSize = env->GetArrayLength(jPluginInfos);
     for (int i = 0; i < infoSize; i++) {
         auto jPluginInfo = (jobject) env->GetObjectArrayElement(jPluginInfos, i);
-        ret.emplace_back(AAPJniFacade::getInstance()->pluginInformation_fromJava(env, jPluginInfo));
+        // It is owned by PluginInformationRegistry; repeated queries return the same objects.
+        auto info = AAPJniFacade::getInstance()->pluginInformation_fromJava(env, jPluginInfo);
+        if (info)
+            ret.emplace_back(info);
+        env->DeleteLocalRef(jPluginInfo);
     }
     env->DeleteGlobalRef(jPluginInfos);
     return ret;
@@ -23,6 +27,10 @@ std::vector<PluginInformation*> convertPluginList(jobjectArray jPluginInfos)
 
 std::vector<PluginInformation*> queryInstalledPlugins() {
     return convertPluginList(AAPJniFacade::getInstance()->queryInstalledPluginsJNI());
+}
+
+std::vector<PluginInformation*> AndroidPluginClientSystem::getInstalledPlugins(bool, std::vector<std::string>*) {
+    return queryInstalledPlugins();
 }
 
 std::vector<std::string> AndroidPluginClientSystem::getPluginPaths() {

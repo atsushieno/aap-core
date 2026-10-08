@@ -9,6 +9,7 @@
 #include "connection-list-lock.h"
 #include "aap/core/host/plugin-connections.h"
 #include "aap/core/host/plugin-client-system.h"
+#include "plugin-information-registry.h"
 
 // Platform plugin discovery is replaced by a fixed list that the tests modify.
 namespace {
@@ -69,6 +70,36 @@ void pluginListRefresh() {
 
     PluginListSnapshot copy{list};
     check(copy.getNumPluginInformation() == 3 && copy.getPluginInformation("urn:third") == third, "copy keeps contents");
+}
+OwnedPluginInformation makeOwnedPlugin(const char* package, const char* id) {
+    OwnedPluginInformation owned{};
+    owned.info = std::make_unique<PluginInformation>(true, package, "test.Class", id, "", "1", id, "", "", "", "Effect", "", "", "");
+    auto port = owned.ports.emplace_back(std::make_unique<PortInformation>(0, "out", AAP_CONTENT_TYPE_AUDIO, AAP_PORT_DIRECTION_OUTPUT)).get();
+    owned.info->addDeclaredPort(port);
+    auto parameter = owned.parameters.emplace_back(std::make_unique<ParameterInformation>(0, "gain", 0, 1, 0.5)).get();
+    owned.info->addDeclaredParameter(parameter);
+    return owned;
+}
+void pluginInformationRegistry() {
+    auto& registry = PluginInformationRegistry::getInstance();
+    auto size = registry.size();
+    auto first = registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 100);
+    check(first != nullptr && registry.size() == size + 1, "a new plugin is registered");
+    for (int i = 0; i < 1000; i++)
+        check(registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 100) == first, "re-queried plugin resolves to the registered one");
+    check(registry.size() == size + 1, "re-queries do not grow the registry");
+    check(first->getNumDeclaredPorts() == 1 && std::string{first->getDeclaredPort(0)->getName()} == "out", "registered ports stay valid");
+    check(first->getNumDeclaredParameters() == 1 && std::string{first->getDeclaredParameter(0)->getName()} == "gain", "registered parameters stay valid");
+
+    auto updated = registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 200);
+    check(updated != first && registry.size() == size + 2, "an updated package gets a new plugin");
+    check(first->getPluginID() == "urn:reg", "the plugin of the old installation stays valid");
+    check(registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 200) == updated, "the updated plugin is reused");
+    check(registry.intern(makeOwnedPlugin("reg.package", "urn:other"), 200) != updated, "another plugin ID in the package is distinct");
+    check(registry.intern(makeOwnedPlugin("reg.other", "urn:reg"), 200) != updated, "another package is distinct");
+    auto unknown = registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 0);
+    check(unknown != updated && registry.intern(makeOwnedPlugin("reg.package", "urn:reg"), 0) != unknown, "unknown installation is never shared");
+    check(registry.intern(OwnedPluginInformation{}, 100) == nullptr, "empty plugin is rejected");
 }
 void pluginListRefreshRace() {
     PluginListSnapshot list;
@@ -151,6 +182,6 @@ void connectionLookupRace() {
 }
 int main() {
     retirementDuringCallback(); reentrantRetirement(); connectionLookupRace();
-    pluginListRefresh(); pluginListRefreshRace();
+    pluginListRefresh(); pluginListRefreshRace(); pluginInformationRegistry();
     puts("AAPXS connection lifecycle regression tests passed");
 }

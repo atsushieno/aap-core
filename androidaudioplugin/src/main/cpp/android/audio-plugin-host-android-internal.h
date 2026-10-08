@@ -45,6 +45,9 @@ public:
 
     std::vector<PluginInformation *>
     getPluginsFromMetadataPaths(std::vector<std::string> &aapMetadataPaths) override;
+
+    // Plugin "paths" are meaningless on Android, so it queries the installed plugins only once.
+    std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr) override;
 };
 
 class AndroidPluginClientConnectionData {

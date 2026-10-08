@@ -22,7 +22,8 @@ public:
     virtual void getAAPMetadataPaths(std::string path, std::vector<std::string>& results) = 0;
     virtual std::vector<PluginInformation*> getPluginsFromMetadataPaths(std::vector<std::string>& aapMetadataPaths) = 0;
 
-    std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
+    // The returned PluginInformation objects are owned by the system and stay valid for the process lifetime.
+    virtual std::vector<PluginInformation*> getInstalledPlugins(bool returnCacheIfExists = true, std::vector<std::string>* searchPaths = nullptr);
 };
 
 } // namespace aap

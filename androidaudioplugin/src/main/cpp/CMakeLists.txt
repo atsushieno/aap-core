@@ -21,6 +21,7 @@ set (androidaudioplugin_SOURCES
 	"core/hosting/PluginHost.Service.cpp"
 	"core/hosting/plugin-client-system.cpp"
 	"core/hosting/plugin-connections.cpp"
+	"core/hosting/plugin-information-registry.cpp"
 	"core/aapxs/aapxs-runtime.cpp"
 	"core/aapxs/gui-aapxs.cpp"
 	"core/aapxs/midi-aapxs.cpp"
