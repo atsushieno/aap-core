@@ -8,6 +8,7 @@
 #include "instance-realtime-state.h"
 #include "aap/core/host/shared-memory-store.h"
 #include "../AAPJniFacade.h"
+#include "buffer-layout.h"
 #include "aap/core/aap_midi2_helper.h"
 #include "../include_cmidi2.h"
 
@@ -81,6 +82,7 @@ void aap::RemotePluginInstance::configurePorts() {
                          layout.error.c_str(), instance_id);
         else if (layout.value.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED) {
             setupPortsFromBusLayout(layout.value);
+            bus_layout_generation = layout.value.generation;
             return;
         }
     }
@@ -105,7 +107,10 @@ void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate) {
 }
 
 void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate, int32_t controlBytesPerBlock) {
-    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
+    auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
+    // A prepared (inactive) instance can be prepared again only with a new buffer pool (bus mode).
+    bool reprepare = instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE && shm->usesBufferPool();
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED && !reprepare) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,
                      "Unexpected call to prepare() at state: %d (instanceId: %d)",
                      instantiation_state.load(), instance_id);
@@ -113,9 +118,34 @@ void aap::RemotePluginInstance::prepare(int frameCount, int32_t sampleRate, int3
     }
 
     sample_rate = sampleRate;
-    auto numPorts = getNumPorts();
-    auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(getSharedMemoryStore());
-    auto code = shm->allocateClientBuffer(numPorts, frameCount, *this, controlBytesPerBlock > 0 ? controlBytesPerBlock : DEFAULT_CONTROL_BUFFER_SIZE);
+    if (controlBytesPerBlock <= 0)
+        controlBytesPerBlock = DEFAULT_CONTROL_BUFFER_SIZE;
+    int32_t code = aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
+    bool pooled = false;
+    if (isBusMode() && bus_layout_generation != 0) {
+        // Bus mode: commit where the buffers are, then allocate the pool.
+        aap_buffer_layout_t layout{};
+        auto error = internal::computeBufferLayout(*this, bus_layout_generation, frameCount, controlBytesPerBlock, layout);
+        auto buses = standards ? standards->getBuses() : nullptr;
+        if (error.empty() && buses) {
+            auto committed = buses->commitBufferLayout(layout);
+            if (committed.isOk()) {
+                code = shm->allocateClientBufferPool(layout, *this);
+                pooled = true;
+            } else
+                error = committed.error;
+        }
+        if (!pooled)
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Buffer pool is not used: %s (instanceId: %d)",
+                         error.c_str(), instance_id);
+    }
+    if (!pooled) {
+        if (reprepare) {
+            instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
+            return;
+        }
+        code = shm->allocateClientBuffer(getNumPorts(), frameCount, *this, controlBytesPerBlock);
+    }
     if (code != aap::PluginSharedMemoryStore::PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS) {
         aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, aap::PluginSharedMemoryStore::getMemoryAllocationErrorMessage(code));
     }

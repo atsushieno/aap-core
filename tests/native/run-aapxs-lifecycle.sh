@@ -54,6 +54,7 @@ for configuration in debug release; do
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginInstance.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginInstance.Local.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginInstance.Remote.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/hosting/buffer-layout.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginHost.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginInformation.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/hosting/AAPXSMidi2RecipientSession.cpp" \

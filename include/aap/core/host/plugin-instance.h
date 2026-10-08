@@ -238,12 +238,15 @@ namespace aap {
         // The layout last reported to the client; confirmPorts() configures the ports from it.
         std::unique_ptr<aap_buses_layout_snapshot_t> reported_bus_layout{};
         uint32_t bus_layout_generation{1};
+        // Bus mode: where the port buffers live in the shared memory pool.
+        std::unique_ptr<aap_buffer_layout_t> committed_buffer_layout{};
 
         class BusesService : public xs::BusesServiceHandler {
             LocalPluginInstance* owner;
         public:
             explicit BusesService(LocalPluginInstance* owner) : owner(owner) {}
             void getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) override;
+            bool commitBufferLayout(const aap_buffer_layout_t& layout) override;
         };
         BusesService buses_service{this};
 
@@ -277,6 +280,14 @@ namespace aap {
         int32_t getInstanceId() override { return instance_id; }
 
         void confirmPorts();
+
+        // Invoked by AudioPluginInterfaceImpl::beginPrepare(). A prepared (inactive) instance can be
+        // prepared again only in bus mode, with a new buffer pool. Returns an error, or empty.
+        std::string beginPrepare();
+        // Invoked by AudioPluginInterfaceImpl::endPrepare(), before prepare(). Returns an error, or empty.
+        std::string setupPortBuffers(int32_t frameCount);
+        // Bus mode: the port buffers live in one shared memory pool.
+        bool usesBufferPool() const { return committed_buffer_layout != nullptr; }
 
         // The client asked for the layout; an older client never does.
         bool isBusMode() override { return reported_bus_layout != nullptr; }
@@ -392,6 +403,10 @@ namespace aap {
 
         // The plugin declares the buses extension in its metadata.
         bool isBusMode() override { return pluginInfo->hasExtension(AAP_BUSES_EXTENSION_URI); }
+    private:
+        // The generation of the plugin-provided bus layout, or 0.
+        uint32_t bus_layout_generation{0};
+    public:
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 

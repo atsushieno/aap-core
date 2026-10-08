@@ -2,6 +2,7 @@
 #define AAP_CORE_SHARED_MEMORY_EXTENSION_H
 
 #include <sys/mman.h>
+#include <unistd.h>
 #include "plugin-instance.h"
 
 namespace aap {
@@ -74,6 +75,8 @@ namespace aap {
 
     class SharedMemoryPluginBuffer : public AbstractPluginBuffer {
         PluginInstance* instance;
+        // false if the buffers point into a pool that is mapped (and unmapped) by its owner.
+        bool owns_mappings{true};
     public:
         SharedMemoryPluginBuffer(PluginInstance* instance) : instance(instance) {}
 
@@ -82,8 +85,11 @@ namespace aap {
 
         inline void setBuffer(size_t index, void* buffer) { buffers[index] = buffer; }
         inline void setBufferSize(size_t index, int32_t size) { buffer_sizes[index] = size; }
+        inline void setOwnsMappings(bool owns) { owns_mappings = owns; }
 
         void unmapSharedMemory() {
+            if (!owns_mappings)
+                return;
             for (size_t i = 0; i < numPorts(); i++) {
                 auto buffer = buffers[i];
                 if (buffer)
@@ -123,6 +129,50 @@ namespace aap {
         // Otherwise they are just mmap()-ed and should not be freed by own.
         std::unique_ptr<SharedMemoryPluginBuffer> port_buffer{nullptr};
         std::map<std::string,int32_t> extension_uri_to_index{};
+
+        // Bus mode: all the port buffers live in one shared memory pool (see aap_buffer_layout_t).
+        struct BufferPool {
+            int32_t fd{-1};
+            void* mapping{nullptr};
+            size_t size{0};
+            ~BufferPool() {
+                if (mapping)
+                    munmap(mapping, size);
+                if (fd >= 0)
+                    close(fd);
+            }
+        };
+        std::unique_ptr<BufferPool> pool{nullptr};
+        // The previous pool and its buffer stay mapped until the next replacement, so that a stray
+        // process() call that still sees them does not touch unmapped memory.
+        std::unique_ptr<BufferPool> retired_pool{nullptr};
+        std::unique_ptr<SharedMemoryPluginBuffer> retired_port_buffer{nullptr};
+
+        // Builds port buffers that point into the pool mapping, as the layout describes.
+        static std::unique_ptr<SharedMemoryPluginBuffer> createPoolBuffer(const aap_buffer_layout_t& layout,
+                                                                          void* mapping, PluginInstance& instance) {
+            auto buffer = std::make_unique<SharedMemoryPluginBuffer>(&instance);
+            if (!buffer->initialize(layout.entry_count, (int32_t) layout.frame_capacity))
+                return nullptr;
+            buffer->setOwnsMappings(false);
+            for (int32_t i = 0; i < layout.entry_count; i++) {
+                buffer->setBuffer(i, (uint8_t*) mapping + layout.entries[i].offset);
+                buffer->setBufferSize(i, (int32_t) layout.entries[i].size);
+            }
+            return buffer;
+        }
+
+        void installBufferPool(std::unique_ptr<BufferPool> newPool, std::unique_ptr<SharedMemoryPluginBuffer> buffer) {
+            retired_port_buffer.reset();
+            retired_pool.reset();
+            if (pool) {
+                retired_port_buffer = std::move(port_buffer);
+                retired_pool = std::move(pool);
+            } else
+                disposeAudioBufferFDs(); // per-port buffers from a former prepare(), if any
+            pool = std::move(newPool);
+            port_buffer = std::move(buffer);
+        }
 
     public:
         enum PluginMemoryAllocatorResult {
@@ -212,6 +262,9 @@ namespace aap {
             return extension_buffers->at(extension_buffers->size() - 1);
         }
 
+        bool usesBufferPool() const { return pool != nullptr; }
+        int32_t getBufferPoolFD() const { return pool ? pool->fd : -1; }
+
         // So far it is used only by aap_client_as_plugin.
         aap_buffer_t* getAudioPluginBuffer() {
             if (!port_buffer) { // make sure to call allocate*Buffer() first.
@@ -234,11 +287,17 @@ namespace aap {
     class ClientPluginSharedMemoryStore : public PluginSharedMemoryStore {
     public:
         [[nodiscard]] int32_t allocateClientBuffer(size_t numPorts, size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock);
+        // Bus mode: allocates a new pool for the layout, replacing the current port buffers.
+        [[nodiscard]] int32_t allocateClientBufferPool(const aap_buffer_layout_t& layout, aap::PluginInstance& instance);
     };
 
     class ServicePluginSharedMemoryStore : public PluginSharedMemoryStore {
     public:
         [[nodiscard]] int32_t allocateServiceBuffer(std::vector<int32_t>& clientFDs, size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock);
+
+        // Bus mode: maps the pool FD passed by prepareMemory(0, ...) after validating the layout.
+        // Returns an error, or empty.
+        [[nodiscard]] std::string completeServicePoolInitialization(const aap_buffer_layout_t& layout, int32_t frameCount, aap::PluginInstance& instance);
 
         [[nodiscard]] bool completeServiceInitialization(size_t numFrames, aap::PluginInstance& instance, size_t defaultControllBytesPerBlock) {
             auto ret = allocateServiceBuffer(*cached_shm_fds_for_prepare, numFrames, instance, defaultControllBytesPerBlock) == PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;

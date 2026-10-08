@@ -243,11 +243,15 @@ public:
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        instance->confirmPorts();
+        auto error = instance->beginPrepare();
+        if (!error.empty())
+            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, error.c_str());
         instance->scanParametersAndBuildList();
 
+        // In bus mode prepareMemory() passes the single buffer pool.
         auto shm = instance->getSharedMemoryStore();
-        shm->resizePortBufferByCount(instance->getNumPorts());
+        shm->resizePortBufferByCount(instance->usesBufferPool() ? 1 : instance->getNumPorts());
         return ndk::ScopedAStatus::ok();
     }
 
@@ -256,15 +260,10 @@ public:
         auto instance = svc->getLocalInstance(in_instanceID);
         CHECK_INSTANCE(instance, in_instanceID)
 
-        auto shmExt = dynamic_cast<ServicePluginSharedMemoryStore*>(instance->getSharedMemoryStore());
-        if (shmExt == nullptr)
+        auto error = instance->setupPortBuffers(in_frameCount);
+        if (!error.empty())
             return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
-                    "unable to get shared memory extension");
-        if (!shmExt->completeServiceInitialization(in_frameCount, *instance, DEFAULT_CONTROL_BUFFER_SIZE))
-            return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION,
-                    "failed to allocate shared memory");
+                    AAP_BINDER_ERROR_SHARED_MEMORY_EXTENSION, error.c_str());
         instance->prepare(in_frameCount, sampleRate);
         return ndk::ScopedAStatus::ok();
     }

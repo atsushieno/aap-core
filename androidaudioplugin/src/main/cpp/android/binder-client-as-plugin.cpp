@@ -108,8 +108,11 @@ void aap_client_as_plugin_prepare(AndroidAudioPlugin *plugin, int32_t sampleRate
     // allocate shm FDs, first locally, then send it to the target AAP.
 	auto instance = (aap::RemotePluginInstance*) ctx->host.context;
 	auto shm = dynamic_cast<aap::ClientPluginSharedMemoryStore*>(instance->getSharedMemoryStore());
+	// In bus mode, all the port buffers are in one pool.
+	if (shm->usesBufferPool())
+		n = 1;
     for (int i = 0; i < n; i++) {
-		auto fd = shm->getPortBufferFD(i);
+		auto fd = shm->usesBufferPool() ? shm->getBufferPoolFD() : shm->getPortBufferFD(i);
         ::ndk::ScopedFileDescriptor sfd{dup(fd)};
         auto status = ctx->getProxy()->prepareMemory(ctx->instance_id, i, sfd);
         if (!status.isOk()) {

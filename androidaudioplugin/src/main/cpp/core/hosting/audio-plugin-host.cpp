@@ -15,6 +15,8 @@
 #include "aap/core/host/plugin-client-system.h"
 #include "aap/core/host/plugin-instance.h"
 #include "aap/core/AAPXSMidi2RecipientSession.h"
+#include "buffer-layout.h"
+#include <unistd.h>
 
 
 #define LOG_TAG "AAP.Host"
@@ -114,6 +116,59 @@ int32_t ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_
 	}
 
 	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
+}
+
+int32_t ClientPluginSharedMemoryStore::allocateClientBufferPool(const aap_buffer_layout_t& layout, aap::PluginInstance& instance) {
+	memory_origin = PLUGIN_BUFFER_ORIGIN_LOCAL;
+
+	auto newPool = std::make_unique<BufferPool>();
+	newPool->size = layout.pool_size;
+	newPool->fd = PluginClientSystem::getInstance()->createSharedMemory(layout.pool_size);
+	if (newPool->fd <= 0)
+		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_SHM_CREATE;
+	auto mapped = mmap(nullptr, newPool->size, PROT_READ | PROT_WRITE, MAP_SHARED, newPool->fd, 0);
+	if (mapped == MAP_FAILED)
+		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_MMAP;
+	newPool->mapping = mapped;
+	auto buffer = createPoolBuffer(layout, mapped, instance);
+	if (!buffer)
+		return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_FAILED_LOCAL_ALLOC;
+	installBufferPool(std::move(newPool), std::move(buffer));
+	return PluginMemoryAllocatorResult::PLUGIN_MEMORY_ALLOCATOR_SUCCESS;
+}
+
+std::string ServicePluginSharedMemoryStore::completeServicePoolInitialization(const aap_buffer_layout_t& layout, int32_t frameCount, aap::PluginInstance& instance) {
+	memory_origin = PLUGIN_BUFFER_ORIGIN_REMOTE;
+
+	auto fds = std::move(*cached_shm_fds_for_prepare);
+	cached_shm_fds_for_prepare->clear();
+	if (fds.size() != 1 || fds[0] <= 0) {
+		for (auto fd : fds)
+			if (fd > 0)
+				close(fd);
+		return "the buffer pool was not passed";
+	}
+	auto newPool = std::make_unique<BufferPool>();
+	newPool->fd = fds[0]; // already duplicated by prepareMemory(); the pool closes it.
+	struct stat st{};
+	size_t actualSize = fstat(newPool->fd, &st) == 0 ? (size_t) st.st_size : 0;
+#if ANDROID
+	if (auto ashmemSize = ASharedMemory_getSize(newPool->fd); ashmemSize > 0)
+		actualSize = ashmemSize;
+#endif
+	auto error = internal::validateBufferLayout(layout, instance, frameCount, actualSize);
+	if (!error.empty())
+		return error;
+	newPool->size = layout.pool_size;
+	auto mapped = mmap(nullptr, newPool->size, PROT_READ | PROT_WRITE, MAP_SHARED, newPool->fd, 0);
+	if (mapped == MAP_FAILED)
+		return "failed to map the buffer pool";
+	newPool->mapping = mapped;
+	auto buffer = createPoolBuffer(layout, mapped, instance);
+	if (!buffer)
+		return "failed to allocate the pool buffer";
+	installBufferPool(std::move(newPool), std::move(buffer));
+	return {};
 }
 
 } // namespace

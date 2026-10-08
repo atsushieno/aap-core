@@ -98,6 +98,49 @@ void aap::LocalPluginInstance::confirmPorts() {
     rebuildBusesFromPorts();
 }
 
+bool aap::LocalPluginInstance::BusesService::commitBufferLayout(const aap_buffer_layout_t& layout) {
+    // The layout must be based on the bus layout that we reported, and buffers change only
+    // while the instance is not active.
+    if (!owner->reported_bus_layout || layout.generation != owner->bus_layout_generation ||
+        owner->instantiation_state == PLUGIN_INSTANTIATION_STATE_ACTIVE ||
+        layout.entry_count < 0 || layout.entry_count > AAP_MAX_BUFFER_LAYOUT_ENTRIES)
+        return false;
+    owner->committed_buffer_layout = std::make_unique<aap_buffer_layout_t>(layout);
+    return true;
+}
+
+std::string aap::LocalPluginInstance::beginPrepare() {
+    if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE) {
+        if (!usesBufferPool())
+            return "an instance can be prepared again only with a buffer pool";
+        // From now on process() does not touch the port buffers until prepare() completes.
+        const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+        instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+    } else if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED)
+        return "unexpected state for prepare";
+    confirmPorts();
+    if (usesBufferPool() && committed_buffer_layout->entry_count != getNumPorts())
+        return "the buffer layout does not match the ports";
+    return {};
+}
+
+std::string aap::LocalPluginInstance::setupPortBuffers(int32_t frameCount) {
+    auto shm = dynamic_cast<ServicePluginSharedMemoryStore*>(getSharedMemoryStore());
+    if (!shm)
+        return "unable to get shared memory extension";
+    const internal::ProcessingQuiescence::Control suspension{realtime_state->processing};
+    if (usesBufferPool()) {
+        auto error = shm->completeServicePoolInitialization(*committed_buffer_layout, frameCount, *this);
+        if (error.empty())
+            aap::a_log_f(AAP_LOG_LEVEL_INFO, LOG_TAG, "Using a buffer pool of %u bytes for %d ports (instanceId: %d)",
+                         committed_buffer_layout->pool_size, committed_buffer_layout->entry_count, instance_id);
+        return error;
+    }
+    if (!shm->completeServiceInitialization(frameCount, *this, DEFAULT_CONTROL_BUFFER_SIZE))
+        return "failed to allocate shared memory";
+    return {};
+}
+
 void aap::LocalPluginInstance::BusesService::getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) {
     auto plugin = owner->plugin;
     snapshot = {};
@@ -249,6 +292,11 @@ void aap::LocalPluginInstance::pollExtensionWorker() {
 
 const char* local_trace_name = "AAP::LocalPluginInstance_process";
 void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNanoseconds) {
+    // There are no (stable) port buffers before prepare() completes, including while the
+    // buffer pool is being replaced.
+    auto state = instantiation_state.load();
+    if (state != PLUGIN_INSTANTIATION_STATE_ACTIVE && state != PLUGIN_INSTANTIATION_STATE_INACTIVE)
+        return;
     RealtimeScope realtime;
     internal::ProcessingQuiescence::Process activity(realtime_state->processing);
     if (realtime_state->reset_deferred_midi.exchange(false, std::memory_order_acq_rel))

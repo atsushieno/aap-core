@@ -19,6 +19,7 @@
 #include "aapxs-shared-transport.h"
 #include "plugin-parameter-state.h"
 #include "parameter-value-cache.h"
+#include "buffer-layout.h"
 
 using namespace aap;
 using namespace aap::internal;
@@ -94,6 +95,12 @@ int32_t aap::ClientPluginSharedMemoryStore::allocateClientBuffer(size_t, size_t,
 int32_t aap::ServicePluginSharedMemoryStore::allocateServiceBuffer(std::vector<int32_t>&, size_t, PluginInstance&, size_t) {
     throw std::runtime_error("unexpected Android buffer setup");
 }
+int32_t aap::ClientPluginSharedMemoryStore::allocateClientBufferPool(const aap_buffer_layout_t&, PluginInstance&) {
+    throw std::runtime_error("unexpected Android buffer setup");
+}
+std::string aap::ServicePluginSharedMemoryStore::completeServicePoolInitialization(const aap_buffer_layout_t&, int32_t, PluginInstance&) {
+    throw std::runtime_error("unexpected Android buffer setup");
+}
 struct TestMemory : PluginSharedMemoryStore {
     std::unique_ptr<PluginSharedMemoryStore> extensionOwner;
     explicit TestMemory(PluginInstance& instance, PluginSharedMemoryStore* previous = nullptr)
@@ -110,6 +117,7 @@ struct TestMemory : PluginSharedMemoryStore {
 };
 struct TestLocal : LocalPluginInstance {
     using LocalPluginInstance::LocalPluginInstance;
+    void forceState(PluginInstantiationState state) { instantiation_state = state; }
     std::function<void()> beforeWorkerWait;
     std::chrono::steady_clock::time_point nextExtensionDeadline() override {
         if (beforeWorkerWait) beforeWorkerWait();
@@ -1358,6 +1366,13 @@ size_t callBusesHandler(LocalPluginInstance& instance, int32_t opcode, T& payloa
     return serialization.data_size;
 }
 
+bool callBusesCommit(LocalPluginInstance& instance, aap_buffer_layout_t layout) {
+    callBusesHandler(instance, OPCODE_BUSES_COMMIT_BUFFER_LAYOUT, layout, sizeof(layout));
+    int32_t accepted;
+    memcpy(&accepted, &layout, sizeof(accepted));
+    return accepted == 1;
+}
+
 void busLayout() {
     for (bool pluginProvided : {true, false}) {
         for (bool negotiated : {true, false}) {
@@ -1415,6 +1430,32 @@ void busLayout() {
                 check(client.getPort(i)->getContentType() == instance.getPort(i)->getContentType() &&
                       client.getPort(i)->getPortDirection() == instance.getPort(i)->getPortDirection() &&
                       std::string{client.getPort(i)->getName()} == instance.getPort(i)->getName(), "client port agrees");
+
+            // Buffer layout: the client computes it, the service validates it.
+            aap_buffer_layout_t bufferLayout{};
+            check(computeBufferLayout(client, layout.generation, 256, 4096, bufferLayout).empty(), "compute buffer layout");
+            check(bufferLayout.entry_count == 6 && bufferLayout.entries[1].offset % BUFFER_LAYOUT_ALIGNMENT == 0 &&
+                  bufferLayout.entries[1].size == 256 * sizeof(float) && bufferLayout.entries[4].size == 4096 &&
+                  bufferLayout.pool_size >= bufferLayout.entries[5].offset + 4096, "buffer layout entries");
+            check(validateBufferLayout(bufferLayout, instance, 256, bufferLayout.pool_size).empty(), "valid buffer layout");
+            check(!validateBufferLayout(bufferLayout, instance, 512, bufferLayout.pool_size).empty(), "frame count beyond the layout");
+            check(!validateBufferLayout(bufferLayout, instance, 256, bufferLayout.pool_size - 1).empty(), "pool smaller than the layout");
+            auto overlapping = bufferLayout;
+            overlapping.entries[2].offset = overlapping.entries[1].offset + 4;
+            check(!validateBufferLayout(overlapping, instance, 256, overlapping.pool_size).empty(), "overlapping entries");
+            auto outOfBounds = bufferLayout;
+            outOfBounds.entries[5].offset = UINT32_MAX - 2;
+            check(!validateBufferLayout(outOfBounds, instance, 256, outOfBounds.pool_size).empty(), "entry out of bounds");
+
+            // Commit: only for the current generation, and the instance becomes pool-based.
+            auto stale = bufferLayout;
+            stale.generation++;
+            check(!callBusesCommit(instance, stale) && !instance.usesBufferPool(), "stale generation is rejected");
+            check(callBusesCommit(instance, bufferLayout) && instance.usesBufferPool(), "buffer layout committed");
+            // Preparing again from INACTIVE is possible only with a pool; the instance is UNPREPARED meanwhile.
+            instance.forceState(PLUGIN_INSTANTIATION_STATE_INACTIVE);
+            check(instance.beginPrepare().empty() && instance.getInstanceState() == PLUGIN_INSTANTIATION_STATE_UNPREPARED,
+                  "prepare again with a pool");
         }
     }
 }
