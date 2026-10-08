@@ -4,6 +4,7 @@
 #include <aap/ext/state.h>
 #include <aap/ext/midi.h>
 #include <aap/ext/parameters.h>
+#include <aap/ext/buses.h>
 #include <aap/unstable/logging.h>
 #include <cassert>
 #include <cstring>
@@ -323,9 +324,37 @@ aap_parameters_extension_t parameters_extension{nullptr,
                                                 nullptr,
                                                 nullptr};
 
+// Buses extension: a stereo main input and a stereo main output.
+// (The framework adds the main event buses.)
+int32_t sample_plugin_get_bus_count(aap_buses_extension_t* ext, AndroidAudioPlugin* plugin,
+                                    aap_bus_kind kind, aap_port_direction direction) {
+    return kind == AAP_BUS_KIND_AUDIO ? 1 : 0;
+}
+
+aap_bus_info_t sample_plugin_get_bus(aap_buses_extension_t* ext, AndroidAudioPlugin* plugin,
+                                     aap_bus_kind kind, aap_port_direction direction, int32_t index) {
+    aap_bus_info_t bus{};
+    bus.id = direction == AAP_PORT_DIRECTION_INPUT ? 0 : 1;
+    bus.kind = AAP_BUS_KIND_AUDIO;
+    bus.direction = direction;
+    bus.role = AAP_BUS_ROLE_MAIN;
+    strncpy(bus.name, direction == AAP_PORT_DIRECTION_INPUT ? "Audio In" : "Audio Out", AAP_MAX_BUS_NAME_CHARS - 1);
+    bus.channel_count = 2;
+    strncpy(bus.layout, "stereo", AAP_MAX_BUS_LAYOUT_CHARS - 1);
+    bus.enabled = true;
+    return bus;
+}
+
+aap_buses_extension_t buses_extension{nullptr,
+                                      sample_plugin_get_bus_count,
+                                      sample_plugin_get_bus,
+                                      nullptr};
+
 void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
     if (!strcmp(uri, AAP_PARAMETERS_EXTENSION_URI))
         return &parameters_extension;
+    if (!strcmp(uri, AAP_BUSES_EXTENSION_URI))
+        return &buses_extension;
     if (!strcmp(uri, AAP_STATE_EXTENSION_URI))
         return &state_extension;
     return nullptr;

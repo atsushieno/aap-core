@@ -21,11 +21,11 @@ For quick look, these are the Standard Extensions that had existed since AAPXS v
 - `state.h` : state support
 - `presets.h` : presets support
 - `gui.h` : GUI support
+- `buses.h` : audio and event buses (added after AAPXS v1)
 
 There is a few more not-implemented extensions that I would not say part of the Standard:
 
 - `plugin-info.h` : dynamic plugin information
-- `port-config.h` : dynamic port configuration
 
 ### AAPXS Registry: the extension catalogs
 

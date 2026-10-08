@@ -257,8 +257,8 @@ void aap::PluginInstance::setupPortsViaMetadata() {
     }
 }
 
-// Derives buses from the current port list: all audio ports of the same direction form the main
-// audio bus, and the first MIDI2 port of each direction is the main event bus.
+// Derives buses from the current (legacy) port list: all audio ports of the same direction form the
+// main audio bus, and the first MIDI2 port of each direction is the main event bus.
 // Bus IDs are fixed for each of those roles.
 void aap::PluginInstance::rebuildBusesFromPorts() {
     for (auto& list : configured_buses)
@@ -285,10 +285,61 @@ void aap::PluginInstance::rebuildBusesFromPorts() {
         }
         if (eventPorts[d] >= 0)
             configured_buses[busListIndex(AAP_BUS_KIND_EVENT, direction)].emplace_back(
-                    (uint32_t) (2 + d), AAP_BUS_KIND_EVENT, direction, AAP_BUS_ROLE_MAIN,
+                    d == 0 ? AAP_BUS_ID_MAIN_EVENT_INPUT : AAP_BUS_ID_MAIN_EVENT_OUTPUT, AAP_BUS_KIND_EVENT, direction, AAP_BUS_ROLE_MAIN,
                     d == 0 ? "Event In" : "Event Out", "", std::vector<int32_t>{eventPorts[d]});
     }
     main_event_port_indices = eventPorts;
+}
+
+static std::string channelPortName(const aap_bus_info_t& bus, int32_t channel) {
+    std::string name{bus.name};
+    if (bus.channel_count == 1)
+        return name;
+    if (bus.channel_count == 2 && strcmp(bus.layout, AAP_BUS_LAYOUT_STEREO) == 0)
+        return name + (channel == 0 ? " L" : " R");
+    return name + " " + std::to_string(channel + 1);
+}
+
+void aap::PluginInstance::setupPortsFromBusLayout(const aap_buses_layout_snapshot_t& layout) {
+    configured_ports = std::make_unique<std::vector<PortInformation>>();
+    for (auto& list : configured_buses)
+        list.clear();
+    std::array<int32_t, 2> eventPorts{-1, -1};
+    auto count = std::max(0, std::min(layout.count, (int32_t) AAP_MAX_BUSES));
+    for (auto kind : {AAP_BUS_KIND_AUDIO, AAP_BUS_KIND_EVENT}) {
+        for (auto direction : {AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT}) {
+            for (int32_t i = 0; i < count; i++) {
+                auto bus = layout.buses[i];
+                if (bus.kind != kind || bus.direction != direction)
+                    continue;
+                bus.name[AAP_MAX_BUS_NAME_CHARS - 1] = 0;
+                bus.layout[AAP_MAX_BUS_LAYOUT_CHARS - 1] = 0;
+                std::vector<int32_t> portIndices{};
+                if (kind == AAP_BUS_KIND_AUDIO) {
+                    for (int32_t ch = 0; bus.enabled && ch < bus.channel_count; ch++) {
+                        auto index = (int32_t) configured_ports->size();
+                        configured_ports->emplace_back(PortInformation{(uint32_t) index, channelPortName(bus, ch),
+                                                                       AAP_CONTENT_TYPE_AUDIO, direction});
+                        portIndices.emplace_back(index);
+                    }
+                } else {
+                    auto index = (int32_t) configured_ports->size();
+                    configured_ports->emplace_back(PortInformation{(uint32_t) index, bus.name,
+                                                                   AAP_CONTENT_TYPE_MIDI2, direction});
+                    portIndices.emplace_back(index);
+                    auto d = direction == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0;
+                    if (eventPorts[d] < 0)
+                        eventPorts[d] = index;
+                }
+                auto& list = configured_buses[busListIndex(kind, direction)];
+                list.emplace_back(bus.id, kind, direction, list.empty() ? AAP_BUS_ROLE_MAIN : AAP_BUS_ROLE_AUX,
+                                  bus.name, kind == AAP_BUS_KIND_AUDIO ? bus.layout : "", portIndices,
+                                  bus.flags, bus.enabled);
+            }
+        }
+    }
+    main_event_port_indices = eventPorts;
+    are_ports_configured = true;
 }
 
 void aap::PluginInstance::startPortConfiguration() {

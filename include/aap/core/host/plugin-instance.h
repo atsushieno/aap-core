@@ -84,6 +84,10 @@ namespace aap {
         // port configuration functions
         void setupPortConfigDefaults();
         void setupPortsViaMetadata();
+        // Builds the port list and the buses from a bus layout that the service determined, in the
+        // canonical order (audio inputs, audio outputs, event inputs, event outputs). Both client
+        // and service use it so that they agree on the port list. Non-RT.
+        void setupPortsFromBusLayout(const aap_buses_layout_snapshot_t& layout);
         // Must be called whenever the port list is finalized (non-RT).
         void rebuildBusesFromPorts();
         static size_t busListIndex(aap_bus_kind kind, aap_port_direction direction) {
@@ -156,6 +160,10 @@ namespace aap {
             return 0 <= index && (size_t) index < list.size() ? &list[(size_t) index] : nullptr;
         }
 
+        // True if the port (bus) layout is determined by the plugin's buses extension.
+        // Otherwise the legacy port configuration applies.
+        virtual bool isBusMode() { return false; }
+
         // Returns the port index of the main event bus buffer, or -1. It is RT-safe.
         int32_t getMainEventPortIndex(aap_port_direction direction) {
             return main_event_port_indices[direction == AAP_PORT_DIRECTION_OUTPUT ? 1 : 0];
@@ -227,6 +235,17 @@ namespace aap {
         xs::AAPXSServiceDispatcher aapxs_dispatcher;
         std::array<void*, 256> host_extension_proxies{};
         std::atomic<bool> process_requested_to_host{false};
+        // The layout last reported to the client; confirmPorts() configures the ports from it.
+        std::unique_ptr<aap_buses_layout_snapshot_t> reported_bus_layout{};
+        uint32_t bus_layout_generation{1};
+
+        class BusesService : public xs::BusesServiceHandler {
+            LocalPluginInstance* owner;
+        public:
+            explicit BusesService(LocalPluginInstance* owner) : owner(owner) {}
+            void getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) override;
+        };
+        BusesService buses_service{this};
 
         AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
 
@@ -258,6 +277,11 @@ namespace aap {
         int32_t getInstanceId() override { return instance_id; }
 
         void confirmPorts();
+
+        // The client asked for the layout; an older client never does.
+        bool isBusMode() override { return reported_bus_layout != nullptr; }
+        // Answers the framework-level buses AAPXS requests.
+        xs::BusesServiceHandler* getBusesServiceHandler() { return &buses_service; }
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 
@@ -365,6 +389,9 @@ namespace aap {
 
         // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
         void configurePorts();
+
+        // The plugin declares the buses extension in its metadata.
+        bool isBusMode() override { return pluginInfo->hasExtension(AAP_BUSES_EXTENSION_URI); }
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 

@@ -9,6 +9,7 @@
 #include "midi-aapxs.h"
 #include "gui-aapxs.h"
 #include "urid-aapxs.h"
+#include "buses-aapxs.h"
 #include <functional>
 
 namespace aap::xs {
@@ -77,6 +78,7 @@ namespace aap::xs {
         StateClientAAPXS* state{nullptr};
         GuiClientAAPXS* gui{nullptr};
         UridClientAAPXS* urid{nullptr};
+        BusesClientAAPXS* buses{nullptr};
 
     public:
         // These clients are owned by their AAPXS instance contexts. Hosting only borrows them.
@@ -102,8 +104,12 @@ namespace aap::xs {
             state = dynamic_cast<StateClientAAPXS*>(borrow(AAP_STATE_EXTENSION_URI));
             gui = dynamic_cast<GuiClientAAPXS*>(borrow(AAP_GUI_EXTENSION_URI));
             urid = dynamic_cast<UridClientAAPXS*>(borrow(AAP_URID_EXTENSION_URI));
+            buses = dynamic_cast<BusesClientAAPXS*>(borrow(AAP_BUSES_EXTENSION_URI));
             initialized = true;
         }
+
+        // Buses (framework-level; there is no corresponding plugin C extension proxy)
+        BusesClientAAPXS* getBuses() { return buses; }
 
         // URID
         void map(uint8_t uridValue, const char* uri) { if (urid) urid->map(uridValue, uri); }
@@ -215,11 +221,12 @@ namespace aap::xs {
         int32_t getMidiMappingPolicy() override { return midi ? midi->get_mapping_policy(midi, plugin) : 0; }
 
         // Parameters
-        int32_t getParameterCount() override { return parameters ? parameters->get_parameter_count(parameters, plugin) : -1; }
-        aap_parameter_info_t getParameter(int32_t index) override { return parameters ? parameters->get_parameter(parameters, plugin, index) : aap_parameter_info_t{}; }
-        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters ? parameters->get_parameter_property(parameters, plugin, index, propertyId) : 0.0; }
-        int32_t getEnumerationCount(int32_t index) override { return parameters ? parameters->get_enumeration_count(parameters, plugin, index) : 0; }
-        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters ? parameters->get_enumeration(parameters, plugin, index, enumIndex) : aap_parameter_enum_t{}; }
+        // Plugins may leave optional members NULL.
+        int32_t getParameterCount() override { return parameters && parameters->get_parameter_count ? parameters->get_parameter_count(parameters, plugin) : -1; }
+        aap_parameter_info_t getParameter(int32_t index) override { return parameters && parameters->get_parameter ? parameters->get_parameter(parameters, plugin, index) : aap_parameter_info_t{}; }
+        double getParameterProperty(int32_t index, int32_t propertyId) override { return parameters && parameters->get_parameter_property ? parameters->get_parameter_property(parameters, plugin, index, propertyId) : 0.0; }
+        int32_t getEnumerationCount(int32_t index) override { return parameters && parameters->get_enumeration_count ? parameters->get_enumeration_count(parameters, plugin, index) : 0; }
+        aap_parameter_enum_t getEnumeration(int32_t index, int32_t enumIndex) override { return parameters && parameters->get_enumeration ? parameters->get_enumeration(parameters, plugin, index, enumIndex) : aap_parameter_enum_t{}; }
 
         // Presets
         int32_t getPresetCount() override { return presets ? presets->get_preset_count(presets, plugin) : 0; }

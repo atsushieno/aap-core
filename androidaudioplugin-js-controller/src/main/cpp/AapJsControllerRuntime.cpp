@@ -7,7 +7,7 @@
 #include <aap/core/host/plugin-host.h>
 #include <aap/core/host/plugin-instance.h>
 #include <aap/core/plugin-information.h>
-#include <aap/ext/port-config.h>
+#include <aap/ext/buses.h>
 #include "plugin-parameter-state.h"
 
 #include <android/log.h>

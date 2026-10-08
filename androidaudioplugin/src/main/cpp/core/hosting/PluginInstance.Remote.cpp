@@ -72,14 +72,21 @@ void aap::RemotePluginInstance::configurePorts() {
 
     startPortConfiguration();
 
-    auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
-    if (ext != nullptr) {
-        // configure ports using port-config extension.
+    // Bus mode: the service determines the layout.
+    auto buses = standards ? standards->getBuses() : nullptr;
+    if (buses && isBusMode()) {
+        auto layout = buses->getLayout();
+        if (!layout.isOk())
+            aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Failed to retrieve bus layout: %s (instanceId: %d)",
+                         layout.error.c_str(), instance_id);
+        else if (layout.value.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED) {
+            setupPortsFromBusLayout(layout.value);
+            return;
+        }
+    }
 
-        // FIXME: implement
-        assert(false);
-
-    } else if (pluginInfo->getNumDeclaredPorts() == 0)
+    // Legacy mode, or a plugin without the buses extension: the same computation as the service.
+    if (pluginInfo->getNumDeclaredPorts() == 0)
         setupPortConfigDefaults();
     else
         setupPortsViaMetadata();

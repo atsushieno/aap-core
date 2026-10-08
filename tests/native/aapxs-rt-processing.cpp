@@ -132,6 +132,7 @@ struct TestRemote : RemotePluginInstance {
         shared_memory_store = new TestMemory(*this, shared_memory_store);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
     }
+    void applyBusLayout(const aap_buses_layout_snapshot_t& layout) { setupPortsFromBusLayout(layout); }
 };
 struct Callback : AudioPluginServiceCallback {
     std::atomic<int> process_requests{0};
@@ -165,6 +166,23 @@ struct FakePlugin {
     bool notifyOnInstantiate{false};
     bool exposeParameters{false};
     bool exposePresets{false};
+    bool exposeBuses{false};
+    // mono main input; stereo main output and mono aux output
+    aap_buses_extension_t buses{this,
+        [](auto*, auto*, aap_bus_kind kind, aap_port_direction direction) -> int32_t {
+            check(kind == AAP_BUS_KIND_AUDIO, "framework asks plugins for audio buses only");
+            return direction == AAP_PORT_DIRECTION_INPUT ? 1 : 2;
+        },
+        [](auto*, auto*, aap_bus_kind, aap_port_direction direction, int32_t index) {
+            aap_bus_info_t bus{};
+            bus.id = direction == AAP_PORT_DIRECTION_INPUT ? 10 : 20 + index;
+            bus.channel_count = direction == AAP_PORT_DIRECTION_INPUT || index == 1 ? 1 : 2;
+            strcpy(bus.name, direction == AAP_PORT_DIRECTION_INPUT ? "Main In" : index == 0 ? "Main Out" : "Side Out");
+            if (bus.channel_count == 2) strcpy(bus.layout, AAP_BUS_LAYOUT_STEREO);
+            bus.role = AAP_BUS_ROLE_AUX; // the framework normalizes it by index
+            bus.enabled = true;
+            return bus;
+        }, nullptr};
     std::atomic<int32_t> parameterCount{1}, presetCount{40};
     std::atomic<int> countReads{0};
     aap_parameters_extension_t parameters{this,
@@ -282,6 +300,7 @@ struct FakePlugin {
             auto& self = *static_cast<FakePlugin*>(plugin->plugin_specific);
             if (self.exposeParameters && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI)) return &self.parameters;
             if (self.exposePresets && !strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return &self.presets;
+            if (self.exposeBuses && !strcmp(uri, AAP_BUSES_EXTENSION_URI)) return &self.buses;
             return nullptr;
         }, nullptr};
     AndroidAudioPluginFactory factory{
@@ -334,6 +353,9 @@ void localProcessing() {
         store->getExtensionUriToIndexMap()[definition.uri] = index;
     }
     instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    bool rejected = false;
+    try { instance.controlExtension(0, "urn://example.com/unknown-extension", 1, 990); } catch (const std::runtime_error&) { rejected = true; }
+    check(rejected, "an unknown extension request is rejected, not dispatched to an empty slot");
     // Buses are derived from the ports; only the first MIDI2 port of each direction is the main event bus.
     check(instance.getNumBuses(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT) == 0, "no audio input bus");
     auto audioOut = instance.getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 0);
@@ -1317,7 +1339,125 @@ void incomingControlAndTeardown(bool destroy) {
     while (!request.destroyed && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
     check(released && request.destroyed, "worker callback destruction waits for handler, joins and releases all contexts");
 }
+// Sends a buses request through the actual service-side AAPXS handler.
+template<typename T>
+size_t callBusesHandler(LocalPluginInstance& instance, int32_t opcode, T& payload, size_t payloadSize) {
+    auto definition = xs::AAPXSDefinitionRegistry::getStandardExtensions()->getByUri(AAP_BUSES_EXTENSION_URI);
+    check(definition && definition->data_capacity >= (int32_t) sizeof(aap_buses_layout_snapshot_t), "buses AAPXS is standard");
+    std::vector<uint8_t> buffer(definition->data_capacity);
+    memcpy(buffer.data(), &payload, payloadSize);
+    AAPXSSerializationContext serialization{buffer.data(), payloadSize, buffer.size()};
+    bool replied = false;
+    AAPXSRecipientInstance recipient{nullptr, &instance, &serialization,
+        [](auto* self, auto*) { *static_cast<bool*>(self->aapxs_context) = true; }, nullptr};
+    recipient.aapxs_context = &replied;
+    AAPXSRequestContext request{nullptr, nullptr, &serialization, 0, AAP_BUSES_EXTENSION_URI, 1, opcode};
+    definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), &request);
+    check(replied, "buses handler always replies");
+    memcpy(&payload, buffer.data(), std::min(sizeof(T), serialization.data_size));
+    return serialization.data_size;
+}
+
+void busLayout() {
+    for (bool pluginProvided : {true, false}) {
+        for (bool negotiated : {true, false}) {
+            FixtureInfo descriptor;
+            PluginListSnapshot list;
+            Callback callback;
+            PluginService host(&list, &callback);
+            FakePlugin fake; fake.exposeBuses = pluginProvided;
+            TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 1, &descriptor.info, &fake.factory, 8192);
+            instance.completeInstantiation();
+            instance.startPortConfiguration(); // as AudioPluginInterfaceImpl::endCreate() does
+            // A host asks for the layout only if the plugin declares the extension; an older host never does.
+            aap_buses_layout_snapshot_t layout{};
+            if (negotiated)
+                check(callBusesHandler(instance, OPCODE_BUSES_GET_LAYOUT, layout, 0) == sizeof(layout), "layout reply size");
+            check(instance.isBusMode() == negotiated, "service bus mode follows the client request");
+            instance.confirmPorts();
+
+            if (!pluginProvided || !negotiated) {
+                check(!negotiated || pluginProvided == ((layout.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED) != 0), "plugin-provided flag");
+                // Legacy ports (from the metadata), also for an old client that never negotiated.
+                check(instance.getNumPorts() == 3 && instance.getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT) == 1,
+                      "legacy port configuration");
+                continue;
+            }
+
+            check((layout.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED) && layout.count == 5 && layout.generation > 0,
+                  "plugin layout plus the framework event buses");
+            check(layout.buses[0].role == AAP_BUS_ROLE_MAIN && layout.buses[2].role == AAP_BUS_ROLE_AUX &&
+                  !strcmp(layout.buses[0].layout, AAP_BUS_LAYOUT_MONO), "roles and default layout are normalized");
+            check(layout.buses[3].id == AAP_BUS_ID_MAIN_EVENT_INPUT && layout.buses[4].id == AAP_BUS_ID_MAIN_EVENT_OUTPUT,
+                  "framework event buses");
+
+            // in(1) + out(2) + aux out(1) + event in + event out
+            check(instance.getNumPorts() == 6, "flattened ports");
+            auto in = instance.getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT, 0);
+            check(in && in->getId() == 10 && in->getChannelCount() == 1 && in->getPortIndex(0) == 0, "main input bus");
+            auto out = instance.getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 0);
+            check(out && out->getChannelCount() == 2 && out->getPortIndex(0) == 1 && out->getPortIndex(1) == 2 &&
+                  std::string{instance.getPort(2)->getName()} == "Main Out R", "main output bus");
+            auto aux = instance.getBus(AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT, 1);
+            check(aux && aux->getRole() == AAP_BUS_ROLE_AUX && aux->getPortIndex(0) == 3, "aux output bus");
+            check(instance.getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT) == 4 &&
+                  instance.getMainEventPortIndex(AAP_PORT_DIRECTION_OUTPUT) == 5 &&
+                  instance.getPort(4)->getContentType() == AAP_CONTENT_TYPE_MIDI2, "event bus ports");
+
+            // The client configures the same port list from the reported layout.
+            TestRemote client(nullptr, xs::AAPXSDefinitionRegistry::getStandardExtensions(), &descriptor.info, &fake.factory, 8192);
+            check(!client.isBusMode(), "no bus mode for a plugin that does not declare the extension");
+            descriptor.info.addExtension(PluginExtensionInformation{false, AAP_BUSES_EXTENSION_URI});
+            check(client.isBusMode(), "bus mode for a plugin that declares the extension");
+            client.applyBusLayout(layout);
+            check(client.getNumPorts() == instance.getNumPorts(), "client port count");
+            for (int32_t i = 0; i < instance.getNumPorts(); i++)
+                check(client.getPort(i)->getContentType() == instance.getPort(i)->getContentType() &&
+                      client.getPort(i)->getPortDirection() == instance.getPort(i)->getPortDirection() &&
+                      std::string{client.getPort(i)->getName()} == instance.getPort(i)->getName(), "client port agrees");
+        }
+    }
+}
+
+// The client side of the layout query.
+void busesLayoutClient() {
+    struct Fixture {
+        uint8_t buffer[sizeof(aap_buses_layout_snapshot_t)]{};
+        AAPXSSerializationContext serialization{buffer, 0, sizeof(buffer)};
+        uint32_t id{};
+        std::function<bool(AAPXSRequestContext*)> send;
+        AAPXSInitiatorInstance initiator{this, nullptr, &serialization, 1,
+            [](auto* self) { return static_cast<Fixture*>(self->aapxs_context)->id++; },
+            [](auto* self, auto* request) { return static_cast<Fixture*>(self->aapxs_context)->send(request); }};
+        xs::BusesClientAAPXS client{&initiator, &serialization};
+    } f;
+    f.send = [](auto* request) {
+        aap_buses_layout_snapshot_t snapshot{};
+        snapshot.generation = 3;
+        snapshot.count = 1;
+        memcpy(request->serialization->data, &snapshot, sizeof(snapshot));
+        request->serialization->data_size = sizeof(snapshot);
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    auto layout = f.client.getLayout();
+    check(layout.isOk() && layout.value.generation == 3 && layout.value.count == 1, "layout reply");
+    f.send = [](auto* request) {
+        request->serialization->data_size = 4;
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    check(!f.client.getLayout().isOk(), "short layout reply is an error");
+    f.send = [](auto* request) {
+        aap_buses_layout_snapshot_t snapshot{};
+        snapshot.count = AAP_MAX_BUSES + 1;
+        memcpy(request->serialization->data, &snapshot, sizeof(snapshot));
+        request->serialization->data_size = sizeof(snapshot);
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    check(!f.client.getLayout().isOk(), "invalid bus count is an error");
+}
+
 int main() {
+    busesLayoutClient(); busLayout();
     guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); extensionNeutralDispatch(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     supersededLayoutRefresh(true, false); supersededLayoutRefresh(true, true);
     supersededLayoutRefresh(false, false); supersededLayoutRefresh(false, true);

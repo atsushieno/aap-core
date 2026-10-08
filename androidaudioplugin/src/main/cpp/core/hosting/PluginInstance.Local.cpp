@@ -85,18 +85,58 @@ void aap::LocalPluginInstance::internalRequestProcess(AndroidAudioPluginHost *ho
 }
 
 void aap::LocalPluginInstance::confirmPorts() {
-    // FIXME: implementation is feature parity with client side so far, but it should be based on port config negotiation.
-    auto ext = plugin->get_extension(plugin, AAP_PORT_CONFIG_EXTENSION_URI);
-    if (ext != nullptr) {
-        // configure ports using port-config extension.
-
-        // FIXME: implement
-
-    } else if (pluginInfo->getNumDeclaredPorts() == 0)
+    // The client configures its ports from the same layout that we reported (bus mode), or
+    // from the same metadata (legacy mode).
+    if (isBusMode() && (reported_bus_layout->flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED)) {
+        setupPortsFromBusLayout(*reported_bus_layout);
+        return;
+    }
+    if (pluginInfo->getNumDeclaredPorts() == 0)
         setupPortConfigDefaults();
     else
         setupPortsViaMetadata();
     rebuildBusesFromPorts();
+}
+
+void aap::LocalPluginInstance::BusesService::getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) {
+    auto plugin = owner->plugin;
+    snapshot = {};
+    snapshot.generation = owner->bus_layout_generation;
+    auto ext = (aap_buses_extension_t*) plugin->get_extension(plugin, AAP_BUSES_EXTENSION_URI);
+    if (ext && ext->get_bus_count && ext->get_bus) {
+        snapshot.flags |= AAP_BUSES_LAYOUT_PLUGIN_PROVIDED;
+        // Plugins report audio buses; the framework adds the main event buses.
+        const int32_t maxAudioBuses = AAP_MAX_BUSES - 2;
+        for (auto direction : {AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT}) {
+            auto n = ext->get_bus_count(ext, plugin, AAP_BUS_KIND_AUDIO, direction);
+            for (int32_t i = 0; i < n && snapshot.count < maxAudioBuses; i++) {
+                auto bus = ext->get_bus(ext, plugin, AAP_BUS_KIND_AUDIO, direction, i);
+                bus.kind = AAP_BUS_KIND_AUDIO;
+                bus.direction = direction;
+                bus.role = i == 0 ? AAP_BUS_ROLE_MAIN : AAP_BUS_ROLE_AUX;
+                bus.name[AAP_MAX_BUS_NAME_CHARS - 1] = 0;
+                bus.layout[AAP_MAX_BUS_LAYOUT_CHARS - 1] = 0;
+                bus.channel_count = std::max(0, bus.channel_count);
+                if (!bus.layout[0])
+                    strncpy(bus.layout, BusInformation::getDefaultLayoutForChannelCount(bus.channel_count).c_str(),
+                            AAP_MAX_BUS_LAYOUT_CHARS - 1);
+                snapshot.buses[snapshot.count++] = bus;
+            }
+        }
+        for (auto direction : {AAP_PORT_DIRECTION_INPUT, AAP_PORT_DIRECTION_OUTPUT}) {
+            aap_bus_info_t bus{};
+            bus.id = direction == AAP_PORT_DIRECTION_INPUT ? AAP_BUS_ID_MAIN_EVENT_INPUT : AAP_BUS_ID_MAIN_EVENT_OUTPUT;
+            bus.kind = AAP_BUS_KIND_EVENT;
+            bus.direction = direction;
+            bus.role = AAP_BUS_ROLE_MAIN;
+            strncpy(bus.name, direction == AAP_PORT_DIRECTION_INPUT ? "Event In" : "Event Out", AAP_MAX_BUS_NAME_CHARS - 1);
+            bus.enabled = true;
+            snapshot.buses[snapshot.count++] = bus;
+        }
+    }
+    // Without the plugin's buses extension, the client derives the buses from the legacy port
+    // configuration just like confirmPorts() does, so we report nothing else.
+    owner->reported_bus_layout = std::make_unique<aap_buses_layout_snapshot_t>(snapshot);
 }
 
 void aap::LocalPluginInstance::requestProcessToHost() {
@@ -438,16 +478,19 @@ void aap::LocalPluginInstance::controlExtension(uint8_t urid, const std::string 
     std::optional<internal::ProcessingQuiescence::Control> suspension;
     if (!(flags & AAPXS_REQUEST_CONCURRENT) || !realtime_state->extension_state_ready.load(std::memory_order_acquire))
         suspension.emplace(realtime_state->processing);
-    if (def) { // ignore undefined extensions here
-        auto& dispatcher = getAAPXSDispatcher();
-        auto instance = urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
-        dispatcher.receiveBinderRequest(instance->serialization);
-        AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
-        // Only the extension can declare its handler independent of plugin state.
-        def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
-        if (!(flags & AAPXS_REQUEST_READ_ONLY)) refreshExtensionState();
-        dispatcher.publishBinderReplySize(instance->serialization);
-    }
+    // The registry returns an empty slot for an unknown URI. A client may know newer extensions,
+    // so report it as an error instead of crashing.
+    auto& dispatcher = getAAPXSDispatcher();
+    auto instance = !def || !def->uri ? nullptr :
+                    urid != 0 ? dispatcher.getPluginAAPXSByUrid(urid) : dispatcher.getPluginAAPXSByUri(uri.c_str());
+    if (!instance || !def->process_incoming_plugin_aapxs_request)
+        throw std::runtime_error("Unsupported extension: " + uri);
+    dispatcher.receiveBinderRequest(instance->serialization);
+    AAPXSRequestContext context{nullptr, nullptr, instance->serialization, urid, uri.c_str(), requestId, opcode};
+    // Only the extension can declare its handler independent of plugin state.
+    def->process_incoming_plugin_aapxs_request(def, instance, plugin, &context);
+    if (!(flags & AAPXS_REQUEST_READ_ONLY)) refreshExtensionState();
+    dispatcher.publishBinderReplySize(instance->serialization);
 }
 
 void aap::LocalPluginInstance::handleAAPXSInput(aap_midi2_aapxs_parse_context *context) {

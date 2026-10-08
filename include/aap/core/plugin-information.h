@@ -87,12 +87,16 @@ class BusInformation {
     std::string name{};
     std::string layout{};
     std::vector<int32_t> port_indices{};
+    uint32_t flags{0};
+    bool enabled{true};
 
 public:
     BusInformation(uint32_t busId, aap_bus_kind busKind, aap_port_direction busDirection, aap_bus_role busRole,
-                   std::string busName, std::string busLayout, std::vector<int32_t> portIndices)
+                   std::string busName, std::string busLayout, std::vector<int32_t> portIndices,
+                   uint32_t busFlags = 0, bool busEnabled = true)
             : id(busId), kind(busKind), direction(busDirection), role(busRole),
-              name(std::move(busName)), layout(std::move(busLayout)), port_indices(std::move(portIndices))
+              name(std::move(busName)), layout(std::move(busLayout)), port_indices(std::move(portIndices)),
+              flags(busFlags), enabled(busEnabled)
     {
     }
 
@@ -103,7 +107,11 @@ public:
     const char* getName() const { return name.c_str(); }
     // Empty for event buses.
     const char* getLayout() const { return layout.c_str(); }
-    // 0 for event buses.
+    // AAP_BUS_FLAG_* in aap/ext/buses.h.
+    uint32_t getFlags() const { return flags; }
+    // A disabled bus has no channel buffers.
+    bool isEnabled() const { return enabled; }
+    // The number of allocated channels; 0 for event buses and disabled buses.
     int32_t getChannelCount() const { return kind == AAP_BUS_KIND_AUDIO ? (int32_t) port_indices.size() : 0; }
     // For an audio bus, the port index of the channel. For an event bus, `channel` must be 0.
     int32_t getPortIndex(int32_t channel = 0) const {
