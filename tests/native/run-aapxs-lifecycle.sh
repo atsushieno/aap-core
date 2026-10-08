@@ -26,7 +26,8 @@ for configuration in debug release; do
         [ -f "$script_dir/aapxs-$test.cpp" ] || continue
         set -- -include "$build_dir/compat.h"
         if [ "$test" = connections ]; then
-            set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/hosting/plugin-connections.cpp"
+            set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/hosting/plugin-connections.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/hosting/PluginInformation.cpp"
         fi
         if [ "$test" = state-size ]; then
             set -- "$@" "$repo/androidaudioplugin/src/main/cpp/core/aapxs/state-aapxs.cpp"

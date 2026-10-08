@@ -124,6 +124,10 @@ namespace aap {
 
         inline PluginClientConnectionList* getConnections() { return connections; }
 
+        // Looks up the plugin from the installed plugins list, refreshing it when plugin packages
+        // were changed. Returns nullptr if the plugin is not installed.
+        const PluginInformation* findPluginInformation(const std::string& identifier);
+
         // Synchronous version that does not expect service connection on the fly (fails immediately).
         // It is probably better suited for Kotlin client to avoid complicated JNI interop.
         Result<int32_t> createInstance(std::string identifier, bool isRemoteExplicit);

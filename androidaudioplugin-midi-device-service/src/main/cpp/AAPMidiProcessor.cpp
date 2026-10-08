@@ -166,7 +166,7 @@ namespace aap::midi {
             return;
         }
 
-        auto pluginInfo = plugin_list.getPluginInformation(pluginId);
+        auto pluginInfo = client->findPluginInformation(pluginId);
         if (!pluginInfo) {
             aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "Plugin of ID \"%s\" is not found.", pluginId.c_str());
             state = AAP_MIDI_PROCESSOR_STATE_ERROR;

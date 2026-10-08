@@ -164,8 +164,15 @@ Java_org_androidaudioplugin_AudioPluginNatives_closeSharedMemoryFD(JNIEnv *env, 
 
 
 
+// Shared by every PluginClient created from Kotlin. It is (re)queried lazily on lookups whenever
+// plugin packages were changed (see InstalledPluginsMonitor).
 aap::PluginListSnapshot cached_plugin_list{};
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_InstalledPluginsMonitor_notifyInstalledPluginsChanged(JNIEnv *env, jclass clazz) {
+	aap::PluginListSnapshot::notifyInstalledPluginsChanged();
+}
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -176,8 +183,6 @@ Java_org_androidaudioplugin_hosting_NativePluginClient_newInstance(JNIEnv *env, 
         AAP_ASSERT_FALSE;
         return -1;
     }
-	if (cached_plugin_list.getNumPluginInformation() == 0)
-		cached_plugin_list = aap::PluginListSnapshot::queryServices();
 	return (jlong) (void*) new aap::PluginClient(connections, &cached_plugin_list);
 }
 

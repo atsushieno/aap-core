@@ -16,6 +16,7 @@ class AudioPluginClientInitializer : Initializer<Unit> {
     override fun create(context: Context) : Unit {
         System.loadLibrary("androidaudioplugin")
         AudioPluginNatives.initializeAAPJni(context)
+        InstalledPluginsMonitor.register(context)
     }
 
     override fun dependencies(): MutableList<Class<out Initializer<*>>> {

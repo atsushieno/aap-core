@@ -5,10 +5,26 @@
 #include "audio-plugin-host-internals.h"
 #include "plugin-parameter-state.h"
 
-void aap::PluginClient::connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback) {
-    const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
+#define LOG_TAG "AAP.PluginHost.Client"
+
+const aap::PluginInformation* aap::PluginClient::findPluginInformation(const std::string& identifier) {
+    plugin_list->refreshIfStale();
+    auto descriptor = plugin_list->getPluginInformation(identifier);
     if (descriptor == nullptr) {
-        AAP_ASSERT_FALSE;
+        // The package change notification may not have arrived yet (it is delivered asynchronously,
+        // and deferred while the host app is cached), so re-query once before giving up.
+        plugin_list->refresh();
+        descriptor = plugin_list->getPluginInformation(identifier);
+    }
+    return descriptor;
+}
+
+void aap::PluginClient::connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback) {
+    const PluginInformation *descriptor = findPluginInformation(identifier);
+    if (descriptor == nullptr) {
+        std::string error{std::string{"plugin not found: "} + identifier};
+        aap::a_log(AAP_LOG_LEVEL_ERROR, LOG_TAG, error.c_str());
+        callback(error);
         return;
     }
     connectToPluginService(descriptor->getPluginPackageName(), descriptor->getPluginLocalName(), callback);
@@ -26,11 +42,9 @@ void aap::PluginClient::connectToPluginService(const std::string& packageName, c
 aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string identifier, bool isRemoteExplicit)
 {
     Result<int32_t> result;
-    const PluginInformation *descriptor = plugin_list->getPluginInformation(identifier);
-    if (descriptor == nullptr) {
-        AAP_ASSERT_FALSE;
+    const PluginInformation *descriptor = findPluginInformation(identifier);
+    if (descriptor == nullptr)
         return Result<int32_t>{-1, std::string{"plugin not found: "} + identifier};
-    }
 
     // For local plugins, they can be directly loaded using dlopen/dlsym.
     // For remote plugins, the connection has to be established through binder.
