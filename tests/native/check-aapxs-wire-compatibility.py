@@ -9,10 +9,15 @@ baseline = sys.argv[1] if len(sys.argv) > 1 else '5eb17d37'
 paths = ['include/aap/android-audio-plugin.h',
          'include/aap/ext/state.h', 'include/aap/ext/parameters.h']
 paths += subprocess.check_output(['git', 'ls-files', '*.aidl'], cwd=repo, text=True).splitlines()
+# Comments and whitespace do not affect the wire, so they are ignored.
+def declarations(text):
+    text = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/',
+                  lambda m: m.group() if m.group().startswith('"') else ' ', text, flags=re.S)
+    return ' '.join(text.split())
 # The host allocates aap_buffer_t, so members appended at its end are compatible.
 APPENDABLE = {'include/aap/android-audio-plugin.h': ['aap_buffer_t']}
 def strip_appended(old, new, name):
-    pattern = r'typedef struct ' + name + r' \{.*?\n\} ' + name + ';'
+    pattern = r'typedef struct ' + name + r' \{.*?\} ' + name + ';'
     previous, current = re.search(pattern, old, re.S), re.search(pattern, new, re.S)
     if not previous or not current:
         return new
@@ -21,8 +26,8 @@ def strip_appended(old, new, name):
         return new
     return new[:current.start()] + previous.group() + new[current.end():]
 for path in paths:
-    old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True)
-    new = (repo / path).read_text()
+    old = declarations(subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True))
+    new = declarations((repo / path).read_text())
     for name in APPENDABLE.get(path, []):
         new = strip_appended(old, new, name)
     if old != new:
@@ -35,7 +40,7 @@ new = (repo / path).read_text()
 for name in ['AAPXSSerializationContext', 'AAPXSRequestContext', 'AAPXSExtensionClientProxy', 'AAPXSExtensionServiceProxy',
              'AAPXSExtensionHostReceiver']:
     pattern = r'typedef struct ' + name + r' \{.*?\} ' + name + ';'
-    if re.search(pattern, old, re.S).group() != re.search(pattern, new, re.S).group():
+    if declarations(re.search(pattern, old, re.S).group()) != declarations(re.search(pattern, new, re.S).group()):
         raise SystemExit('FAIL: AAPXS request/serialization record changed: ' + name)
 for name in ['state', 'parameters', 'presets']:
     path = 'include/aap/core/aapxs/' + name + '-aapxs.h'
@@ -66,6 +71,6 @@ for name in ['state', 'parameters', 'presets']:
                 # the legacy opcode/POD switch and fallback reply remain byte-identical.
                 previous = previous[previous.index('    auto ext ='):]
                 current = current[current.index('    auto ext ='):]
-            if previous != current:
+            if declarations(previous) != declarations(current):
                 raise SystemExit('FAIL: counterpart handler changed: ' + marker)
 print('PASS: C extension/request records, AIDL, opcodes, capacities and legacy recipient/reply handlers match ' + baseline)
