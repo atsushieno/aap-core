@@ -9,9 +9,23 @@ baseline = sys.argv[1] if len(sys.argv) > 1 else '5eb17d37'
 paths = ['include/aap/android-audio-plugin.h',
          'include/aap/ext/state.h', 'include/aap/ext/parameters.h']
 paths += subprocess.check_output(['git', 'ls-files', '*.aidl'], cwd=repo, text=True).splitlines()
+# The host allocates aap_buffer_t, so members appended at its end are compatible.
+APPENDABLE = {'include/aap/android-audio-plugin.h': ['aap_buffer_t']}
+def strip_appended(old, new, name):
+    pattern = r'typedef struct ' + name + r' \{.*?\n\} ' + name + ';'
+    previous, current = re.search(pattern, old, re.S), re.search(pattern, new, re.S)
+    if not previous or not current:
+        return new
+    head = previous.group()[:-len('} ' + name + ';')]
+    if not current.group().startswith(head):
+        return new
+    return new[:current.start()] + previous.group() + new[current.end():]
 for path in paths:
-    old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo)
-    if old != (repo / path).read_bytes():
+    old = subprocess.check_output(['git', 'show', baseline + ':' + path], cwd=repo, text=True)
+    new = (repo / path).read_text()
+    for name in APPENDABLE.get(path, []):
+        new = strip_appended(old, new, name)
+    if old != new:
         raise SystemExit('FAIL: peer-facing declaration changed: ' + path)
 # Definition and initiator/recipient lifecycle services are in-process ABI,
 # never peer payloads. Keep payload/request/proxy records independently checked.

@@ -1480,6 +1480,26 @@ void busLayout() {
             check(delivered == 0, "pending bus changes are delivered once");
             client.setBusesChangedHandler({});
 
+            // Replacing the handler waits for a running call; the handler itself may replace it.
+            std::promise<void> entered, release;
+            auto released = release.get_future().share();
+            client.setBusesChangedHandler([&](uint32_t) { entered.set_value(); released.wait(); });
+            std::thread dispatcher{[&] { client.dispatchBusesChanged(AAP_BUSES_CHANGED_NAMES); }};
+            entered.get_future().wait();
+            auto cleared = std::async(std::launch::async, [&] { client.setBusesChangedHandler({}); });
+            check(cleared.wait_for(std::chrono::milliseconds(100)) == std::future_status::timeout,
+                  "clearing the handler waits for its running call");
+            release.set_value();
+            dispatcher.join();
+            check(cleared.wait_for(std::chrono::seconds(5)) == std::future_status::ready, "clearing completes after the call");
+            client.setBusesChangedHandler([&](uint32_t) { client.setBusesChangedHandler({}); });
+            client.dispatchBusesChanged(AAP_BUSES_CHANGED_NAMES);
+            client.dispatchBusesChanged(AAP_BUSES_CHANGED_NAMES);
+            delivered = 0;
+            client.setBusesChangedHandler([&](uint32_t flags) { delivered |= flags; });
+            check(delivered == AAP_BUSES_CHANGED_NAMES, "a handler can clear itself");
+            client.setBusesChangedHandler({});
+
             // Buffer layout: the client computes it, the service validates it.
             aap_buffer_layout_t bufferLayout{};
             check(computeBufferLayout(client, layout.generation, 256, 4096, bufferLayout).empty(), "compute buffer layout");

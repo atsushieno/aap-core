@@ -103,16 +103,43 @@ std::string aap::RemotePluginInstance::reloadBusLayout(xs::BusesClientAAPXS* bus
     return {};
 }
 
+namespace {
+    // The instance whose handler runs on this thread, so that the handler can replace itself.
+    thread_local const aap::RemotePluginInstance* buses_changed_handler_caller{nullptr};
+}
+
+void aap::RemotePluginInstance::callBusesChangedHandler(const std::function<void(uint32_t flags)>& handler, uint32_t flags) {
+    struct CallScope {
+        RemotePluginInstance* self;
+        const RemotePluginInstance* outer{buses_changed_handler_caller};
+        explicit CallScope(RemotePluginInstance* self) : self(self) { buses_changed_handler_caller = self; }
+        ~CallScope() {
+            buses_changed_handler_caller = outer;
+            const std::lock_guard<std::mutex> lock{self->buses_changed_handler_mutex};
+            if (--self->buses_changed_calls == 0)
+                self->buses_changed_calls_done.notify_all();
+        }
+    } scope{this};
+    handler(flags);
+}
+
 void aap::RemotePluginInstance::setBusesChangedHandler(std::function<void(uint32_t flags)> handler) {
     uint32_t pending = 0;
     {
-        const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
+        std::unique_lock<std::mutex> lock{buses_changed_handler_mutex};
+        // Calls to the previous handler (except the one calling us) must not outlive this.
+        // Changes notified meanwhile become pending for the new handler.
+        buses_changed_handler = {};
+        auto own = buses_changed_handler_caller == this ? 1 : 0;
+        buses_changed_calls_done.wait(lock, [&] { return buses_changed_calls <= own; });
         buses_changed_handler = handler;
         if (handler)
             std::swap(pending, pending_buses_changes);
+        if (pending)
+            buses_changed_calls++;
     }
     if (pending)
-        handler(pending);
+        callBusesChangedHandler(handler, pending);
 }
 
 void aap::RemotePluginInstance::dispatchBusesChanged(uint32_t flags) {
@@ -120,11 +147,13 @@ void aap::RemotePluginInstance::dispatchBusesChanged(uint32_t flags) {
     {
         const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
         handler = buses_changed_handler;
-        if (!handler)
+        if (!handler) {
             pending_buses_changes |= flags;
+            return;
+        }
+        buses_changed_calls++;
     }
-    if (handler)
-        handler(flags);
+    callBusesChangedHandler(handler, flags);
 }
 
 void aap::RemotePluginInstance::configurePorts() {
