@@ -419,10 +419,13 @@ namespace aap {
         uint32_t bus_layout_generation{0};
         std::mutex buses_changed_handler_mutex{};
         std::function<void(uint32_t flags)> buses_changed_handler{};
+        // Changes notified while no handler was set, delivered to the next handler.
+        uint32_t pending_buses_changes{0};
         std::string reloadBusLayout(xs::BusesClientAAPXS* buses);
     public:
         // Invoked on the extension worker when the plugin changed its bus names or layout
         // (AAP_BUSES_CHANGED_*). The host calls refreshBusLayout() and prepare() when it is not active.
+        // Changes notified before a handler is set are delivered to it on the calling thread.
         void setBusesChangedHandler(std::function<void(uint32_t flags)> handler);
         void dispatchBusesChanged(uint32_t flags);
         // Re-reads the bus layout (when not active). The instance becomes UNPREPARED. Returns an error, or empty.

@@ -1,5 +1,6 @@
 #include "AudioGraph.h"
 #include "AudioGraphNode.h"
+#include "LocalDefinitions.h"
 #include <thread>
 
 aap::AudioPluginNode::~AudioPluginNode() {
@@ -18,21 +19,29 @@ void aap::AudioPluginNode::setPlugin(RemotePluginInstance* instance) {
         plugin->setBusesChangedHandler([this](uint32_t flags) { onBusesChanged(flags); });
 }
 
-// Invoked on the extension worker: prepare the plugin again for its new bus layout.
+// Invoked on the extension worker, or in setPlugin() for earlier changes: prepare the plugin
+// again for its new bus layout. An unprepared plugin only refreshes it; start() prepares it.
 void aap::AudioPluginNode::onBusesChanged(uint32_t flags) {
     if (!(flags & AAP_BUSES_CHANGED_LAYOUT) || !plugin)
         return;
     reconfiguring = true;
     while (processing.load() != 0)
         std::this_thread::yield();
-    bool wasActive = plugin->getInstanceState() == PLUGIN_INSTANTIATION_STATE_ACTIVE;
+    auto state = plugin->getInstanceState();
+    bool wasActive = state == PLUGIN_INSTANTIATION_STATE_ACTIVE;
+    bool wasPrepared = wasActive || state == PLUGIN_INSTANTIATION_STATE_INACTIVE;
     plugin->deactivate();
+    // Keep the event buffer size that the instance was prepared with.
+    auto buffer = plugin->getAudioPluginBuffer();
+    auto eventIn = plugin->getMainEventPortIndex(AAP_PORT_DIRECTION_INPUT);
+    auto controlBytes = buffer && eventIn >= 0 ? buffer->get_buffer_size(buffer, eventIn) : DEFAULT_CONTROL_BUFFER_SIZE;
     auto error = plugin->refreshBusLayout();
-    if (error.empty()) {
-        plugin->prepare(graph->getFramesPerCallback(), graph->getSampleRate());
+    if (error.empty() && wasPrepared) {
+        plugin->prepare(graph->getFramesPerCallback(), graph->getSampleRate(), controlBytes);
         if (wasActive)
             plugin->activate();
-    }
+    } else if (!error.empty())
+        aap::a_log_f(AAP_LOG_LEVEL_ERROR, AAP_MANAGER_LOG_TAG, "Failed to refresh the bus layout: %s", error.c_str());
     reconfiguring = false;
 }
 

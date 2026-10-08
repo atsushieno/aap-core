@@ -1469,6 +1469,17 @@ void busLayout() {
                       client.getPort(i)->getPortDirection() == instance.getPort(i)->getPortDirection() &&
                       std::string{client.getPort(i)->getName()} == instance.getPort(i)->getName(), "client port agrees");
 
+            // Changes notified before the host sets its handler are delivered to it when set.
+            client.dispatchBusesChanged(AAP_BUSES_CHANGED_LAYOUT);
+            uint32_t delivered = 0;
+            client.setBusesChangedHandler([&](uint32_t flags) { delivered |= flags; });
+            check(delivered == AAP_BUSES_CHANGED_LAYOUT, "pending bus changes delivered to a new handler");
+            delivered = 0;
+            client.setBusesChangedHandler({});
+            client.setBusesChangedHandler([&](uint32_t flags) { delivered |= flags; });
+            check(delivered == 0, "pending bus changes are delivered once");
+            client.setBusesChangedHandler({});
+
             // Buffer layout: the client computes it, the service validates it.
             aap_buffer_layout_t bufferLayout{};
             check(computeBufferLayout(client, layout.generation, 256, 4096, bufferLayout).empty(), "compute buffer layout");

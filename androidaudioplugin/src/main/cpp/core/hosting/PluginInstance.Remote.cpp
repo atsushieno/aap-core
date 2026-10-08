@@ -104,8 +104,15 @@ std::string aap::RemotePluginInstance::reloadBusLayout(xs::BusesClientAAPXS* bus
 }
 
 void aap::RemotePluginInstance::setBusesChangedHandler(std::function<void(uint32_t flags)> handler) {
-    const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
-    buses_changed_handler = std::move(handler);
+    uint32_t pending = 0;
+    {
+        const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
+        buses_changed_handler = handler;
+        if (handler)
+            std::swap(pending, pending_buses_changes);
+    }
+    if (pending)
+        handler(pending);
 }
 
 void aap::RemotePluginInstance::dispatchBusesChanged(uint32_t flags) {
@@ -113,6 +120,8 @@ void aap::RemotePluginInstance::dispatchBusesChanged(uint32_t flags) {
     {
         const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
         handler = buses_changed_handler;
+        if (!handler)
+            pending_buses_changes |= flags;
     }
     if (handler)
         handler(flags);
