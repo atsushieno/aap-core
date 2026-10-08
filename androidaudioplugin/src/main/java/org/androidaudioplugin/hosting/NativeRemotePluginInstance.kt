@@ -193,6 +193,19 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         state = InstanceState.UNPREPARED
     }
 
+    // Invoked on a native worker thread with `AAP_BUSES_CHANGED_*` flags when the plugin changed its buses.
+    fun setBusesChangedListener(listener: java.util.function.IntConsumer?) =
+        setBusesChangedListener(client, instanceId, listener)
+
+    // Re-reads the bus layout (when not active); throws `AudioPluginException` on failure.
+    // The instance becomes UNPREPARED: call `prepare()` again before `activate()`.
+    fun refreshBusLayout() {
+        val error = refreshBusLayout(client, instanceId)
+        if (error != null)
+            throw org.androidaudioplugin.AudioPluginException(error)
+        state = InstanceState.UNPREPARED
+    }
+
     // Port indices of every audio channel of the given direction, in bus order.
     fun getAudioPortIndices(direction: Int): List<Int> =
         (0 until getBusCount(BusInformation.BUS_KIND_AUDIO, direction)).flatMap { index ->
@@ -274,6 +287,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         @JvmStatic
         external fun applyBusLayout(nativeClient: Long, instanceId: Int, ids: IntArray, enabled: BooleanArray,
                                     channelCounts: IntArray, layouts: Array<String>) : String?
+
+        @JvmStatic
+        external fun setBusesChangedListener(nativeClient: Long, instanceId: Int, listener: java.util.function.IntConsumer?)
+
+        @JvmStatic
+        external fun refreshBusLayout(nativeClient: Long, instanceId: Int) : String?
 
         @JvmStatic
         external fun getBusCount(nativeClient: Long, instanceId: Int, kind: Int, direction: Int) : Int

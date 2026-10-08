@@ -237,7 +237,7 @@ namespace aap {
         std::atomic<bool> process_requested_to_host{false};
         // The layout last reported to the client; confirmPorts() configures the ports from it.
         std::unique_ptr<aap_buses_layout_snapshot_t> reported_bus_layout{};
-        uint32_t bus_layout_generation{1};
+        std::atomic<uint32_t> bus_layout_generation{1};
         // Bus mode: where the port buffers live in the shared memory pool.
         std::unique_ptr<aap_buffer_layout_t> committed_buffer_layout{};
 
@@ -250,9 +250,11 @@ namespace aap {
             bool applyLayout(const aap_bus_layout_request_t& request) override;
         };
         BusesService buses_service{this};
-        // Its existence tells the plugin that aap_buffer_t has the bus accessors.
-        // (Notifications are not delivered to the host yet.)
-        aap_buses_host_extension_t host_buses{nullptr, [](aap_buses_host_extension_t*, AndroidAudioPluginHost*, uint32_t) {}};
+        // Its existence tells the plugin that aap_buffer_t has the bus accessors. Notifications go to
+        // the host via buses_host_proxy (cached at setupAAPXSInstances(); RT-safe).
+        static void notifyBusesChanged(aap_buses_host_extension_t* ext, AndroidAudioPluginHost* host, uint32_t flags);
+        aap_buses_host_extension_t host_buses{this, notifyBusesChanged};
+        aap_buses_host_extension_t* buses_host_proxy{nullptr};
 
         AAPXSMidi2RecipientSession aapxs_midi2_in_session{};
 
@@ -415,7 +417,17 @@ namespace aap {
     private:
         // The generation of the plugin-provided bus layout, or 0.
         uint32_t bus_layout_generation{0};
+        std::mutex buses_changed_handler_mutex{};
+        std::function<void(uint32_t flags)> buses_changed_handler{};
+        std::string reloadBusLayout(xs::BusesClientAAPXS* buses);
     public:
+        // Invoked on the extension worker when the plugin changed its bus names or layout
+        // (AAP_BUSES_CHANGED_*). The host calls refreshBusLayout() and prepare() when it is not active.
+        void setBusesChangedHandler(std::function<void(uint32_t flags)> handler);
+        void dispatchBusesChanged(uint32_t flags);
+        // Re-reads the bus layout (when not active). The instance becomes UNPREPARED. Returns an error, or empty.
+        std::string refreshBusLayout();
+
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 

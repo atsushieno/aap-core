@@ -123,6 +123,11 @@ class AudioPluginInstance internal constructor(
     fun getBusCount(kind: Int, direction: Int) = native.getBusCount(kind, direction)
     fun getBus(kind: Int, direction: Int, index: Int) = native.getBus(kind, direction, index)
     // Changes the bus layout (when not active). Call `prepare()` again afterwards.
+    fun setBusesChangedListener(listener: java.util.function.IntConsumer?) = native.setBusesChangedListener(listener)
+    fun refreshBusLayout() {
+        native.refreshBusLayout()
+        state = InstanceState.UNPREPARED
+    }
     fun applyBusLayout(buses: List<org.androidaudioplugin.BusLayoutRequest>) {
         native.applyBusLayout(buses)
         state = InstanceState.UNPREPARED

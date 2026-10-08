@@ -112,6 +112,16 @@ bool aap::LocalPluginInstance::BusesService::commitBufferLayout(const aap_buffer
     return true;
 }
 
+void aap::LocalPluginInstance::notifyBusesChanged(aap_buses_host_extension_t* ext, AndroidAudioPluginHost* host, uint32_t flags) {
+    auto self = (LocalPluginInstance*) ext->aapxs_context;
+    // The current buffers stay until the host prepares again; a buffer layout for the former
+    // bus layout is rejected from now on.
+    if (flags & AAP_BUSES_CHANGED_LAYOUT)
+        self->bus_layout_generation++;
+    if (self->buses_host_proxy)
+        self->buses_host_proxy->notify_buses_changed(self->buses_host_proxy, host, flags);
+}
+
 bool aap::LocalPluginInstance::BusesService::applyLayout(const aap_bus_layout_request_t& request) {
     auto state = owner->instantiation_state.load();
     // Buffers of a prepared instance can be replaced only with a pool.
@@ -483,6 +493,8 @@ bool aap::LocalPluginInstance::setupAAPXSInstances() {
         auto urid = getAAPXSRegistry()->items()->getUridMapping()->getUrid(definition.uri);
         host_extension_proxies[urid] = proxy.as_host_extension ? proxy.as_host_extension(&proxy) : nullptr;
     }
+    buses_host_proxy = (aap_buses_host_extension_t*) host_extension_proxies[
+            getAAPXSRegistry()->items()->getUridMapping()->getUrid(AAP_BUSES_EXTENSION_URI)];
     startExtensionWorker();
     return true;
 }

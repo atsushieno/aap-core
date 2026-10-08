@@ -76,6 +76,22 @@ std::string aap::RemotePluginInstance::applyBusLayout(const aap_bus_layout_reque
     if (!applied.isOk())
         return applied.error;
     // The service is UNPREPARED now; so are we, until prepare() with new buffers.
+    return reloadBusLayout(buses);
+}
+
+std::string aap::RemotePluginInstance::refreshBusLayout() {
+    if (!isBusMode() || bus_layout_generation == 0)
+        return "the plugin does not provide its bus layout";
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
+        instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE)
+        return "the bus layout can be refreshed only when the instance is not active";
+    auto buses = standards ? standards->getBuses() : nullptr;
+    if (!buses)
+        return "buses extension unavailable";
+    return reloadBusLayout(buses);
+}
+
+std::string aap::RemotePluginInstance::reloadBusLayout(xs::BusesClientAAPXS* buses) {
     instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
     auto layout = buses->getLayout();
     if (!layout.isOk() || !(layout.value.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED)) {
@@ -85,6 +101,21 @@ std::string aap::RemotePluginInstance::applyBusLayout(const aap_bus_layout_reque
     setupPortsFromBusLayout(layout.value);
     bus_layout_generation = layout.value.generation;
     return {};
+}
+
+void aap::RemotePluginInstance::setBusesChangedHandler(std::function<void(uint32_t flags)> handler) {
+    const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
+    buses_changed_handler = std::move(handler);
+}
+
+void aap::RemotePluginInstance::dispatchBusesChanged(uint32_t flags) {
+    std::function<void(uint32_t)> handler;
+    {
+        const std::lock_guard<std::mutex> lock{buses_changed_handler_mutex};
+        handler = buses_changed_handler;
+    }
+    if (handler)
+        handler(flags);
 }
 
 void aap::RemotePluginInstance::configurePorts() {
@@ -327,6 +358,12 @@ void aap::RemotePluginInstance::process(int32_t frameCount, int32_t timeoutInNan
 }
 
 namespace {
+aap_buses_host_extension_t hosting_buses_host_extension{
+        nullptr,
+        [](aap_buses_host_extension_t*, AndroidAudioPluginHost* host, uint32_t flags) {
+            ((aap::RemotePluginInstance*) host->context)->dispatchBusesChanged(flags);
+        }};
+
 aap_parameters_host_extension_t hosting_parameters_host_extension{
         nullptr,
         [](aap_parameters_host_extension_t*, AndroidAudioPluginHost* host) {
@@ -341,6 +378,8 @@ aap::RemotePluginInstance::internalGetHostExtension(uint8_t urid, const char *ur
     }
     if (strcmp(uri, AAP_PARAMETERS_EXTENSION_URI) == 0)
         return &hosting_parameters_host_extension;
+    if (strcmp(uri, AAP_BUSES_EXTENSION_URI) == 0)
+        return &hosting_buses_host_extension;
 
     // The host's own implementation takes precedence over the AAPXS-provided receiver.
     if (getHostExtension)

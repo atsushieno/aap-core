@@ -350,8 +350,10 @@ struct FixtureInfo {
     FixtureInfo() { info.addDeclaredPort(&audio); info.addDeclaredPort(&input); info.addDeclaredPort(&output); info.addDeclaredParameter(&parameter); }
 };
 std::atomic<int> notifications{0};
-void notification(void*, const char*, int32_t, int32_t, int32_t, aapxs_completion_callback completed, void* context, void* host, aapxs_error_callback) {
+std::atomic<int> busLayoutNotifications{0};
+void notification(void*, const char* uri, int32_t, int32_t opcode, int32_t, aapxs_completion_callback completed, void* context, void* host, aapxs_error_callback) {
     check(!RealtimeScope::isActive(), "host notification IPC stays off processing"); ++notifications;
+    if (!strcmp(uri, AAP_BUSES_EXTENSION_URI) && opcode == OPCODE_NOTIFY_BUS_LAYOUT_CHANGED) ++busLayoutNotifications;
     if (completed) completed(context, host);
 }
 void localProcessing() {
@@ -387,6 +389,9 @@ void localProcessing() {
     check(instance.getMainEventPortIndex(AAP_PORT_DIRECTION_OUTPUT) == 2, "main event output bus");
     // Plugins see the buses through aap_buffer_t, once they find the buses host extension.
     check(fake.host && fake.host->get_extension(fake.host, AAP_BUSES_EXTENSION_URI), "buses host extension");
+    // A plugin-initiated layout change goes to the host as a coalesced notification.
+    auto busesHost = (aap_buses_host_extension_t*) fake.host->get_extension(fake.host, AAP_BUSES_EXTENSION_URI);
+    busesHost->notify_buses_changed(busesHost, fake.host, AAP_BUSES_CHANGED_LAYOUT);
     auto busBuffer = instance.getAudioPluginBuffer();
     check(busBuffer->get_bus_count(busBuffer, AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_INPUT) == 0 &&
           busBuffer->get_bus_count(busBuffer, AAP_BUS_KIND_AUDIO, AAP_PORT_DIRECTION_OUTPUT) == 1 &&
@@ -403,9 +408,11 @@ void localProcessing() {
     // Stop additional notifications while checking the queue/readback and suspension behavior.
     fake.notifications = false;
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while ((notifications < 3 || callback.process_requests < 1) && std::chrono::steady_clock::now() < deadline)
+    while ((notifications < 4 || callback.process_requests < 1 || busLayoutNotifications < 1) &&
+           std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
-    check(notifications >= 3 && callback.process_requests >= 1, "all standard notifications delivered");
+    check(notifications >= 4 && callback.process_requests >= 1, "all standard notifications delivered");
+    check(busLayoutNotifications >= 1, "bus layout change notification delivered");
     // Notification delivery precedes the worker's parameter scan. Join it before
     // testing explicit control exclusion, so a second control operation cannot
     // legitimately suspend the block we expect to resume.
@@ -1506,6 +1513,15 @@ void busLayout() {
             aap_buses_layout_snapshot_t applied{};
             callBusesHandler(instance, OPCODE_BUSES_GET_LAYOUT, applied, 0);
             check(applied.generation == layout.generation + 1 && applied.buses[0].channel_count == 2, "new bus layout");
+            // A plugin-initiated layout change also invalidates the buffer layout for the former one.
+            auto busesHost = (aap_buses_host_extension_t*) fake.host->get_extension(fake.host, AAP_BUSES_EXTENSION_URI);
+            busesHost->notify_buses_changed(busesHost, fake.host, AAP_BUSES_CHANGED_NAMES);
+            aap_buses_layout_snapshot_t unchanged{};
+            callBusesHandler(instance, OPCODE_BUSES_GET_LAYOUT, unchanged, 0);
+            check(unchanged.generation == applied.generation, "a name change keeps the generation");
+            busesHost->notify_buses_changed(busesHost, fake.host, AAP_BUSES_CHANGED_LAYOUT);
+            callBusesHandler(instance, OPCODE_BUSES_GET_LAYOUT, applied, 0);
+            check(applied.generation == unchanged.generation + 1, "a layout change bumps the generation");
             client.applyLayoutSnapshot(applied);
             aap_buffer_layout_t newBufferLayout{};
             check(computeBufferLayout(client, applied.generation, 256, 4096, newBufferLayout).empty() &&

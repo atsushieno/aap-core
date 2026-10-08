@@ -24,6 +24,10 @@ const int32_t OPCODE_BUSES_COMMIT_BUFFER_LAYOUT = 2;
 // The bus layout generation changes; the host re-reads the layout and prepares again.
 const int32_t OPCODE_BUSES_APPLY_LAYOUT = 3;
 
+// host extension opcodes: payload-free notifications, coalesced (see notify_buses_changed()).
+const int32_t OPCODE_NOTIFY_BUS_NAMES_CHANGED = -1;
+const int32_t OPCODE_NOTIFY_BUS_LAYOUT_CHANGED = -2;
+
 // The layout is reported by the plugin's buses extension. Otherwise the client derives buses
 // from the legacy port configuration, exactly like the service does.
 #define AAP_BUSES_LAYOUT_PLUGIN_PROVIDED 1
@@ -81,6 +85,22 @@ namespace aap::xs {
         Result<bool> applyLayout(const aap_bus_layout_request_t& request);
     };
 
+    class BusesServiceAAPXS : public TypedAAPXS {
+        static void staticNotifyBusesChanged(aap_buses_host_extension_t* ext, AndroidAudioPluginHost*, uint32_t flags) {
+            ((BusesServiceAAPXS*) ext->aapxs_context)->notifyBusesChanged(flags);
+        }
+        aap_buses_host_extension_t host_extension{this, staticNotifyBusesChanged};
+
+    public:
+        BusesServiceAAPXS(AAPXSInitiatorInstance* initiatorInstance, AAPXSSerializationContext* serialization)
+                : TypedAAPXS(AAP_BUSES_EXTENSION_URI, initiatorInstance, serialization) {
+        }
+
+        void notifyBusesChanged(uint32_t flags);
+
+        aap_buses_host_extension_t* asHostExtension() { return &host_extension; }
+    };
+
     class AAPXSDefinition_Buses : public AAPXSDefinitionWrapper {
 
         static void aapxs_buses_process_incoming_plugin_aapxs_request(
@@ -104,6 +124,18 @@ namespace aap::xs {
                 AndroidAudioPluginHost* host,
                 AAPXSRequestContext* request);
 
+        static AAPXSExtensionServiceProxy aapxs_buses_get_host_proxy(
+                struct AAPXSDefinition* feature,
+                AAPXSInitiatorInstance* aapxsInstance,
+                AAPXSSerializationContext* serialization);
+        static void* aapxs_buses_as_host_extension(AAPXSExtensionServiceProxy* proxy) {
+            return ((BusesServiceAAPXS*) proxy->aapxs_context)->asHostExtension();
+        }
+        static uint32_t aapxs_buses_request_flags(AAPXSDefinition*, bool host, int32_t opcode) {
+            return host && (opcode == OPCODE_NOTIFY_BUS_NAMES_CHANGED || opcode == OPCODE_NOTIFY_BUS_LAYOUT_CHANGED) ?
+                   AAPXS_REQUEST_COALESCE : 0u;
+        }
+
         AAPXSDefinition aapxs_buses{
             this,
             AAP_BUSES_EXTENSION_URI,
@@ -113,15 +145,15 @@ namespace aap::xs {
             aapxs_buses_process_incoming_plugin_aapxs_reply,
             aapxs_buses_process_incoming_host_aapxs_reply,
             nullptr, // no C plugin extension proxy; the framework uses BusesClientAAPXS directly.
+            aapxs_buses_get_host_proxy,
             nullptr,
             nullptr,
             nullptr,
+            aapxs_buses_request_flags,
             nullptr,
             nullptr,
             nullptr,
-            nullptr,
-            nullptr,
-            initializeTypedAAPXSInitiator<BusesClientAAPXS>,
+            initializeTypedAAPXSInitiator<BusesClientAAPXS, BusesServiceAAPXS>,
             nullptr,
             releaseTypedAAPXSInitiator,
             nullptr

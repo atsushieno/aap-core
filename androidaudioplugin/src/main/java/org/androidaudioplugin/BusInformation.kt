@@ -9,6 +9,10 @@ class BusInformation(val id: Int, val kind: Int, val direction: Int, val role: I
 
         const val BUS_ROLE_MAIN = 0
         const val BUS_ROLE_AUX = 1
+
+        // flags for the buses changed listener
+        const val BUSES_CHANGED_NAMES = 1
+        const val BUSES_CHANGED_LAYOUT = 2
     }
 
     // The number of audio channels. It is 0 for event buses.

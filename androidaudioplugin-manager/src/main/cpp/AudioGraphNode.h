@@ -92,6 +92,10 @@ namespace aap {
 
     class AudioPluginNode : public AudioGraphNode {
         RemotePluginInstance* plugin;
+        // While the plugin is being prepared again (its buses changed), processAudio() skips it.
+        std::atomic<bool> reconfiguring{false};
+        std::atomic<int32_t> processing{0};
+        void onBusesChanged(uint32_t flags);
 
     public:
         AudioPluginNode(AudioGraph* ownerGraph, RemotePluginInstance* plugin) :
@@ -100,7 +104,7 @@ namespace aap {
         }
         ~AudioPluginNode() override;
 
-        void setPlugin(RemotePluginInstance* instance) { plugin = instance; }
+        void setPlugin(RemotePluginInstance* instance);
 
         void start() override;
         void pause() override;

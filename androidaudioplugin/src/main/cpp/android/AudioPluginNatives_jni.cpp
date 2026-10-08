@@ -349,6 +349,49 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setParameterLayou
     });
 }
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setBusesChangedListener(JNIEnv *env,
+                                                                                      jclass clazz,
+                                                                                      jlong nativeClient,
+                                                                                      jint instanceId,
+                                                                                      jobject listener) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
+    if (!instance)
+        return;
+    if (!listener) {
+        instance->setBusesChangedHandler({});
+        return;
+    }
+    // A java.util.function.IntConsumer, invoked with AAP_BUSES_CHANGED_* flags.
+    auto holder = std::make_shared<JavaParameterLayoutListener>(env, listener);
+    instance->setBusesChangedHandler([holder](uint32_t flags) {
+        JavaParameterLayoutListener::withJNIEnv([&](JNIEnv* jni) {
+            auto klass = jni->GetObjectClass(holder->listener);
+            jni->CallVoidMethod(holder->listener, jni->GetMethodID(klass, "accept", "(I)V"), (jint) flags);
+            if (jni->ExceptionCheck()) {
+                jni->ExceptionDescribe();
+                jni->ExceptionClear();
+            }
+            jni->DeleteLocalRef(klass);
+        });
+    });
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_refreshBusLayout(JNIEnv *env, jclass,
+                                                                               jlong nativeClient,
+                                                                               jint instanceId) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
+    if (!instance)
+        return env->NewStringUTF("instance not found");
+    auto error = instance->refreshBusLayout();
+    return error.empty() ? nullptr : env->NewStringUTF(error.c_str());
+}
+
 namespace {
 // Cache classes in the initiating Java class loader; a native worker has no Java caller frame.
 struct JavaParameterMetadataSnapshotBuilder {

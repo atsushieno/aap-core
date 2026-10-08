@@ -62,7 +62,33 @@ void aap::xs::AAPXSDefinition_Buses::aapxs_buses_process_incoming_plugin_aapxs_r
 void aap::xs::AAPXSDefinition_Buses::aapxs_buses_process_incoming_host_aapxs_request(
         struct AAPXSDefinition *feature, AAPXSRecipientInstance *aapxsInstance,
         AndroidAudioPluginHost *host, AAPXSRequestContext *request) {
-    throw std::runtime_error("There is no buses host extension operation yet");
+    auto ext = (aap_buses_host_extension_t*) host->get_extension(host, AAP_BUSES_EXTENSION_URI);
+    switch (request->opcode) {
+        case OPCODE_NOTIFY_BUS_NAMES_CHANGED:
+            if (ext)
+                ext->notify_buses_changed(ext, host, AAP_BUSES_CHANGED_NAMES);
+            break;
+        case OPCODE_NOTIFY_BUS_LAYOUT_CHANGED:
+            if (ext)
+                ext->notify_buses_changed(ext, host, AAP_BUSES_CHANGED_LAYOUT);
+            break;
+        default:
+            break;
+    }
+    aapxsInstance->send_aapxs_reply(aapxsInstance, request);
+}
+
+AAPXSExtensionServiceProxy aap::xs::AAPXSDefinition_Buses::aapxs_buses_get_host_proxy(
+        struct AAPXSDefinition *feature, AAPXSInitiatorInstance *aapxsInstance,
+        AAPXSSerializationContext *serialization) {
+    return AAPXSExtensionServiceProxy{aapxsInstance->aapxs_context, aapxs_buses_as_host_extension};
+}
+
+void aap::xs::BusesServiceAAPXS::notifyBusesChanged(uint32_t flags) {
+    if (flags & AAP_BUSES_CHANGED_NAMES)
+        fireVoidFunctionAndForget(OPCODE_NOTIFY_BUS_NAMES_CHANGED);
+    if (flags & AAP_BUSES_CHANGED_LAYOUT)
+        fireVoidFunctionAndForget(OPCODE_NOTIFY_BUS_LAYOUT_CHANGED);
 }
 
 void aap::xs::AAPXSDefinition_Buses::aapxs_buses_process_incoming_plugin_aapxs_reply(
