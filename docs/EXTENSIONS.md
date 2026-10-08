@@ -34,6 +34,19 @@ AAP extension is defined in two areas so far:
 
 XML extensibility should be defined in their own namespace URI. For standard extensions, schemas in RELAX NG compact syntax are placed at `docs/schemas`.
 
+### Declaring extensions in `aap_metadata.xml`
+
+A plugin declares the extensions it implements under `<extensions>`, one `<extension uri="..." />` each. A `bom` attribute is an alias for a fixed set of standard extensions, expanded by `AudioPluginExtensionsBom`:
+
+| BOM | extensions |
+|---|---|
+| `0.12.0` | parameters, state, presets, midi2, gui |
+| `0.12.1` | `0.12.0` plus buses |
+
+A BOM never changes once defined; a new set gets a new BOM.
+
+The declarations form the plugin's extension catalog, which a host can read without instantiating the plugin. It matters beyond feature discovery: a host must not send requests for an extension that the plugin does not declare, because older services cannot handle unknown extensions. The framework can therefore switch its behavior on a declaration. For example, the buses extension switches buffer registration to a single pool (see `design/BUSES.md`).
+
 ## Extension API design: Who needs to implement what
 
 For an extension, users are plugin developers and host developers. They want to implement simple API. They are not supposed to implement every complicated IPC bits that AAP extensions actually need under the hood. Thus, extension developers are supposed to offer not just the API definition, but also IPC implementation.
