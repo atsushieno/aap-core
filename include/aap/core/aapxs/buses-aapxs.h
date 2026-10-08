@@ -4,6 +4,7 @@
 #include "aap/aapxs.h"
 #include "../../ext/buses.h"
 #include "typed-aapxs.h"
+#include <algorithm>
 
 // The buses AAPXS has framework-level opcodes that are answered by the hosting framework
 // (LocalPluginInstance), not by the plugin. The plugin's `aap_buses_extension_t` is consulted
@@ -19,6 +20,9 @@ const int32_t OPCODE_BUSES_GET_LAYOUT = 1;
 // Request: aap_buffer_layout_t. Reply: int32_t, 1 if accepted.
 // Sent before beginPrepare(); then prepareMemory() passes the single pool FD (index 0).
 const int32_t OPCODE_BUSES_COMMIT_BUFFER_LAYOUT = 2;
+// Request: aap_bus_layout_request_t. Reply: int32_t, 1 if the plugin accepted it.
+// The bus layout generation changes; the host re-reads the layout and prepares again.
+const int32_t OPCODE_BUSES_APPLY_LAYOUT = 3;
 
 // The layout is reported by the plugin's buses extension. Otherwise the client derives buses
 // from the legacy port configuration, exactly like the service does.
@@ -49,8 +53,9 @@ typedef struct aap_buffer_layout_t {
     aap_buffer_layout_entry_t entries[AAP_MAX_BUFFER_LAYOUT_ENTRIES];
 } aap_buffer_layout_t;
 
-const int32_t BUSES_SHARED_MEMORY_SIZE = sizeof(aap_buses_layout_snapshot_t) > sizeof(aap_buffer_layout_t) ?
-        sizeof(aap_buses_layout_snapshot_t) : sizeof(aap_buffer_layout_t);
+constexpr int32_t BUSES_SHARED_MEMORY_SIZE = std::max({sizeof(aap_buses_layout_snapshot_t),
+                                                       sizeof(aap_buffer_layout_t),
+                                                       sizeof(aap_bus_layout_request_t)});
 
 namespace aap::xs {
     // Implemented by the service-side hosting framework, which answers the framework-level
@@ -61,6 +66,8 @@ namespace aap::xs {
         virtual void getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) = 0;
         // Returns false if it is rejected (e.g. a stale generation, or the instance is active).
         virtual bool commitBufferLayout(const aap_buffer_layout_t& layout) = 0;
+        // Returns false if the plugin rejects it (or cannot change its layout at all).
+        virtual bool applyLayout(const aap_bus_layout_request_t& request) = 0;
     };
 
     class BusesClientAAPXS : public TypedAAPXS {
@@ -71,6 +78,7 @@ namespace aap::xs {
 
         Result<aap_buses_layout_snapshot_t> getLayout();
         Result<bool> commitBufferLayout(const aap_buffer_layout_t& layout);
+        Result<bool> applyLayout(const aap_bus_layout_request_t& request);
     };
 
     class AAPXSDefinition_Buses : public AAPXSDefinitionWrapper {

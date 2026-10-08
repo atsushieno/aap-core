@@ -112,6 +112,27 @@ bool aap::LocalPluginInstance::BusesService::commitBufferLayout(const aap_buffer
     return true;
 }
 
+bool aap::LocalPluginInstance::BusesService::applyLayout(const aap_bus_layout_request_t& request) {
+    auto state = owner->instantiation_state.load();
+    // Buffers of a prepared instance can be replaced only with a pool.
+    if (state == PLUGIN_INSTANTIATION_STATE_ACTIVE ||
+        (state == PLUGIN_INSTANTIATION_STATE_INACTIVE && !owner->usesBufferPool()) ||
+        request.count < 0 || request.count > AAP_MAX_BUSES)
+        return false;
+    auto plugin = owner->plugin;
+    auto ext = (aap_buses_extension_t*) plugin->get_extension(plugin, AAP_BUSES_EXTENSION_URI);
+    if (!ext || !ext->apply_layout)
+        return false;
+    // The current buffers do not match the new layout; process() does not touch them until
+    // the instance is prepared again.
+    const internal::ProcessingQuiescence::Control suspension{owner->realtime_state->processing};
+    if (!ext->apply_layout(ext, plugin, &request))
+        return false;
+    owner->bus_layout_generation++;
+    owner->instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+    return true;
+}
+
 std::string aap::LocalPluginInstance::beginPrepare() {
     if (instantiation_state == PLUGIN_INSTANTIATION_STATE_INACTIVE) {
         if (!usesBufferPool())

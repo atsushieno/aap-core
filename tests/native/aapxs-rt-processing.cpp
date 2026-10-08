@@ -141,7 +141,7 @@ struct TestRemote : RemotePluginInstance {
         shared_memory_store = new TestMemory(*this, shared_memory_store);
         instantiation_state = PLUGIN_INSTANTIATION_STATE_ACTIVE;
     }
-    void applyBusLayout(const aap_buses_layout_snapshot_t& layout) { setupPortsFromBusLayout(layout); }
+    void applyLayoutSnapshot(const aap_buses_layout_snapshot_t& layout) { setupPortsFromBusLayout(layout); }
 };
 struct Callback : AudioPluginServiceCallback {
     std::atomic<int> process_requests{0};
@@ -182,16 +182,27 @@ struct FakePlugin {
             check(kind == AAP_BUS_KIND_AUDIO, "framework asks plugins for audio buses only");
             return direction == AAP_PORT_DIRECTION_INPUT ? 1 : 2;
         },
-        [](auto*, auto*, aap_bus_kind, aap_port_direction direction, int32_t index) {
+        [](auto* ext, auto*, aap_bus_kind, aap_port_direction direction, int32_t index) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
             aap_bus_info_t bus{};
             bus.id = direction == AAP_PORT_DIRECTION_INPUT ? 10 : 20 + index;
-            bus.channel_count = direction == AAP_PORT_DIRECTION_INPUT || index == 1 ? 1 : 2;
+            bus.channel_count = direction == AAP_PORT_DIRECTION_INPUT ? self.inputChannels : index == 1 ? 1 : 2;
             strcpy(bus.name, direction == AAP_PORT_DIRECTION_INPUT ? "Main In" : index == 0 ? "Main Out" : "Side Out");
             if (bus.channel_count == 2) strcpy(bus.layout, AAP_BUS_LAYOUT_STEREO);
             bus.role = AAP_BUS_ROLE_AUX; // the framework normalizes it by index
             bus.enabled = true;
             return bus;
-        }, nullptr};
+        },
+        [](auto* ext, auto*, const aap_bus_layout_request_t* request) {
+            // only the main input (id 10) can be mono or stereo.
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            if (request->count != 1 || request->buses[0].id != 10 ||
+                request->buses[0].channel_count < 1 || request->buses[0].channel_count > 2)
+                return false;
+            self.inputChannels = request->buses[0].channel_count;
+            return true;
+        }};
+    int32_t inputChannels{1};
     std::atomic<int32_t> parameterCount{1}, presetCount{40};
     std::atomic<int> countReads{0};
     aap_parameters_extension_t parameters{this,
@@ -1379,6 +1390,13 @@ size_t callBusesHandler(LocalPluginInstance& instance, int32_t opcode, T& payloa
     return serialization.data_size;
 }
 
+bool callBusesApply(LocalPluginInstance& instance, aap_bus_layout_request_t request) {
+    callBusesHandler(instance, OPCODE_BUSES_APPLY_LAYOUT, request, sizeof(request));
+    int32_t accepted;
+    memcpy(&accepted, &request, sizeof(accepted));
+    return accepted == 1;
+}
+
 bool callBusesCommit(LocalPluginInstance& instance, aap_buffer_layout_t layout) {
     callBusesHandler(instance, OPCODE_BUSES_COMMIT_BUFFER_LAYOUT, layout, sizeof(layout));
     int32_t accepted;
@@ -1437,7 +1455,7 @@ void busLayout() {
             check(!client.isBusMode(), "no bus mode for a plugin that does not declare the extension");
             descriptor.info.addExtension(PluginExtensionInformation{false, AAP_BUSES_EXTENSION_URI});
             check(client.isBusMode(), "bus mode for a plugin that declares the extension");
-            client.applyBusLayout(layout);
+            client.applyLayoutSnapshot(layout);
             check(client.getNumPorts() == instance.getNumPorts(), "client port count");
             for (int32_t i = 0; i < instance.getNumPorts(); i++)
                 check(client.getPort(i)->getContentType() == instance.getPort(i)->getContentType() &&
@@ -1469,6 +1487,30 @@ void busLayout() {
             instance.forceState(PLUGIN_INSTANTIATION_STATE_INACTIVE);
             check(instance.beginPrepare().empty() && instance.getInstanceState() == PLUGIN_INSTANTIATION_STATE_UNPREPARED,
                   "prepare again with a pool");
+
+            // Host-requested layout: rejected while active, or if the plugin does not accept it.
+            aap_bus_layout_request_t request{};
+            request.count = 1;
+            request.buses[0].id = 10;
+            request.buses[0].enabled = true;
+            request.buses[0].channel_count = 2;
+            instance.forceState(PLUGIN_INSTANTIATION_STATE_ACTIVE);
+            check(!callBusesApply(instance, request), "no layout change while active");
+            instance.forceState(PLUGIN_INSTANTIATION_STATE_INACTIVE);
+            auto unsupported = request;
+            unsupported.buses[0].channel_count = 3;
+            check(!callBusesApply(instance, unsupported), "the plugin rejects a layout");
+            check(callBusesApply(instance, request) && instance.getInstanceState() == PLUGIN_INSTANTIATION_STATE_UNPREPARED,
+                  "the plugin accepts a layout; the instance has to be prepared again");
+            check(!callBusesCommit(instance, bufferLayout), "a buffer layout for the former bus layout is stale");
+            aap_buses_layout_snapshot_t applied{};
+            callBusesHandler(instance, OPCODE_BUSES_GET_LAYOUT, applied, 0);
+            check(applied.generation == layout.generation + 1 && applied.buses[0].channel_count == 2, "new bus layout");
+            client.applyLayoutSnapshot(applied);
+            aap_buffer_layout_t newBufferLayout{};
+            check(computeBufferLayout(client, applied.generation, 256, 4096, newBufferLayout).empty() &&
+                  callBusesCommit(instance, newBufferLayout), "buffer layout for the new bus layout");
+            check(instance.beginPrepare().empty() && instance.getNumPorts() == 7, "ports follow the new layout");
         }
     }
 }

@@ -27,6 +27,9 @@ typedef struct SamplePluginSpecific {
     float modR_pn[128];
     uint32_t delayL{0};
     uint32_t delayR{0};
+    // main bus channel counts (1 or 2); changed by the host via apply_layout().
+    int32_t numInputChannels{2};
+    int32_t numOutputChannels{2};
 
     SamplePluginSpecific(AndroidAudioPluginHost *host) {
         this->host = *host;
@@ -290,7 +293,7 @@ aap_parameters_extension_t parameters_extension{nullptr,
                                                 nullptr,
                                                 nullptr};
 
-// Buses extension: a stereo main input and a stereo main output.
+// Buses extension: a main input and a main output, either stereo (default) or mono.
 // (The framework adds the main event buses.)
 int32_t sample_plugin_get_bus_count(aap_buses_extension_t* ext, AndroidAudioPlugin* plugin,
                                     aap_bus_kind kind, aap_port_direction direction) {
@@ -299,22 +302,38 @@ int32_t sample_plugin_get_bus_count(aap_buses_extension_t* ext, AndroidAudioPlug
 
 aap_bus_info_t sample_plugin_get_bus(aap_buses_extension_t* ext, AndroidAudioPlugin* plugin,
                                      aap_bus_kind kind, aap_port_direction direction, int32_t index) {
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
     aap_bus_info_t bus{};
     bus.id = direction == AAP_PORT_DIRECTION_INPUT ? 0 : 1;
     bus.kind = AAP_BUS_KIND_AUDIO;
     bus.direction = direction;
     bus.role = AAP_BUS_ROLE_MAIN;
     strncpy(bus.name, direction == AAP_PORT_DIRECTION_INPUT ? "Audio In" : "Audio Out", AAP_MAX_BUS_NAME_CHARS - 1);
-    bus.channel_count = 2;
-    strncpy(bus.layout, "stereo", AAP_MAX_BUS_LAYOUT_CHARS - 1);
+    bus.channel_count = direction == AAP_PORT_DIRECTION_INPUT ? ctx->numInputChannels : ctx->numOutputChannels;
+    strncpy(bus.layout, bus.channel_count == 1 ? "mono" : "stereo", AAP_MAX_BUS_LAYOUT_CHARS - 1);
     bus.enabled = true;
     return bus;
+}
+
+bool sample_plugin_apply_layout(aap_buses_extension_t* ext, AndroidAudioPlugin* plugin,
+                                const aap_bus_layout_request_t* request) {
+    auto ctx = (SamplePluginSpecific*) plugin->plugin_specific;
+    int32_t numIns = ctx->numInputChannels, numOuts = ctx->numOutputChannels;
+    for (int32_t i = 0; i < request->count; i++) {
+        auto& bus = request->buses[i];
+        if (bus.id > 1 || !bus.enabled || bus.channel_count < 1 || bus.channel_count > 2)
+            return false;
+        (bus.id == 0 ? numIns : numOuts) = bus.channel_count;
+    }
+    ctx->numInputChannels = numIns;
+    ctx->numOutputChannels = numOuts;
+    return true;
 }
 
 aap_buses_extension_t buses_extension{nullptr,
                                       sample_plugin_get_bus_count,
                                       sample_plugin_get_bus,
-                                      nullptr};
+                                      sample_plugin_apply_layout};
 
 void* sample_plugin_get_extension(AndroidAudioPlugin *, const char* uri) {
     if (!strcmp(uri, AAP_PARAMETERS_EXTENSION_URI))

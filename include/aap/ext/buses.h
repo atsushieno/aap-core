@@ -11,19 +11,9 @@ extern "C" {
 
 #define AAP_BUSES_EXTENSION_URI "urn://androidaudioplugin.org/extensions/buses/v1"
 
-/*
- * Buses extension.
- *
- * A bus is a logical connection: an audio bus has one buffer per channel, and an event bus has
- * one UMP buffer. Buses are indexed separately for each (kind, direction) pair, and the main bus
- * is always at index 0.
- *
- * The plugin implements this extension only when it knows its own bus layout (e.g. plugin format
- * wrappers). Otherwise the framework provides the layout on behalf of the plugin.
- *
- * Event buses are managed by the framework: the main event input and output always exist, for
- * every plugin. Plugins report audio buses only (`kind` is always AAP_BUS_KIND_AUDIO so far).
- */
+// Implemented only by plugins that know their audio bus layout (e.g. format wrappers).
+// Plugins report audio buses only; the main event input and output always exist.
+// Bus indices are per (kind, direction), and the main bus is at index 0.
 
 #define AAP_MAX_BUS_NAME_CHARS 64
 #define AAP_MAX_BUS_LAYOUT_CHARS 32

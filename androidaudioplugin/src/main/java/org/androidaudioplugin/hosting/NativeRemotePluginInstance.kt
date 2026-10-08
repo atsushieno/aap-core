@@ -6,6 +6,7 @@ import android.os.Looper
 import android.util.Log
 import org.androidaudioplugin.ParameterInformation
 import org.androidaudioplugin.BusInformation
+import org.androidaudioplugin.BusLayoutRequest
 import org.androidaudioplugin.PortInformation
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
@@ -180,12 +181,24 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getBus(kind: Int, direction: Int, index: Int): BusInformation? = runCatchingRemoteException(null) {
         getBus(client, instanceId, kind, direction, index)
     }
-    /** Port indices of every audio channel of the given direction, in bus order. */
+    // Changes the bus layout (when not active). Call `prepare()` again afterwards.
+    fun applyBusLayout(buses: List<BusLayoutRequest>) {
+        val error = applyBusLayout(client, instanceId,
+            buses.map { it.id }.toIntArray(),
+            buses.map { it.enabled }.toBooleanArray(),
+            buses.map { it.channelCount }.toIntArray(),
+            buses.map { it.layout }.toTypedArray())
+        if (error != null)
+            throw org.androidaudioplugin.AudioPluginException(error)
+        state = InstanceState.UNPREPARED
+    }
+
+    // Port indices of every audio channel of the given direction, in bus order.
     fun getAudioPortIndices(direction: Int): List<Int> =
         (0 until getBusCount(BusInformation.BUS_KIND_AUDIO, direction)).flatMap { index ->
             getBus(BusInformation.BUS_KIND_AUDIO, direction, index)?.portIndices?.toList() ?: listOf()
         }
-    /** The port index of the main event bus of the given direction, or -1. */
+    // The port index of the main event bus of the given direction, or -1.
     fun getMainEventPortIndex(direction: Int): Int =
         getBus(BusInformation.BUS_KIND_EVENT, direction, 0)?.getPortIndex() ?: -1
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
@@ -258,6 +271,10 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
         @JvmStatic
         external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
+        @JvmStatic
+        external fun applyBusLayout(nativeClient: Long, instanceId: Int, ids: IntArray, enabled: BooleanArray,
+                                    channelCounts: IntArray, layouts: Array<String>) : String?
+
         @JvmStatic
         external fun getBusCount(nativeClient: Long, instanceId: Int, kind: Int, direction: Int) : Int
 

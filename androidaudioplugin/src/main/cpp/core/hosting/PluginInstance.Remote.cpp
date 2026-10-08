@@ -63,6 +63,30 @@ void aap::RemotePluginInstance::pollExtensionWorker() {
     if (!realtime_state->worker.isStopping()) aapxs_session.completeSession(&empty, plugin);
 }
 
+std::string aap::RemotePluginInstance::applyBusLayout(const aap_bus_layout_request_t& request) {
+    if (!isBusMode() || bus_layout_generation == 0)
+        return "the plugin does not provide its bus layout";
+    if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED &&
+        instantiation_state != PLUGIN_INSTANTIATION_STATE_INACTIVE)
+        return "the bus layout can be changed only when the instance is not active";
+    auto buses = standards ? standards->getBuses() : nullptr;
+    if (!buses)
+        return "buses extension unavailable";
+    auto applied = buses->applyLayout(request);
+    if (!applied.isOk())
+        return applied.error;
+    // The service is UNPREPARED now; so are we, until prepare() with new buffers.
+    instantiation_state = PLUGIN_INSTANTIATION_STATE_UNPREPARED;
+    auto layout = buses->getLayout();
+    if (!layout.isOk() || !(layout.value.flags & AAP_BUSES_LAYOUT_PLUGIN_PROVIDED)) {
+        instantiation_state = PLUGIN_INSTANTIATION_STATE_ERROR;
+        return layout.isOk() ? "the plugin stopped providing its bus layout" : layout.error;
+    }
+    setupPortsFromBusLayout(layout.value);
+    bus_layout_generation = layout.value.generation;
+    return {};
+}
+
 void aap::RemotePluginInstance::configurePorts() {
     if (instantiation_state != PLUGIN_INSTANTIATION_STATE_UNPREPARED) {
         aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,

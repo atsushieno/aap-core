@@ -73,12 +73,7 @@ public:
 #define AAP_BUS_LAYOUT_STEREO "stereo"
 #define AAP_BUS_LAYOUT_DISCRETE_PREFIX "discrete"
 
-/**
- * Describes a bus of a configured plugin instance.
- *
- * Each channel of an audio bus (and the single buffer of an event bus) is still backed by
- * a "port" buffer in `aap_buffer_t`, which is resolved by `getPortIndex()`.
- */
+// A bus of a configured plugin instance. `getPortIndex()` resolves the backing port buffer.
 class BusInformation {
     uint32_t id{0};
     aap_bus_kind kind;

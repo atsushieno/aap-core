@@ -38,6 +38,19 @@ void aap::xs::AAPXSDefinition_Buses::aapxs_buses_process_incoming_plugin_aapxs_r
             }
             break;
         }
+        case OPCODE_BUSES_APPLY_LAYOUT: {
+            int32_t accepted = 0;
+            if (data && data->data && data->data_capacity >= sizeof(aap_bus_layout_request_t)) {
+                aap_bus_layout_request_t layoutRequest{};
+                memcpy(&layoutRequest, data->data, sizeof(layoutRequest));
+                accepted = handler->applyLayout(layoutRequest) ? 1 : 0;
+            }
+            if (data && data->data && data->data_capacity >= sizeof(accepted)) {
+                memcpy(data->data, &accepted, sizeof(accepted));
+                data->data_size = sizeof(accepted);
+            }
+            break;
+        }
         default:
             if (data)
                 data->data_size = 0;
@@ -103,5 +116,21 @@ aap::Result<bool> aap::xs::BusesClientAAPXS::commitBufferLayout(const aap_buffer
         return {false, result.error};
     if (result.value != 1)
         return {false, "buffer layout rejected"};
+    return {true, ""};
+}
+
+aap::Result<bool> aap::xs::BusesClientAAPXS::applyLayout(const aap_bus_layout_request_t& request) {
+    if (aap::RealtimeScope::isActive()) return {false, "RT caller"};
+    auto result = callAndWait<int32_t>(OPCODE_BUSES_APPLY_LAYOUT, &request, sizeof(request),
+        [](AAPXSSerializationContext* ctx) {
+            int32_t accepted = 0;
+            if (ctx && ctx->data && ctx->data_size >= sizeof(accepted) && ctx->data_capacity >= sizeof(accepted))
+                memcpy(&accepted, ctx->data, sizeof(accepted));
+            return accepted;
+        }, sizeof(int32_t));
+    if (!result.isOk())
+        return {false, result.error};
+    if (result.value != 1)
+        return {false, "bus layout rejected"};
     return {true, ""};
 }

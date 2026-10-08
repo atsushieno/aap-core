@@ -51,24 +51,19 @@ typedef struct aap_buffer_t {
      */
     int32_t (*get_buffer_size)(aap_buffer_t* self, int32_t index);
 
-    /*
-     * Bus accessors. The members above are the flattened view of the same buffers (one "port" per
-     * audio channel, then the event buffers).
-     *
-     * They exist only if the host provides the buses host extension i.e.
-     * `host->get_extension(host, AAP_BUSES_EXTENSION_URI)` returns non-NULL; do not touch them otherwise.
-     * Bus indices are per (kind, direction), and the main bus is at index 0.
-     */
+    // Bus accessors (the members above are the flattened view of the same buffers).
+    // They exist only if `host->get_extension(host, AAP_BUSES_EXTENSION_URI)` returns non-NULL.
+    // Bus indices are per (kind, direction), and the main bus is at index 0.
 
-    /** The number of buses of the kind and direction. */
+    // The number of buses of the kind and direction.
     int32_t (*get_bus_count)(aap_buffer_t* self, enum aap_bus_kind kind, enum aap_port_direction direction);
-    /** The number of channels that are actually allocated for the audio bus; 0 if it is disabled. */
+    // The number of channels that are actually allocated for the audio bus; 0 if it is disabled.
     int32_t (*get_audio_channel_count)(aap_buffer_t* self, enum aap_port_direction direction, int32_t busIndex);
-    /** The channel buffers of the audio bus (`get_audio_channel_count()` entries), or NULL if it is disabled. */
+    // The channel buffers of the audio bus (`get_audio_channel_count()` entries), or NULL if it is disabled.
     float** (*get_audio_channels)(aap_buffer_t* self, enum aap_port_direction direction, int32_t busIndex);
-    /** The UMP buffer of the event bus, which starts with `AAPMidiBufferHeader`. */
+    // The UMP buffer of the event bus, which starts with `AAPMidiBufferHeader`.
     void* (*get_event_buffer)(aap_buffer_t* self, enum aap_port_direction direction, int32_t busIndex);
-    /** The size of the event bus buffer in bytes, including the header. */
+    // The size of the event bus buffer in bytes, including the header.
     int32_t (*get_event_buffer_capacity)(aap_buffer_t* self, enum aap_port_direction direction, int32_t busIndex);
 } aap_buffer_t;
 

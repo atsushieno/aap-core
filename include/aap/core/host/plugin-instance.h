@@ -247,6 +247,7 @@ namespace aap {
             explicit BusesService(LocalPluginInstance* owner) : owner(owner) {}
             void getBusLayoutSnapshot(aap_buses_layout_snapshot_t& snapshot) override;
             bool commitBufferLayout(const aap_buffer_layout_t& layout) override;
+            bool applyLayout(const aap_bus_layout_request_t& request) override;
         };
         BusesService buses_service{this};
         // Its existence tells the plugin that aap_buffer_t has the bus accessors.
@@ -403,6 +404,11 @@ namespace aap {
 
         // It is performed after endCreate() and beginPrepare(), to configure ports using relevant AAP extensions.
         void configurePorts();
+
+        // Asks the plugin to change its bus layout (only when it is not active). On success, the
+        // ports and buses are updated, and the instance becomes UNPREPARED: call prepare() again
+        // (with new buffers) before activate(). Returns an error, or empty.
+        std::string applyBusLayout(const aap_bus_layout_request_t& request);
 
         // The plugin declares the buses extension in its metadata.
         bool isBusMode() override { return pluginInfo->hasExtension(AAP_BUSES_EXTENSION_URI); }

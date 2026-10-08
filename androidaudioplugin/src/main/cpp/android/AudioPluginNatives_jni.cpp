@@ -849,6 +849,42 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getPort(JNIEnv *e
 }
 
 extern "C"
+JNIEXPORT jstring JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_applyBusLayout(JNIEnv *env, jclass,
+                                                                              jlong nativeClient,
+                                                                              jint instanceId,
+                                                                              jintArray ids,
+                                                                              jbooleanArray enabled,
+                                                                              jintArray channelCounts,
+                                                                              jobjectArray layouts) {
+    auto client = (aap::PluginClient*) (void*) nativeClient;
+    auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
+    if (!instance)
+        return env->NewStringUTF("instance not found");
+    aap_bus_layout_request_t request{};
+    request.count = std::min((int32_t) env->GetArrayLength(ids), (int32_t) AAP_MAX_BUSES);
+    for (jint i = 0; i < request.count; i++) {
+        jint id, channels;
+        jboolean isEnabled;
+        env->GetIntArrayRegion(ids, i, 1, &id);
+        env->GetBooleanArrayRegion(enabled, i, 1, &isEnabled);
+        env->GetIntArrayRegion(channelCounts, i, 1, &channels);
+        auto& bus = request.buses[i];
+        bus.id = (uint32_t) id;
+        bus.enabled = isEnabled;
+        bus.channel_count = channels;
+        auto layout = (jstring) env->GetObjectArrayElement(layouts, i);
+        if (layout) {
+            auto chars = env->GetStringUTFChars(layout, nullptr);
+            strncpy(bus.layout, chars, AAP_MAX_BUS_LAYOUT_CHARS - 1);
+            env->ReleaseStringUTFChars(layout, chars);
+        }
+    }
+    auto error = instance->applyBusLayout(request);
+    return error.empty() ? nullptr : env->NewStringUTF(error.c_str());
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getBusCount(JNIEnv *,
                                                                            jclass ,
