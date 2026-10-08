@@ -5,7 +5,7 @@
       gui:ui-view-factory="org.androidaudioplugin.ui.compose.ComposeAudioPluginViewFactory"
       xmlns:gui="urn://androidaudioplugin.org/extensions/gui">
 
-    <extensions bom="0.12.0" />
+    <extensions bom="0.12.1" />
 
     <!-- All ports are created implicitly now. -->
 

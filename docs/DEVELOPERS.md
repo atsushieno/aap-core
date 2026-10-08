@@ -54,14 +54,6 @@ The `meta-data` whose `android:name` is `org.androidaudioplugin.AudioPluginServi
       <parameter id="2" name="Delay L" default="0" minimum="0" maximum="2048" type="integer" />
       <parameter id="3" name="Delay R" default="256" minimum="0" maximum="2048" type="integer" />
     </parameters>
-    <ports>
-      <port direction="input" content="midi2" name="MIDI In" />
-      <port direction="output" content="midi2" name="MIDI Out" />
-      <port direction="input" content="audio" name="Left In" />
-      <port direction="input" content="audio" name="Right In" />
-      <port direction="output" content="audio" name="Left Out" />
-      <port direction="output" content="audio" name="Right Out" />
-    </ports>
   </plugin>
   
   (more <plugin>s, if any...)
@@ -82,15 +74,14 @@ Here is the XML content details:
   - `category` attribute: category of the plugin. (Currently we expect `Instrument` or `Effect` but maybe this is going to be unnecessary.)
   - `library` attribute: native library file name that contains the plugin entrypoint
   - `entrypoint` attribute: name of the entrypoint function name in the library. If it is not specified, then `GetAndroidAudioPluginFactory` is used.
-- `<ports>` element - defines ports.
-  - `<port>` element
-    - `name` attribute: the display name.
-    - `direction` attribute: either `input` or `output`.
-    - `content` attribute: `audio` or `midi2`. (explained later)
-    - `minimumSize` attribute: specifies the minimum buffer size in bytes.
+- `<extensions>` element - lists the extensions that the plugin implements.
+  - `<extension>` element
+    - `uri` attribute: the extension URI e.g. `urn://androidaudioplugin.org/extensions/buses/v1`.
+
+Audio and event buses are not described in this metadata. Every plugin gets the main event (MIDI 2.0) input and output buses. The audio buses default to stereo input and output for an `Effect`, and stereo output for an `Instrument`. A plugin that needs other audio buses (mono, sidechains, multiple outputs, etc.) implements the buses extension (`aap/ext/buses.h`) and declares `urn://androidaudioplugin.org/extensions/buses/v1` in `<extensions>`, either with an `<extension>` element or with `<extensions bom="0.12.1" />`. (A `bom` attribute is an alias for a set of extensions: `0.12.0` covers parameters, state, presets, midi2 and gui, and `0.12.1` adds buses.) (`<ports>` was used for that purpose in older versions; hosts still read it only for compatibility with older plugins, until 1.0.)
 - `<parameters>` element - defines a parameter group (can be nested). Note that it resides in its own namespace (since it works as an extension)
   - `name`: attribute: parameter group name.
-  - `<port>` element
+  - `<parameter>` element
     - `id` attribute: the parameter id integer from `0` to `65535`. It is supposed to not change as long as parameter compatibility is kept. It does not have to be sorted in order, and can have skipped numbers.
     - `name` attribute: the display name.
     - `minimum`, `maximum` attributes: specifies plain value ranges. They are also used to normalize parameter values when they are transported over MIDI 2.0 UMP payloads.

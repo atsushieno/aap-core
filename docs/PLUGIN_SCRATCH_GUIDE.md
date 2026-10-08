@@ -78,14 +78,6 @@ This is the entire content for bare bone project:
 ```
 <plugins>
   <plugin name="Flat Filter" category="Effect" developer="AAP Developers" unique-id="urn:org.androidaudioplugin/samples/aapbarebonepluginsample/FlatFilter" library="libaapbareboneplugin.so">
-    <ports>
-      <port id="0" direction="input" content="audio" name="Left In" />
-      <port id="1" direction="input" content="audio" name="Right In" />
-      <port id="2" direction="output" content="audio" name="Left Out" />
-      <port id="3" direction="output" content="audio" name="Right Out" />
-      <port id="4" direction="input" content="midi2" name="MIDI In" />
-      <port id="5" direction="output" content="midi2" name="MIDI Out" />
-    </ports>
     <parameters xmlns="urn://androidaudioplugin.org/extensions/parameters">
       <parameter id="0" name="Output Volume L" default="0.5" minimum="0" maximum="1" />
       <parameter id="1" name="Output Volume R" default="0.5" minimum="0" maximum="1" />
@@ -98,6 +90,9 @@ This is the entire content for bare bone project:
 
 Give appropriate name, category, developer, and unique-id.
 For `category` attribute, specify `Instrument` if it is.
+An `Effect` gets stereo audio input and output buses, and an `Instrument` gets a stereo
+audio output bus. If you need other audio buses, implement the buses extension
+(`aap/ext/buses.h`) and declare it in `<extensions>`.
 The `library` name should be indicated at `CMakeLists.txt` in the project.
 
 For `parameter`, `id` is an integer.
