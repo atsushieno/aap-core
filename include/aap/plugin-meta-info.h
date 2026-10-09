@@ -21,19 +21,15 @@ enum aap_port_direction {
     AAP_PORT_DIRECTION_OUTPUT
 };
 
-/*
- * A bus is a logical connection that groups buffers: an audio bus has one buffer per channel,
- * and an event bus has one UMP buffer.
- */
+// A bus is a logical connection that groups buffers: an audio bus has one buffer per channel,
+// and an event bus has one UMP buffer.
 enum aap_bus_kind {
     AAP_BUS_KIND_AUDIO = 1,
     AAP_BUS_KIND_EVENT = 2
 };
 
-/*
- * There is at most one MAIN bus for each kind and direction, and it is always at index 0.
- * AUX buses cover sidechains and extra outputs.
- */
+// There is at most one MAIN bus for each kind and direction, and it is always at index 0.
+// AUX buses cover sidechains and extra outputs.
 enum aap_bus_role {
     AAP_BUS_ROLE_MAIN = 0,
     AAP_BUS_ROLE_AUX = 1
@@ -97,4 +93,4 @@ typedef struct aap_plugin_info_t {
 }
 #endif
 
-#endif /* ANDROIDAUDIOPLUGIN_PLUGIN_META_INFO_H_INCLUDED */
+#endif // ANDROIDAUDIOPLUGIN_PLUGIN_META_INFO_H_INCLUDED

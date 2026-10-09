@@ -1,7 +1,7 @@
 #ifndef AAP_CORE_AAPXS_H
 #define AAP_CORE_AAPXS_H
 
-/* The new 2023 version of AAPXS runtime - ABI compatibility. */
+// The new 2023 version of AAPXS runtime - ABI compatibility.
 
 #define USE_AAPXS_V2 true
 #if USE_AAPXS_V2
@@ -13,7 +13,7 @@
 #include <cstdint>
 #include "android-audio-plugin.h"
 
-/* Created per extension per instance */
+// Created per extension per instance
 typedef struct AAPXSSerializationContext {
     void* data;
     size_t data_size;
@@ -38,85 +38,72 @@ typedef struct AAPXSRequestContext {
     const char * uri;
     uint32_t request_id;
     int32_t opcode;
-    /* Optional; defaults to null for existing brace-initializers that omit it. Set by the async
-     * typed AAPXS layer so timeouts / service death can be reported back to the initiator.
-     */
+    // Optional; defaults to null for existing brace-initializers that omit it. Set by the async
+    // typed AAPXS layer so timeouts / service death can be reported back to the initiator.
     aapxs_error_callback error_callback;
 } AAPXSRequestContext;
 
-/* client instance for plugin extension API, and service instance for host extension API */
+// client instance for plugin extension API, and service instance for host extension API
 typedef struct AAPXSInitiatorInstance {
-    /* owned by each AAPXS implementation */
+    // owned by each AAPXS implementation
     void* aapxs_context;
-    /* owned by hosting implementation */
+    // owned by hosting implementation
     void* host_context;
     AAPXSSerializationContext* serialization;
     uint8_t urid;
 
-    /* assigned by: framework reference implementation
-     * invoked by: AAPXS developer, for async implementation
-     */
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer, for async implementation
     uint32_t (*get_new_request_id) (AAPXSInitiatorInstance* instance);
 
-    /* assigned by: framework reference implementation
-     * invoked by: AAPXS developer
-     */
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer
     bool (*send_aapxs_request) (AAPXSInitiatorInstance* instance, AAPXSRequestContext* context);
 
-    /*
-     * Optional, framework-owned cancellation service. Control threads only.
-     * A registration owns the lifetime needed by unregister_abort_handler, which
-     * must remain callable even after this initiator/framework instance is gone.
-     * Unregister excludes future delivery and waits for concurrent delivery;
-     * unregistering from the handler itself is supported.
-     */
+    // Optional, framework-owned cancellation service. Control threads only.
+    // A registration owns the lifetime needed by unregister_abort_handler, which
+    // must remain callable even after this initiator/framework instance is gone.
+    // Unregister excludes future delivery and waits for concurrent delivery;
+    // unregistering from the handler itself is supported.
     void* lifecycle_context;
     void* (*register_abort_handler)(AAPXSInitiatorInstance*, void* client_context,
                                    void (*handler)(void*, const char* error));
     void (*unregister_abort_handler)(void* registration);
-    /*
-     * Optional C++ helper pointer (aap::xs::TypedAAPXS*), owned by the extension
-     * alongside aapxs_context. Consumers borrow it; they must not create a second
-     * standard client or release this helper. Null for implementations without it.
-     */
+    // Optional C++ helper pointer (aap::xs::TypedAAPXS*), owned by the extension
+    // alongside aapxs_context. Consumers borrow it; they must not create a second
+    // standard client or release this helper. Null for implementations without it.
     void* typed_client;
-    /*
-     * Optional framework metadata/services. Borrowed plugin ID lives until
-     * teardown; request_metadata_refresh schedules control-thread refresh work.
-     */
+    // Optional framework metadata/services. Borrowed plugin ID lives until
+    // teardown; request_metadata_refresh schedules control-thread refresh work.
     const char* plugin_id;
     void (*request_metadata_refresh)(AAPXSInitiatorInstance*);
 } AAPXSInitiatorInstance;
 
-/* service instance for plugin extension API, and client instance for host extension API */
+// service instance for plugin extension API, and client instance for host extension API
 typedef struct AAPXSRecipientInstance {
-    /* owned by each AAPXS implementation */
+    // owned by each AAPXS implementation
     void* aapxs_context;
-    /* owned by hosting implementation */
+    // owned by hosting implementation
     void* host_context;
     AAPXSSerializationContext* serialization;
 
-    /*
-     * assigned by: framework reference implementation
-     * invoked by: AAPXS developer
-     */
+    // assigned by: framework reference implementation
+    // invoked by: AAPXS developer
     void (*send_aapxs_reply) (AAPXSRecipientInstance* instance, AAPXSRequestContext* context);
-    /* Optional immutable framework metadata; host_context remains opaque. */
+    // Optional immutable framework metadata; host_context remains opaque.
     const char* plugin_id;
 } AAPXSRecipientInstance;
 
 struct AAPXSExtensionClientProxy;
 struct AAPXSExtensionServiceProxy;
 
-/*
- * In-process service dispatch policy; these flags are never serialized.
- * Unannotated plugin requests retain exclusive, potentially-mutating dispatch.
- */
+// In-process service dispatch policy; these flags are never serialized.
+// Unannotated plugin requests retain exclusive, potentially-mutating dispatch.
 enum AAPXSRequestFlags : uint32_t {
     AAPXS_REQUEST_READ_ONLY = 1,
-    AAPXS_REQUEST_CONCURRENT = 2, /* handler only reads extension-owned immutable/atomic state */
-    AAPXS_REQUEST_COALESCE = 4,  /* payload-free host notification, opcode -1..-32 */
-    AAPXS_REQUEST_STATE_CHANGED = 8 /* host notification invalidates extension snapshots */
+    AAPXS_REQUEST_CONCURRENT = 2, // handler only reads extension-owned immutable/atomic state
+    AAPXS_REQUEST_COALESCE = 4,  // payload-free host notification, opcode -1..-32
+    AAPXS_REQUEST_STATE_CHANGED = 8 // host notification invalidates extension snapshots
 };
 
 /**
@@ -211,8 +198,7 @@ typedef struct AAPXSDefinition {
             bool isHostExtension,
             int32_t opcode);
 
-    /**
-     * Native host-extension fallback. The framework's built-in host extensions
+    /** Native host-extension fallback. The framework's built-in host extensions
      * and the host's own implementation take precedence. This does not create
      * an outgoing-request proxy. Borrowed receiver pointers live until teardown.
      */
@@ -230,27 +216,20 @@ typedef struct AAPXSDefinition {
             struct AAPXSDefinition* definition,
             void* aapxsContext);
 
-    /*
-     * Extension-owned policy. Must not allocate or lock: notification producers
-     * can query it from processing. nullptr uses the conservative default.
-     */
+    // Extension-owned policy. Must not allocate or lock: notification producers
+    // can query it from processing. nullptr uses the conservative default.
     uint32_t (*get_request_flags)(AAPXSDefinition*, bool isHostExtension, int32_t opcode);
 
-    /*
-     * Called under control exclusion after setup/prepare, state changes and
-     * potentially-mutating requests. Each extension owns its recipient context
-     * and any snapshots; the runtime does not know their contents or opcodes.
-     */
+    // Called under control exclusion after setup/prepare, state changes and
+    // potentially-mutating requests. Each extension owns its recipient context
+    // and any snapshots; the runtime does not know their contents or opcodes.
     void (*on_plugin_state_changed)(AAPXSDefinition*, AAPXSRecipientInstance*, AndroidAudioPlugin*);
     void (*release_plugin_instance_context)(AAPXSDefinition*, void*);
-    /*
-     * Invoked for the actual outgoing request, after any notification handoff.
-     * Extension-specific local effects belong here, not in the dispatcher.
-     */
+    // Invoked for the actual outgoing request, after any notification handoff.
+    // Extension-specific local effects belong here, not in the dispatcher.
     void (*on_outgoing_host_request)(AAPXSDefinition*, AAPXSInitiatorInstance*, AAPXSRequestContext*);
 
-    /**
-     * Control/setup lifecycle, never processing. is_host_extension describes
+    /** Control/setup lifecycle, never processing. is_host_extension describes
      * the request target: false for client->plugin, true for plugin->host.
      * The dispatcher initializes stable instance structs after mapping buffers
      * and installing framework services, before publishing proxies or processing.
@@ -259,8 +238,7 @@ typedef struct AAPXSDefinition {
      */
     bool (*initialize_initiator_instance)(AAPXSDefinition*, AAPXSInitiatorInstance*, bool is_host_extension);
     bool (*initialize_recipient_instance)(AAPXSDefinition*, AAPXSRecipientInstance*, bool is_host_extension);
-    /**
-     * Called once for each non-null context, after plugin release and before
+    /** Called once for each non-null context, after plugin release and before
      * instance structs/buffers are destroyed. Do not access host_context or send
      * requests here. The dispatcher clears aapxs_context after return.
      * These callbacks supersede the legacy release callbacks for that role.
@@ -284,4 +262,4 @@ typedef struct AAPXSExtensionHostReceiver {
     void* (*as_host_extension) (AAPXSExtensionHostReceiver *receiver);
 } AAPXSExtensionHostReceiver;
 
-#endif /* AAP_CORE_AAPXS_H */
+#endif //AAP_CORE_AAPXS_H
