@@ -26,6 +26,17 @@ jobs:
 
       - run: chmod +x ./gradlew
 
+      # aap-sfz-* apps publish their packs with the soundpack libraries, which are not on a
+      # public Maven repository yet: build them into Maven Local, where the apps look first.
+      - uses: actions/checkout@v4
+        with:
+          repository: atsushieno/soundpack-provider-for-android
+          path: .soundpack-provider-for-android
+
+      - name: Build soundpack libraries
+        run: ./gradlew publishToMavenLocal
+        working-directory: .soundpack-provider-for-android
+
       - name: Bump version
         run: sed -i -E 's/versionCode [0-9]+/versionCode ${{ github.run_number }}/' app/build.gradle
 
