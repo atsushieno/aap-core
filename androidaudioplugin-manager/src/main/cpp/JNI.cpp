@@ -3,20 +3,20 @@
 #include "PluginPlayer.h"
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_loadAudioResourceNative(JNIEnv *env, jobject thiz,
                                                                          jlong player,
                                                                          jbyteArray bytes,
                                                                          jstring filename) {
-    jboolean isDataCopy{false};
-    auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
-    jboolean isNameCopy{false};
-    auto name = env->GetStringUTFChars(filename, &isNameCopy);
-    ((aap::PluginPlayer*) player)->setAudioSource(data, env->GetArrayLength(bytes), name);
-    if (isNameCopy)
-        free((void*) name);
-    if (isDataCopy)
-        free((void*) data);
+    if (!bytes || !filename)
+        return false;
+    auto data = (uint8_t*) env->GetByteArrayElements(bytes, nullptr);
+    auto name = env->GetStringUTFChars(filename, nullptr);
+    auto result = ((aap::PluginPlayer*) player)->setAudioSource(data, env->GetArrayLength(bytes), name);
+    env->ReleaseStringUTFChars(filename, name);
+    // The data was only read, so a copy needs no write-back.
+    env->ReleaseByteArrayElements(bytes, (jbyte*) data, JNI_ABORT);
+    return result;
 }
 
 extern "C"
@@ -25,12 +25,10 @@ Java_org_androidaudioplugin_manager_PluginPlayer_addMidiEventsNative(JNIEnv *env
                                                                      jlong player, jbyteArray bytes,
                                                                      jint offset, jint length,
                                                                      jlong timestampInNanoseconds) {
-    jboolean isDataCopy{false};
-    auto data = (uint8_t*) env->GetByteArrayElements(bytes, &isDataCopy);
+    auto data = (uint8_t*) env->GetByteArrayElements(bytes, nullptr);
     // timeout would not be reliable from non-RT language environment though...
     ((aap::PluginPlayer*) player)->addMidiEvents(data + offset, length, timestampInNanoseconds);
-    if (isDataCopy)
-        free((void*) data);
+    env->ReleaseByteArrayElements(bytes, (jbyte*) data, JNI_ABORT);
 }
 
 extern "C"

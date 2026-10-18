@@ -133,6 +133,7 @@ namespace aap {
         virtual bool shouldConsumeButBypass() { return playing && !active; }
         void processAudio(AudioBuffer* audioData, int32_t numFrames) override;
 
+        /// Call it only while holding `data_source_mutex`: setAudioSource() replaces `audio_data`.
         bool hasData() { return audio_data != nullptr && current_frame_offset < audio_data->audio.getNumFrames(); };
 
         void setPlaying(bool newPlayingState);
@@ -141,11 +142,13 @@ namespace aap {
         /// returns the size in frames that were successfully read. 0 if it is empty.
         int32_t read(AudioBuffer* dst, int32_t numFrames);
 
-        /// Sets PCM data of some formats, as indicated by the filename.
-        /// Currently ogg, mp3 and wav formats work.
-        /// Returns true if loaded successfully, false if not.
+        /// Sets PCM data of some formats, as indicated by the filename suffix (in any case).
+        /// Currently wav, mp3, ogg and flac formats work.
+        /// Returns true if loaded successfully, false if not; on failure the current data stays.
         ///
-        /// It locks the data source until it finishes loading and converting data into `audio_data`.
+        /// It decodes and resamples without the lock, so the audio thread keeps playing the current
+        /// data meanwhile. Then it replaces `audio_data` and stops playing, so that the next
+        /// setPlaying(true) plays the new data from its beginning.
         bool setAudioSource(uint8_t *data, int dataLength, const char *filename);
     };
 

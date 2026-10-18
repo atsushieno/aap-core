@@ -31,6 +31,8 @@ espresso = "3.7.0"
 oboe = "1.11.0"
 ktmidi = "0.12.0"
 compose-audio-controls = "0.7.3"
+# soundpack-provider-for-android; in Maven Local until its V1 release.
+soundpack = "0.1.0-dev"
 
 vanniktech-maven-publish = "0.37.0"
 rules = "1.7.0"
@@ -50,6 +52,7 @@ aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.re
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist-drawablepainter" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
 compose-audio-controls = { module = "org.androidaudioplugin:compose-audio-controls", version.ref = "compose-audio-controls" }
+soundpack-client = { module = "org.androidaudioplugin.soundpack:soundpack-client", version.ref = "soundpack" }
 
 navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }

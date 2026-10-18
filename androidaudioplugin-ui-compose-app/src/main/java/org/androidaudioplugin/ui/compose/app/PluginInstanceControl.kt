@@ -15,10 +15,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.State
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -108,19 +117,22 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         }) {
             Text(text = if (isActivated) "Pause" else "Start")
         }
-        Button(onClick = { scope.playPreloadedAudio() }) {
+        val isLoadingAudioSource by scope.isLoadingAudioSource
+        Button(enabled = !isLoadingAudioSource, onClick = { scope.playPreloadedAudio() }) {
             Text(text = "Play Audio")
         }
 
         val permState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
         if (permState.status.isGranted)
-            scope.enableAudioRecorder()
+            // It creates the player, which changes the audio source state: not within composition.
+            LaunchedEffect(Unit) { scope.enableAudioRecorder() }
         else {
             Button(onClick = { permState.launchPermissionRequest() }) {
                 Text("enable Audio Recording")
             }
         }
     }
+    AudioSourceSelector(scope)
 
     val pluginViewScope by remember { mutableStateOf(RemotePluginViewScopeImpl(scope.manager.context, instance, scope.parameterValues, pluginInfo, scope.parameterLayoutRevision)) }
     pluginViewScope.PluginView(getParameterValue = { scope.parameterValues.getOrElse(it) { 0.0 }.toFloat() },
@@ -132,4 +144,64 @@ fun PluginInstanceControl(scope: PluginDetailsScope,
         onNoteOn = { note, _ -> scope.setNoteState(note, true) },
         onNoteOff = { note, _ ->  scope.setNoteState(note, false) },
         onExpression = {origin, note, value -> scope.processExpression(origin, note, value) })
+}
+
+/** Which audio "Play Audio" plays: the default sample, or any "AAP Sample" that soundpack
+ * providers serve (aap-core#165). */
+@Composable
+fun AudioSourceSelector(scope: PluginDetailsScope) {
+    val audioSource by scope.audioSource
+    val candidates by scope.audioSourceCandidates
+    val isLoading by scope.isLoadingAudioSource
+    val error by scope.audioSourceError
+
+    LaunchedEffect(scope) {
+        scope.collectAudioSourceCandidates()
+    }
+
+    // Without any "AAP Sample" provider on the device there is nothing to choose: only the
+    // default sample plays, and a load error (a saved sample that is gone) is still shown.
+    candidates?.let { AudioSourceDropdown(scope, audioSource, it, isLoading) }
+    error?.let {
+        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AudioSourceDropdown(scope: PluginDetailsScope, audioSource: AudioSource,
+                                candidates: List<AudioSource>, isLoading: Boolean) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it && !isLoading }) {
+        TextField(
+            value = if (isLoading) "Loading ${audioSource.displayName}…" else audioSource.displayName,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text("Audio") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isLoading)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            candidates.forEach { candidate ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(candidate.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (candidate is AudioSource.Soundpack && candidate.location.isNotEmpty())
+                                Text(candidate.location, style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        scope.selectAudioSource(candidate)
+                    })
+            }
+        }
+    }
+    if (candidates.size == 1)
+        Text("To play your own audio, share a folder as \"AAP Sample\" in the Soundpack Manager.",
+            style = MaterialTheme.typography.bodySmall)
 }

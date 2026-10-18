@@ -17,7 +17,7 @@ namespace aap {
 
         SimpleLinearAudioGraph& getGraph() { return graph; }
 
-        void setAudioSource(uint8_t *data, int32_t dataLength, const char *filename);
+        bool setAudioSource(uint8_t *data, int32_t dataLength, const char *filename);
 
         void addMidiEvents(uint8_t* data, int32_t dataLength, int64_t timestampInNanoseconds);
 

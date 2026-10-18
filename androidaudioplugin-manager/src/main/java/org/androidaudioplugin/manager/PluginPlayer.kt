@@ -32,10 +32,18 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     private external fun setPluginNative(player: Long, nativeClient: Long, instanceId: Int)
 
-    fun loadAudioResource(bytes: ByteArray, filename: String) =
+    /**
+     * Decodes [bytes] as the audio that [playPreloadedAudio] plays, replacing the current one.
+     * The format comes from the suffix of [filename] (wav, mp3, ogg or flac, in any case).
+     * Returns false if the data could not be loaded, or is longer than the player accepts
+     * (three minutes); the current audio stays then.
+     *
+     * It decodes the whole data and may take seconds, so do not call it on the main thread.
+     */
+    fun loadAudioResource(bytes: ByteArray, filename: String): Boolean =
         loadAudioResourceNative(native, bytes, filename)
 
-    private external fun loadAudioResourceNative(player: Long, bytes: ByteArray, filename: String)
+    private external fun loadAudioResourceNative(player: Long, bytes: ByteArray, filename: String): Boolean
 
     fun startProcessing() = startProcessingNative(native)
 

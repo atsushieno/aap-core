@@ -41,6 +41,8 @@ dependencies {
     implementation (project(":androidaudioplugin-ui-web"))
     implementation (project(":androidaudioplugin-js-controller"))
     implementation (libs.compose.audio.controls)
+    // The audio PluginDetails plays: "AAP Sample" content from soundpack providers (aap-core#165).
+    implementation (libs.soundpack.client)
     implementation (libs.androidx.core.ktx)
     implementation (libs.kotlin.stdlib.jdk8)
     implementation (libs.androidx.appcompat)

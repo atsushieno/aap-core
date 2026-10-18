@@ -28,7 +28,18 @@ import org.androidaudioplugin.hosting.NativeRemotePluginInstance
 import org.androidaudioplugin.hosting.PluginServiceConnection
 import org.androidaudioplugin.hosting.UmpHelper
 import org.androidaudioplugin.manager.PluginPlayer
+import org.androidaudioplugin.soundpack.SoundpackKind
+import org.androidaudioplugin.soundpack.client.SoundpackClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 // Conventional default control buffer size (matches the host's DEFAULT_CONTROL_BUFFER_SIZE).
 private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
@@ -117,15 +128,28 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     private val framesPerCallback by lazy { audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER).toInt() }
     private val channelCount = 2
 
+    /** What "Play Audio" plays: once the player exists, the source it has loaded. */
+    val audioSource = mutableStateOf(AudioSourcePreferences.load(manager.context))
+    val isLoadingAudioSource = mutableStateOf(false)
+    val audioSourceError = mutableStateOf<String?>(null)
+    /** What the user can choose from: the bundled sample, then every "AAP Sample" entry. Null
+     * until [collectAudioSourceCandidates] has read the providers, and while the device has no
+     * "AAP Sample" provider at all (no Soundpack Manager), so there is nothing to choose. */
+    val audioSourceCandidates = mutableStateOf<List<AudioSource>?>(null)
+    // Loads run one at a time and in order, so the last selection wins.
+    private val audioSourceMutex = Mutex()
+    private var pendingAudioSourceLoads = 0
+    private var playerHasAudio = false
+    private var playAfterLoading = false
+
+    // Audio sources load in coroutines, which close() cancels.
+    private val coroutineJob = SupervisorJob()
+    private val coroutineScope = CoroutineScope(coroutineJob + Dispatchers.Main.immediate)
+
     private val pluginPlayerDelegate = lazy {
         PluginPlayer.create(sampleRate, framesPerCallback, channelCount).apply {
             setPlugin(instance.value!!)
-            manager.context.assets.open(PluginPlayer.sample_audio_filename).use {
-                val bytes = ByteArray(it.available())
-                it.read(bytes)
-                loadAudioResource(bytes, PluginPlayer.sample_audio_filename)
-            }
-        }
+        }.also { loadAudioSource(it, audioSource.value) }
     }
     private val pluginPlayer by pluginPlayerDelegate
 
@@ -136,8 +160,10 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
             return
         alreadyDisposed = true
         instance.value?.setParameterLayoutChangedListener(null)
+        coroutineJob.cancel()
+        // A load may still be decoding into the player, so release the player only after it.
         if (pluginPlayerDelegate.isInitialized())
-            pluginPlayer.close()
+            coroutineJob.invokeOnCompletion { pluginPlayer.close() }
     }
 
     suspend fun instantiatePlugin() {
@@ -192,7 +218,90 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
 
     fun playPreloadedAudio() {
-        pluginPlayer.playPreloadedAudio()
+        val player = pluginPlayer
+        // Loading stops playback, so play after it: the first press creates the player, and loads.
+        if (isLoadingAudioSource.value)
+            playAfterLoading = true
+        else
+            player.playPreloadedAudio()
+    }
+
+    /** Plays [source] on "Play Audio" from now on, and in later sessions, if it can be loaded. */
+    fun selectAudioSource(source: AudioSource) {
+        // If this creates the player, it loads the current source first, which stays if the new
+        // one fails.
+        if (!alreadyDisposed)
+            loadAudioSource(pluginPlayer, source)
+    }
+
+    /** Keeps [audioSourceCandidates] up to date with the "AAP Sample" content that soundpack
+     * providers serve, such as the folders shared as "AAP Sample" in the Soundpack Manager. */
+    suspend fun collectAudioSourceCandidates() {
+        val client = SoundpackClient(manager.context, SoundpackKind.HOST_SAMPLE)
+        client.catalogFlow()
+            .map { catalog ->
+                if (catalog.endpoints.isEmpty())
+                    return@map null
+                catalog.failures.forEach { Log.w(manager.logTag, "Cannot read ${it.endpoint.authority}: ${it.error.message}") }
+                listOf(AudioSource.Bundled) + catalog.packs.flatMap { pack ->
+                    runCatching { client.entries(pack) }
+                        .onFailure { Log.w(manager.logTag, "Cannot read the entries of ${pack.id}: ${it.message}") }
+                        .getOrDefault(emptyList())
+                }.map { AudioSource.Soundpack.of(client, it) }
+                    .sortedWith(compareBy({ it.location.lowercase() }, { it.displayName.lowercase() }))
+            }
+            .flowOn(Dispatchers.IO)
+            .collect { audioSourceCandidates.value = it }
+    }
+
+    private fun loadAudioSource(player: PluginPlayer, source: AudioSource) {
+        pendingAudioSourceLoads++
+        isLoadingAudioSource.value = true
+        coroutineScope.launch {
+            try {
+                audioSourceMutex.withLock {
+                    audioSourceError.value = null
+                    val error = withContext(Dispatchers.IO) { loadInto(player, source) }
+                    if (error == null)
+                        useAudioSource(source)
+                    else {
+                        Log.w(manager.logTag, error)
+                        audioSourceError.value = error
+                        // The player has nothing to play yet (the saved sample is gone, for example).
+                        if (!playerHasAudio && source != AudioSource.Bundled &&
+                            withContext(Dispatchers.IO) { loadInto(player, AudioSource.Bundled) } == null)
+                            useAudioSource(AudioSource.Bundled)
+                    }
+                }
+            } finally {
+                isLoadingAudioSource.value = --pendingAudioSourceLoads > 0
+                if (pendingAudioSourceLoads == 0 && playAfterLoading) {
+                    playAfterLoading = false
+                    if (!alreadyDisposed)
+                        player.playPreloadedAudio()
+                }
+            }
+        }
+    }
+
+    // Returns an error message, or null if the player has loaded the source.
+    private fun loadInto(player: PluginPlayer, source: AudioSource): String? {
+        val bytes = try {
+            source.readBytes(manager.context)
+        } catch (e: Exception) {
+            Log.w(manager.logTag, "Cannot read ${source.fileName}", e)
+            return "${source.displayName} cannot be read: ${e.message}"
+        } catch (e: OutOfMemoryError) {
+            return "${source.displayName} is too large to load"
+        }
+        return if (player.loadAudioResource(bytes, source.fileName)) null
+        else "${source.displayName} cannot be played: it is not a WAV, MP3, Ogg or FLAC file, or it is longer than three minutes"
+    }
+
+    private fun useAudioSource(source: AudioSource) {
+        playerHasAudio = true
+        audioSource.value = source
+        AudioSourcePreferences.save(manager.context, source)
     }
 
     fun setPresetIndex(index: Int) {

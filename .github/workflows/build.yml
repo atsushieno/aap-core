@@ -39,6 +39,16 @@ jobs:
     - name: apt install
       run: |
         echo y | sudo apt-get install doxygen libxml2-dev libgrpc++-dev libgrpc-dev libprotobuf-dev protobuf-compiler protobuf-compiler-grpc graphviz cmake ninja-build
+    # androidaudioplugin-ui-compose-app reads "AAP Sample" content with the soundpack libraries,
+    # which are not on a public Maven repository yet: build them into Maven Local first.
+    - name: checkout soundpack-provider-for-android
+      uses: actions/checkout@v4
+      with:
+        repository: atsushieno/soundpack-provider-for-android
+        path: .soundpack-provider-for-android
+    - name: build soundpack libraries
+      run: ./gradlew publishToMavenLocal
+      working-directory: .soundpack-provider-for-android
     - name: build
       run: ./gradlew build dokkaGenerate publishToMavenLocal
     - name: run instrumented tests (disabled)
@@ -88,6 +98,18 @@ jobs:
     - name: install deps
       run: |
         brew install doxygen libxml2 ninja graphviz openssl
+    # androidaudioplugin-ui-compose-app reads "AAP Sample" content with the soundpack libraries,
+    # which are not on a public Maven repository yet: build them into Maven Local first.
+    - name: checkout soundpack-provider-for-android
+      uses: actions/checkout@v4
+      with:
+        repository: atsushieno/soundpack-provider-for-android
+        path: .soundpack-provider-for-android
+    - name: build soundpack libraries
+      run: ./gradlew publishToMavenLocal
+      working-directory: .soundpack-provider-for-android
+      env:
+        ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
     - name: build
       run: ./gradlew build dokkaGenerate publishToMavenLocal
       env:

@@ -37,9 +37,9 @@ void aap::SimpleLinearAudioGraph::setPlugin(aap::RemotePluginInstance *instance)
     plugin.setPlugin(instance);
 }
 
-void
+bool
 aap::SimpleLinearAudioGraph::setAudioSource(uint8_t *data, int dataLength, const char *filename) {
-    audio_data.setAudioSource(data, dataLength, filename);
+    return audio_data.setAudioSource(data, dataLength, filename);
 }
 
 void aap::SimpleLinearAudioGraph::addMidiEvent(uint8_t *data, int32_t length, int64_t timestampInNanoseconds) {

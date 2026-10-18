@@ -10,8 +10,8 @@ aap::PluginPlayer::~PluginPlayer() {
     graph.pauseProcessing();
 }
 
-void aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
-    graph.setAudioSource(data, dataLength, filename);
+bool aap::PluginPlayer::setAudioSource(uint8_t *data, int32_t dataLength, const char *filename) {
+    return graph.setAudioSource(data, dataLength, filename);
 }
 
 void aap::PluginPlayer::startProcessing() {
