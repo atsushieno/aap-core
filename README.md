@@ -27,9 +27,15 @@ We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://
 
 ## Trying it out on Android devices
 
-We have some hacky ["AAP APK Installer"](https://github.com/atsushieno/aap-ci-package-installer) Android application that facilitates installing the latest APK builds from GitHub Actions build artifacts. You can alternatively use [Obtainium](https://obtainium.imranr.dev/) that emerged later.
+AAP is an audio plugin ecosystem, which makes most sense by having both audio plugins and DAWs / audio plugin hosts. Some of the plugins are published to [Google Play Store](https://play.google.com/store/apps/developer?id=atsushieno), but the latest and greatest set of APKs are always on the GitHub Releases.
 
-Note that they are not trusted application for your Android system, whereas they are fully automated except for those packages I upload to DeployGate (you can also build AAP APK Installer from source on Android Studio, which is much easier than building and installing each plugin app from source).
+You can use [Obtainium](https://obtainium.imranr.dev/) or [ObtainX](https://bikram-agarwal.github.io/obtainx/) to install those apps from GitHub Releases, which are automatically built and released by their GitHub Actions workflows.
+
+@atsushieno personally use ObtainX and batch import the list of relevant GitHub repos: https://gist.github.com/atsushieno/82423599808d685b215a4db233979f63
+
+(TBD: some background why @atsushieno does not give Google Play Store on the priority publication, at least until Sep. 2027.)
+
+Note that they are not trusted application for your Android system. You can always let some AI agents or other entities verify the code behavior by yourself, instead of blindly trust anyone else (including those bots behind Google Play Store).
 
 ## AAP features, characteristics, unique points
 
