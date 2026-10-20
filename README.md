@@ -23,7 +23,7 @@ AAP aims to provide an inclusive standard for audio plugin, adopted to Android a
 
 AAP is designed as a generic plugin format so that multi-format audio plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins, including [DPF](https://github.com/DISTRHO/DPF)-based plugins, and probably more in the future.
 
-We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives to some extent. We have [many plugins]((https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) (as long as they work reasonably on Android).
+We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives to some extent. We have [many plugins](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) (as long as they work reasonably on Android).
 
 ## Trying it out on Android devices
 
