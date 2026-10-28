@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
@@ -16,6 +17,14 @@ import java.util.Collections
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+
+/*
+  The flags to bind plugin services with. A plugin UI may need to start an activity, e.g. for a file
+  chooser, while its process has no visible activity. Since Android 14 such a launch is only allowed
+  if the visible host binds the plugin with BIND_ALLOW_ACTIVITY_STARTS.
+ */
+internal val pluginServiceBindFlags = Context.BIND_AUTO_CREATE or
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) Context.BIND_ALLOW_ACTIVITY_STARTS else 0
 
 /*
   A host client class that manages one or more connections to AudioPluginServices.
@@ -143,7 +152,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                         }
                     })
                     return@suspendCancellableCoroutine
-                if (!context.bindService(intent, conn, Context.BIND_AUTO_CREATE))
+                if (!context.bindService(intent, conn, pluginServiceBindFlags))
                     failBinding(conn, AudioPluginException("AudioPluginServiceConnector: bindService returned false for $pendingKey"))
             } catch (ex: Exception) {
                 failBinding(conn, ex)

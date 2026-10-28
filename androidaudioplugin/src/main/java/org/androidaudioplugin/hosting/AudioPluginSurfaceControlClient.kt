@@ -332,7 +332,7 @@ class AudioPluginSurfaceControlClient(private val context: Context) : AutoClosea
                 if (!context.bindService(
                         Intent().setClassName(pluginPackageName, AudioPluginViewService::class.java.name),
                         connection,
-                        Context.BIND_AUTO_CREATE
+                        pluginServiceBindFlags
                     )
                 ) {
                     throw IllegalStateException("Failed to bind AudioPluginViewService for $pluginPackageName")
