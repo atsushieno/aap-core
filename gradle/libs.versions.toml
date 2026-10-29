@@ -1,8 +1,9 @@
 [versions]
 
-aap-core = "0.12.0"
-aap-lv2 = "0.7.0"
-aap-juce = "0.8.0"
+aap-core = "0.12.1"
+aap-lv2 = "0.7.1"
+aap-juce = "0.8.1"
+aap-ara = "0.1.1"
 
 android-compileSdk = "37"
 android-minSdk = "29"
@@ -46,6 +47,7 @@ aap-testing = { module = "org.androidaudioplugin:androidaudioplugin-testing", ve
 aap-js-controller = { module = "org.androidaudioplugin:androidaudioplugin-js-controller", version.ref = "aap-core" }
 
 aap-lv2 = { module = "org.androidaudioplugin:androidaudioplugin-lv2", version.ref = "aap-lv2" }
+aap-ara = { module = "org.androidaudioplugin:androidaudioplugin-ara", version.ref = "aap-ara" }
 
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist-drawablepainter" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
