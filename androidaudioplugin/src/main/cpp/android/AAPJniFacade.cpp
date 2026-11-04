@@ -751,25 +751,29 @@ namespace aap {
         }
 
         usingJNIEnv<void *>([&](JNIEnv *env) {
-            if (audio_plugin_service_connector == nullptr) {
-                jclass connector_class = getAppClass(
-                        env, "org/androidaudioplugin/hosting/AudioPluginServiceConnector");
-                jmethodID constructor = env->GetMethodID(connector_class, "<init>",
-                                                         "(Landroid/content/Context;)V");
-                audio_plugin_service_connector = env->NewGlobalRef(
-                        env->NewObject(connector_class, constructor,
-                                       aap::get_android_application_context()));
-            }
+            {
+                // Requests for different services can get here at the same time.
+                const std::lock_guard<std::recursive_mutex> lock{internal::connectionListMutex()};
+                if (audio_plugin_service_connector == nullptr) {
+                    jclass connector_class = getAppClass(
+                            env, "org/androidaudioplugin/hosting/AudioPluginServiceConnector");
+                    jmethodID constructor = env->GetMethodID(connector_class, "<init>",
+                                                             "(Landroid/content/Context;)V");
+                    audio_plugin_service_connector = env->NewGlobalRef(
+                            env->NewObject(connector_class, constructor,
+                                           aap::get_android_application_context()));
+                }
 
-            auto requestedList = getPluginConnectionListFromJni(connectorInstanceId, true);
-            jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
-            jfieldID service_connection_id_field = env->GetFieldID(connector_class, "serviceConnectionId", "I");
-            if (service_connection_id_field) {
-                jint actualConnectorInstanceId = env->GetIntField(
-                        audio_plugin_service_connector,
-                        service_connection_id_field);
-                if (actualConnectorInstanceId != connectorInstanceId) {
-                    client_connection_list_per_scope[actualConnectorInstanceId] = requestedList;
+                auto requestedList = getPluginConnectionListFromJni(connectorInstanceId, true);
+                jclass connector_class = env->GetObjectClass(audio_plugin_service_connector);
+                jfieldID service_connection_id_field = env->GetFieldID(connector_class, "serviceConnectionId", "I");
+                if (service_connection_id_field) {
+                    jint actualConnectorInstanceId = env->GetIntField(
+                            audio_plugin_service_connector,
+                            service_connection_id_field);
+                    if (actualConnectorInstanceId != connectorInstanceId) {
+                        client_connection_list_per_scope[actualConnectorInstanceId] = requestedList;
+                    }
                 }
             }
 
@@ -797,10 +801,10 @@ namespace aap {
                 for (auto& waiter : takeInProgressCallbacks(servicePackageName))
                     waiter(error);
             } else {
-                // ensureBinderConnected() returns only once the service is bound. Waiters
-                // are normally completed by handleServiceConnectedCallback() before that,
-                // but it returns early without the callback when the connection already
-                // existed, so complete whoever is still waiting here.
+                // ensureBinderConnected() returns only once the service is bound. That can be
+                // before or after handleServiceConnectedCallback() gets to the waiters, and it
+                // never does if the connection already existed. Each waiter is taken only once,
+                // so whichever comes first completes it.
                 std::string empty{};
                 for (auto& waiter : takeInProgressCallbacks(servicePackageName))
                     waiter(empty);

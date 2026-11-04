@@ -60,9 +60,12 @@ class PluginManagerScope(val context: Context,
 ) : AutoCloseable {
     val logTag = "AAPPluginManager"
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private val automationClient = AutomationCapableAudioPluginClient(context).apply {
-        onConnectedListeners.add { conn -> connections.add(conn) }
-        onDisconnectingListeners.add { conn -> connections.remove(conn) }
+        // These run on connection callback threads, and the UI observes this list.
+        onConnectedListeners.add { conn -> mainHandler.post { connections.add(conn) } }
+        onDisconnectingListeners.add { conn -> mainHandler.post { connections.remove(conn) } }
     }
     val client: AudioPluginClientBase = automationClient
 
@@ -141,8 +144,9 @@ class PluginDetailsScope(val pluginInfo: PluginInformation,
     }
 
     suspend fun instantiatePlugin() {
-        if (!manager.connections.any { it.serviceInfo.packageName == pluginInfo.packageName })
-            manager.client.connectToPluginService(pluginInfo.packageName)
+        // This does nothing if already connected. `connections` is only for display: connection
+        // callbacks promise no order, so its add and remove can arrive the wrong way round.
+        manager.client.connectToPluginService(pluginInfo.packageName)
         val result = manager.client.instantiateNativePlugin(pluginInfo)
         // Register before prepare(): plugins often (re)build their parameter list there.
         result.setParameterLayoutChangedListener {

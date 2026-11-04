@@ -6,3 +6,7 @@ interface IBinder {
     fun linkToDeath(recipient: DeathRecipient, flags: Int)
     fun unlinkToDeath(recipient: DeathRecipient, flags: Int): Boolean
 }
+object Build {
+    object VERSION { const val SDK_INT = 34 }
+    object VERSION_CODES { const val UPSIDE_DOWN_CAKE = 34 }
+}

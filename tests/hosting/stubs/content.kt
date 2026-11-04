@@ -12,8 +12,12 @@ interface ServiceConnection {
     fun onBindingDied(name: ComponentName?)
 }
 abstract class Context {
-    companion object { const val BIND_AUTO_CREATE = 1 }
+    companion object {
+        const val BIND_AUTO_CREATE = 1
+        const val BIND_ALLOW_ACTIVITY_STARTS = 0x200
+    }
     abstract fun bindService(intent: Intent, connection: ServiceConnection, flags: Int): Boolean
+    abstract fun bindService(intent: Intent, flags: Int, executor: java.util.concurrent.Executor, connection: ServiceConnection): Boolean
     abstract fun unbindService(connection: ServiceConnection)
     open fun startForegroundService(intent: Intent): ComponentName? = intent.component
 }

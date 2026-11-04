@@ -14,6 +14,7 @@ import org.androidaudioplugin.AudioPluginException
 import org.androidaudioplugin.AudioPluginNatives
 import org.androidaudioplugin.PluginServiceInformation
 import java.util.Collections
+import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -27,9 +28,22 @@ internal val pluginServiceBindFlags = Context.BIND_AUTO_CREATE or
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) Context.BIND_ALLOW_ACTIVITY_STARTS else 0
 
 /*
+  Runs the ServiceConnection callbacks. It has no cap on threads, so a callback that blocks can
+  never hold up another one it waits for. Running them directly on the binder thread that delivers
+  them would use up the bounded binder pool, which plugins also need to call into the host.
+ */
+private val connectionCallbackExecutor = Executors.newCachedThreadPool {
+    Thread(it, "aap-service-connection").apply { isDaemon = true }
+}
+
+/*
   A host client class that manages one or more connections to AudioPluginServices.
 
   Native hosts also use this class to instantiate plugins and manage them.
+
+  Connection callbacks, and so the listeners and the native notification, run on any pool thread
+  and never need the Android main thread, so a bind can be waited for on any thread. They may
+  block. No order is promised, even within a connection: anything that needs one keeps its own queue.
  */
 class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
     private data class PendingServiceConnection(
@@ -51,10 +65,17 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                 Log.w("AAP", "AudioPluginServiceConnector: connection initialization failed", ex)
                 null
             }
+            // This completes the bind before the consumers get the connection. The bind deadline
+            // is for the service to connect: if what they do with it counted, a slow consumer would
+            // time out a good connection and take everything on that service down with it.
             onServiceConnectionRegistered(conn)
+            if (conn == null)
+                return
             // A concurrent successful bind may already own the service. Release only this attempt.
-            if (conn != null && conn.platformServiceConnection !== this)
+            if (conn.platformServiceConnection !== this)
                 parent.releaseBinding(this)
+            else
+                parent.notifyConnected(conn)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -131,7 +152,11 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                 return@suspendCancellableCoroutine
             }
             continuation.invokeOnCancellation { error ->
-                failBinding(conn, error ?: AudioPluginException("AudioPluginService binding cancelled"))
+                // Cancelling a bind ends the wait for it, including when it lands after completion
+                // but before this caller could run. A registered connection is not this caller's
+                // to drop, as others may be using it already.
+                if (findRegisteredConnection(conn) == null)
+                    failBinding(conn, error ?: AudioPluginException("AudioPluginService binding cancelled"))
             }
             if (!isBindingPending(conn))
                 return@suspendCancellableCoroutine
@@ -152,7 +177,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                         }
                     })
                     return@suspendCancellableCoroutine
-                if (!context.bindService(intent, conn, pluginServiceBindFlags))
+                if (!context.bindService(intent, pluginServiceBindFlags, connectionCallbackExecutor, conn))
                     failBinding(conn, AudioPluginException("AudioPluginServiceConnector: bindService returned false for $pendingKey"))
             } catch (ex: Exception) {
                 failBinding(conn, ex)
@@ -165,10 +190,15 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
                     releaseBinding(conn)
             }
         }
-    } ?: throw AudioPluginException("Timed out binding AudioPluginService: ${service.packageName}/${service.className}")
+    } ?: findExistingServiceConnection(service.packageName, service.className) // it connected, but this caller could not run in time
+        ?: throw AudioPluginException("Timed out binding AudioPluginService: ${service.packageName}/${service.className}")
 
     private fun isBindingPending(connection: ServiceConnection) = synchronized(connectionMutation) {
         bindings[connection]?.let { !it.finished && !it.releaseRequested } == true
+    }
+
+    private fun findRegisteredConnection(connection: ServiceConnection) = synchronized(connectionMutation) {
+        connectedServices.toTypedArray().firstOrNull { it.platformServiceConnection === connection }
     }
 
     private fun finishBinding(connection: ServiceConnection, result: Result<PluginServiceConnection>) {
@@ -192,9 +222,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             Pair(found, found.complete.also { found.complete = null })
         }
         try {
-            val registered = synchronized(connectionMutation) {
-                connectedServices.toTypedArray().firstOrNull { it.platformServiceConnection === connection }
-            }
+            val registered = findRegisteredConnection(connection)
             if (registered != null)
                 invalidateConnection(registered.serviceInfo.packageName, registered.serviceInfo.className, registered.binder, connection)
         } finally {
@@ -234,7 +262,7 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
     }
 
     private fun registerNewConnection(serviceConnection: ServiceConnection, serviceInfo: PluginServiceInformation, binder: IBinder) : PluginServiceConnection {
-        val conn = synchronized(connectionMutation) {
+        return synchronized(connectionMutation) {
             if (isClosed || !isBindingPending(serviceConnection))
                 throw AudioPluginException("AudioPluginService binding is no longer pending")
             val existing = findExistingServiceConnection(serviceInfo.packageName, serviceInfo.className)
@@ -284,12 +312,25 @@ class AudioPluginServiceConnector(val context: Context) : AutoCloseable {
             connectedServices.add(conn)
             conn
         }
+    }
 
-        nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
-
-        onConnectedListeners.toTypedArray().forEach { it(conn) }
-
-        return conn
+    private fun notifyConnected(conn: PluginServiceConnection) {
+        // It can be gone already: the bind was cancelled or the service died right after registration.
+        if (findExistingServiceConnection(conn.serviceInfo.packageName, conn.serviceInfo.className) !== conn)
+            return
+        // A failing consumer must not take the connection away from the others.
+        try {
+            nativeOnServiceConnectedCallback(conn.serviceInfo.packageName)
+        } catch (ex: Exception) {
+            Log.w("AAP", "AudioPluginServiceConnector: native connection callback failed", ex)
+        }
+        onConnectedListeners.toTypedArray().forEach {
+            try {
+                it(conn)
+            } catch (ex: Exception) {
+                Log.w("AAP", "AudioPluginServiceConnector: connection listener failed", ex)
+            }
+        }
     }
 
     fun invalidateServiceConnection(packageName: String, className: String? = null): PluginServiceConnection? =
