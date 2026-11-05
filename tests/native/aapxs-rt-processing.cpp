@@ -175,6 +175,17 @@ struct FakePlugin {
     bool notifyOnInstantiate{false};
     bool exposeParameters{false};
     bool exposePresets{false};
+    bool exposeOfflineRendering{false};
+    int offlineModeCalls{0};
+    aap_offline_rendering_mode_t offlineMode{AAP_OFFLINE_RENDERING_MODE_REALTIME};
+    aap_offline_rendering_result_t offlineResult{AAP_OFFLINE_RENDERING_RESULT_OK};
+    aap_offline_rendering_extension_t offlineRendering{this,
+        [](aap_offline_rendering_extension_t* ext, AndroidAudioPlugin*, aap_offline_rendering_mode_t mode) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            ++self.offlineModeCalls;
+            if (self.offlineResult == AAP_OFFLINE_RENDERING_RESULT_OK) self.offlineMode = mode;
+            return self.offlineResult;
+        }};
     bool exposeBuses{false};
     // mono main input; stereo main output and mono aux output
     aap_buses_extension_t buses{this,
@@ -321,6 +332,7 @@ struct FakePlugin {
             if (self.exposeParameters && !strcmp(uri, AAP_PARAMETERS_EXTENSION_URI)) return &self.parameters;
             if (self.exposePresets && !strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return &self.presets;
             if (self.exposeBuses && !strcmp(uri, AAP_BUSES_EXTENSION_URI)) return &self.buses;
+            if (self.exposeOfflineRendering && !strcmp(uri, AAP_OFFLINE_RENDERING_EXTENSION_URI)) return &self.offlineRendering;
             return nullptr;
         }, nullptr};
     AndroidAudioPluginFactory factory{
@@ -1599,7 +1611,93 @@ void busesLayoutClient() {
     check(!f.client.getLayout().isOk(), "invalid bus count is an error");
 }
 
+// Connects the actual typed client and C proxy to the actual service-side handler on one buffer.
+void offlineRendering() {
+    auto registry = xs::AAPXSDefinitionRegistry::getStandardExtensions();
+    auto definition = registry->getByUri(AAP_OFFLINE_RENDERING_EXTENSION_URI);
+    check(definition && definition->uri && definition->process_incoming_plugin_aapxs_request, "offline rendering AAPXS is standard");
+    check(registry->getUridMapping()->getUrid(AAP_OFFLINE_RENDERING_EXTENSION_URI) > registry->getUridMapping()->getUrid(AAP_BUSES_EXTENSION_URI), "new extension does not shift existing URIDs");
+    check(definition->get_request_flags == nullptr, "the mode change uses exclusive control dispatch");
+    check(definition->is_command_rt_safe == nullptr, "the mode change is RT-unsafe");
+
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeOfflineRendering = true;
+    TestLocal instance(&host, registry, 1, &descriptor.info, &fake.factory, 8192);
+    instance.completeInstantiation();
+
+    struct Fixture {
+        uint8_t buffer[OFFLINE_RENDERING_SHARED_MEMORY_SIZE]{};
+        AAPXSSerializationContext serialization{buffer, 0, sizeof(buffer)};
+        uint32_t id{};
+        std::function<bool(AAPXSRequestContext*)> send;
+        AAPXSInitiatorInstance initiator{this, nullptr, &serialization, 1,
+            [](auto* self) { return static_cast<Fixture*>(self->aapxs_context)->id++; },
+            [](auto* self, auto* request) { return static_cast<Fixture*>(self->aapxs_context)->send(request); }};
+        xs::OfflineRenderingClientAAPXS client{&initiator, &serialization};
+    } f;
+    int32_t replies = 0;
+    AAPXSRecipientInstance recipient{&replies, &instance, &f.serialization,
+        [](auto* self, auto*) { ++*static_cast<int32_t*>(self->aapxs_context); }, nullptr};
+    f.send = [&](auto* request) {
+        definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), request);
+        request->callback(request->callback_user_data, nullptr);
+        return true;
+    };
+    auto setMode = [&](aap_offline_rendering_mode_t mode) {
+        auto result = f.client.setOfflineMode(mode);
+        check(result.isOk(), "a plugin result is not a transport error");
+        return result.value;
+    };
+
+    auto proxy = f.client.asPluginExtension();
+    check(proxy->set_offline_mode(proxy, instance.getPlugin(), AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_OK &&
+          fake.offlineMode == AAP_OFFLINE_RENDERING_MODE_OFFLINE && replies == 1, "C proxy reaches the plugin");
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_REALTIME) == AAP_OFFLINE_RENDERING_RESULT_OK &&
+          fake.offlineMode == AAP_OFFLINE_RENDERING_MODE_REALTIME, "back to realtime");
+    aap_offline_rendering_result_t asyncResult = AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
+    f.client.setOfflineModeAsync(AAP_OFFLINE_RENDERING_MODE_OFFLINE, [&](auto result) { asyncResult = result.value; });
+    check(asyncResult == AAP_OFFLINE_RENDERING_RESULT_OK && fake.offlineMode == AAP_OFFLINE_RENDERING_MODE_OFFLINE, "async request");
+
+    fake.offlineResult = AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_REALTIME) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE &&
+          fake.offlineMode == AAP_OFFLINE_RENDERING_MODE_OFFLINE, "plugin refusal reaches the host");
+    fake.offlineResult = AAP_OFFLINE_RENDERING_RESULT_OK;
+
+    auto calls = fake.offlineModeCalls;
+    // A newer peer can send a mode that this enum does not define, so it is sent as raw wire data.
+    int32_t unknownMode = 2;
+    memcpy(f.buffer, &unknownMode, sizeof(unknownMode));
+    AAPXSRequestContext unknownRequest{nullptr, nullptr, &f.serialization, 0, AAP_OFFLINE_RENDERING_EXTENSION_URI, 1, OPCODE_SET_OFFLINE_MODE};
+    definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), &unknownRequest);
+    int32_t unknownResult;
+    memcpy(&unknownResult, f.buffer, sizeof(unknownResult));
+    check(unknownResult == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE && fake.offlineModeCalls == calls, "unknown mode never reaches the plugin");
+    instance.forceState(PLUGIN_INSTANTIATION_STATE_ACTIVE);
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_REALTIME) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE && fake.offlineModeCalls == calls, "rejected while active");
+    instance.forceState(PLUGIN_INSTANTIATION_STATE_INACTIVE);
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_REALTIME) == AAP_OFFLINE_RENDERING_RESULT_OK && fake.offlineModeCalls == calls + 1, "accepted when inactive");
+    fake.exposeOfflineRendering = false;
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "plugin without the extension");
+    fake.exposeOfflineRendering = true;
+
+    // A failed or malformed exchange is never reported as success.
+    f.send = [](auto* request) {
+        request->serialization->data_size = 0;
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "short reply");
+    f.send = [](auto* request) {
+        request->error_callback(request->callback_user_data, nullptr, "dead"); return true;
+    };
+    check(!f.client.setOfflineMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE).isOk(), "transport error is reported");
+    check(proxy->set_offline_mode(proxy, instance.getPlugin(), AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "C proxy maps a transport error to failure");
+}
+
 int main() {
+    offlineRendering();
     busesLayoutClient(); busLayout();
     guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); extensionNeutralDispatch(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     supersededLayoutRefresh(true, false); supersededLayoutRefresh(true, true);

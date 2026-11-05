@@ -66,7 +66,7 @@ void standardOwnership() {
     auto* q = second.getPluginAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI);
     check(p->aapxs_context && q->aapxs_context && p->aapxs_context != q->aapxs_context, "clients owned per instance");
     check(hosting.asParametersExtension()->aapxs_context == p->aapxs_context, "hosting borrows canonical parameter client");
-    for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI, AAP_STATE_EXTENSION_URI, AAP_MIDI_EXTENSION_URI, AAP_URID_EXTENSION_URI}) {
+    for (const char* uri : {AAP_PARAMETERS_EXTENSION_URI, AAP_PRESETS_EXTENSION_URI, AAP_STATE_EXTENSION_URI, AAP_MIDI_EXTENSION_URI, AAP_URID_EXTENSION_URI, AAP_OFFLINE_RENDERING_EXTENSION_URI}) {
         auto* d = first.getDefinitionByUri(uri); auto* i = first.getPluginAAPXSByUri(uri);
         auto a = d->get_plugin_extension_proxy(d, i, i->serialization);
         auto b = d->get_plugin_extension_proxy(d, i, i->serialization);

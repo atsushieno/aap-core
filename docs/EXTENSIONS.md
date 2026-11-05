@@ -42,6 +42,7 @@ A plugin declares the extensions it implements under `<extensions>`, one `<exten
 |---|---|
 | `0.12.0` | parameters, state, presets, midi2, gui |
 | `0.12.1` | `0.12.0` plus buses |
+| `0.12.2` | `0.12.1` plus offline-rendering |
 
 A BOM never changes once defined; a new set gets a new BOM.
 

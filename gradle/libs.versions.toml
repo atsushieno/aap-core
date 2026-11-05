@@ -1,8 +1,8 @@
 [versions]
 
-aap-core = "0.12.1"
-aap-lv2 = "0.7.1"
-aap-juce = "0.8.1"
+aap-core = "0.12.2"
+aap-lv2 = "0.7.2"
+aap-juce = "0.9.2"
 aap-ara = "0.1.1"
 
 android-compileSdk = "37"

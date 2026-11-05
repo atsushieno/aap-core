@@ -8,6 +8,7 @@ aap::xs::AAPXSDefinition_State state;
 aap::xs::AAPXSDefinition_Gui gui;
 aap::xs::AAPXSDefinition_Urid urid;
 aap::xs::AAPXSDefinition_Buses buses;
+aap::xs::AAPXSDefinition_OfflineRendering offline_rendering;
 
 aap::xs::AAPXSDefinitionRegistry::AAPXSDefinitionRegistry(
         std::unique_ptr<UridMapping> mapping,
@@ -27,7 +28,8 @@ aap::xs::AAPXSDefinitionRegistry standard_extensions{std::make_unique<aap::xs::U
     state.asPublic(),
     gui.asPublic(),
     // Keep new extensions at the end, so that existing URIDs do not shift.
-    buses.asPublic()
+    buses.asPublic(),
+    offline_rendering.asPublic()
 })};
 
 aap::xs::AAPXSDefinitionRegistry *aap::xs::AAPXSDefinitionRegistry::getStandardExtensions() {

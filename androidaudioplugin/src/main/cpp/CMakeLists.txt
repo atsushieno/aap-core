@@ -27,6 +27,7 @@ set (androidaudioplugin_SOURCES
 	"core/aapxs/buses-aapxs.cpp"
 	"core/aapxs/gui-aapxs.cpp"
 	"core/aapxs/midi-aapxs.cpp"
+	"core/aapxs/offline-rendering-aapxs.cpp"
 	"core/aapxs/parameters-aapxs.cpp"
 	"core/aapxs/presets-aapxs.cpp"
 	"core/aapxs/state-aapxs.cpp"

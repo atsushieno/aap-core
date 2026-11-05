@@ -22,6 +22,7 @@ For quick look, these are the Standard Extensions that had existed since AAPXS v
 - `presets.h` : presets support
 - `gui.h` : GUI support
 - `buses.h` : audio and event buses (added after AAPXS v1)
+- `offline-rendering.h` : tells the plugin whether it renders in realtime or offline (added after AAPXS v1)
 
 There is a few more not-implemented extensions that I would not say part of the Standard:
 

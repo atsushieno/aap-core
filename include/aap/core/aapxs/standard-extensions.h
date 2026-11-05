@@ -10,6 +10,7 @@
 #include "gui-aapxs.h"
 #include "urid-aapxs.h"
 #include "buses-aapxs.h"
+#include "offline-rendering-aapxs.h"
 #include <functional>
 
 namespace aap::xs {

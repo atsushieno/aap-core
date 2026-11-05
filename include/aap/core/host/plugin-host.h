@@ -17,6 +17,7 @@
 #include "aap/ext/presets.h"
 #include "aap/ext/state.h"
 #include "aap/ext/buses.h"
+#include "aap/ext/offline-rendering.h"
 #include "aap/plugin-meta-info.h"
 #include "plugin-connections.h"
 #include "plugin-instance.h"
