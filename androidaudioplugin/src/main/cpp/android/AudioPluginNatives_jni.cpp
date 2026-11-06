@@ -579,6 +579,22 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setState(JNIEnv *
 	env->ReleaseByteArrayElements(data, buf, JNI_ABORT);
 }
 
+// Offline rendering extension
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setOfflineMode(JNIEnv *env,
+																			  jclass clazz,
+																			  jlong nativeClient,
+																			  jint instanceId,
+																			  jboolean offline) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	auto result = instance->getStandardExtensions().setOfflineMode(
+			offline ? AAP_OFFLINE_RENDERING_MODE_OFFLINE : AAP_OFFLINE_RENDERING_MODE_REALTIME);
+	return result.isOk() && result.value == AAP_OFFLINE_RENDERING_RESULT_OK;
+}
+
 // Presets extensions
 
 extern "C"

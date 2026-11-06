@@ -128,6 +128,7 @@ private class AapValidator(private val context: Context) {
                     .put("displayName", plugin.displayName))
                 validateMetadata(plugin, report)
                 validateLifecycle(plugin, request, report)
+                validateOfflineRendering(plugin, request, report)
             }
         }
         return report
@@ -218,6 +219,73 @@ private class AapValidator(private val context: Context) {
         } catch (t: Throwable) {
             report.fail(pluginId, "AAPVAL-LIFE-001", "Plugin lifecycle failed", "Plugin $pluginId: ${t.javaClass.simpleName}: ${t.message.orEmpty()}",
                 "A normal AAP host cannot safely use this plugin.", "Check the service log and factory/lifecycle implementation.")
+        } finally {
+            try {
+                instance?.takeIf { it.state != InstanceState.DESTROYED }?.destroy()
+            } catch (_: Throwable) {
+            }
+            client.disconnectPluginService(plugin.packageName)
+            client.dispose()
+        }
+    }
+
+    private fun validateOfflineRendering(plugin: PluginInformation, request: AapValidationRequest, report: AapValidationReport) {
+        val pluginId = plugin.pluginId
+        if (pluginId.isNullOrBlank())
+            return
+        if (!declares(plugin, AudioPluginExtensionsBom.AAP_OFFLINE_RENDERING_EXTENSION_URI_V1)) {
+            report.skip(pluginId, "AAPVAL-OFFLINE-001", "Offline rendering extension is not declared", "The offline rendering check does not apply.")
+            return
+        }
+        val client = AudioPluginClientBase(context)
+        var instance: NativeRemotePluginInstance? = null
+        try {
+            runBlocking { client.connectToPluginService(plugin.packageName) }
+            val current = client.instantiateNativePlugin(plugin)
+            instance = current
+            val renderBlocks = {
+                writeSilentAudioInputs(current, request.frameCount)
+                current.activate()
+                assertHealthy(current, "activate")
+                repeat(OFFLINE_BLOCK_COUNT) {
+                    current.process(request.frameCount, PROCESS_TIMEOUT_NANOSECONDS)
+                    assertHealthy(current, "process")
+                }
+                validateFiniteAudioOutputs(pluginId, current, request.frameCount, report)
+            }
+            val failure = { detail: String ->
+                report.fail(pluginId, "AAPVAL-OFFLINE-001", "Offline rendering mode failed", detail,
+                    "A host cannot render this plugin offline reliably.",
+                    "Accept set_offline_mode() while the instance is not active, and keep processing in either mode.")
+            }
+            current.prepare(request.frameCount, request.sampleRate, DEFAULT_CONTROL_BYTES_PER_BLOCK)
+            assertHealthy(current, "prepare")
+            if (!current.setOfflineMode(true)) {
+                failure("set_offline_mode(OFFLINE) failed after prepare().")
+                return
+            }
+            renderBlocks()
+            // The framework rejects a mode change while the instance is active.
+            if (current.setOfflineMode(false)) {
+                failure("set_offline_mode() succeeded while the instance was active.")
+                return
+            }
+            current.deactivate()
+            assertHealthy(current, "deactivate")
+            if (!current.setOfflineMode(false)) {
+                failure("set_offline_mode(REALTIME) failed after deactivate().")
+                return
+            }
+            renderBlocks()
+            current.deactivate()
+            assertHealthy(current, "deactivate")
+            current.destroy()
+            instance = null
+            report.pass(pluginId, "AAPVAL-OFFLINE-001", "Offline rendering mode works",
+                "Plugin $pluginId switched to offline and back, rendering $OFFLINE_BLOCK_COUNT blocks in each mode.")
+        } catch (t: Throwable) {
+            report.fail(pluginId, "AAPVAL-OFFLINE-001", "Offline rendering mode failed", "Plugin $pluginId: ${t.javaClass.simpleName}: ${t.message}",
+                "A host cannot render this plugin offline reliably.", "Check the service log.")
         } finally {
             try {
                 instance?.takeIf { it.state != InstanceState.DESTROYED }?.destroy()
@@ -388,6 +456,7 @@ private class AapValidator(private val context: Context) {
 
     companion object {
         private const val DEFAULT_CONTROL_BYTES_PER_BLOCK = 0x10000
+        private const val OFFLINE_BLOCK_COUNT = 8
         private const val PROCESS_TIMEOUT_NANOSECONDS = 1_000_000_000L
         private const val MAX_STATE_BYTES = 1_048_576
     }

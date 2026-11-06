@@ -63,6 +63,11 @@ namespace aap::xs {
             return setState(tmp_state);
         }
 
+        // Offline rendering
+        virtual Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) {
+            return {AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering is not available here"};
+        }
+
         // Gui
         virtual aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) = 0;
         virtual int32_t showGui(aap_gui_instance_id guiInstanceId) = 0;
@@ -80,6 +85,7 @@ namespace aap::xs {
         GuiClientAAPXS* gui{nullptr};
         UridClientAAPXS* urid{nullptr};
         BusesClientAAPXS* buses{nullptr};
+        OfflineRenderingClientAAPXS* offline_rendering{nullptr};
 
     public:
         // These clients are owned by their AAPXS instance contexts. Hosting only borrows them.
@@ -106,11 +112,18 @@ namespace aap::xs {
             gui = dynamic_cast<GuiClientAAPXS*>(borrow(AAP_GUI_EXTENSION_URI));
             urid = dynamic_cast<UridClientAAPXS*>(borrow(AAP_URID_EXTENSION_URI));
             buses = dynamic_cast<BusesClientAAPXS*>(borrow(AAP_BUSES_EXTENSION_URI));
+            offline_rendering = dynamic_cast<OfflineRenderingClientAAPXS*>(borrow(AAP_OFFLINE_RENDERING_EXTENSION_URI));
             initialized = true;
         }
 
         // Buses (framework-level; there is no corresponding plugin C extension proxy)
         BusesClientAAPXS* getBuses() { return buses; }
+
+        // Offline rendering
+        Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) override {
+            if (!offline_rendering) return {AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering extension unavailable"};
+            return offline_rendering->setOfflineMode(mode);
+        }
 
         // URID
         void map(uint8_t uridValue, const char* uri) { if (urid) urid->map(uridValue, uri); }

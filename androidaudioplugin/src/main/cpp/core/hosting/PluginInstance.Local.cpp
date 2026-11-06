@@ -332,7 +332,15 @@ void aap::LocalPluginInstance::process(int32_t frameCount, int32_t timeoutInNano
     if (state != PLUGIN_INSTANTIATION_STATE_ACTIVE && state != PLUGIN_INSTANTIATION_STATE_INACTIVE)
         return;
     RealtimeScope realtime;
-    internal::ProcessingQuiescence::Process activity(realtime_state->processing);
+    const bool offline = offline_rendering.load(std::memory_order_acquire);
+    internal::ProcessingQuiescence::Process activity(realtime_state->processing, offline,
+            [this] { return realtime_state->worker.isStopping(); });
+    // Waiting could have outlasted the buffers, if the control work was preparing again.
+    if (offline) {
+        state = instantiation_state.load();
+        if (state != PLUGIN_INSTANTIATION_STATE_ACTIVE && state != PLUGIN_INSTANTIATION_STATE_INACTIVE)
+            return;
+    }
     if (realtime_state->reset_deferred_midi.exchange(false, std::memory_order_acq_rel))
         for (auto& input : realtime_state->deferred_midi) if (input) input->reset();
     if (!activity || instantiation_state != PLUGIN_INSTANTIATION_STATE_ACTIVE) {

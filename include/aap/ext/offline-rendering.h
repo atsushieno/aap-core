@@ -17,6 +17,7 @@ extern "C" {
 
 // An instance starts in AAP_OFFLINE_RENDERING_MODE_REALTIME and keeps the mode it was last set to,
 // including across prepare() and activate()/deactivate().
+// While offline, the framework never skips a block for extension requests; process() waits for them.
 enum aap_offline_rendering_mode_t {
     AAP_OFFLINE_RENDERING_MODE_REALTIME,
     AAP_OFFLINE_RENDERING_MODE_OFFLINE,

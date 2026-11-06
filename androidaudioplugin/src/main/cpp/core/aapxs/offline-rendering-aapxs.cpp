@@ -4,14 +4,18 @@
 namespace {
     int32_t setOfflineModeOnPlugin(AAPXSRecipientInstance* aapxsInstance, AndroidAudioPlugin* plugin, int32_t mode) {
         // The recipient's host context is always the LocalPluginInstance (see setupAAPXSInstances()).
-        if (static_cast<aap::LocalPluginInstance*>(aapxsInstance->host_context)->getInstanceState() == aap::PLUGIN_INSTANTIATION_STATE_ACTIVE)
+        auto instance = static_cast<aap::LocalPluginInstance*>(aapxsInstance->host_context);
+        if (instance->getInstanceState() == aap::PLUGIN_INSTANTIATION_STATE_ACTIVE)
             return AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
         if (mode != AAP_OFFLINE_RENDERING_MODE_REALTIME && mode != AAP_OFFLINE_RENDERING_MODE_OFFLINE)
             return AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
         auto ext = (aap_offline_rendering_extension_t*) plugin->get_extension(plugin, AAP_OFFLINE_RENDERING_EXTENSION_URI);
         if (!ext || !ext->set_offline_mode)
             return AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
-        return ext->set_offline_mode(ext, plugin, (aap_offline_rendering_mode_t) mode);
+        auto result = ext->set_offline_mode(ext, plugin, (aap_offline_rendering_mode_t) mode);
+        if (result == AAP_OFFLINE_RENDERING_RESULT_OK)
+            instance->setOfflineRendering(mode == AAP_OFFLINE_RENDERING_MODE_OFFLINE);
+        return result;
     }
 
     aap_offline_rendering_result_t deserializeResult(AAPXSSerializationContext* ctx) {

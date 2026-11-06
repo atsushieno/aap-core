@@ -1,3 +1,4 @@
+#include <optional>
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -1696,8 +1697,129 @@ void offlineRendering() {
     check(proxy->set_offline_mode(proxy, instance.getPlugin(), AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "C proxy maps a transport error to failure");
 }
 
+// Blocks run on another thread here, to see whether they wait for the control work this thread holds.
+void offlineBlocksWaitForControl() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeOfflineRendering = true;
+    auto registry = xs::AAPXSDefinitionRegistry::getStandardExtensions();
+    TestLocal instance(&host, registry, 5, &descriptor.info, &fake.factory, 8192);
+    instance.setIpcExtensionMessageSender(notification, nullptr);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& definition : *registry) {
+        if (!definition.uri || definition.data_capacity == 0) continue;
+        auto index = store->getExtensionBufferCount();
+        store->addExtensionFD(-1, definition.data_capacity);
+        store->getExtensionUriToIndexMap()[definition.uri] = index;
+    }
+    instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+
+    auto definition = registry->getByUri(AAP_OFFLINE_RENDERING_EXTENSION_URI);
+    auto setMode = [&](int32_t mode) {
+        int32_t buffer = mode;
+        AAPXSSerializationContext serialization{&buffer, sizeof(buffer), sizeof(buffer)};
+        int replied = 0;
+        AAPXSRecipientInstance recipient{&replied, &instance, &serialization,
+            [](auto* self, auto*) { ++*static_cast<int*>(self->aapxs_context); }, nullptr};
+        AAPXSRequestContext request{nullptr, nullptr, &serialization, 0, AAP_OFFLINE_RENDERING_EXTENSION_URI, 1, OPCODE_SET_OFFLINE_MODE};
+        instance.forceState(PLUGIN_INSTANTIATION_STATE_INACTIVE);
+        definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), &request);
+        instance.forceState(PLUGIN_INSTANTIATION_STATE_ACTIVE);
+        check(replied == 1, "the mode request is replied");
+        return buffer;
+    };
+    auto audio = [&] { auto b = instance.getAudioPluginBuffer(); return static_cast<float*>(b->get_buffer(b, 0))[0]; };
+    auto clearAudio = [&] { auto b = instance.getAudioPluginBuffer(); static_cast<float*>(b->get_buffer(b, 0))[0] = -1; };
+    auto& processing = instance.getRealtimeState().processing;
+    auto blockIsPending = [](std::future<void>& block) {
+        return block.wait_for(std::chrono::milliseconds(100)) == std::future_status::timeout;
+    };
+
+    // Realtime: a block during control work is skipped at once, as silence.
+    {
+        internal::ProcessingQuiescence::Control control(processing);
+        auto before = fake.blocks.load();
+        clearAudio();
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(!blockIsPending(block), "a realtime block does not wait for control work");
+        block.get();
+        check(fake.blocks == before && audio() == 0.0f, "a realtime block is silent during control work");
+    }
+
+    // A mode that the plugin refuses does not make the instance wait.
+    fake.offlineResult = AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE;
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "the plugin refuses");
+    fake.offlineResult = AAP_OFFLINE_RENDERING_RESULT_OK;
+    {
+        internal::ProcessingQuiescence::Control control(processing);
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(!blockIsPending(block), "a refused mode changes nothing");
+        block.get();
+    }
+
+    // Offline: the block waits, and then the plugin actually renders it.
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_OK, "the plugin accepts");
+    {
+        auto before = fake.blocks.load();
+        clearAudio();
+        std::optional<internal::ProcessingQuiescence::Control> control;
+        control.emplace(processing);
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(blockIsPending(block), "an offline block waits for control work");
+        check(fake.blocks == before && audio() == -1.0f, "and stays out of the plugin and the buffers meanwhile");
+        control.reset();
+        block.get();
+        check(fake.blocks == before + 1 && audio() == 0.75f, "the waiting block is rendered, not silent");
+    }
+
+    // A waiting block does not stop control work from starting, or from finishing.
+    {
+        auto before = fake.blocks.load();
+        std::optional<internal::ProcessingQuiescence::Control> first;
+        first.emplace(processing);
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(blockIsPending(block), "the block is waiting");
+        first.reset();
+        for (int i = 0; i < 200; i++)
+            internal::ProcessingQuiescence::Control next(processing);
+        block.get();
+        check(fake.blocks == before + 1, "repeated control work does not lose the block");
+    }
+
+    // Control work on this very thread could never finish, so the block gives up.
+    {
+        auto before = fake.blocks.load();
+        internal::ProcessingQuiescence::Control control(processing);
+        instance.process(64, 0);
+        check(fake.blocks == before, "a block on the control thread is skipped instead of hanging");
+    }
+
+    // Back in realtime mode, blocks are skipped again.
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_REALTIME) == AAP_OFFLINE_RENDERING_RESULT_OK, "back to realtime");
+    {
+        internal::ProcessingQuiescence::Control control(processing);
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(!blockIsPending(block), "realtime blocks are skipped again");
+        block.get();
+    }
+
+    // Stopping the instance releases a waiting block, instead of hanging the teardown.
+    check(setMode(AAP_OFFLINE_RENDERING_MODE_OFFLINE) == AAP_OFFLINE_RENDERING_RESULT_OK, "offline again");
+    {
+        internal::ProcessingQuiescence::Control control(processing);
+        auto block = std::async(std::launch::async, [&] { instance.process(64, 0); });
+        check(blockIsPending(block), "the block is waiting");
+        instance.stopExtensionWorker();
+        check(!blockIsPending(block), "stopping releases the waiting block");
+        block.get();
+    }
+}
+
 int main() {
     offlineRendering();
+    offlineBlocksWaitForControl();
     busesLayoutClient(); busLayout();
     guardProbes(); sharedObjectScope(); sharedTransportNegotiation(); deferredMidiBuffers(); localProcessing(); countPolling(); extensionNeutralDispatch(); layoutReadiness(); remoteProcessing(); activeLayoutRefresh(false); activeLayoutRefresh(true);
     supersededLayoutRefresh(true, false); supersededLayoutRefresh(true, true);

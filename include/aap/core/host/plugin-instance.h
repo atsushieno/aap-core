@@ -230,6 +230,7 @@ namespace aap {
  */
     class LocalPluginInstance : public PluginInstance {
         PluginHost *host;
+        std::atomic<bool> offline_rendering{false};
         AAPXSMidi2InitiatorSession aapxs_host_session;
         AndroidAudioPluginHost plugin_host_facade{};
         std::unique_ptr<xs::AAPXSDefinitionServiceRegistry> feature_registry;
@@ -300,6 +301,8 @@ namespace aap {
         bool isBusMode() override { return reported_bus_layout != nullptr; }
         // Answers the framework-level buses AAPXS requests.
         xs::BusesServiceHandler* getBusesServiceHandler() { return &buses_service; }
+        // While offline, process() waits for control work instead of emitting a silent block.
+        void setOfflineRendering(bool offline) { offline_rendering.store(offline, std::memory_order_release); }
 
         inline AndroidAudioPlugin *getPlugin() { return plugin; }
 

@@ -109,6 +109,11 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         setState(client, instanceId, data)
     }
     // presets
+    // Only for a plugin that declares the offline-rendering extension, and only while not active.
+    // Returns whether the plugin is now in that mode. Do not call it on an audio thread.
+    fun setOfflineMode(offline: Boolean) = runCatchingRemoteException(false) {
+        setOfflineMode(client, instanceId, offline)
+    }
     fun getPresetCount() = runCatchingRemoteException(0) {
         getPresetCount(client, instanceId)
     }
@@ -319,6 +324,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         external fun setState(nativeClient: Long, instanceId: Int, data: ByteArray)
 
         // presets
+        @JvmStatic
+        external fun setOfflineMode(nativeClient: Long, instanceId: Int, offline: Boolean) : Boolean
         @JvmStatic
         external fun getPresetCount(nativeClient: Long, instanceId: Int) : Int
         @JvmStatic
