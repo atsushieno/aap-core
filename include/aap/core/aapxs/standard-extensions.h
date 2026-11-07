@@ -64,9 +64,7 @@ namespace aap::xs {
         }
 
         // Offline rendering
-        virtual Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) {
-            return {AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering is not available here"};
-        }
+        virtual Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) = 0;
 
         // Gui
         virtual aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) = 0;
@@ -118,12 +116,6 @@ namespace aap::xs {
 
         // Buses (framework-level; there is no corresponding plugin C extension proxy)
         BusesClientAAPXS* getBuses() { return buses; }
-
-        // Offline rendering
-        Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) override {
-            if (!offline_rendering) return {AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering extension unavailable"};
-            return offline_rendering->setOfflineMode(mode);
-        }
 
         // URID
         void map(uint8_t uridValue, const char* uri) { if (urid) urid->map(uridValue, uri); }
@@ -207,6 +199,13 @@ namespace aap::xs {
             return state->setStateAsync(stateToLoad, std::move(callback));
         }
 
+        // Offline rendering
+        Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) override {
+            if (aap::RealtimeScope::isActive()) return { AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "cannot set offline rendering mode when the instance is active"};
+            if (!offline_rendering) return { AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering extension unavailable"};
+            return offline_rendering->setOfflineMode(mode);
+        }
+
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->createGui(pluginId, instanceId, audioPluginView) : -1; }
         int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->showGui(guiInstanceId) : -1; }
@@ -222,6 +221,7 @@ namespace aap::xs {
         aap_presets_extension_t* presets;
         aap_state_extension_t* state;
         aap_gui_extension_t* gui;
+        aap_offline_rendering_extension_t* offline_rendering;
 
     public:
         ServiceStandardExtensions(AndroidAudioPlugin* plugin) : plugin(plugin) {
@@ -229,6 +229,7 @@ namespace aap::xs {
             parameters = (aap_parameters_extension_t*) plugin->get_extension(plugin, AAP_PARAMETERS_EXTENSION_URI);
             presets = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
             state = (aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
+            offline_rendering = (aap_offline_rendering_extension_t*) plugin->get_extension(plugin, AAP_OFFLINE_RENDERING_EXTENSION_URI);
         }
 
         // MIDI
@@ -316,6 +317,14 @@ namespace aap::xs {
             if (callback)
                 callback(ret);
             return 0;
+        }
+
+        // Offline rendering
+        Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) override {
+            if (aap::RealtimeScope::isActive()) return { AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "cannot set offline rendering mode when the instance is active"};
+            if (!offline_rendering) return { AAP_OFFLINE_RENDERING_RESULT_GENERIC_FAILURE, "offline rendering extension unavailable"};
+            auto result = offline_rendering->set_offline_mode(offline_rendering, plugin, mode);
+            return { result, result == AAP_OFFLINE_RENDERING_RESULT_OK ? "" : "Plugin failed to set offline rendering mode"};
         }
 
         // Gui
