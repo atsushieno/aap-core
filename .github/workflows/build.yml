@@ -60,7 +60,7 @@ jobs:
 
   osx-build:
     name: build on osx
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
     - name: checkout
       uses: actions/checkout@v4
