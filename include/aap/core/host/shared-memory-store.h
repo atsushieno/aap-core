@@ -3,6 +3,10 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 #include "plugin-instance.h"
 
 namespace aap {

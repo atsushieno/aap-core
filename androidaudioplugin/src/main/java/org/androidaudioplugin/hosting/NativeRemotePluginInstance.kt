@@ -108,12 +108,19 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun setState(data: ByteArray) = runCatchingRemoteException {
         setState(client, instanceId, data)
     }
-    // presets
+    // offline rendering
     // Only for a plugin that declares the offline-rendering extension, and only while not active.
     // Returns whether the plugin is now in that mode. Do not call it on an audio thread.
     fun setOfflineMode(offline: Boolean) = runCatchingRemoteException(false) {
         setOfflineMode(client, instanceId, offline)
     }
+    // tail
+    // Only for a plugin that declares the tail extension. Returns 0 on failure.
+    // Do not call it on an audio thread; cache it until the plugin notifies a change.
+    fun getTailLengthInSeconds() = runCatchingRemoteException(0.0) {
+        getTailLengthInSeconds(client, instanceId)
+    }
+    // presets
     fun getPresetCount() = runCatchingRemoteException(0) {
         getPresetCount(client, instanceId)
     }
@@ -326,6 +333,8 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
         // presets
         @JvmStatic
         external fun setOfflineMode(nativeClient: Long, instanceId: Int, offline: Boolean) : Boolean
+        @JvmStatic
+        external fun getTailLengthInSeconds(nativeClient: Long, instanceId: Int) : Double
         @JvmStatic
         external fun getPresetCount(nativeClient: Long, instanceId: Int) : Int
         @JvmStatic

@@ -7,6 +7,10 @@
 #include <atomic>
 #include <chrono>
 #include <array>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 #include "../realtime.h"
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"

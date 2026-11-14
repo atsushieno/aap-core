@@ -10,6 +10,7 @@ object AudioPluginExtensionsBom {
     const val AAP_STATE_EXTENSION_URI_V4 = "urn://androidaudioplugin.org/extensions/state/v4"
     const val AAP_BUSES_EXTENSION_URI_V1 = "urn://androidaudioplugin.org/extensions/buses/v1"
     const val AAP_OFFLINE_RENDERING_EXTENSION_URI_V1 = "urn://androidaudioplugin.org/extensions/offline-rendering/v1"
+    const val AAP_TAIL_EXTENSION_URI_V1 = "urn://androidaudioplugin.org/extensions/tail/v1"
 
     // `<extensions bom="..." />` in aap_metadata.xml: the extensions (and their versions) of the BOM.
     // ("0.12.0" is a misnomer, but it is kept as is.)
@@ -20,7 +21,7 @@ object AudioPluginExtensionsBom {
         AAP_MIDI_EXTENSION_URI_V3,
         AAP_GUI_EXTENSION_URI_V4)
     private val BOM_0_12_1 = BOM_0_12_0 + AAP_BUSES_EXTENSION_URI_V1
-    private val BOM_0_12_2 = BOM_0_12_1 + AAP_OFFLINE_RENDERING_EXTENSION_URI_V1
+    private val BOM_0_12_2 = BOM_0_12_1 + AAP_OFFLINE_RENDERING_EXTENSION_URI_V1 + AAP_TAIL_EXTENSION_URI_V1
 
     private val boms = mapOf(
         "0.12.0" to BOM_0_12_0,

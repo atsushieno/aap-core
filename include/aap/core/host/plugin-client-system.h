@@ -3,6 +3,8 @@
 
 #include <sys/stat.h>
 #include <cstdint>
+#include <functional>
+#include <string>
 #include <vector>
 #include "../plugin-information.h"
 #include "plugin-connections.h"
