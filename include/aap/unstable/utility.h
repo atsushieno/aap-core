@@ -1,6 +1,8 @@
 #ifndef AAP_CORE_UNSTABLE_UTILITY_H
 #define AAP_CORE_UNSTABLE_UTILITY_H
 
+#include <atomic>
+#include <ctime>
 #include <sys/time.h>
 #include <assert.h>
 #ifdef AAP_VERIFY_REALTIME

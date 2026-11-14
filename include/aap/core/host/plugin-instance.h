@@ -7,6 +7,10 @@
 #include <atomic>
 #include <chrono>
 #include <array>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 #include "../realtime.h"
 #include "aap/core/aapxs/standard-extensions.h"
 #include "aap/unstable/utility.h"
@@ -189,11 +193,6 @@ namespace aap {
         // (service side); RemotePluginInstance provides a real one.
         virtual std::shared_ptr<xs::AsyncAbortRegistry> getAsyncAbortRegistry() { return nullptr; }
         virtual void abortAllPendingAAPXS(const std::string& error) {}
-
-        uint32_t getTailTimeInMilliseconds() {
-            // TODO: FUTURE - most likely just a matter of plugin property
-            return 0;
-        }
 
         // It is used by both local and remote plugin instance
         // (UI events for local, host UI interaction etc. for remote)

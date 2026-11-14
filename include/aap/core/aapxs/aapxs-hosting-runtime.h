@@ -4,6 +4,10 @@
 // AAPXS v2 runtime - strongly typed.
 
 #include <cstdint>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <string>
 #include <vector>
 #include <map>
 #include <future>

@@ -47,7 +47,8 @@ for configuration in debug release; do
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/urid-aapxs.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/gui-aapxs.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/buses-aapxs.cpp" \
-                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/offline-rendering-aapxs.cpp"
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/offline-rendering-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/tail-aapxs.cpp"
         fi
         if [ "$test" = rt-processing ]; then
             if [ "$(uname -s)" = Darwin ]; then set -- "$@" -Wl,-export_dynamic; fi
@@ -68,7 +69,8 @@ for configuration in debug release; do
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/urid-aapxs.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/gui-aapxs.cpp" \
                 "$repo/androidaudioplugin/src/main/cpp/core/aapxs/buses-aapxs.cpp" \
-                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/offline-rendering-aapxs.cpp"
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/offline-rendering-aapxs.cpp" \
+                "$repo/androidaudioplugin/src/main/cpp/core/aapxs/tail-aapxs.cpp"
         fi
         if [ "$test" = metadata ] && [ -f "$script_dir/midi-jni-stub.h" ]; then
             set -- "$@" -include "$script_dir/midi-jni-stub.h" \

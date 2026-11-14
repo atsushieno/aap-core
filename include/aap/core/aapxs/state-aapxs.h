@@ -6,6 +6,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <string>
 #include <vector>
 #include "aap/aapxs.h"
 #include "../../ext/state.h"

@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <future>
+#include <string>
 #include "aap/aapxs.h"
 #include "../../ext/gui.h"
 #include "typed-aapxs.h"

@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <future>
+#include <string>
 #include "typed-aapxs.h"
 #include "../../ext/presets.h"
 

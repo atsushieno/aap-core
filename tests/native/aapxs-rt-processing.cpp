@@ -1,6 +1,7 @@
 #include <optional>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
@@ -187,6 +188,14 @@ struct FakePlugin {
             if (self.offlineResult == AAP_OFFLINE_RENDERING_RESULT_OK) self.offlineMode = mode;
             return self.offlineResult;
         }};
+    bool exposeTail{false};
+    std::atomic<double> tailLength{1.5};
+    std::atomic<int> tailReads{0};
+    aap_tail_extension_t tail{this, [](aap_tail_extension_t* ext, AndroidAudioPlugin*) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            ++self.tailReads;
+            return self.tailLength.load();
+        }};
     bool exposeBuses{false};
     // mono main input; stereo main output and mono aux output
     aap_buses_extension_t buses{this,
@@ -334,6 +343,7 @@ struct FakePlugin {
             if (self.exposePresets && !strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return &self.presets;
             if (self.exposeBuses && !strcmp(uri, AAP_BUSES_EXTENSION_URI)) return &self.buses;
             if (self.exposeOfflineRendering && !strcmp(uri, AAP_OFFLINE_RENDERING_EXTENSION_URI)) return &self.offlineRendering;
+            if (self.exposeTail && !strcmp(uri, AAP_TAIL_EXTENSION_URI)) return &self.tail;
             return nullptr;
         }, nullptr};
     AndroidAudioPluginFactory factory{
@@ -1698,6 +1708,130 @@ void offlineRendering() {
 }
 
 // Blocks run on another thread here, to see whether they wait for the control work this thread holds.
+// Connects the actual typed client and C proxy to the actual service-side handler on one buffer.
+void tailLengthClient() {
+    auto registry = xs::AAPXSDefinitionRegistry::getStandardExtensions();
+    auto definition = registry->getByUri(AAP_TAIL_EXTENSION_URI);
+    check(definition && definition->uri && definition->process_incoming_plugin_aapxs_request, "tail AAPXS is standard");
+    check(registry->getUridMapping()->getUrid(AAP_TAIL_EXTENSION_URI) > registry->getUridMapping()->getUrid(AAP_OFFLINE_RENDERING_EXTENSION_URI), "new extension does not shift existing URIDs");
+    check(definition->get_request_flags(definition, false, OPCODE_GET_TAIL_LENGTH) == (AAPXS_REQUEST_READ_ONLY | AAPXS_REQUEST_CONCURRENT), "the query reads a snapshot");
+    check(definition->get_request_flags(definition, true, OPCODE_NOTIFY_TAIL_LENGTH_CHANGED) == (AAPXS_REQUEST_STATE_CHANGED | AAPXS_REQUEST_COALESCE), "the notification refreshes the snapshot");
+    check(definition->is_command_rt_safe(definition, false, OPCODE_GET_TAIL_LENGTH) && !definition->is_command_rt_safe(definition, true, OPCODE_NOTIFY_TAIL_LENGTH_CHANGED), "only the query is RT-safe");
+
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeTail = true;
+    TestLocal instance(&host, registry, 1, &descriptor.info, &fake.factory, 8192);
+    instance.completeInstantiation();
+
+    struct Fixture {
+        uint8_t buffer[TAIL_SHARED_MEMORY_SIZE]{};
+        AAPXSSerializationContext serialization{buffer, 0, sizeof(buffer)};
+        uint32_t id{};
+        std::function<bool(AAPXSRequestContext*)> send;
+        AAPXSInitiatorInstance initiator{this, nullptr, &serialization, 1,
+            [](auto* self) { return static_cast<Fixture*>(self->aapxs_context)->id++; },
+            [](auto* self, auto* request) { return static_cast<Fixture*>(self->aapxs_context)->send(request); }};
+        xs::TailClientAAPXS client{&initiator, &serialization};
+    } f;
+    // The recipient's aapxs_context belongs to the extension (its snapshot), so count replies elsewhere.
+    static int32_t replies;
+    replies = 0;
+    AAPXSRecipientInstance recipient{nullptr, &instance, &f.serialization,
+        [](auto*, auto*) { ++replies; }, nullptr};
+    check(definition->initialize_recipient_instance(definition, &recipient, false), "recipient snapshot");
+    f.send = [&](auto* request) {
+        definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), request);
+        request->callback(request->callback_user_data, nullptr);
+        return true;
+    };
+
+    // No snapshot yet: the handler asks the plugin.
+    auto proxy = f.client.asPluginExtension();
+    check(proxy->tail_length_in_seconds(proxy, instance.getPlugin()) == 1.5 && fake.tailReads == 1 && replies == 1, "C proxy reaches the plugin");
+    double asyncResult = 0.0;
+    f.client.getTailLengthAsync([&](auto result) { asyncResult = result.value; });
+    check(asyncResult == 1.5, "async request");
+
+    // Once refreshed, the snapshot answers without calling the plugin.
+    definition->on_plugin_state_changed(definition, &recipient, instance.getPlugin());
+    auto reads = fake.tailReads.load();
+    fake.tailLength = 3.0;
+    check(f.client.getTailLength().value == 1.5 && fake.tailReads == reads, "snapshot answers the query");
+    definition->on_plugin_state_changed(definition, &recipient, instance.getPlugin());
+    check(f.client.getTailLength().value == 3.0, "refreshed snapshot");
+    fake.tailLength = INFINITY;
+    definition->on_plugin_state_changed(definition, &recipient, instance.getPlugin());
+    check(std::isinf(f.client.getTailLength().value), "infinite tail");
+    fake.exposeTail = false;
+    definition->on_plugin_state_changed(definition, &recipient, instance.getPlugin());
+    check(f.client.getTailLength().value == 0.0, "plugin without the extension has no tail");
+    fake.exposeTail = true;
+    definition->release_recipient_instance(definition, &recipient, false);
+
+    // A failed or malformed exchange is never reported as a length.
+    f.send = [](auto* request) {
+        request->serialization->data_size = 0;
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    check(f.client.getTailLength().value == 0.0, "short reply");
+    f.send = [](auto* request) {
+        request->error_callback(request->callback_user_data, nullptr, "dead"); return true;
+    };
+    check(!f.client.getTailLength().isOk(), "transport error is reported");
+    check(proxy->tail_length_in_seconds(proxy, instance.getPlugin()) == 0.0, "C proxy maps a transport error to no tail");
+}
+
+// The plugin notifies from processing; the worker refreshes the snapshot before the host hears it.
+void tailLengthNotification() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list; Callback callback; PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeTail = true;
+    TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 9, &descriptor.info, &fake.factory, 8192);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& definition : *instance.getAAPXSRegistry()->items()) {
+        if (!definition.uri || definition.data_capacity == 0) continue;
+        auto index = store->getExtensionBufferCount();
+        auto backing = tmpfile(); check(backing, "extension backing file");
+        int fd = dup(fileno(backing)); fclose(backing);
+        check(fd > 0 && ftruncate(fd, definition.data_capacity) == 0, "extension backing size");
+        store->addExtensionFD(fd, definition.data_capacity);
+        store->getExtensionUriToIndexMap()[definition.uri] = index;
+    }
+    instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    auto readTail = [&](uint32_t requestId) {
+        instance.controlExtension(0, AAP_TAIL_EXTENSION_URI, OPCODE_GET_TAIL_LENGTH, requestId);
+        double result{};
+        memcpy(&result, instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_TAIL_EXTENSION_URI)->serialization->data, sizeof(result));
+        return result;
+    };
+    auto reads = fake.tailReads.load();
+    check(readTail(900) == 1.5 && fake.tailReads == reads, "prepare() filled the snapshot");
+
+    std::atomic<int> delivered{0};
+    std::pair<decltype(readTail)*, std::atomic<int>*> context{&readTail, &delivered};
+    instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t opcode, int32_t,
+            aapxs_completion_callback completed, void* callbackContext, void* hostContext, aapxs_error_callback) {
+        auto& pair = *static_cast<std::pair<decltype(readTail)*, std::atomic<int>*>*>(context);
+        check(!strcmp(uri, AAP_TAIL_EXTENSION_URI) && opcode == OPCODE_NOTIFY_TAIL_LENGTH_CHANGED, "tail notification");
+        check((*pair.first)(901) == 4.0, "fresh tail length precedes notification delivery");
+        ++*pair.second; if (completed) completed(callbackContext, hostContext);
+    }, &context);
+    fake.tailLength = 4.0;
+    {
+        RealtimeScope realtime;
+        auto tail = static_cast<aap_tail_host_extension_t*>(fake.host->get_extension(fake.host, AAP_TAIL_EXTENSION_URI));
+        check(tail && tail->notify_tail_length_changed, "plugin gets the tail host extension");
+        tail->notify_tail_length_changed(tail, fake.host);
+    }
+    auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (delivered < 1 && std::chrono::steady_clock::now() < limit) std::this_thread::yield();
+    instance.stopExtensionWorker();
+    check(delivered == 1, "notification delivered");
+}
+
 void offlineBlocksWaitForControl() {
     FixtureInfo descriptor;
     PluginListSnapshot list;
@@ -1818,6 +1952,7 @@ void offlineBlocksWaitForControl() {
 }
 
 int main() {
+    tailLengthClient(); tailLengthNotification();
     offlineRendering();
     offlineBlocksWaitForControl();
     busesLayoutClient(); busLayout();

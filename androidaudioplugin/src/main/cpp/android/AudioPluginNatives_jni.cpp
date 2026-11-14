@@ -595,6 +595,20 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setOfflineMode(JN
 	return result.isOk() && result.value == AAP_OFFLINE_RENDERING_RESULT_OK;
 }
 
+// Tail extension
+
+extern "C"
+JNIEXPORT jdouble JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getTailLengthInSeconds(JNIEnv *env,
+																					  jclass clazz,
+																					  jlong nativeClient,
+																					  jint instanceId) {
+	auto client = (aap::PluginClient*) (void*) nativeClient;
+	auto instance = client->getInstanceById(instanceId);
+	auto result = instance->getStandardExtensions().getTailLength();
+	return result.isOk() ? result.value : 0.0;
+}
+
 // Presets extensions
 
 extern "C"

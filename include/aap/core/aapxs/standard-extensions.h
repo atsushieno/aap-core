@@ -2,6 +2,9 @@
 #ifndef AAP_CORE_STANDARD_EXTENSIONS_V2_H
 #define AAP_CORE_STANDARD_EXTENSIONS_V2_H
 
+#include <cstring>
+#include <functional>
+#include <string>
 #include "aapxs-hosting-runtime.h"
 #include "presets-aapxs.h"
 #include "parameters-aapxs.h"
@@ -11,7 +14,7 @@
 #include "urid-aapxs.h"
 #include "buses-aapxs.h"
 #include "offline-rendering-aapxs.h"
-#include <functional>
+#include "tail-aapxs.h"
 
 namespace aap::xs {
     class StandardExtensions {
@@ -66,6 +69,9 @@ namespace aap::xs {
         // Offline rendering
         virtual Result<aap_offline_rendering_result_t> setOfflineMode(aap_offline_rendering_mode_t mode) = 0;
 
+        // Tail
+        virtual Result<double> getTailLength() = 0;
+
         // Gui
         virtual aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) = 0;
         virtual int32_t showGui(aap_gui_instance_id guiInstanceId) = 0;
@@ -84,6 +90,7 @@ namespace aap::xs {
         UridClientAAPXS* urid{nullptr};
         BusesClientAAPXS* buses{nullptr};
         OfflineRenderingClientAAPXS* offline_rendering{nullptr};
+        TailClientAAPXS* tail{nullptr};
 
     public:
         // These clients are owned by their AAPXS instance contexts. Hosting only borrows them.
@@ -94,6 +101,7 @@ namespace aap::xs {
             if (!strcmp(uri, AAP_PRESETS_EXTENSION_URI)) return presets ? presets->asPluginExtension() : nullptr;
             if (!strcmp(uri, AAP_STATE_EXTENSION_URI)) return state ? state->asPluginExtension() : nullptr;
             if (!strcmp(uri, AAP_URID_EXTENSION_URI)) return urid ? urid->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_TAIL_EXTENSION_URI)) return tail ? tail->asPluginExtension() : nullptr;
             return nullptr;
         }
         void initialize(AAPXSClientDispatcher* dispatcher) {
@@ -111,6 +119,7 @@ namespace aap::xs {
             urid = dynamic_cast<UridClientAAPXS*>(borrow(AAP_URID_EXTENSION_URI));
             buses = dynamic_cast<BusesClientAAPXS*>(borrow(AAP_BUSES_EXTENSION_URI));
             offline_rendering = dynamic_cast<OfflineRenderingClientAAPXS*>(borrow(AAP_OFFLINE_RENDERING_EXTENSION_URI));
+            tail = dynamic_cast<TailClientAAPXS*>(borrow(AAP_TAIL_EXTENSION_URI));
             initialized = true;
         }
 
@@ -206,6 +215,13 @@ namespace aap::xs {
             return offline_rendering->setOfflineMode(mode);
         }
 
+        // Tail
+        Result<double> getTailLength() override {
+            if (aap::RealtimeScope::isActive()) return {0.0, "RT caller"};
+            if (!tail) return {0.0, "tail extension unavailable"};
+            return tail->getTailLength();
+        }
+
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->createGui(pluginId, instanceId, audioPluginView) : -1; }
         int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->showGui(guiInstanceId) : -1; }
@@ -222,6 +238,7 @@ namespace aap::xs {
         aap_state_extension_t* state;
         aap_gui_extension_t* gui;
         aap_offline_rendering_extension_t* offline_rendering;
+        aap_tail_extension_t* tail;
 
     public:
         ServiceStandardExtensions(AndroidAudioPlugin* plugin) : plugin(plugin) {
@@ -230,6 +247,7 @@ namespace aap::xs {
             presets = (aap_presets_extension_t*) plugin->get_extension(plugin, AAP_PRESETS_EXTENSION_URI);
             state = (aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
             offline_rendering = (aap_offline_rendering_extension_t*) plugin->get_extension(plugin, AAP_OFFLINE_RENDERING_EXTENSION_URI);
+            tail = (aap_tail_extension_t*) plugin->get_extension(plugin, AAP_TAIL_EXTENSION_URI);
         }
 
         // MIDI
@@ -327,6 +345,12 @@ namespace aap::xs {
             return { result, result == AAP_OFFLINE_RENDERING_RESULT_OK ? "" : "Plugin failed to set offline rendering mode"};
         }
 
+        // Tail
+        Result<double> getTailLength() override {
+            if (!tail || !tail->tail_length_in_seconds) return {0.0, "tail extension unavailable"};
+            return {tail->tail_length_in_seconds(tail, plugin), ""};
+        }
+
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView) : -1; }
         int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->show ? gui->show(gui, plugin, guiInstanceId) : AAP_GUI_ERROR_NO_SHOW_DEFINED : AAP_GUI_ERROR_NO_GUI_DEFINED; }
@@ -364,6 +388,9 @@ namespace aap::xs {
         virtual void notifyPresetLoaded() = 0;
         virtual void notifyPresetsUpdated() = 0;
 
+        // Tail
+        virtual void notifyTailLengthChanged() = 0;
+
         // State
 
         // GUI
@@ -374,11 +401,13 @@ namespace aap::xs {
         AndroidAudioPluginHost* host;
         aap_parameters_host_extension_t* parameters;
         aap_presets_host_extension_t* presets;
+        aap_tail_host_extension_t* tail;
 
     public:
         ClientStandardHostExtensions(AndroidAudioPluginHost* host) : host(host) {
             parameters = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
             presets = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
+            tail = (aap_tail_host_extension_t*) host->get_extension(host, AAP_TAIL_EXTENSION_URI);
         }
 
         // MIDI
@@ -389,6 +418,9 @@ namespace aap::xs {
         // Presets
         void notifyPresetLoaded() override { presets->notify_preset_loaded(presets, host); }
         void notifyPresetsUpdated() override { presets->notify_presets_updated(presets, host); }
+
+        // Tail
+        void notifyTailLengthChanged() override { if (tail && tail->notify_tail_length_changed) tail->notify_tail_length_changed(tail, host); }
 
         // State
 
@@ -401,6 +433,7 @@ namespace aap::xs {
         PresetsServiceAAPXS presets;
         StateServiceAAPXS state;
         GuiServiceAAPXS gui;
+        TailServiceAAPXS tail;
 
     public:
         ServiceStandardHostExtensions(AAPXSServiceDispatcher* dispatcher, AAPXSSerializationContext* serialization) :
@@ -408,7 +441,8 @@ namespace aap::xs {
                 parameters(dispatcher->getHostAAPXSByUri(AAP_PARAMETERS_EXTENSION_URI), serialization),
                 presets(dispatcher->getHostAAPXSByUri(AAP_PRESETS_EXTENSION_URI), serialization),
                 state(dispatcher->getHostAAPXSByUri(AAP_STATE_EXTENSION_URI), serialization),
-                gui(dispatcher->getHostAAPXSByUri(AAP_GUI_EXTENSION_URI), serialization) {
+                gui(dispatcher->getHostAAPXSByUri(AAP_GUI_EXTENSION_URI), serialization),
+                tail(dispatcher->getHostAAPXSByUri(AAP_TAIL_EXTENSION_URI), serialization) {
         }
 
         // MIDI
@@ -419,6 +453,9 @@ namespace aap::xs {
         // Presets
         void notifyPresetLoaded() override { presets.notifyPresetLoaded(); }
         void notifyPresetsUpdated() override { presets.notifyPresetsUpdated(); }
+
+        // Tail
+        void notifyTailLengthChanged() override { tail.notifyTailLengthChanged(); }
 
         // State
 

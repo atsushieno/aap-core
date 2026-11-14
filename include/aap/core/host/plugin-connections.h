@@ -3,7 +3,10 @@
 #define AAP_CORE_PLUGIN_CONNECTIONS_H
 
 #include <atomic>
+#include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 #include "../plugin-information.h"
 
 namespace aap {
