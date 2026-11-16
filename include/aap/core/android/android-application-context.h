@@ -29,7 +29,8 @@ NonRealtimeLoopRunner* get_non_rt_loop_runner();
 
 void prepare_non_rt_event_looper();
 
-[[noreturn]] void start_non_rt_event_looper();
+// Runs the loop on the calling thread until stop_non_rt_event_looper() is called.
+void start_non_rt_event_looper();
 
 void stop_non_rt_event_looper();
 

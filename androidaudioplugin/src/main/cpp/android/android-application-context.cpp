@@ -1,6 +1,9 @@
 #include "aap/core/android/android-application-context.h"
 #include "ALooperMessage.h"
 #include <aap/unstable/logging.h>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 namespace aap {
 
@@ -37,9 +40,16 @@ jobject get_android_application_context() { return application_context; }
 NonRealtimeLoopRunner* get_non_rt_loop_runner() { return non_rt_loop_runner.get(); }
 
 #include <pthread.h>
+// Shared by the loop thread and the stopping thread, so the loop can return and the thread can end.
+std::atomic<bool> non_rt_loop_quit{false};
+std::mutex non_rt_loop_mutex;
+std::condition_variable non_rt_loop_exited;
+bool non_rt_loop_running{false};
+
 void prepare_non_rt_event_looper() {
     assert(!non_rt_loop_runner);
 
+	non_rt_loop_quit = false;
 	auto looper = ALooper_prepare(0);
 	ALooper_acquire(looper);
 	// probably we need this constant adjustable...
@@ -47,19 +57,33 @@ void prepare_non_rt_event_looper() {
 }
 
 void start_non_rt_event_looper() {
-	while(true) {
+	{
+		std::lock_guard<std::mutex> lock{non_rt_loop_mutex};
+		non_rt_loop_running = true;
+	}
+	while(!non_rt_loop_quit) {
 		int fd, events;
 		void* data;
 		ALooper_pollOnce(-1, &fd, &events, &data);
 	}
+	std::lock_guard<std::mutex> lock{non_rt_loop_mutex};
+	non_rt_loop_running = false;
+	non_rt_loop_exited.notify_all();
 }
 
 void stop_non_rt_event_looper() {
     if (!non_rt_loop_runner)
         return; // already stopped
     auto looper = (ALooper*) non_rt_loop_runner->getLooper();
-	ALooper_release(looper);
+    // Wake the loop and wait until it returns, so nothing polls the looper while it is torn down.
+    non_rt_loop_quit = true;
+    ALooper_wake(looper);
+    {
+        std::unique_lock<std::mutex> lock{non_rt_loop_mutex};
+        non_rt_loop_exited.wait(lock, [] { return !non_rt_loop_running; });
+    }
 	non_rt_loop_runner.reset(nullptr);
+	ALooper_release(looper);
 }
 
 AAssetManager *get_android_asset_manager(JNIEnv* env) {
