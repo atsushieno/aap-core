@@ -198,6 +198,7 @@ private class AapValidator(private val context: Context) {
                 instance = current
                 current.prepare(request.frameCount, request.sampleRate, DEFAULT_CONTROL_BYTES_PER_BLOCK)
                 assertHealthy(current, "prepare")
+                validateTailExtension(plugin, current, report)
                 writeSilentAudioInputs(current, request.frameCount)
                 current.activate()
                 assertHealthy(current, "activate")
@@ -440,6 +441,24 @@ private class AapValidator(private val context: Context) {
                 report.pass(pluginId, "AAPVAL-PRESET-001", "Preset selection completed", "Selected preset 0 ('${name.ifBlank { "<unnamed>" }}') from $count preset(s).")
             }
         }
+    }
+
+    // Called after prepare() and before activate(): while active, the query travels in the audio
+    // stream and needs process() calls to be answered. 0, a length and infinity are all valid.
+    private fun validateTailExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
+        val pluginId = plugin.pluginId ?: return
+        if (!declares(plugin, AudioPluginExtensionsBom.AAP_TAIL_EXTENSION_URI_V1)) {
+            report.skip(pluginId, "AAPVAL-TAIL-001", "Tail extension is not declared", "The tail check does not apply.")
+            return
+        }
+        val length = instance.getTailLengthInSeconds()
+        assertHealthy(instance, "tail_length_in_seconds")
+        if (length.isNaN() || length < 0.0)
+            report.fail(pluginId, "AAPVAL-TAIL-001", "Tail length is invalid", "Plugin $pluginId reported $length seconds.",
+                "A host cannot tell how long to keep rendering after the input stops.",
+                "Return 0 for no tail, a positive length in seconds, or INFINITY.")
+        else
+            report.pass(pluginId, "AAPVAL-TAIL-001", "Tail length is valid", "Plugin $pluginId reported ${length}s after prepare().")
     }
 
     private fun declares(plugin: PluginInformation, extensionUri: String): Boolean =
