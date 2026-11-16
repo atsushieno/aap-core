@@ -101,6 +101,49 @@ std::vector<uint8_t> hexDecode(const std::string& in) {
     return out;
 }
 
+constexpr const char* nativeErrorClass = "__aapNativeError";
+
+// choc's QuickJS trampoline lets C++ exceptions unwind through QuickJS (UB), and cannot throw JS errors.
+// Each native is registered under a hidden name with exceptions caught into an error marker object,
+// and a JS wrapper under the public name rethrows the marker as a JS Error.
+class GuardedBindings {
+    choc::javascript::Context& ctx;
+    std::vector<std::string> names;
+public:
+    explicit GuardedBindings(choc::javascript::Context& ctx) : ctx(ctx) {}
+
+    void registerFunction(const std::string& name, choc::javascript::Context::NativeFunction fn) {
+        ctx.registerFunction("__native" + name, [fn = std::move(fn)](choc::javascript::ArgumentList args) -> choc::value::Value {
+            std::string message;
+            try {
+                return fn(args);
+            } catch (const std::exception& e) {
+                message = e.what();
+            } catch (...) {
+                message = "unknown native error";
+            }
+            auto error = choc::value::createObject(nativeErrorClass);
+            error.setMember("message", message);
+            return error;
+        });
+        names.push_back(name);
+    }
+
+    void installWrappers() {
+        auto namesJson = choc::value::createEmptyArray();
+        for (auto& name : names)
+            namesJson.addArrayElement(name);
+        ctx.evaluateExpression(std::string{"(function(names) { for (const name of names) {"}
+            + "  const native = globalThis['__native' + name]; delete globalThis['__native' + name];"
+            + "  globalThis[name] = function(...args) {"
+            + "    const r = native(...args);"
+            + "    if (r !== null && typeof r === 'object' && r._objectName === '" + nativeErrorClass + "') throw new Error(r.message);"
+            + "    return r;"
+            + "  };"
+            + "} })(" + choc::json::toString(namesJson) + ");");
+    }
+};
+
 } // namespace
 
 AapJsControllerRuntime& AapJsControllerRuntime::global() {
@@ -212,7 +255,7 @@ void AapJsControllerRuntime::clearJob(const std::string& jobId) {
 
 void AapJsControllerRuntime::registerBindings() {
     using namespace choc::value;
-    auto& ctx = *context_;
+    GuardedBindings ctx(*context_);
 
     ctx.registerFunction("__aap_ping", [](choc::javascript::ArgumentList) -> Value {
         return Value("pong");
@@ -471,6 +514,8 @@ void AapJsControllerRuntime::registerBindings() {
         instance->getStandardExtensions().destroyGui((int32_t) args.get<int64_t>(2));
         return {};
     });
+
+    ctx.installWrappers();
 }
 
 } // namespace aap::js
