@@ -62,6 +62,8 @@ namespace aap {
 
         std::vector<PluginInstance*> instances{};
         PluginInstance* instantiateLocalPlugin(const PluginInformation *pluginInfo);
+        // An instance ID is unique only among the instances that one process created.
+        PluginInstance* getInstanceById(int32_t instanceId);
         int32_t event_midi2_input_buffer_size{DEFAULT_EVENT_MIDI2_INPUT_BUFFER_SIZE};
 
     public:
@@ -77,8 +79,6 @@ namespace aap {
 
         // Note that the argument is NOT instanceId
         PluginInstance* getInstanceByIndex(int32_t index);
-
-        PluginInstance* getInstanceById(int32_t instanceId);
 
         bool hasPlugin(const std::string& pluginId) const {
             return plugin_list && plugin_list->getPluginInformation(pluginId) != nullptr;
@@ -97,6 +97,9 @@ namespace aap {
         }
 
         int createInstance(std::string identifier);
+
+        // This process created all of these instances, so the ID alone identifies one.
+        using PluginHost::getInstanceById;
 
         inline LocalPluginInstance* getLocalInstance(int32_t instanceId) {
             return (LocalPluginInstance*) getInstanceById(instanceId);
@@ -134,6 +137,10 @@ namespace aap {
         // Synchronous version that does not expect service connection on the fly (fails immediately).
         // It is probably better suited for Kotlin client to avoid complicated JNI interop.
         Result<int32_t> createInstance(std::string identifier, bool isRemoteExplicit);
+
+        // Each plugin service numbers its own instances, so an instance ID alone is ambiguous here.
+        // One service serves each plugin, so the plugin ID and the instance ID together are unique.
+        PluginInstance* getInstance(const char* pluginId, int32_t instanceId);
 
         void connectToPluginService(const std::string& identifier, std::function<void(std::string&)> callback);
 

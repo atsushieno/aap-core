@@ -102,7 +102,7 @@ namespace aap::midi {
     void AAPMidiProcessor::terminate() {
         if (instance_data != nullptr) {
             if (instance_data->instance_id >= 0) {
-                auto instance = client->getInstanceById(instance_data->instance_id);
+                auto instance = client->getInstance(instance_data->plugin_id.c_str(), instance_data->instance_id);
                 if (!instance)
                     aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "instance of instance_id %d was not found",
                                  instance_data->instance_id);
@@ -155,7 +155,7 @@ namespace aap::midi {
         }
 
         if (instance_data) {
-            const auto& instance = client->getInstanceById(instance_data->instance_id);
+            const auto& instance = client->getInstance(instance_data->plugin_id.c_str(), instance_data->instance_id);
             if (instance)
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG, "There is an already instantiated plugin \"%s\" for this MidiDeviceService.",
                              instance->getPluginInformation()->getDisplayName().c_str());
@@ -195,7 +195,7 @@ namespace aap::midi {
                 return;
             }
             auto instanceId = result.value;
-            auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstanceById(instanceId));
+            auto instance = dynamic_cast<aap::RemotePluginInstance*>(client->getInstance(pluginId.c_str(), instanceId));
             if (!instance) {
                 aap::a_log_f(AAP_LOG_LEVEL_ERROR, LOG_TAG,"Plugin \"%s\" could not be instantiated",
                              pluginInfo->getDisplayName().c_str());
@@ -206,7 +206,7 @@ namespace aap::midi {
             instrument_instance_id = instanceId;
 
             int32_t numPorts = instance->getNumPorts();
-            auto data = std::make_unique<PluginInstanceData>(instanceId, numPorts);
+            auto data = std::make_unique<PluginInstanceData>(pluginId, instanceId, numPorts);
 
             data->instance_id = instanceId;
 
@@ -363,7 +363,7 @@ namespace aap::midi {
             return;
         }
 
-        auto instance = client->getInstanceById(data->instance_id);
+        auto instance = client->getInstance(data->plugin_id.c_str(), data->instance_id);
         instance->process(aap_frame_size, 1000000000);
     }
 
@@ -390,7 +390,7 @@ namespace aap::midi {
 
         if (data->instance_id == instrument_instance_id) {
             int numPorts = data->getAudioOutPorts()->size();
-            auto instance = client->getInstanceById(data->instance_id);
+            auto instance = client->getInstance(data->plugin_id.c_str(), data->instance_id);
             auto b = instance->getAudioPluginBuffer();
             for (int p = 0; p < numPorts; p++) {
                 int portIndex = data->getAudioOutPorts()->at(p);
@@ -432,7 +432,7 @@ namespace aap::midi {
             return nullptr;
         }
         int portIndex = getAAPMidiInputPortType() == CMIDI2_PROTOCOL_TYPE_MIDI2 ? data->midi2_in_port : data->midi1_in_port;
-        auto instance = client->getInstanceById(data->instance_id);
+        auto instance = client->getInstance(data->plugin_id.c_str(), data->instance_id);
         auto b = instance->getAudioPluginBuffer();
         return b->get_buffer(b, portIndex);
     }

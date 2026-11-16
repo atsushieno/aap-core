@@ -60,9 +60,9 @@ namespace aap {
 
         void handleServiceConnectedCallback(std::string servicePackageName);
 
-        jobject getPluginInstanceParameter(jlong nativeHost, jint instanceId, jint index);
+        jobject getPluginInstanceParameter(PluginInstance* instance, jint index);
 
-        jobject getPluginInstancePort(jlong nativeHost, jint instanceId, jint index);
+        jobject getPluginInstancePort(PluginInstance* instance, jint index);
     };
 
 }

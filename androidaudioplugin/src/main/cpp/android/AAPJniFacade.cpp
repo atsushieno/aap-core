@@ -186,7 +186,7 @@ namespace aap {
                                                                    "()I");
         j_method_remote_plugin_instance_create_from_native = env->GetStaticMethodID(java_native_remote_plugin_instance_class,
                                                                                     "fromNative",
-                                                                                    "(IJ)Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;");
+                                                                                    "(Ljava/lang/String;IJ)Lorg/androidaudioplugin/hosting/NativeRemotePluginInstance;");
     }
 
 // FIXME: at some stage we should reorganize this JNI part so that "audio-plugin-host" part and
@@ -438,7 +438,9 @@ namespace aap {
     void* AAPJniFacade::getRemoteWebView(PluginClient* client, RemotePluginInstance* instance) {
         return usingJNIEnv<jobject>([client,instance](JNIEnv* env) {
             auto clzInstance = getAppClass(env, java_native_remote_plugin_instance_class_name);
-            auto jniNativePeer = env->CallStaticObjectMethod(clzInstance, j_method_remote_plugin_instance_create_from_native, instance->getInstanceId(), (jlong) client);
+            auto jPeerPluginId = env->NewStringUTF(instance->getPluginInformation()->getPluginID().c_str());
+            auto jniNativePeer = env->CallStaticObjectMethod(clzInstance, j_method_remote_plugin_instance_create_from_native, jPeerPluginId, instance->getInstanceId(), (jlong) client);
+            env->DeleteLocalRef(jPeerPluginId);
             auto clzHelper = getAppClass(env, "org/androidaudioplugin/ui/web/WebUIHostHelper");
             if (env->ExceptionOccurred()) {
                 env->ExceptionDescribe();
@@ -822,10 +824,8 @@ namespace aap {
 
     // JNI helper (that they are not really call into Java but moved here.
 
-    jobject AAPJniFacade::getPluginInstanceParameter(jlong nativeHost, jint instanceId,jint index) {
+    jobject AAPJniFacade::getPluginInstanceParameter(PluginInstance* instance, jint index) {
         return usingJNIEnv<jobject>([&](JNIEnv* env) {
-            auto host = (aap::PluginHost *) (void *) nativeHost;
-            auto instance = host->getInstanceById(instanceId);
             // The index can be out of range when the plugin just shrank its parameter list.
             auto para = aap::internal::getParameterSafely(*instance, index);
             if (!para)
@@ -845,10 +845,8 @@ namespace aap {
         });
     }
 
-    jobject AAPJniFacade::getPluginInstancePort(jlong nativeHost, jint instanceId, jint index) {
+    jobject AAPJniFacade::getPluginInstancePort(PluginInstance* instance, jint index) {
         return usingJNIEnv<jobject>([&](JNIEnv* env) {
-            auto host = (aap::PluginHost *) (void *) nativeHost;
-            auto instance = host->getInstanceById(instanceId);
             auto port = instance->getPort(index);
             auto klass = env->FindClass(java_port_information_class_name);
             if (!klass)

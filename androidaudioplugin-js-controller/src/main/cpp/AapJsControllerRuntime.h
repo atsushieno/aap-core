@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-namespace aap { class PluginClient; }
+namespace aap { class PluginClient; class PluginInstance; }
 
 namespace aap::js {
 
@@ -59,6 +59,10 @@ private:
     void ensureContext();
     void registerBindings();
     aap::PluginClient* requireClient() const; // throws std::runtime_error if not attached
+    // Each plugin service numbers its own instances, so JS passes the plugin ID and then the
+    // instance ID, starting at `index`. find returns nullptr; require throws if there is none.
+    static aap::PluginInstance* findInstance(aap::PluginClient* client, const choc::javascript::ArgumentList& args, size_t index);
+    aap::PluginInstance* requireInstance(const choc::javascript::ArgumentList& args, size_t index) const;
 
     std::recursive_mutex mutex_;
     std::unique_ptr<choc::javascript::Context> context_;

@@ -77,9 +77,11 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_manager_PluginPlayer_setPluginNative(JNIEnv *env, jobject thiz,
                                                                  jlong player, jlong nativeClient,
-                                                                 jint instanceId) {
+                                                                 jstring pluginId, jint instanceId) {
     auto client = (aap::PluginClient*) nativeClient;
-    auto instance = client->getInstanceById(instanceId);
+    auto id = env->GetStringUTFChars(pluginId, nullptr);
+    auto instance = client->getInstance(id, instanceId);
+    env->ReleaseStringUTFChars(pluginId, id);
     ((aap::PluginPlayer*) player)->getGraph().setPlugin((aap::RemotePluginInstance*) instance);
 }
 

@@ -39,6 +39,17 @@ void aap::PluginClient::connectToPluginService(const std::string& packageName, c
     }
 }
 
+aap::PluginInstance* aap::PluginClient::getInstance(const char* pluginId, int32_t instanceId) {
+    if (!pluginId)
+        return nullptr;
+    for (auto instance : instances) {
+        auto info = instance ? instance->getPluginInformation() : nullptr;
+        if (info && info->getPluginID() == pluginId && instance->getInstanceId() == instanceId)
+            return instance;
+    }
+    return nullptr;
+}
+
 aap::PluginClient::Result<int32_t> aap::PluginClient::createInstance(std::string identifier, bool isRemoteExplicit)
 {
     Result<int32_t> result;

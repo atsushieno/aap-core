@@ -6,10 +6,12 @@ import java.util.concurrent.CompletableFuture
 
 /** Canonical publisher shared by aliases and the higher-level Kotlin instance wrapper. */
 internal object NativeParameterMetadata {
-    private val entries = mutableMapOf<Pair<Long, Int>, Entry>()
+    // Instance IDs come from each plugin service, so the plugin ID is part of the key.
+    private data class Key(val client: Long, val pluginId: String, val instanceId: Int)
+    private val entries = mutableMapOf<Key, Entry>()
 
     @Keep
-    class Entry(val client: Long, val instanceId: Int) {
+    class Entry(val client: Long, val pluginId: String, val instanceId: Int) {
         val publisher = ParameterMetadataPublisher { Log.e("AAP", "Parameter metadata listener failed", it) }
         @Volatile private var closed = false
         @Volatile var connectionId = -1
@@ -31,7 +33,7 @@ internal object NativeParameterMetadata {
         }
 
         fun captureInitialMetadata() {
-            NativeRemotePluginInstance.readParameterMetadataSnapshot(client, instanceId)?.let(::onNativeMetadataChanged)
+            NativeRemotePluginInstance.readParameterMetadataSnapshot(client, pluginId, instanceId)?.let(::onNativeMetadataChanged)
         }
 
         fun invalidate() {
@@ -41,15 +43,15 @@ internal object NativeParameterMetadata {
 
         fun onNativeDestroyed() {
             invalidate()
-            synchronized(entries) { entries.remove(client to instanceId, this) }
+            synchronized(entries) { entries.remove(Key(client, pluginId, instanceId), this) }
         }
     }
 
-    fun get(client: Long, instanceId: Int): Entry {
-        val key = client to instanceId
+    fun get(client: Long, pluginId: String, instanceId: Int): Entry {
+        val key = Key(client, pluginId, instanceId)
         val (entry, create) = synchronized(entries) {
             val existing = entries[key]
-            if (existing != null) existing to false else Entry(client, instanceId).let {
+            if (existing != null) existing to false else Entry(client, pluginId, instanceId).let {
                 entries[key] = it
                 it to true
             }
@@ -57,7 +59,7 @@ internal object NativeParameterMetadata {
         if (create) {
             try {
                 // JNI and native teardown can call back into the registry; do not hold its lock.
-                NativeRemotePluginInstance.connectMetadataPublisher(client, instanceId, entry)
+                NativeRemotePluginInstance.connectMetadataPublisher(client, pluginId, instanceId, entry)
                 entry.captureInitialMetadata()
                 entry.initialized.complete(Unit)
             } catch (error: Throwable) {

@@ -28,9 +28,9 @@ class PluginPlayer private constructor(private val native: Long) : AutoCloseable
 
     private external fun deletePluginPlayer(native: Long)
 
-    fun setPlugin(plugin: NativeRemotePluginInstance) = setPluginNative(native, plugin.client, plugin.instanceId)
+    fun setPlugin(plugin: NativeRemotePluginInstance) = setPluginNative(native, plugin.client, plugin.pluginId, plugin.instanceId)
 
-    private external fun setPluginNative(player: Long, nativeClient: Long, instanceId: Int)
+    private external fun setPluginNative(player: Long, nativeClient: Long, pluginId: String, instanceId: Int)
 
     fun loadAudioResource(bytes: ByteArray, filename: String) =
         loadAudioResourceNative(native, bytes, filename)

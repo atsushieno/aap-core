@@ -121,6 +121,18 @@ aap::PluginClient* AapJsControllerRuntime::requireClient() const {
     return client_;
 }
 
+aap::PluginInstance* AapJsControllerRuntime::findInstance(aap::PluginClient* client, const choc::javascript::ArgumentList& args, size_t index) {
+    auto pluginId = args.get<std::string>(index);
+    return client->getInstance(pluginId.c_str(), (int32_t) args.get<int64_t>(index + 1));
+}
+
+aap::PluginInstance* AapJsControllerRuntime::requireInstance(const choc::javascript::ArgumentList& args, size_t index) const {
+    auto instance = findInstance(requireClient(), args, index);
+    if (!instance)
+        throw std::runtime_error("No AAP instance " + std::to_string(args.get<int64_t>(index + 1)) + " of " + args.get<std::string>(index));
+    return instance;
+}
+
 void AapJsControllerRuntime::bootstrap(const std::string& apiJsSource) {
     std::lock_guard lock(mutex_);
     ensureContext();
@@ -241,40 +253,40 @@ void AapJsControllerRuntime::registerBindings() {
 
     ctx.registerFunction("__aap_instance_destroy", [this](choc::javascript::ArgumentList args) -> Value {
         auto client = requireClient();
-        auto instance = client->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = findInstance(client, args, 0);
         if (instance)
             client->destroyInstance(instance);
         return {};
     });
 
     ctx.registerFunction("__aap_instance_prepare", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        instance->prepare((int) args.get<int64_t>(1), (int32_t) args.get<int64_t>(2));
+        auto instance = requireInstance(args, 0);
+        instance->prepare((int) args.get<int64_t>(2), (int32_t) args.get<int64_t>(3));
         return {};
     });
 
     ctx.registerFunction("__aap_instance_activate", [this](choc::javascript::ArgumentList args) -> Value {
-        requireClient()->getInstanceById((int32_t) args.get<int64_t>(0))->activate();
+        requireInstance(args, 0)->activate();
         return {};
     });
 
     ctx.registerFunction("__aap_instance_deactivate", [this](choc::javascript::ArgumentList args) -> Value {
-        requireClient()->getInstanceById((int32_t) args.get<int64_t>(0))->deactivate();
+        requireInstance(args, 0)->deactivate();
         return {};
     });
 
     ctx.registerFunction("__aap_instance_process", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        auto frameCount = (int32_t) args.get<int64_t>(1);
+        auto instance = requireInstance(args, 0);
+        auto frameCount = (int32_t) args.get<int64_t>(2);
         // 1s timeout; this is a single non-realtime block (the offline renderer comes later).
         instance->process(frameCount, 1000000000L);
         return {};
     });
 
     ctx.registerFunction("__aap_instance_fill_audio_inputs", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        auto seed = (int32_t) args.get<int64_t>(1);
-        auto amplitude = args.get<double>(2);
+        auto instance = requireInstance(args, 0);
+        auto seed = (int32_t) args.get<int64_t>(2);
+        auto amplitude = args.get<double>(3);
         auto* buffer = instance->getAudioPluginBuffer();
         if (!buffer)
             return {};
@@ -297,8 +309,8 @@ void AapJsControllerRuntime::registerBindings() {
     // input of destination. Channels are paired in bus order, rather than by absolute port
     // number, because MIDI and parameter ports may be interleaved with audio ports.
     ctx.registerFunction("__aap_instance_copy_audio_outputs_to_inputs", [this](choc::javascript::ArgumentList args) -> Value {
-        auto source = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        auto destination = requireClient()->getInstanceById((int32_t) args.get<int64_t>(1));
+        auto source = requireInstance(args, 0);
+        auto destination = requireInstance(args, 2);
         auto* sourceBuffer = source->getAudioPluginBuffer();
         auto* destinationBuffer = destination->getAudioPluginBuffer();
         if (!sourceBuffer || !destinationBuffer)
@@ -325,7 +337,7 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     ctx.registerFunction("__aap_instance_get_audio_output_stats", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         auto* buffer = instance->getAudioPluginBuffer();
         auto arr = createEmptyArray();
         if (!buffer)
@@ -360,20 +372,20 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     ctx.registerFunction("__aap_instance_add_event_ump_input_hex", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        auto bytes = hexDecode(args.get<std::string>(1));
+        auto instance = requireInstance(args, 0);
+        auto bytes = hexDecode(args.get<std::string>(2));
         if (!bytes.empty())
             instance->addEventUmpInput(bytes.data(), static_cast<int32_t>(bytes.size()));
         return {};
     });
 
     ctx.registerFunction("__aap_instance_get_parameter_count", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         return Value((int64_t) instance->getNumParameters());
     });
 
     ctx.registerFunction("__aap_instance_get_parameters", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         auto arr = createEmptyArray();
         for (int32_t i = 0, n = instance->getNumParameters(); i < n; i++) {
             auto* p = instance->getParameter(i);
@@ -392,28 +404,28 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     ctx.registerFunction("__aap_instance_get_parameter_value", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        return Value(aap::internal::getParameterValue(*instance, (int32_t) args.get<int64_t>(1)));
+        auto instance = requireInstance(args, 0);
+        return Value(aap::internal::getParameterValue(*instance, (int32_t) args.get<int64_t>(2)));
     });
 
     ctx.registerFunction("__aap_instance_get_preset_count", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         return Value((int64_t) instance->getStandardExtensions().getPresetCount());
     });
 
     ctx.registerFunction("__aap_instance_get_preset_name", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        return Value(instance->getStandardExtensions().getPresetName((int32_t) args.get<int64_t>(1)));
+        auto instance = requireInstance(args, 0);
+        return Value(instance->getStandardExtensions().getPresetName((int32_t) args.get<int64_t>(2)));
     });
 
     ctx.registerFunction("__aap_instance_set_preset", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        instance->getStandardExtensions().setCurrentPresetIndex((int32_t) args.get<int64_t>(1));
+        auto instance = requireInstance(args, 0);
+        instance->getStandardExtensions().setCurrentPresetIndex((int32_t) args.get<int64_t>(2));
         return {};
     });
 
     ctx.registerFunction("__aap_instance_get_state", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         auto& ext = instance->getStandardExtensions();
         auto size = ext.getStateSize();
         if (!size.isOk())
@@ -428,14 +440,14 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     ctx.registerFunction("__aap_instance_set_state", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        auto bytes = base64Decode(args.get<std::string>(1));
+        auto instance = requireInstance(args, 0);
+        auto bytes = base64Decode(args.get<std::string>(2));
         instance->getStandardExtensions().setState(bytes.data(), bytes.size());
         return {};
     });
 
     ctx.registerFunction("__aap_instance_create_gui", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
+        auto instance = requireInstance(args, 0);
         return Value((int64_t) instance->getStandardExtensions().createGui(
                 instance->getPluginInformation()->getPluginID(),
                 instance->getInstanceId(),
@@ -443,20 +455,20 @@ void AapJsControllerRuntime::registerBindings() {
     });
 
     ctx.registerFunction("__aap_instance_show_gui", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        instance->getStandardExtensions().showGui((int32_t) args.get<int64_t>(1));
+        auto instance = requireInstance(args, 0);
+        instance->getStandardExtensions().showGui((int32_t) args.get<int64_t>(2));
         return {};
     });
 
     ctx.registerFunction("__aap_instance_hide_gui", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        instance->getStandardExtensions().hideGui((int32_t) args.get<int64_t>(1));
+        auto instance = requireInstance(args, 0);
+        instance->getStandardExtensions().hideGui((int32_t) args.get<int64_t>(2));
         return {};
     });
 
     ctx.registerFunction("__aap_instance_destroy_gui", [this](choc::javascript::ArgumentList args) -> Value {
-        auto instance = requireClient()->getInstanceById((int32_t) args.get<int64_t>(0));
-        instance->getStandardExtensions().destroyGui((int32_t) args.get<int64_t>(1));
+        auto instance = requireInstance(args, 0);
+        instance->getStandardExtensions().destroyGui((int32_t) args.get<int64_t>(2));
         return {};
     });
 }

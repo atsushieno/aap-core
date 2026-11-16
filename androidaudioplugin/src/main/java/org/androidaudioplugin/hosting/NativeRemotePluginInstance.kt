@@ -21,7 +21,10 @@ enum class InstanceState {
 }
 
 /* maps to aap::RemotePluginInstance */
-class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstance*
+// Each plugin service numbers its own instances, so the plugin ID and the instance ID together
+// identify an instance in a client that uses more than one service.
+class NativeRemotePluginInstance(val pluginId: String,
+                                 val instanceId: Int,
                                  val client: Long) {
 
     // error handling
@@ -30,7 +33,7 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
             field = value
             if (value == InstanceState.DESTROYED || value == InstanceState.ERROR) metadata.invalidate()
         }
-    private val metadata = NativeParameterMetadata.get(client, instanceId)
+    private val metadata = NativeParameterMetadata.get(client, pluginId, instanceId)
 
     /** Latest complete metadata cache, independent of the discovery catalog. */
     val parameterMetadata: ParameterMetadataSnapshot?
@@ -73,25 +76,25 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     }
 
     fun prepare(frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int) = runCatchingRemoteException {
-        prepare(client, instanceId, frameCount, sampleRate, defaultControlBytesPerBlock)
+        prepare(client, pluginId, instanceId, frameCount, sampleRate, defaultControlBytesPerBlock)
         state = InstanceState.INACTIVE
     }
     fun activate() = runCatchingRemoteException {
-        activate(client, instanceId)
+        activate(client, pluginId, instanceId)
         state = InstanceState.ACTIVE
     }
     fun process(frameCount: Int, timeoutInNanoseconds: Long) = runCatchingRemoteException {
-        process(client, instanceId, frameCount, timeoutInNanoseconds)
+        process(client, pluginId, instanceId, frameCount, timeoutInNanoseconds)
     }
     fun deactivate() = runCatchingRemoteException {
-        deactivate(client, instanceId)
+        deactivate(client, pluginId, instanceId)
         state = InstanceState.INACTIVE
     }
     fun destroy() {
         if (state == InstanceState.DESTROYED) return
         metadata.invalidate()
         try {
-            runCatchingRemoteException { destroy(client, instanceId) }
+            runCatchingRemoteException { destroy(client, pluginId, instanceId) }
         } finally {
             state = InstanceState.DESTROYED
         }
@@ -100,102 +103,102 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     // standard extensions
     // state
     fun getStateSize() = runCatchingRemoteException(0) {
-        getStateSize(client, instanceId)
+        getStateSize(client, pluginId, instanceId)
     }
     fun getState(data: ByteArray) = runCatchingRemoteException {
-        getState(client, instanceId, data)
+        getState(client, pluginId, instanceId, data)
     }
     fun setState(data: ByteArray) = runCatchingRemoteException {
-        setState(client, instanceId, data)
+        setState(client, pluginId, instanceId, data)
     }
     // offline rendering
     // Only for a plugin that declares the offline-rendering extension, and only while not active.
     // Returns whether the plugin is now in that mode. Do not call it on an audio thread.
     fun setOfflineMode(offline: Boolean) = runCatchingRemoteException(false) {
-        setOfflineMode(client, instanceId, offline)
+        setOfflineMode(client, pluginId, instanceId, offline)
     }
     // tail
     // Only for a plugin that declares the tail extension. Returns 0 on failure.
     // Do not call it on an audio thread; cache it until the plugin notifies a change.
     fun getTailLengthInSeconds() = runCatchingRemoteException(0.0) {
-        getTailLengthInSeconds(client, instanceId)
+        getTailLengthInSeconds(client, pluginId, instanceId)
     }
     // presets
     fun getPresetCount() = runCatchingRemoteException(0) {
-        getPresetCount(client, instanceId)
+        getPresetCount(client, pluginId, instanceId)
     }
     fun setCurrentPresetIndex(index: Int) = runCatchingRemoteException {
-        setCurrentPresetIndex(client, instanceId, index)
+        setCurrentPresetIndex(client, pluginId, instanceId, index)
     }
     fun getPresetName(index: Int) = runCatchingRemoteException("") {
-        getPresetName(client, instanceId, index)
+        getPresetName(client, pluginId, instanceId, index)
     }
     // midi
     fun getMidiMappingPolicy(): Int = runCatchingRemoteException(0) {
-        getMidiMappingPolicy(client, instanceId)
+        getMidiMappingPolicy(client, pluginId, instanceId)
     }
     // gui
     fun createGui() = runCatchingRemoteException(0) {
-        createGui(client, instanceId)
+        createGui(client, pluginId, instanceId)
     }
     fun showGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
-        showGui(client, instanceId, guiInstanceId)
+        showGui(client, pluginId, instanceId, guiInstanceId)
     }
     fun hideGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
-        hideGui(client, instanceId, guiInstanceId)
+        hideGui(client, pluginId, instanceId, guiInstanceId)
     }
     fun resizeGui(guiInstanceId: Int, width: Int, height: Int) = runCatchingRemoteException(0) {
-        resizeGui(client, instanceId, guiInstanceId, width, height)
+        resizeGui(client, pluginId, instanceId, guiInstanceId, width, height)
     }
     fun destroyGui(guiInstanceId: Int) = runCatchingRemoteException(0) {
-        destroyGui(client, instanceId, guiInstanceId)
+        destroyGui(client, pluginId, instanceId, guiInstanceId)
     }
 
     fun addEventUmpInput(data: ByteBuffer, length: Int) = runCatchingRemoteException {
-        addEventUmpInput(client, instanceId, data, length)
+        addEventUmpInput(client, pluginId, instanceId, data, length)
     }
 
     // plugin instance (dynamic) information retrieval
     fun getParameterCount() = runCatchingRemoteException(0) {
-        getParameterCount(client, instanceId)
+        getParameterCount(client, pluginId, instanceId)
     }
     fun getParameter(index: Int): ParameterInformation =
         try {
             // null if the plugin just shrank its parameter list (see setParameterLayoutChangedListener())
-            getParameter(client, instanceId, index) ?: ParameterInformation(index, "Unavailable")
+            getParameter(client, pluginId, instanceId, index) ?: ParameterInformation(index, "Unavailable")
         } catch (ex: RemoteException) {
             markError(ex)
             ParameterInformation(index, "Unavailable")
         }
     fun getParameterValue(index: Int) = runCatchingRemoteException(0.0) {
-        getParameterValue(client, instanceId, index)
+        getParameterValue(client, pluginId, instanceId, index)
     }
     /** Records a value the host has sent to the plugin, so that getParameterValue() reflects it before the plugin processes it. */
     fun setCachedParameterValue(index: Int, value: Double) =
-        setCachedParameterValue(client, instanceId, index, value)
+        setCachedParameterValue(client, pluginId, instanceId, index, value)
 
     /** Invoked on a native worker thread once the plugin's new parameter list is in place; null clears it. */
     fun setParameterLayoutChangedListener(listener: Runnable?) =
-        setParameterLayoutChangedListener(client, instanceId, listener)
+        setParameterLayoutChangedListener(client, pluginId, instanceId, listener)
     fun getPortCount() = runCatchingRemoteException(0) {
-        getPortCount(client, instanceId)
+        getPortCount(client, pluginId, instanceId)
     }
     fun getPort(index: Int): PortInformation =
         try {
-            getPort(client, instanceId, index)
+            getPort(client, pluginId, instanceId, index)
         } catch (ex: RemoteException) {
             markError(ex)
             PortInformation(index, "Unavailable", PortInformation.PORT_DIRECTION_INPUT, PortInformation.PORT_CONTENT_TYPE_GENERAL)
         }
     fun getBusCount(kind: Int, direction: Int) = runCatchingRemoteException(0) {
-        getBusCount(client, instanceId, kind, direction)
+        getBusCount(client, pluginId, instanceId, kind, direction)
     }
     fun getBus(kind: Int, direction: Int, index: Int): BusInformation? = runCatchingRemoteException(null) {
-        getBus(client, instanceId, kind, direction, index)
+        getBus(client, pluginId, instanceId, kind, direction, index)
     }
     // Changes the bus layout (when not active). Call `prepare()` again afterwards.
     fun applyBusLayout(buses: List<BusLayoutRequest>) {
-        val error = applyBusLayout(client, instanceId,
+        val error = applyBusLayout(client, pluginId, instanceId,
             buses.map { it.id }.toIntArray(),
             buses.map { it.enabled }.toBooleanArray(),
             buses.map { it.channelCount }.toIntArray(),
@@ -207,12 +210,12 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
 
     // Invoked on a native worker thread with `AAP_BUSES_CHANGED_*` flags when the plugin changed its buses.
     fun setBusesChangedListener(listener: java.util.function.IntConsumer?) =
-        setBusesChangedListener(client, instanceId, listener)
+        setBusesChangedListener(client, pluginId, instanceId, listener)
 
     // Re-reads the bus layout (when not active); throws `AudioPluginException` on failure.
     // The instance becomes UNPREPARED: call `prepare()` again before `activate()`.
     fun refreshBusLayout() {
-        val error = refreshBusLayout(client, instanceId)
+        val error = refreshBusLayout(client, pluginId, instanceId)
         if (error != null)
             throw org.androidaudioplugin.AudioPluginException(error)
         state = InstanceState.UNPREPARED
@@ -227,138 +230,138 @@ class NativeRemotePluginInstance(val instanceId: Int, // aap::RemotePluginInstan
     fun getMainEventPortIndex(direction: Int): Int =
         getBus(BusInformation.BUS_KIND_EVENT, direction, 0)?.getPortIndex() ?: -1
     fun getPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
-        getPortBuffer(client, instanceId, portIndex, buffer, size)
+        getPortBuffer(client, pluginId, instanceId, portIndex, buffer, size)
     }
     fun setPortBuffer(portIndex: Int, buffer: ByteBuffer, size: Int) = runCatchingRemoteException {
-        setPortBuffer(client, instanceId, portIndex, buffer, size)
+        setPortBuffer(client, pluginId, instanceId, portIndex, buffer, size)
     }
 
     fun sendExtensionRequest(uri: String, opcode: Int, buffer: ByteBuffer, offset: Int, length: Int) = runCatchingRemoteException {
-        sendExtensionRequest(client, instanceId, uri, opcode, buffer, offset, length)
+        sendExtensionRequest(client, pluginId, instanceId, uri, opcode, buffer, offset, length)
     }
 
     companion object {
         private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
         val mainExecutor: Executor by lazy { Executor { mainHandler.post(it) } }
 
-        internal fun readParameterMetadataSnapshot(nativeClient: Long, instanceId: Int) =
-            getParameterMetadataSnapshotNative(nativeClient, instanceId)
-        internal fun connectMetadataPublisher(nativeClient: Long, instanceId: Int, publisher: Any) =
-            connectParameterMetadataPublisherNative(nativeClient, instanceId, publisher)
+        internal fun readParameterMetadataSnapshot(nativeClient: Long, pluginId: String, instanceId: Int) =
+            getParameterMetadataSnapshotNative(nativeClient, pluginId, instanceId)
+        internal fun connectMetadataPublisher(nativeClient: Long, pluginId: String, instanceId: Int, publisher: Any) =
+            connectParameterMetadataPublisherNative(nativeClient, pluginId, instanceId, publisher)
         @JvmStatic
-        private external fun getParameterMetadataSnapshotNative(nativeClient: Long, instanceId: Int): ParameterMetadataSnapshot?
+        private external fun getParameterMetadataSnapshotNative(nativeClient: Long, pluginId: String, instanceId: Int): ParameterMetadataSnapshot?
         @JvmStatic
-        private external fun connectParameterMetadataPublisherNative(nativeClient: Long, instanceId: Int, publisher: Any)
+        private external fun connectParameterMetadataPublisherNative(nativeClient: Long, pluginId: String, instanceId: Int, publisher: Any)
 
         fun create(pluginId: String, nativeClient: Long): NativeRemotePluginInstance {
             val instanceId = createRemotePluginInstance(pluginId, nativeClient)
             if (instanceId < 0)
                 throw org.androidaudioplugin.AudioPluginException("Plugin service disconnected or instance creation failed: $pluginId")
-            return NativeRemotePluginInstance(instanceId, nativeClient)
+            return NativeRemotePluginInstance(pluginId, instanceId, nativeClient)
         }
 
         // invoked from AAPJniFacade
         @JvmStatic
-        fun fromNative(instanceId: Int, nativeClient: Long) = NativeRemotePluginInstance(instanceId, nativeClient)
+        fun fromNative(pluginId: String, instanceId: Int, nativeClient: Long) = NativeRemotePluginInstance(pluginId, instanceId, nativeClient)
 
-        // Note that it returns an instanceId within the client, not the pointer to the instance.
-        // Therefore it returns Int, not Long.
+        // Returns the instance ID that the plugin's service assigned, not a pointer to the instance.
+        // It identifies the instance only together with the plugin ID.
         @JvmStatic
         private external fun createRemotePluginInstance(pluginId: String, nativeClient: Long) : Int
         @JvmStatic
-        external fun prepare(nativeClient: Long, instanceId: Int, frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int)
+        external fun prepare(nativeClient: Long, pluginId: String, instanceId: Int, frameCount: Int, sampleRate: Int, defaultControlBytesPerBlock: Int)
         @JvmStatic
-        external fun activate(nativeClient: Long, instanceId: Int)
+        external fun activate(nativeClient: Long, pluginId: String, instanceId: Int)
         @JvmStatic
-        external fun process(nativeClient: Long, instanceId: Int, frameCount: Int, timeoutInNanoseconds: Long)
+        external fun process(nativeClient: Long, pluginId: String, instanceId: Int, frameCount: Int, timeoutInNanoseconds: Long)
         @JvmStatic
-        external fun deactivate(nativeClient: Long, instanceId: Int)
+        external fun deactivate(nativeClient: Long, pluginId: String, instanceId: Int)
         @JvmStatic
-        external fun destroy(nativeClient: Long, instanceId: Int)
+        external fun destroy(nativeClient: Long, pluginId: String, instanceId: Int)
 
         @JvmStatic
-        external fun getParameterCount(nativeClient: Long, instanceId: Int) : Int
+        external fun getParameterCount(nativeClient: Long, pluginId: String, instanceId: Int) : Int
 
         @JvmStatic
-        external fun getParameter(nativeClient: Long, instanceId: Int, index: Int) : ParameterInformation?
+        external fun getParameter(nativeClient: Long, pluginId: String, instanceId: Int, index: Int) : ParameterInformation?
 
         @JvmStatic
-        external fun getParameterValue(nativeClient: Long, instanceId: Int, index: Int) : Double
+        external fun getParameterValue(nativeClient: Long, pluginId: String, instanceId: Int, index: Int) : Double
 
         @JvmStatic
-        external fun setCachedParameterValue(nativeClient: Long, instanceId: Int, index: Int, value: Double)
+        external fun setCachedParameterValue(nativeClient: Long, pluginId: String, instanceId: Int, index: Int, value: Double)
 
         @JvmStatic
-        external fun setParameterLayoutChangedListener(nativeClient: Long, instanceId: Int, listener: Runnable?)
+        external fun setParameterLayoutChangedListener(nativeClient: Long, pluginId: String, instanceId: Int, listener: Runnable?)
 
         @JvmStatic
-        external fun getPortCount(nativeClient: Long, instanceId: Int) : Int
+        external fun getPortCount(nativeClient: Long, pluginId: String, instanceId: Int) : Int
 
         @JvmStatic
-        external fun getPort(nativeClient: Long, instanceId: Int, index: Int) : PortInformation
+        external fun getPort(nativeClient: Long, pluginId: String, instanceId: Int, index: Int) : PortInformation
         @JvmStatic
-        external fun applyBusLayout(nativeClient: Long, instanceId: Int, ids: IntArray, enabled: BooleanArray,
+        external fun applyBusLayout(nativeClient: Long, pluginId: String, instanceId: Int, ids: IntArray, enabled: BooleanArray,
                                     channelCounts: IntArray, layouts: Array<String>) : String?
 
         @JvmStatic
-        external fun setBusesChangedListener(nativeClient: Long, instanceId: Int, listener: java.util.function.IntConsumer?)
+        external fun setBusesChangedListener(nativeClient: Long, pluginId: String, instanceId: Int, listener: java.util.function.IntConsumer?)
 
         @JvmStatic
-        external fun refreshBusLayout(nativeClient: Long, instanceId: Int) : String?
+        external fun refreshBusLayout(nativeClient: Long, pluginId: String, instanceId: Int) : String?
 
         @JvmStatic
-        external fun getBusCount(nativeClient: Long, instanceId: Int, kind: Int, direction: Int) : Int
+        external fun getBusCount(nativeClient: Long, pluginId: String, instanceId: Int, kind: Int, direction: Int) : Int
 
         @JvmStatic
-        external fun getBus(nativeClient: Long, instanceId: Int, kind: Int, direction: Int, index: Int) : BusInformation?
+        external fun getBus(nativeClient: Long, pluginId: String, instanceId: Int, kind: Int, direction: Int, index: Int) : BusInformation?
 
         @JvmStatic
-        external fun getPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
+        external fun getPortBuffer(nativeClient: Long, pluginId: String, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
 
         @JvmStatic
-        external fun setPortBuffer(nativeClient: Long, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
+        external fun setPortBuffer(nativeClient: Long, pluginId: String, instanceId: Int, portIndex: Int, buffer: ByteBuffer, size: Int)
 
-        external fun sendExtensionRequest(nativeClient: Long, instanceId: Int, uri: String, opcode: Int, buffer: ByteBuffer, offset: Int, length: Int)
+        external fun sendExtensionRequest(nativeClient: Long, pluginId: String, instanceId: Int, uri: String, opcode: Int, buffer: ByteBuffer, offset: Int, length: Int)
 
         // Standard Extensions
 
         // state
         @JvmStatic
-        external fun getStateSize(nativeClient: Long, instanceId: Int) : Int
+        external fun getStateSize(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic
-        external fun getState(nativeClient: Long, instanceId: Int, data: ByteArray)
+        external fun getState(nativeClient: Long, pluginId: String, instanceId: Int, data: ByteArray)
         @JvmStatic
-        external fun setState(nativeClient: Long, instanceId: Int, data: ByteArray)
+        external fun setState(nativeClient: Long, pluginId: String, instanceId: Int, data: ByteArray)
 
         // presets
         @JvmStatic
-        external fun setOfflineMode(nativeClient: Long, instanceId: Int, offline: Boolean) : Boolean
+        external fun setOfflineMode(nativeClient: Long, pluginId: String, instanceId: Int, offline: Boolean) : Boolean
         @JvmStatic
-        external fun getTailLengthInSeconds(nativeClient: Long, instanceId: Int) : Double
+        external fun getTailLengthInSeconds(nativeClient: Long, pluginId: String, instanceId: Int) : Double
         @JvmStatic
-        external fun getPresetCount(nativeClient: Long, instanceId: Int) : Int
+        external fun getPresetCount(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic
-        external fun setCurrentPresetIndex(nativeClient: Long, instanceId: Int, index: Int)
+        external fun setCurrentPresetIndex(nativeClient: Long, pluginId: String, instanceId: Int, index: Int)
         @JvmStatic
-        external fun getPresetName(nativeClient: Long, instanceId: Int, index: Int) : String
+        external fun getPresetName(nativeClient: Long, pluginId: String, instanceId: Int, index: Int) : String
 
         // midi
         @JvmStatic
-        external fun getMidiMappingPolicy(nativeClient: Long, instanceId: Int) : Int
+        external fun getMidiMappingPolicy(nativeClient: Long, pluginId: String, instanceId: Int) : Int
 
         // gui
         @JvmStatic
-        external fun createGui(nativeClient: Long, instanceId: Int) : Int
+        external fun createGui(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic
-        external fun showGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+        external fun showGui(nativeClient: Long, pluginId: String, instanceId: Int, guiInstanceId: Int) : Int
         @JvmStatic
-        external fun hideGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+        external fun hideGui(nativeClient: Long, pluginId: String, instanceId: Int, guiInstanceId: Int) : Int
         @JvmStatic
-        external fun resizeGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int, width: Int, height: Int) : Int
+        external fun resizeGui(nativeClient: Long, pluginId: String, instanceId: Int, guiInstanceId: Int, width: Int, height: Int) : Int
         @JvmStatic
-        external fun destroyGui(nativeClient: Long, instanceId: Int, guiInstanceId: Int) : Int
+        external fun destroyGui(nativeClient: Long, pluginId: String, instanceId: Int, guiInstanceId: Int) : Int
 
         @JvmStatic
-        external fun addEventUmpInput(nativeClient: Long, instanceId: Int, data: ByteBuffer, length: Int)
+        external fun addEventUmpInput(nativeClient: Long, pluginId: String, instanceId: Int, data: ByteBuffer, length: Int)
     }
 }

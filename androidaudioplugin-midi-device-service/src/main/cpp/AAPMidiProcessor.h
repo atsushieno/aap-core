@@ -57,12 +57,14 @@ namespace aap::midi {
         std::vector<int> audio_out_ports{};
 
     public:
-        PluginInstanceData(int instanceId, size_t numPorts) : instance_id(instanceId) {
+        PluginInstanceData(std::string pluginId, int instanceId, size_t numPorts) : plugin_id(std::move(pluginId)), instance_id(instanceId) {
             auto arr = (void**) calloc(sizeof(void*), numPorts + 1);
             arr[numPorts] = nullptr;
         }
         inline std::vector<int32_t>* getAudioOutPorts() { return &audio_out_ports; }
 
+        // A client identifies an instance by its plugin ID together with its instance ID.
+        std::string plugin_id;
         int instance_id;
         int midi1_in_port{-1};
         int midi2_in_port{-1};
