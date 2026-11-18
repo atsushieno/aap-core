@@ -4,6 +4,10 @@
 #include <android/sharedmem_jni.h>
 #include <cstdlib>
 #include <limits>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <set>
 #include <pthread.h>
 #include <sys/mman.h>
 #include "aidl/org/androidaudioplugin/BnAudioPluginInterface.h"
@@ -285,6 +289,8 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_deactivate(JNIEnv
 	instance->deactivate();
 }
 
+static void forgetLatencyChangedListener(aap::PluginInstance* instance);
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroy(JNIEnv *env, jclass clazz,
@@ -293,6 +299,7 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_destroy(JNIEnv *e
 																	   jint instanceId) {
     auto client = (aap::PluginClient*) (void*) nativeClient;
     auto instance = getClientInstance(env, nativeClient, pluginId, instanceId);
+    forgetLatencyChangedListener(instance);
     client->destroyInstance(instance);
 }
 
@@ -635,6 +642,64 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getLatencyInSampl
 	auto instance = getClientInstance(env, nativeClient, pluginId, instanceId);
 	auto result = instance->getStandardExtensions().getLatency();
 	return result.isOk() ? result.value : 0;
+}
+
+namespace {
+// Java listeners for the plugin's notify_latency_changed(). A notification looks its instance up
+// here, so one that arrives after the listener is cleared or the instance is destroyed does nothing.
+std::mutex latency_listeners_lock{};
+std::map<aap::PluginInstance*, std::shared_ptr<JavaParameterLayoutListener>> latency_listeners{};
+std::set<aap::PluginInstance*> latency_hooked_instances{};
+
+aap_latency_host_extension_t jni_latency_host_extension{
+        nullptr,
+        [](aap_latency_host_extension_t*, AndroidAudioPluginHost* host) {
+            aap::PluginInstance* instance = (aap::RemotePluginInstance*) host->context;
+            std::shared_ptr<JavaParameterLayoutListener> holder;
+            {
+                std::lock_guard<std::mutex> lock{latency_listeners_lock};
+                auto entry = latency_listeners.find(instance);
+                if (entry == latency_listeners.end())
+                    return;
+                holder = entry->second;
+            }
+            holder->invoke();
+        }};
+}
+
+static void forgetLatencyChangedListener(aap::PluginInstance* instance) {
+    std::lock_guard<std::mutex> lock{latency_listeners_lock};
+    latency_listeners.erase(instance);
+    latency_hooked_instances.erase(instance);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_setLatencyChangedListener(JNIEnv *env,
+																						 jclass clazz,
+																						 jlong nativeClient,
+																						 jstring pluginId,
+																						 jint instanceId,
+																						 jobject listener) {
+	auto instance = dynamic_cast<aap::RemotePluginInstance*>(getClientInstance(env, nativeClient, pluginId, instanceId));
+	if (!instance)
+		return;
+	auto holder = listener ? std::make_shared<JavaParameterLayoutListener>(env, listener) : nullptr;
+	std::lock_guard<std::mutex> lock{latency_listeners_lock};
+	if (!holder) {
+		latency_listeners.erase(instance);
+		return;
+	}
+	latency_listeners[instance] = holder;
+	// Installed once per instance. It captures no listener, and keeps any hook the host had.
+	if (latency_hooked_instances.insert(instance).second) {
+		auto previous = instance->getHostExtension;
+		instance->getHostExtension = [previous](aap::RemotePluginInstance* remote, uint8_t urid, const char* uri) -> void* {
+			if (uri && !strcmp(uri, AAP_LATENCY_EXTENSION_URI))
+				return &jni_latency_host_extension;
+			return previous ? previous(remote, urid, uri) : nullptr;
+		};
+	}
 }
 
 // Presets extensions

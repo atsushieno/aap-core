@@ -12,6 +12,7 @@ import org.androidaudioplugin.PortInformation
 import org.androidaudioplugin.hosting.AudioPluginClientBase
 import org.androidaudioplugin.hosting.AudioPluginHostHelper
 import org.androidaudioplugin.hosting.InstanceState
+import org.androidaudioplugin.hosting.UmpHelper
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.ByteBuffer
@@ -32,7 +33,8 @@ class AapRealtimeProbeReceiver : BroadcastReceiver() {
         val pending = goAsync()
         executor.execute {
             val result = try {
-                if (intent.getStringExtra("phase") == "name_latency")
+                if (intent.getStringExtra("phase") == "latency") latency(context.applicationContext)
+                else if (intent.getStringExtra("phase") == "name_latency")
                     nameLatency(context.applicationContext, intent.getBooleanExtra("active", false))
                 else if (intent.getStringExtra("phase") == "names") names(context.applicationContext)
                 else run(context.applicationContext, intent.getStringExtra("phase") ?: "poll",
@@ -115,6 +117,86 @@ class AapRealtimeProbeReceiver : BroadcastReceiver() {
             processor?.join(3000)
             check(processor?.isAlive != true) { "processing did not stop" }
             instance.setParameterLayoutChangedListener(null)
+            if (instance.state == InstanceState.ACTIVE) instance.deactivate()
+            instance.destroy()
+            client.disconnectPluginService(packageName)
+            client.dispose()
+        }
+    }
+
+    // BYOD's latency follows its oversampling factor, which it applies while processing and then
+    // reports with setLatencySamples() on its message thread. Checks the notification and the query.
+    private fun latency(context: Context): JSONObject {
+        val packageName = "org.androidaudioplugin.ports.juce.byod"
+        val plugin = AudioPluginHostHelper.queryAudioPluginServices(context, packageName)
+            .flatMap { it.plugins }.first { it.pluginId == "juceaap:44717530" }
+        val client = AudioPluginClientBase(context)
+        runBlocking { client.connectToPluginService(packageName) }
+        val instance = client.instantiateNativePlugin(plugin)
+        val stop = AtomicBoolean(false)
+        val failure = AtomicReference<Throwable?>(null)
+        val notifications = AtomicInteger()
+        val notifiedAt = AtomicLong(0)
+        var notified = CountDownLatch(1)
+        var processor: Thread? = null
+        try {
+            instance.setLatencyChangedListener {
+                notifiedAt.set(SystemClock.elapsedRealtimeNanos())
+                notifications.incrementAndGet()
+                notified.countDown()
+            }
+            instance.prepare(FRAMES, RATE, PORT_BYTES)
+            val prepared = instance.getLatencyInSamples()
+            val factor = (0 until instance.getParameterCount()).map { instance.getParameter(it) }
+                .first { it.name == "Oversampling Factor" }
+            // The choices are 1x, 2x, 4x, 8x and 16x, over the parameter range.
+            fun factorValue(choice: Int) = factor.enumerations.getOrNull(choice)?.value
+                ?: (factor.minimumValue + (factor.maximumValue - factor.minimumValue) * choice / 4)
+            instance.activate()
+            processor = Thread {
+                try {
+                    val period = FRAMES * 1_000_000_000L / RATE
+                    var next = System.nanoTime()
+                    while (!stop.get()) {
+                        val wait = next - System.nanoTime()
+                        if (wait > 0) LockSupport.parkNanos(wait)
+                        if (stop.get()) break
+                        instance.process(FRAMES, 1_000_000_000L)
+                        next = maxOf(next + period, System.nanoTime())
+                    }
+                } catch (t: Throwable) { failure.set(t) }
+            }.apply { name = "AAP.LatencyProcess"; start() }
+            Thread.sleep(500)
+            val idleNotifications = notifications.get()
+
+            fun change(choice: Int): JSONObject {
+                notified = CountDownLatch(1)
+                val before = notifications.get()
+                val words = UmpHelper.aapUmpSysex8ParameterPlain(
+                    factor.id.toUInt(), factor.minimumValue, factor.maximumValue, factorValue(choice))
+                val ump = ByteBuffer.allocateDirect(words.size * Int.SIZE_BYTES).order(ByteOrder.nativeOrder())
+                words.forEach { ump.putInt(it.toInt()) }
+                ump.flip()
+                val requested = SystemClock.elapsedRealtimeNanos()
+                instance.addEventUmpInput(ump, words.size * Int.SIZE_BYTES)
+                val arrived = notified.await(3, TimeUnit.SECONDS)
+                // Queried on this thread, not in the listener.
+                return JSONObject().put("choice", choice).put("notified", arrived)
+                    .put("notifications", notifications.get() - before)
+                    .put("notificationMs", if (arrived) (notifiedAt.get() - requested) / 1_000_000.0 else -1.0)
+                    .put("latency", instance.getLatencyInSamples())
+            }
+            val toFourX = change(2)
+            val toTwoX = change(1)
+            failure.get()?.let { throw it }
+            return JSONObject().put("phase", "latency").put("preparedLatency", prepared)
+                .put("factorParameter", factor.id).put("idleNotifications", idleNotifications)
+                .put("toFourX", toFourX).put("toTwoX", toTwoX)
+        } finally {
+            stop.set(true)
+            processor?.join(3000)
+            check(processor?.isAlive != true) { "processing did not stop" }
+            instance.setLatencyChangedListener(null)
             if (instance.state == InstanceState.ACTIVE) instance.deactivate()
             instance.destroy()
             client.disconnectPluginService(packageName)

@@ -129,6 +129,10 @@ class NativeRemotePluginInstance(val pluginId: String,
     fun getLatencyInSamples() = runCatchingRemoteException(0) {
         getLatencyInSamples(client, pluginId, instanceId)
     }
+    // Invoked on a Binder thread when the plugin notifies a latency change; null clears it.
+    // Set it before prepare(). Call getLatencyInSamples() afterwards on another thread, not in it.
+    fun setLatencyChangedListener(listener: Runnable?) =
+        setLatencyChangedListener(client, pluginId, instanceId, listener)
     // presets
     fun getPresetCount() = runCatchingRemoteException(0) {
         getPresetCount(client, pluginId, instanceId)
@@ -346,6 +350,8 @@ class NativeRemotePluginInstance(val pluginId: String,
         external fun getTailLengthInSeconds(nativeClient: Long, pluginId: String, instanceId: Int) : Double
         @JvmStatic
         external fun getLatencyInSamples(nativeClient: Long, pluginId: String, instanceId: Int) : Int
+        @JvmStatic
+        external fun setLatencyChangedListener(nativeClient: Long, pluginId: String, instanceId: Int, listener: Runnable?)
         @JvmStatic
         external fun getPresetCount(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic
