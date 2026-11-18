@@ -32,6 +32,7 @@ set (androidaudioplugin_SOURCES
 	"core/aapxs/presets-aapxs.cpp"
 	"core/aapxs/state-aapxs.cpp"
 	"core/aapxs/tail-aapxs.cpp"
+	"core/aapxs/latency-aapxs.cpp"
 	"core/aapxs/standard-extensions.cpp"
 	"core/aapxs/typed-aapxs.cpp"
 	"core/aapxs/urid-aapxs.cpp"

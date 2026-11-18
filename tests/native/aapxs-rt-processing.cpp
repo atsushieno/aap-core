@@ -188,6 +188,14 @@ struct FakePlugin {
             if (self.offlineResult == AAP_OFFLINE_RENDERING_RESULT_OK) self.offlineMode = mode;
             return self.offlineResult;
         }};
+    bool exposeLatency{false};
+    std::atomic<int32_t> latency{256};
+    std::atomic<int> latencyReads{0};
+    aap_latency_extension_t latencyExtension{this, [](aap_latency_extension_t* ext, AndroidAudioPlugin*) {
+            auto& self = *static_cast<FakePlugin*>(ext->aapxs_context);
+            ++self.latencyReads;
+            return self.latency.load();
+        }};
     bool exposeTail{false};
     std::atomic<double> tailLength{1.5};
     std::atomic<int> tailReads{0};
@@ -344,6 +352,7 @@ struct FakePlugin {
             if (self.exposeBuses && !strcmp(uri, AAP_BUSES_EXTENSION_URI)) return &self.buses;
             if (self.exposeOfflineRendering && !strcmp(uri, AAP_OFFLINE_RENDERING_EXTENSION_URI)) return &self.offlineRendering;
             if (self.exposeTail && !strcmp(uri, AAP_TAIL_EXTENSION_URI)) return &self.tail;
+            if (self.exposeLatency && !strcmp(uri, AAP_LATENCY_EXTENSION_URI)) return &self.latencyExtension;
             return nullptr;
         }, nullptr};
     AndroidAudioPluginFactory factory{
@@ -1832,6 +1841,113 @@ void tailLengthNotification() {
     check(delivered == 1, "notification delivered");
 }
 
+// Connects the actual typed client and C proxy to the actual service-side handler on one buffer.
+void latencyClient() {
+    auto registry = xs::AAPXSDefinitionRegistry::getStandardExtensions();
+    auto definition = registry->getByUri(AAP_LATENCY_EXTENSION_URI);
+    check(definition && definition->uri && definition->process_incoming_plugin_aapxs_request, "latency AAPXS is standard");
+    check(registry->getUridMapping()->getUrid(AAP_LATENCY_EXTENSION_URI) > registry->getUridMapping()->getUrid(AAP_TAIL_EXTENSION_URI), "new extension does not shift existing URIDs");
+    check(definition->get_request_flags(definition, false, OPCODE_GET_LATENCY) == AAPXS_REQUEST_READ_ONLY, "the query asks the plugin under exclusion");
+    check(definition->get_request_flags(definition, true, OPCODE_NOTIFY_LATENCY_CHANGED) == AAPXS_REQUEST_COALESCE, "the notification has no snapshot to refresh");
+    check(!definition->is_command_rt_safe, "no latency command is RT-safe");
+
+    FixtureInfo descriptor;
+    PluginListSnapshot list;
+    Callback callback;
+    PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeLatency = true;
+    TestLocal instance(&host, registry, 1, &descriptor.info, &fake.factory, 8192);
+    instance.completeInstantiation();
+
+    struct Fixture {
+        uint8_t buffer[LATENCY_SHARED_MEMORY_SIZE]{};
+        AAPXSSerializationContext serialization{buffer, 0, sizeof(buffer)};
+        uint32_t id{};
+        std::function<bool(AAPXSRequestContext*)> send;
+        AAPXSInitiatorInstance initiator{this, nullptr, &serialization, 1,
+            [](auto* self) { return static_cast<Fixture*>(self->aapxs_context)->id++; },
+            [](auto* self, auto* request) { return static_cast<Fixture*>(self->aapxs_context)->send(request); }};
+        xs::LatencyClientAAPXS client{&initiator, &serialization};
+    } f;
+    static int32_t replies;
+    replies = 0;
+    AAPXSRecipientInstance recipient{nullptr, &instance, &f.serialization,
+        [](auto*, auto*) { ++replies; }, nullptr};
+    f.send = [&](auto* request) {
+        definition->process_incoming_plugin_aapxs_request(definition, &recipient, instance.getPlugin(), request);
+        request->callback(request->callback_user_data, nullptr);
+        return true;
+    };
+
+    auto proxy = f.client.asPluginExtension();
+    check(proxy->latency_in_samples(proxy, instance.getPlugin()) == 256 && fake.latencyReads == 1 && replies == 1, "C proxy reaches the plugin");
+    int32_t asyncResult = 0;
+    f.client.getLatencyAsync([&](auto result) { asyncResult = result.value; });
+    check(asyncResult == 256, "async request");
+    // No snapshot: every query asks the plugin.
+    fake.latency = 1024;
+    check(f.client.getLatency().value == 1024 && fake.latencyReads == 3, "each query reads the plugin");
+    fake.exposeLatency = false;
+    check(f.client.getLatency().value == 0, "plugin without the extension has no latency");
+    fake.exposeLatency = true;
+
+    // A failed or malformed exchange is never reported as a latency.
+    f.send = [](auto* request) {
+        request->serialization->data_size = 0;
+        request->callback(request->callback_user_data, nullptr); return true;
+    };
+    check(f.client.getLatency().value == 0, "short reply");
+    f.send = [](auto* request) {
+        request->error_callback(request->callback_user_data, nullptr, "dead"); return true;
+    };
+    check(!f.client.getLatency().isOk(), "transport error is reported");
+    check(proxy->latency_in_samples(proxy, instance.getPlugin()) == 0, "C proxy maps a transport error to no latency");
+}
+
+// The plugin notifies from a non-RT thread; the worker delivers it and the host re-queries.
+void latencyNotification() {
+    FixtureInfo descriptor;
+    PluginListSnapshot list; Callback callback; PluginService host(&list, &callback);
+    FakePlugin fake; fake.exposeLatency = true;
+    TestLocal instance(&host, xs::AAPXSDefinitionRegistry::getStandardExtensions(), 10, &descriptor.info, &fake.factory, 8192);
+    auto store = instance.getSharedMemoryStore();
+    for (auto& definition : *instance.getAAPXSRegistry()->items()) {
+        if (!definition.uri || definition.data_capacity == 0) continue;
+        auto index = store->getExtensionBufferCount();
+        auto backing = tmpfile(); check(backing, "extension backing file");
+        int fd = dup(fileno(backing)); fclose(backing);
+        check(fd > 0 && ftruncate(fd, definition.data_capacity) == 0, "extension backing size");
+        store->addExtensionFD(fd, definition.data_capacity);
+        store->getExtensionUriToIndexMap()[definition.uri] = index;
+    }
+    instance.setupAAPXSInstances(); instance.completeInstantiation(); instance.setupAAPXS(); instance.setupTestBuffer();
+    auto readLatency = [&](uint32_t requestId) {
+        instance.controlExtension(0, AAP_LATENCY_EXTENSION_URI, OPCODE_GET_LATENCY, requestId);
+        int32_t result{};
+        memcpy(&result, instance.getAAPXSDispatcher().getPluginAAPXSByUri(AAP_LATENCY_EXTENSION_URI)->serialization->data, sizeof(result));
+        return result;
+    };
+    auto reads = fake.latencyReads.load();
+    check(readLatency(900) == 256 && fake.latencyReads == reads + 1, "the query asks the plugin");
+
+    std::atomic<int> delivered{0};
+    instance.setIpcExtensionMessageSender([](void* context, const char* uri, int32_t, int32_t opcode, int32_t,
+            aapxs_completion_callback completed, void* callbackContext, void* hostContext, aapxs_error_callback) {
+        check(!strcmp(uri, AAP_LATENCY_EXTENSION_URI) && opcode == OPCODE_NOTIFY_LATENCY_CHANGED, "latency notification");
+        ++*static_cast<std::atomic<int>*>(context); if (completed) completed(callbackContext, hostContext);
+    }, &delivered);
+    fake.latency = 512;
+    auto latency = static_cast<aap_latency_host_extension_t*>(fake.host->get_extension(fake.host, AAP_LATENCY_EXTENSION_URI));
+    check(latency && latency->notify_latency_changed, "plugin gets the latency host extension");
+    latency->notify_latency_changed(latency, fake.host);
+    latency->notify_latency_changed(latency, fake.host);
+    auto limit = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (delivered < 1 && std::chrono::steady_clock::now() < limit) std::this_thread::yield();
+    instance.stopExtensionWorker();
+    check(delivered >= 1 && delivered <= 2, "notification delivered");
+    check(readLatency(901) == 512, "host re-query sees the new latency");
+}
+
 void offlineBlocksWaitForControl() {
     FixtureInfo descriptor;
     PluginListSnapshot list;
@@ -1953,6 +2069,7 @@ void offlineBlocksWaitForControl() {
 
 int main() {
     tailLengthClient(); tailLengthNotification();
+    latencyClient(); latencyNotification();
     offlineRendering();
     offlineBlocksWaitForControl();
     busesLayoutClient(); busLayout();

@@ -199,6 +199,7 @@ private class AapValidator(private val context: Context) {
                 current.prepare(request.frameCount, request.sampleRate, DEFAULT_CONTROL_BYTES_PER_BLOCK)
                 assertHealthy(current, "prepare")
                 validateTailExtension(plugin, current, report)
+                validateLatencyExtension(plugin, current, report)
                 writeSilentAudioInputs(current, request.frameCount)
                 current.activate()
                 assertHealthy(current, "activate")
@@ -459,6 +460,24 @@ private class AapValidator(private val context: Context) {
                 "Return 0 for no tail, a positive length in seconds, or INFINITY.")
         else
             report.pass(pluginId, "AAPVAL-TAIL-001", "Tail length is valid", "Plugin $pluginId reported ${length}s after prepare().")
+    }
+
+    // Called after prepare(), where the plugin knows its configuration. The query is RT-unsafe and
+    // always goes through Binder. 0 and any positive number of samples are valid.
+    private fun validateLatencyExtension(plugin: PluginInformation, instance: NativeRemotePluginInstance, report: AapValidationReport) {
+        val pluginId = plugin.pluginId ?: return
+        if (!declares(plugin, AudioPluginExtensionsBom.AAP_LATENCY_EXTENSION_URI_V1)) {
+            report.skip(pluginId, "AAPVAL-LATENCY-001", "Latency extension is not declared", "The latency check does not apply.")
+            return
+        }
+        val latency = instance.getLatencyInSamples()
+        assertHealthy(instance, "latency_in_samples")
+        if (latency < 0)
+            report.fail(pluginId, "AAPVAL-LATENCY-001", "Latency is invalid", "Plugin $pluginId reported $latency samples.",
+                "A host cannot compensate a negative delay.",
+                "Return 0 for no latency, or a positive number of samples.")
+        else
+            report.pass(pluginId, "AAPVAL-LATENCY-001", "Latency is valid", "Plugin $pluginId reported $latency samples after prepare().")
     }
 
     private fun declares(plugin: PluginInformation, extensionUri: String): Boolean =

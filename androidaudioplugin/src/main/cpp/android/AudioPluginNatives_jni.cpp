@@ -623,6 +623,20 @@ Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getTailLengthInSe
 	return result.isOk() ? result.value : 0.0;
 }
 
+// Latency extension
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_org_androidaudioplugin_hosting_NativeRemotePluginInstance_getLatencyInSamples(JNIEnv *env,
+																				   jclass clazz,
+																				   jlong nativeClient,
+																				   jstring pluginId,
+																				   jint instanceId) {
+	auto instance = getClientInstance(env, nativeClient, pluginId, instanceId);
+	auto result = instance->getStandardExtensions().getLatency();
+	return result.isOk() ? result.value : 0;
+}
+
 // Presets extensions
 
 extern "C"

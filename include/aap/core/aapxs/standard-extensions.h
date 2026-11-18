@@ -15,6 +15,7 @@
 #include "buses-aapxs.h"
 #include "offline-rendering-aapxs.h"
 #include "tail-aapxs.h"
+#include "latency-aapxs.h"
 
 namespace aap::xs {
     class StandardExtensions {
@@ -72,6 +73,9 @@ namespace aap::xs {
         // Tail
         virtual Result<double> getTailLength() = 0;
 
+        // Latency
+        virtual Result<int32_t> getLatency() = 0;
+
         // Gui
         virtual aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) = 0;
         virtual int32_t showGui(aap_gui_instance_id guiInstanceId) = 0;
@@ -91,6 +95,7 @@ namespace aap::xs {
         BusesClientAAPXS* buses{nullptr};
         OfflineRenderingClientAAPXS* offline_rendering{nullptr};
         TailClientAAPXS* tail{nullptr};
+        LatencyClientAAPXS* latency{nullptr};
 
     public:
         // These clients are owned by their AAPXS instance contexts. Hosting only borrows them.
@@ -102,6 +107,7 @@ namespace aap::xs {
             if (!strcmp(uri, AAP_STATE_EXTENSION_URI)) return state ? state->asPluginExtension() : nullptr;
             if (!strcmp(uri, AAP_URID_EXTENSION_URI)) return urid ? urid->asPluginExtension() : nullptr;
             if (!strcmp(uri, AAP_TAIL_EXTENSION_URI)) return tail ? tail->asPluginExtension() : nullptr;
+            if (!strcmp(uri, AAP_LATENCY_EXTENSION_URI)) return latency ? latency->asPluginExtension() : nullptr;
             return nullptr;
         }
         void initialize(AAPXSClientDispatcher* dispatcher) {
@@ -120,6 +126,7 @@ namespace aap::xs {
             buses = dynamic_cast<BusesClientAAPXS*>(borrow(AAP_BUSES_EXTENSION_URI));
             offline_rendering = dynamic_cast<OfflineRenderingClientAAPXS*>(borrow(AAP_OFFLINE_RENDERING_EXTENSION_URI));
             tail = dynamic_cast<TailClientAAPXS*>(borrow(AAP_TAIL_EXTENSION_URI));
+            latency = dynamic_cast<LatencyClientAAPXS*>(borrow(AAP_LATENCY_EXTENSION_URI));
             initialized = true;
         }
 
@@ -222,6 +229,13 @@ namespace aap::xs {
             return tail->getTailLength();
         }
 
+        // Latency
+        Result<int32_t> getLatency() override {
+            if (aap::RealtimeScope::isActive()) return {0, "RT caller"};
+            if (!latency) return {0, "latency extension unavailable"};
+            return latency->getLatency();
+        }
+
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->createGui(pluginId, instanceId, audioPluginView) : -1; }
         int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->showGui(guiInstanceId) : -1; }
@@ -239,6 +253,7 @@ namespace aap::xs {
         aap_gui_extension_t* gui;
         aap_offline_rendering_extension_t* offline_rendering;
         aap_tail_extension_t* tail;
+        aap_latency_extension_t* latency;
 
     public:
         ServiceStandardExtensions(AndroidAudioPlugin* plugin) : plugin(plugin) {
@@ -248,6 +263,7 @@ namespace aap::xs {
             state = (aap_state_extension_t*) plugin->get_extension(plugin, AAP_STATE_EXTENSION_URI);
             offline_rendering = (aap_offline_rendering_extension_t*) plugin->get_extension(plugin, AAP_OFFLINE_RENDERING_EXTENSION_URI);
             tail = (aap_tail_extension_t*) plugin->get_extension(plugin, AAP_TAIL_EXTENSION_URI);
+            latency = (aap_latency_extension_t*) plugin->get_extension(plugin, AAP_LATENCY_EXTENSION_URI);
         }
 
         // MIDI
@@ -351,6 +367,13 @@ namespace aap::xs {
             return {tail->tail_length_in_seconds(tail, plugin), ""};
         }
 
+        // Latency
+        Result<int32_t> getLatency() override {
+            if (aap::RealtimeScope::isActive()) return {0, "RT caller"};
+            if (!latency || !latency->latency_in_samples) return {0, "latency extension unavailable"};
+            return {latency->latency_in_samples(latency, plugin), ""};
+        }
+
         // Gui
         aap_gui_instance_id createGui(std::string pluginId, int32_t instanceId, void* audioPluginView) override { return gui ? gui->create(gui, plugin, pluginId.c_str(), instanceId, audioPluginView) : -1; }
         int32_t showGui(aap_gui_instance_id guiInstanceId) override { return gui ? gui->show ? gui->show(gui, plugin, guiInstanceId) : AAP_GUI_ERROR_NO_SHOW_DEFINED : AAP_GUI_ERROR_NO_GUI_DEFINED; }
@@ -391,6 +414,9 @@ namespace aap::xs {
         // Tail
         virtual void notifyTailLengthChanged() = 0;
 
+        // Latency
+        virtual void notifyLatencyChanged() = 0;
+
         // State
 
         // GUI
@@ -402,12 +428,14 @@ namespace aap::xs {
         aap_parameters_host_extension_t* parameters;
         aap_presets_host_extension_t* presets;
         aap_tail_host_extension_t* tail;
+        aap_latency_host_extension_t* latency;
 
     public:
         ClientStandardHostExtensions(AndroidAudioPluginHost* host) : host(host) {
             parameters = (aap_parameters_host_extension_t*) host->get_extension(host, AAP_PARAMETERS_EXTENSION_URI);
             presets = (aap_presets_host_extension_t*) host->get_extension(host, AAP_PRESETS_EXTENSION_URI);
             tail = (aap_tail_host_extension_t*) host->get_extension(host, AAP_TAIL_EXTENSION_URI);
+            latency = (aap_latency_host_extension_t*) host->get_extension(host, AAP_LATENCY_EXTENSION_URI);
         }
 
         // MIDI
@@ -422,6 +450,9 @@ namespace aap::xs {
         // Tail
         void notifyTailLengthChanged() override { if (tail && tail->notify_tail_length_changed) tail->notify_tail_length_changed(tail, host); }
 
+        // Latency
+        void notifyLatencyChanged() override { if (latency && latency->notify_latency_changed) latency->notify_latency_changed(latency, host); }
+
         // State
 
         // GUI
@@ -434,6 +465,7 @@ namespace aap::xs {
         StateServiceAAPXS state;
         GuiServiceAAPXS gui;
         TailServiceAAPXS tail;
+        LatencyServiceAAPXS latency;
 
     public:
         ServiceStandardHostExtensions(AAPXSServiceDispatcher* dispatcher, AAPXSSerializationContext* serialization) :
@@ -442,7 +474,8 @@ namespace aap::xs {
                 presets(dispatcher->getHostAAPXSByUri(AAP_PRESETS_EXTENSION_URI), serialization),
                 state(dispatcher->getHostAAPXSByUri(AAP_STATE_EXTENSION_URI), serialization),
                 gui(dispatcher->getHostAAPXSByUri(AAP_GUI_EXTENSION_URI), serialization),
-                tail(dispatcher->getHostAAPXSByUri(AAP_TAIL_EXTENSION_URI), serialization) {
+                tail(dispatcher->getHostAAPXSByUri(AAP_TAIL_EXTENSION_URI), serialization),
+                latency(dispatcher->getHostAAPXSByUri(AAP_LATENCY_EXTENSION_URI), serialization) {
         }
 
         // MIDI
@@ -456,6 +489,9 @@ namespace aap::xs {
 
         // Tail
         void notifyTailLengthChanged() override { tail.notifyTailLengthChanged(); }
+
+        // Latency
+        void notifyLatencyChanged() override { latency.notifyLatencyChanged(); }
 
         // State
 

@@ -123,6 +123,12 @@ class NativeRemotePluginInstance(val pluginId: String,
     fun getTailLengthInSeconds() = runCatchingRemoteException(0.0) {
         getTailLengthInSeconds(client, pluginId, instanceId)
     }
+    // latency
+    // Only for a plugin that declares the latency extension. Returns 0 on failure.
+    // Do not call it on an audio thread; cache it until the plugin notifies a change.
+    fun getLatencyInSamples() = runCatchingRemoteException(0) {
+        getLatencyInSamples(client, pluginId, instanceId)
+    }
     // presets
     fun getPresetCount() = runCatchingRemoteException(0) {
         getPresetCount(client, pluginId, instanceId)
@@ -338,6 +344,8 @@ class NativeRemotePluginInstance(val pluginId: String,
         external fun setOfflineMode(nativeClient: Long, pluginId: String, instanceId: Int, offline: Boolean) : Boolean
         @JvmStatic
         external fun getTailLengthInSeconds(nativeClient: Long, pluginId: String, instanceId: Int) : Double
+        @JvmStatic
+        external fun getLatencyInSamples(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic
         external fun getPresetCount(nativeClient: Long, pluginId: String, instanceId: Int) : Int
         @JvmStatic

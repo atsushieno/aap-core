@@ -20,6 +20,7 @@
 #include "aap/ext/buses.h"
 #include "aap/ext/offline-rendering.h"
 #include "aap/ext/tail.h"
+#include "aap/ext/latency.h"
 #include "aap/plugin-meta-info.h"
 #include "plugin-connections.h"
 #include "plugin-instance.h"

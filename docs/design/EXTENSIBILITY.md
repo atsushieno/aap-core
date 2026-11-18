@@ -24,6 +24,7 @@ For quick look, these are the Standard Extensions that had existed since AAPXS v
 - `buses.h` : audio and event buses (added after AAPXS v1)
 - `offline-rendering.h` : tells the plugin whether it renders in realtime or offline (added after AAPXS v1)
 - `tail.h` : reports how long the plugin keeps producing output after its input becomes silent (added after AAPXS v1)
+- `latency.h` : reports how many samples the plugin delays its output (added after AAPXS v1)
 
 There is a few more not-implemented extensions that I would not say part of the Standard:
 
