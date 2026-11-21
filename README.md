@@ -9,7 +9,7 @@
 
 [![AAP + UAPMD demonstration (2026.5)](https://img.youtube.com/vi/OXSoqKCzbK4/0.jpg)](https://www.youtube.com/watch?v=OXSoqKCzbK4 " AAP + UAPMD demonstration (2026.5) ")
 
-[![UAPMD music project playback demo](https://img.youtube.com/vi/Er2E2LjYmdw/0.jpg)](https://www.youtube.com/watch?v=Er2E2LjYmdw " UAPMD music project playback demo")
+[![mars sfizz android uapmd kmp 202611](https://img.youtube.com/vi/l0U6ImZNq-U/hqdefault.jpg)](https://www.youtube.com/watch?v=l0U6ImZNq-U "mars sfizz android uapmd kmp 202611")
 
 disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
 
