@@ -3,15 +3,10 @@
 
 ![](https://github.com/atsushieno/aap-core/workflows/build%20dist/badge.svg)
 
-![AAP Wavetable on UAPMD v0.4](docs/images/uapmd-app-v0.4-sshot.png "AAP Wavetable on UAPMD v0.4")
-
-<img alt="Greenhouse official screenshot" src="https://raw.githubusercontent.com/meteaurestudios/greenhouse/refs/heads/main/docs/images/greenhouse.png" width="50%" height="50%" />
-
-[![AAP + UAPMD demonstration (2026.5)](https://img.youtube.com/vi/OXSoqKCzbK4/0.jpg)](https://www.youtube.com/watch?v=OXSoqKCzbK4 " AAP + UAPMD demonstration (2026.5) ")
-
-[![mars sfizz android uapmd kmp 202611](https://img.youtube.com/vi/l0U6ImZNq-U/hqdefault.jpg)](https://www.youtube.com/watch?v=l0U6ImZNq-U "mars sfizz android uapmd kmp 202611")
-
-disclaimer: the README is either up to date, partially obsoleted, or sometimes (but not very often) ahead of implementation. Do not trust it too much.
+| | |
+|-|-|
+| <img alt="AAP Wavetable on UAPMD v0.4" src="docs/images/uapmd-app-v0.4-sshot.png" width="75%" height="75%" /> | <img alt="Greenhouse official screenshot" src="https://raw.githubusercontent.com/meteaurestudios/greenhouse/refs/heads/main/docs/images/greenhouse.png" width="50%" height="50%" /> |
+| [![AAP + UAPMD demonstration (2026.5)](https://img.youtube.com/vi/OXSoqKCzbK4/0.jpg)](https://www.youtube.com/watch?v=OXSoqKCzbK4 " AAP + UAPMD demonstration (2026.5) ") | [![mars sfizz android uapmd kmp 202611](https://img.youtube.com/vi/l0U6ImZNq-U/hqdefault.jpg)](https://www.youtube.com/watch?v=l0U6ImZNq-U "mars sfizz android uapmd kmp 202611") |
 
 ## What is AAP?
 
@@ -24,6 +19,8 @@ AAP aims to provide an inclusive standard for audio plugin, adopted to Android a
 AAP is designed as a generic plugin format so that multi-format audio plugin SDKs can support it. We have [JUCE](http://juce.com/) integration support. ported some LV2 plugins, including [DPF](https://github.com/DISTRHO/DPF)-based plugins, and probably more in the future.
 
 We have [aap-lv2](https://github.com/atsushieno/aap-lv2) and [aap-juce](https://github.com/atsushieno/aap-juce/) repositories that achieve these objectives to some extent. We have [many plugins](https://github.com/atsushieno/aap-core/wiki/List-of-AAP-plugins-and-hosts) (as long as they work reasonably on Android).
+
+AAP makes it possible for musicians to use the plugins they use on desktop, across platforms wherever the plugins support desktop and Android (as ports). Note that sharing the state data is not doable unless they save the data in the same binary format (which usually doesn't happen).
 
 ## Trying it out on Android devices
 
@@ -80,7 +77,7 @@ AAP developers create audio plugin in native code using Android NDK, create plug
 2. [importing from LV2 plugins](https://github.com/atsushieno/aap-lv2)
 3. [importing from JUCE plugins](https://github.com/atsushieno/aap-juce)
 
-We basically recommend (2) or (3) as our API is not quite stabilized yet. So if you take the (1) approach, then you are supposed to update source code whenever necessaey.
+We basically recommend (2) or (3) as our API is not stabilized yet. So if you take the (1) approach, then you are supposed to update source code whenever necessaey as we introduce API/ABI breakage.
 
 (We don't really assure the consistency on how we import LV2 and JUCE bits either, but *their* API would be in general stable.)
 
